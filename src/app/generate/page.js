@@ -6,7 +6,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 export default function Generate() {
   const [topic, setTopic] = useState('');
-  const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const router = useRouter();
@@ -16,8 +15,8 @@ export default function Generate() {
     setLoading(true);
     setError(null);
 
-    if (!topic || !apiKey) {
-      setError('Please provide a topic and your API key.');
+    if (!topic) {
+      setError('Please provide a description for the test.');
       setLoading(false);
       return;
     }
@@ -28,7 +27,7 @@ export default function Generate() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ topic, apiKey }),
+        body: JSON.stringify({ topic }),
       });
 
       if (!response.ok) {
@@ -49,28 +48,17 @@ export default function Generate() {
   return (
     <div className="container d-flex flex-column align-items-center justify-content-center min-vh-100 bg-light text-dark">
       <h1 className="display-4 mb-4">Generate a Test</h1>
-      <p className="lead mb-5">Enter a topic and your Gemini API key to generate a test.</p>
+      <p className="lead mb-5">Describe the test you want to generate.</p>
       <form onSubmit={handleSubmit} className="w-50">
         <div className="form-group mb-3">
-          <label htmlFor="topic" className="form-label">Topic</label>
-          <input
-            type="text"
+          <label htmlFor="topic" className="form-label">Test Description</label>
+          <textarea
             id="topic"
             className="form-control"
+            rows="5"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g., JavaScript Basics"
-          />
-        </div>
-        <div className="form-group mb-3">
-          <label htmlFor="apiKey" className="form-label">Gemini API Key</label>
-          <input
-            type="password"
-            id="apiKey"
-            className="form-control"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your API key"
+            placeholder="e.g., A 10-question multiple-choice quiz on the basics of React, including components, props, and state."
           />
         </div>
         {error && <div className="alert alert-danger">{error}</div>}

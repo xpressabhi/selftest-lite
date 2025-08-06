@@ -2,19 +2,25 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { topic, apiKey } = await request.json();
+    const { topic } = await request.json();
+    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!topic || !apiKey) {
-      return NextResponse.json({ error: 'Topic and API key are required' }, { status: 400 });
+    if (!topic) {
+      return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
+    }
+
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
     }
 
     const prompt = `
-      Please generate a multiple-choice quiz on the topic "${topic}".
-      The quiz should have 10 questions.
-      Each question should have 4 options.
+      Please generate a multiple-choice quiz based on the following description:
+      ---
+      ${topic}
+      ---
       Provide the output in a JSON format with the following structure:
       {
-        "topic": "${topic}",
+        "topic": "A suitable topic based on the description",
         "questions": [
           {
             "question": "...",
