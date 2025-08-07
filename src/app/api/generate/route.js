@@ -43,6 +43,7 @@ export async function POST(request) {
 		const response = await ai.models.generateContent({
 			model: 'gemini-2.0-flash-001',
 			contents: prompt,
+			config: { responseMimeType: 'application/json' },
 		});
 		const questionPaper = JSON.parse(response.text);
 		return NextResponse.json(questionPaper);

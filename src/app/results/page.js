@@ -203,9 +203,13 @@ function ResultsContent() {
 
 // Main component that wraps ResultsContent in Suspense
 export default function Results() {
-  return (
-    <Suspense fallback={<div className='container text-center mt-5'>Loading results...</div>}>
-      <ResultsContent />
-    </Suspense>
-  );
+	return (
+		<Suspense
+			fallback={
+				<div className='container text-center mt-5'>Loading results...</div>
+			}
+		>
+			<ResultsContent />
+		</Suspense>
+	);
 }
