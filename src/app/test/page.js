@@ -13,29 +13,43 @@ export default function Test() {
 	const router = useRouter();
 
 	useEffect(() => {
+		// Load question paper from localStorage
 		const storedPaper = localStorage.getItem(STORAGE_KEYS.UNSUBMITTED_TEST);
 		if (storedPaper) {
 			setQuestionPaper(JSON.parse(storedPaper));
-			localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST);
+			// Don't remove the unsubmitted test until it's actually submitted
+			// This ensures the test persists across page refreshes
 		}
+
+		// Load saved answers if they exist
+		const savedAnswers = localStorage.getItem(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`);
+		if (savedAnswers) {
+			setAnswers(JSON.parse(savedAnswers));
+		}
+
 		setLoading(false);
 	}, []);
 
 	const handleAnswerChange = (questionIndex, answer) => {
-		setAnswers({
+		const updatedAnswers = {
 			...answers,
 			[questionIndex]: answer,
-		});
+		};
+		setAnswers(updatedAnswers);
+		
+		// Save answers to localStorage whenever they change
+		localStorage.setItem(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`, JSON.stringify(updatedAnswers));
 	};
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
-		// Save user answers to localStorage
+		// Save user answers to localStorage for results page
 		localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(answers));
 		// Save the question paper to localStorage for the results page
 		localStorage.setItem(STORAGE_KEYS.QUESTION_PAPER, JSON.stringify(questionPaper));
-		// Remove unsubmitted test
+		// Remove unsubmitted test and its answers
 		localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST);
+		localStorage.removeItem(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`);
 		// Navigate to results page
 		router.push('/results');
 	};
