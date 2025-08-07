@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-export default function Results() {
+// Component that uses useSearchParams (must be wrapped in Suspense)
+function ResultsContent() {
 	const [score, setScore] = useState(0);
 	const [questionPaper, setQuestionPaper] = useState(null);
 	const [userAnswers, setUserAnswers] = useState(null);
@@ -198,4 +199,13 @@ export default function Results() {
 			</button>
 		</div>
 	);
+}
+
+// Main component that wraps ResultsContent in Suspense
+export default function Results() {
+  return (
+    <Suspense fallback={<div className='container text-center mt-5'>Loading results...</div>}>
+      <ResultsContent />
+    </Suspense>
+  );
 }
