@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 export default function Test() {
@@ -66,7 +67,9 @@ export default function Test() {
 					<div key={index} className='card mb-4'>
 						<div className='card-header'>Question {index + 1}</div>
 						<div className='card-body'>
-							<h5 className='card-title'>{q.question}</h5>
+							<h5 className='card-title'>
+								<MarkdownRenderer>{q.question}</MarkdownRenderer>
+							</h5>
 							{q.options.map((option, i) => (
 								<div key={i} className='form-check'>
 									<input
@@ -82,7 +85,7 @@ export default function Test() {
 										className='form-check-label'
 										htmlFor={`question-${index}-option-${i}`}
 									>
-										{option}
+										<MarkdownRenderer>{option}</MarkdownRenderer>
 									</label>
 								</div>
 							))}

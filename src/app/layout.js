@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Navbar from './components/Navbar';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'katex/dist/katex.min.css';
 
 const geistSans = Geist({
 	variable: '--font-geist-sans',
