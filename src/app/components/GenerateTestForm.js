@@ -188,6 +188,7 @@ const GenerateTestForm = () => {
 									fontSize: '8px',
 									transform: 'translate(50%, -50%)',
 								}}
+								title='Delete prompt'
 								onClick={(e) => {
 									e.stopPropagation(); // Prevent prompt selection when deleting
 									const updatedPrompts = userPrompts.filter(
