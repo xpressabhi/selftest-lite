@@ -1,23 +1,26 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/genai";
+
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(request) {
-  try {
-    const { topic } = await request.json();
-    const apiKey = process.env.GEMINI_API_KEY;
+	try {
+		const { topic } = await request.json();
+		const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!topic) {
-      return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
-    }
+		if (!topic) {
+			return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
+		}
 
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
-    }
+		if (!apiKey) {
+			return NextResponse.json(
+				{ error: 'Gemini API key is not configured' },
+				{ status: 500 },
+			);
+		}
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+		const ai = new GoogleGenAI(apiKey);
 
-    const prompt = `
+		const prompt = `
       Please generate a multiple-choice quiz based on the following description:
       ---
       ${topic}
@@ -37,19 +40,17 @@ export async function POST(request) {
       Do not include any text outside of the JSON object.
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-
-    // Clean the response to ensure it's valid JSON
-    const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    const questionPaper = JSON.parse(jsonText);
-
-    return NextResponse.json(questionPaper);
-
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
-  }
+		const response = await ai.models.generateContent({
+			model: 'gemini-2.0-flash-001',
+			contents: prompt,
+		});
+		const questionPaper = JSON.parse(response.text);
+		return NextResponse.json(questionPaper);
+	} catch (error) {
+		console.error(error);
+		return NextResponse.json(
+			{ error: 'An unexpected error occurred' },
+			{ status: 500 },
+		);
+	}
 }
