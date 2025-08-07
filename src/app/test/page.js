@@ -30,6 +30,7 @@ export default function Test() {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(answers));
+		localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST); // Remove unsubmitted test
 		router.push('/results');
 	};
 
