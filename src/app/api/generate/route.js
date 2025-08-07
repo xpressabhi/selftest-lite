@@ -21,7 +21,7 @@ export async function POST(request) {
 		const ai = new GoogleGenAI(apiKey);
 
 		const prompt = `
-      Please generate a multiple-choice quiz based on the following description:
+      Please generate a multiple-choice quiz with 10 questions based on the following description (unless a specific number of questions is mentioned in the description, in which case follow that instruction):
       ---
       ${topic}
       ---
@@ -34,8 +34,11 @@ export async function POST(request) {
             "options": ["Option A", "Option B", "Option C", "Option D"],
             "answer": "Correct option text"
           }
+          // More questions should follow this pattern
         ]
       }
+      
+      IMPORTANT: Generate 10 questions total by default (or as specified in the description).
 
       IMPORTANT FORMATTING INSTRUCTIONS:
       1. Use Markdown formatting for all text in questions and options:
