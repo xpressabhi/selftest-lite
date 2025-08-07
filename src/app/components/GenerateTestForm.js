@@ -5,6 +5,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
+import {
+	FaPencilAlt,
+	FaSpinner,
+	FaTimes,
+	FaCode,
+	FaCalculator,
+	FaDna,
+	FaHistory,
+	FaLanguage,
+} from 'react-icons/fa';
 
 /**
  * Renders a form for generating a new test.
@@ -28,13 +38,25 @@ const GenerateTestForm = () => {
 		}
 	}, []);
 
-	// Base predefined prompts
+	// Base predefined prompts with their icons
 	const predefinedPrompts = [
-		'JavaScript fundamentals: variables, functions, and objects',
-		'Mathematics: algebra, calculus, and statistics',
-		'Biology: cell structure, genetics, and human anatomy',
-		'World War II history for UPSC exams',
-		'English grammar, punctuation, and common writing mistakes',
+		{
+			text: 'JavaScript fundamentals: variables, functions, and objects',
+			icon: <FaCode />,
+		},
+		{
+			text: 'Mathematics: algebra, calculus, and statistics',
+			icon: <FaCalculator />,
+		},
+		{
+			text: 'Biology: cell structure, genetics, and human anatomy',
+			icon: <FaDna />,
+		},
+		{ text: 'World War II history for UPSC exams', icon: <FaHistory /> },
+		{
+			text: 'English grammar, punctuation, and common writing mistakes',
+			icon: <FaLanguage />,
+		},
 	];
 
 	/**
@@ -151,8 +173,8 @@ const GenerateTestForm = () => {
 							<button
 								className='position-absolute top-0 end-0 btn btn-sm btn-danger rounded-circle d-flex align-items-center justify-content-center'
 								style={{
-									width: '20px',
-									height: '20px',
+									width: '24px',
+									height: '24px',
 									padding: '0',
 									margin: '2px',
 									fontSize: '12px',
@@ -170,7 +192,7 @@ const GenerateTestForm = () => {
 									);
 								}}
 							>
-								×
+								<FaTimes size={12} />
 							</button>
 						</div>
 					))}
@@ -187,12 +209,13 @@ const GenerateTestForm = () => {
 										cursor: 'pointer',
 										transition: 'all 0.2s ease',
 										border:
-											topic === prompt
+											topic === prompt.text
 												? '2px solid #0d6efd'
 												: '1px solid #dee2e6',
-										backgroundColor: topic === prompt ? '#f0f7ff' : 'white',
+										backgroundColor:
+											topic === prompt.text ? '#f0f7ff' : 'white',
 									}}
-									onClick={() => handlePromptSelect(prompt)}
+									onClick={() => handlePromptSelect(prompt.text)}
 									onMouseOver={(e) => {
 										e.currentTarget.style.transform = 'translateY(-5px)';
 										e.currentTarget.style.boxShadow =
@@ -204,11 +227,12 @@ const GenerateTestForm = () => {
 											'0 1px 3px rgba(0,0,0,0.1)';
 									}}
 								>
-									<div className='card-body p-2 d-flex align-items-center justify-content-center'>
+									<div className='card-body p-2 d-flex align-items-center gap-2'>
+										{prompt.icon}
 										<small>
-											{prompt.length > 80
-												? `${prompt.substring(0, 80)}...`
-												: prompt}
+											{prompt.text.length > 80
+												? `${prompt.text.substring(0, 80)}...`
+												: prompt.text}
 										</small>
 									</div>
 								</div>
@@ -218,8 +242,11 @@ const GenerateTestForm = () => {
 
 			<form onSubmit={handleSubmit} className='w-100 w-md-50'>
 				<div className='form-group mb-3'>
-					<label htmlFor='topic' className='form-label'>
-						Topic Description
+					<label
+						htmlFor='topic'
+						className='form-label d-flex align-items-center gap-2'
+					>
+						<FaPencilAlt /> Topic Description
 					</label>
 					<textarea
 						id='topic'
@@ -234,10 +261,16 @@ const GenerateTestForm = () => {
 				<button
 					ref={submitButtonRef}
 					type='submit'
-					className='btn btn-primary w-100'
+					className='btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2'
 					disabled={loading}
 				>
-					{loading ? 'Generating...' : 'Generate Test'}
+					{loading ? (
+						<>
+							<FaSpinner className='spinner' /> Generating...
+						</>
+					) : (
+						'Generate Test'
+					)}
 				</button>
 			</form>
 		</div>

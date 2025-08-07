@@ -5,6 +5,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+	FaTrophy,
+	FaCheckCircle,
+	FaTimesCircle,
+	FaSpinner,
+	FaExclamationCircle,
+	FaPencilAlt,
+	FaArrowRight,
+	FaPlusCircle,
+} from 'react-icons/fa';
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
 function ResultsContent() {
@@ -116,20 +126,24 @@ function ResultsContent() {
 
 	if (loading) {
 		return (
-			<div className='container text-center mt-5'>Calculating results...</div>
+			<div className='container text-center mt-5'>
+				<FaSpinner className='spinner mb-2' size={24} />
+				<div>Calculating results...</div>
+			</div>
 		);
 	}
 
 	if (!questionPaper || !userAnswers) {
 		return (
 			<div className='container text-center mt-5'>
+				<FaExclamationCircle className='text-warning mb-3' size={48} />
 				<h1>No results found!</h1>
 				<p>Please take a test first.</p>
 				<button
-					className='btn btn-primary'
+					className='btn btn-primary d-inline-flex align-items-center gap-2'
 					onClick={() => router.push('/test')}
 				>
-					Take a Test
+					<FaPencilAlt /> Take a Test
 				</button>
 			</div>
 		);
@@ -137,7 +151,9 @@ function ResultsContent() {
 
 	return (
 		<div className='container mt-5'>
-			<h1 className='mb-4 text-center'>Test Results</h1>
+			<h1 className='mb-4 text-center d-flex align-items-center justify-content-center gap-2'>
+				<FaTrophy className='text-warning' /> Test Results
+			</h1>
 			<div className='alert alert-info text-center'>
 				<h2>
 					Your Score: {score} / {questionPaper.questions.length}
@@ -145,27 +161,33 @@ function ResultsContent() {
 			</div>
 
 			<div className='mt-5'>
-				<h3 className='mb-3'>Review Your Answers</h3>
+				<h3 className='mb-3 d-flex align-items-center gap-2'>
+					<FaCheckCircle className='text-primary' /> Review Your Answers
+				</h3>
 				{questionPaper.questions.map((q, index) => {
 					// Get user answer from either array or object format
 					const userAnswer = Array.isArray(userAnswers)
 						? userAnswers[index]
 						: userAnswers[index.toString()];
+					const isCorrect = userAnswer === q.answer;
 
 					return (
 						<div key={index} className='card mb-3'>
-							<div className='card-header'>
-								Question {index + 1}:{' '}
+							<div className='card-header d-flex align-items-center gap-2'>
+								<span className='badge bg-primary rounded-pill'>
+									{index + 1}
+								</span>
 								<MarkdownRenderer>{q.question}</MarkdownRenderer>
 							</div>
 							<div className='card-body'>
-								<p>
+								<p className='d-flex align-items-center gap-2'>
 									<strong>Your Answer:</strong>{' '}
-									<span
-										className={
-											userAnswer === q.answer ? 'text-success' : 'text-danger'
-										}
-									>
+									<span className={isCorrect ? 'text-success' : 'text-danger'}>
+										{isCorrect ? (
+											<FaCheckCircle className='text-success' />
+										) : (
+											<FaTimesCircle className='text-danger' />
+										)}{' '}
 										{userAnswer ? (
 											<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
 										) : (
@@ -174,9 +196,10 @@ function ResultsContent() {
 									</span>
 								</p>
 								{userAnswer !== q.answer && (
-									<p>
+									<p className='d-flex align-items-center gap-2'>
 										<strong>Correct Answer:</strong>{' '}
-										<span className='text-success'>
+										<span className='text-success d-flex align-items-center gap-2'>
+											<FaArrowRight />
 											<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 										</span>
 									</p>
@@ -187,8 +210,11 @@ function ResultsContent() {
 				})}
 			</div>
 
-			<button className='btn btn-primary w-100 mt-4' onClick={handleNewTest}>
-				Start a New Test
+			<button
+				className='btn btn-primary w-100 mt-4 d-flex align-items-center justify-content-center gap-2'
+				onClick={handleNewTest}
+			>
+				<FaPlusCircle /> Start a New Test
 			</button>
 		</div>
 	);

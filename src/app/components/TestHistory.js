@@ -3,6 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
+import {
+	FaHistory,
+	FaExclamationTriangle,
+	FaPlayCircle,
+	FaTrashAlt,
+	FaClock,
+	FaTrophy,
+	FaChevronRight,
+} from 'react-icons/fa';
 
 export default function TestHistory() {
 	const [testHistory, setTestHistory] = useState([]);
@@ -72,17 +81,20 @@ export default function TestHistory() {
 				<div className='card mb-3 bg-warning-subtle border-warning'>
 					<div className='card-body d-flex justify-content-between align-items-center'>
 						<div>
-							<h5 className='card-title mb-1'>Unsubmitted Test</h5>
+							<h5 className='card-title mb-1'>
+								<FaExclamationTriangle className='text-warning me-2' />
+								Unsubmitted Test
+							</h5>
 							<p className='card-text text-muted small'>
 								A test on &quot;{unsubmittedTest.topic}&quot; is waiting to be
 								completed.
 							</p>
 						</div>
 						<button
-							className='btn btn-warning btn-sm'
+							className='btn btn-warning btn-sm d-flex align-items-center gap-2'
 							onClick={() => router.push('/test')}
 						>
-							Continue Test
+							<FaPlayCircle /> Continue Test
 						</button>
 					</div>
 				</div>
@@ -91,12 +103,14 @@ export default function TestHistory() {
 			{testHistory.length > 0 && (
 				<>
 					<div className='d-flex justify-content-between align-items-center mb-3'>
-						<h2 className='h4 mb-0'>Previous Tests</h2>
+						<h2 className='h4 mb-0 d-flex align-items-center gap-2'>
+							<FaHistory /> Previous Tests
+						</h2>
 						<button
-							className='btn btn-outline-danger btn-sm'
+							className='btn btn-outline-danger btn-sm d-flex align-items-center gap-2'
 							onClick={clearHistory}
 						>
-							Clear History
+							<FaTrashAlt /> Clear History
 						</button>
 					</div>
 					<div className='list-group'>
@@ -106,11 +120,11 @@ export default function TestHistory() {
 								className='list-group-item list-group-item-action d-flex justify-content-between align-items-center'
 								role='button'
 								onClick={() => {
-								// When navigating to a historical test, we should NOT clear the question paper and user answers
-								// as the results page needs this data to calculate the score
-								// Instead, we'll just navigate to the results page with the test ID
-								router.push(`/results?id=${test.id}`);
-							}}
+									// When navigating to a historical test, we should NOT clear the question paper and user answers
+									// as the results page needs this data to calculate the score
+									// Instead, we'll just navigate to the results page with the test ID
+									router.push(`/results?id=${test.id}`);
+								}}
 							>
 								<div>
 									<h6 className='mb-1'>{test.topic || 'Untitled Test'}</h6>
