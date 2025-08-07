@@ -39,7 +39,10 @@ const GenerateTestForm = () => {
 		// Scroll the submit button into view with smooth behavior
 		setTimeout(() => {
 			if (submitButtonRef.current) {
-				submitButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				submitButtonRef.current.scrollIntoView({
+					behavior: 'smooth',
+					block: 'center',
+				});
 			}
 		}, 100); // Small timeout to ensure state update completes
 	};
@@ -93,11 +96,11 @@ const GenerateTestForm = () => {
 
 			{/* Predefined prompts section */}
 			<div className='mb-4 w-100 w-md-75'>
-				<div className='d-flex flex-wrap'>
+				<div className='d-flex flex-wrap gap-1'>
 					{predefinedPrompts.map((prompt, index) => (
 						<div
 							key={index}
-							className='card shadow border-0 mb-1 shadow-sm prompt-card'
+							className='card shadow border-0 shadow-sm prompt-card'
 							style={{
 								cursor: 'pointer',
 								transition: 'all 0.2s ease',
