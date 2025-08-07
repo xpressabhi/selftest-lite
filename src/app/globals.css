@@ -3,6 +3,25 @@
   --foreground: #171717;
 }
 
+/* Utility classes for navbar */
+.backdrop-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+.bg-light\/60 {
+  background-color: rgba(248, 249, 250, 0.6) !important;
+}
+
+/* Add some padding to body to prevent content from going under navbar */
+body {
+  padding-top: 60px;
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
