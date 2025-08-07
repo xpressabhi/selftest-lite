@@ -29,8 +29,13 @@ export default function Test() {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
+		// Save user answers to localStorage
 		localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(answers));
-		localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST); // Remove unsubmitted test
+		// Save the question paper to localStorage for the results page
+		localStorage.setItem(STORAGE_KEYS.QUESTION_PAPER, JSON.stringify(questionPaper));
+		// Remove unsubmitted test
+		localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST);
+		// Navigate to results page
 		router.push('/results');
 	};
 

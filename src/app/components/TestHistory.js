@@ -106,12 +106,11 @@ export default function TestHistory() {
 								className='list-group-item list-group-item-action d-flex justify-content-between align-items-center'
 								role='button'
 								onClick={() => {
-									// When navigating to a historical test, clear the current unsubmitted test and question paper
-									// to ensure the results page loads from history.
-									localStorage.removeItem(STORAGE_KEYS.QUESTION_PAPER);
-									localStorage.removeItem(STORAGE_KEYS.USER_ANSWERS);
-									router.push(`/results?id=${test.id}`);
-								}}
+								// When navigating to a historical test, we should NOT clear the question paper and user answers
+								// as the results page needs this data to calculate the score
+								// Instead, we'll just navigate to the results page with the test ID
+								router.push(`/results?id=${test.id}`);
+							}}
 							>
 								<div>
 									<h6 className='mb-1'>{test.topic || 'Untitled Test'}</h6>
