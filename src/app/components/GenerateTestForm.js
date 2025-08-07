@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 
@@ -15,11 +15,20 @@ const GenerateTestForm = () => {
 	const [topic, setTopic] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
+	const [userPrompts, setUserPrompts] = useState([]);
 	const router = useRouter();
 	// Reference to the submit button
 	const submitButtonRef = useRef(null);
 
-	// Predefined prompts that users can select
+	// Load user prompts from localStorage on component mount
+	useEffect(() => {
+		const savedPrompts = localStorage.getItem(STORAGE_KEYS.USER_PROMPTS);
+		if (savedPrompts) {
+			setUserPrompts(JSON.parse(savedPrompts));
+		}
+	}, []);
+
+	// Base predefined prompts
 	const predefinedPrompts = [
 		'JavaScript fundamentals: variables, functions, and objects',
 		'Data structures and algorithms',
@@ -75,6 +84,17 @@ const GenerateTestForm = () => {
 			}
 
 			const questionPaper = await response.json();
+
+			// Save the topic to user prompts if it's not already there
+			if (!userPrompts.includes(topic) && !predefinedPrompts.includes(topic)) {
+				const updatedPrompts = [topic, ...userPrompts].slice(0, 5); // Keep only last 5 user prompts
+				setUserPrompts(updatedPrompts);
+				localStorage.setItem(
+					STORAGE_KEYS.USER_PROMPTS,
+					JSON.stringify(updatedPrompts),
+				);
+			}
+
 			localStorage.setItem(
 				STORAGE_KEYS.UNSUBMITTED_TEST,
 				JSON.stringify(questionPaper),
@@ -94,19 +114,20 @@ const GenerateTestForm = () => {
 				Describe the test you want to generate or select a prompt below.
 			</p>
 
-			{/* Predefined prompts section */}
+			{/* User prompts and Predefined prompts section */}
 			<div className='mb-4 w-100 w-md-75'>
 				<div className='d-flex flex-wrap gap-1'>
-					{predefinedPrompts.map((prompt, index) => (
+					{/* User prompts first */}
+					{userPrompts.map((prompt, index) => (
 						<div
-							key={index}
-							className='card shadow border-0 shadow-sm prompt-card'
+							key={`user-${index}`}
+							className='card shadow border-0 shadow-sm prompt-card position-relative'
 							style={{
 								cursor: 'pointer',
 								transition: 'all 0.2s ease',
 								border:
 									topic === prompt ? '2px solid #0d6efd' : '1px solid #dee2e6',
-								backgroundColor: topic === prompt ? '#f0f7ff' : 'white',
+								backgroundColor: topic === prompt ? '#f0f7ff' : '#fff5e6', // Slightly different background for user prompts
 							}}
 							onClick={() => handlePromptSelect(prompt)}
 							onMouseOver={(e) => {
@@ -125,8 +146,71 @@ const GenerateTestForm = () => {
 										: prompt}
 								</small>
 							</div>
+							<button
+								className='position-absolute top-0 end-0 btn btn-sm btn-danger rounded-circle d-flex align-items-center justify-content-center'
+								style={{
+									width: '20px',
+									height: '20px',
+									padding: '0',
+									margin: '2px',
+									fontSize: '12px',
+									transform: 'translate(50%, -50%)',
+								}}
+								onClick={(e) => {
+									e.stopPropagation(); // Prevent prompt selection when deleting
+									const updatedPrompts = userPrompts.filter(
+										(_, i) => i !== index,
+									);
+									setUserPrompts(updatedPrompts);
+									localStorage.setItem(
+										STORAGE_KEYS.USER_PROMPTS,
+										JSON.stringify(updatedPrompts),
+									);
+								}}
+							>
+								×
+							</button>
 						</div>
 					))}
+
+					{/* Then predefined prompts, only if space remains in 5 total */}
+					{userPrompts.length < 5 &&
+						predefinedPrompts
+							.slice(0, 5 - userPrompts.length)
+							.map((prompt, index) => (
+								<div
+									key={index}
+									className='card shadow border-0 shadow-sm prompt-card'
+									style={{
+										cursor: 'pointer',
+										transition: 'all 0.2s ease',
+										border:
+											topic === prompt
+												? '2px solid #0d6efd'
+												: '1px solid #dee2e6',
+										backgroundColor: topic === prompt ? '#f0f7ff' : 'white',
+									}}
+									onClick={() => handlePromptSelect(prompt)}
+									onMouseOver={(e) => {
+										e.currentTarget.style.transform = 'translateY(-5px)';
+										e.currentTarget.style.boxShadow =
+											'0 4px 8px rgba(0,0,0,0.1)';
+									}}
+									onMouseOut={(e) => {
+										e.currentTarget.style.transform = 'translateY(0)';
+										e.currentTarget.style.boxShadow =
+											'0 1px 3px rgba(0,0,0,0.1)';
+									}}
+								>
+									<div className='card-body p-2 d-flex align-items-center justify-content-center'>
+										<small>
+											{prompt.length > 80
+												? `${prompt.substring(0, 80)}...`
+												: prompt}
+										</small>
+									</div>
+								</div>
+							))}
 				</div>
 			</div>
 
