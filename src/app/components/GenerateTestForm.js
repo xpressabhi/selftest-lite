@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 
@@ -16,6 +16,8 @@ const GenerateTestForm = () => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const router = useRouter();
+	// Reference to the submit button
+	const submitButtonRef = useRef(null);
 
 	// Predefined prompts that users can select
 	const predefinedPrompts = [
@@ -29,11 +31,17 @@ const GenerateTestForm = () => {
 	];
 
 	/**
-	 * Sets the selected prompt as the topic
+	 * Sets the selected prompt as the topic and scrolls to the submit button
 	 * @param {string} prompt - The selected predefined prompt
 	 */
 	const handlePromptSelect = (prompt) => {
 		setTopic(prompt);
+		// Scroll the submit button into view with smooth behavior
+		setTimeout(() => {
+			if (submitButtonRef.current) {
+				submitButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		}, 100); // Small timeout to ensure state update completes
 	};
 
 	const handleSubmit = async (e) => {
@@ -135,6 +143,7 @@ const GenerateTestForm = () => {
 				</div>
 				{error && <div className='alert alert-danger'>{error}</div>}
 				<button
+					ref={submitButtonRef}
 					type='submit'
 					className='btn btn-primary w-100'
 					disabled={loading}
