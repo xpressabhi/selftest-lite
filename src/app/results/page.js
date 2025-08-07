@@ -21,8 +21,9 @@ export default function Results() {
 
 		if (testId) {
 			// Load from history if testId is present
-			const testHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-			const historicalTest = testHistory.find(test => test.id === testId);
+			const testHistory =
+				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
+			const historicalTest = testHistory.find((test) => test.id === testId);
 
 			if (historicalTest) {
 				// For historical tests, we need to store the full question paper and user answers
@@ -60,8 +61,12 @@ export default function Results() {
 				// Then, this `useEffect` will check for `testId` and load from `testHistory`.
 				// If `testId` is not present, it will load the most recent unsubmitted test.
 
-				const historyEntry = testHistory.find(entry => entry.id === testId);
-				if (historyEntry && historyEntry.questionPaper && historyEntry.userAnswers) {
+				const historyEntry = testHistory.find((entry) => entry.id === testId);
+				if (
+					historyEntry &&
+					historyEntry.questionPaper &&
+					historyEntry.userAnswers
+				) {
 					paper = historyEntry.questionPaper;
 					answers = historyEntry.userAnswers;
 				} else {
@@ -73,47 +78,52 @@ export default function Results() {
 						answers = JSON.parse(storedAnswers);
 					}
 				}
-		} else {
-			// No testId, load the most recently completed test
-			const storedPaper = localStorage.getItem(STORAGE_KEYS.QUESTION_PAPER);
-			const storedAnswers = localStorage.getItem(STORAGE_KEYS.USER_ANSWERS);
-			if (storedPaper && storedAnswers) {
-				paper = JSON.parse(storedPaper);
-				answers = JSON.parse(storedAnswers);
-			}
-		}
-
-		if (paper && answers) {
-			setQuestionPaper(paper);
-			setUserAnswers(answers);
-
-			let calculatedScore = 0;
-			paper.questions.forEach((q, index) => {
-				if (answers[index] === q.answer) {
-					calculatedScore++;
+			} else {
+				// No testId, load the most recently completed test
+				const storedPaper = localStorage.getItem(STORAGE_KEYS.QUESTION_PAPER);
+				const storedAnswers = localStorage.getItem(STORAGE_KEYS.USER_ANSWERS);
+				if (storedPaper && storedAnswers) {
+					paper = JSON.parse(storedPaper);
+					answers = JSON.parse(storedAnswers);
 				}
-			});
-			setScore(calculatedScore);
-
-			// If this is a newly submitted test (no testId in URL), save it to history
-			if (!testId) {
-				const newTestId = new Date().getTime().toString();
-				const testHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-				const newTest = {
-					id: newTestId,
-					topic: paper.topic || 'Untitled Test',
-					timestamp: new Date().getTime(),
-					score: calculatedScore,
-					totalQuestions: paper.questions.length,
-					questionPaper: paper, // Save full question paper
-					userAnswers: answers, // Save user's answers
-				};
-
-				const updatedHistory = [newTest, ...testHistory].slice(0, 10);
-				localStorage.setItem(STORAGE_KEYS.TEST_HISTORY, JSON.stringify(updatedHistory));
 			}
+
+			if (paper && answers) {
+				setQuestionPaper(paper);
+				setUserAnswers(answers);
+
+				let calculatedScore = 0;
+				paper.questions.forEach((q, index) => {
+					if (answers[index] === q.answer) {
+						calculatedScore++;
+					}
+				});
+				setScore(calculatedScore);
+
+				// If this is a newly submitted test (no testId in URL), save it to history
+				if (!testId) {
+					const newTestId = new Date().getTime().toString();
+					const testHistory =
+						JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
+					const newTest = {
+						id: newTestId,
+						topic: paper.topic || 'Untitled Test',
+						timestamp: new Date().getTime(),
+						score: calculatedScore,
+						totalQuestions: paper.questions.length,
+						questionPaper: paper, // Save full question paper
+						userAnswers: answers, // Save user's answers
+					};
+
+					const updatedHistory = [newTest, ...testHistory].slice(0, 10);
+					localStorage.setItem(
+						STORAGE_KEYS.TEST_HISTORY,
+						JSON.stringify(updatedHistory),
+					);
+				}
+			}
+			setLoading(false);
 		}
-		setLoading(false);
 	}, [searchParams]);
 
 	const handleNewTest = () => {
