@@ -181,11 +181,11 @@ const GenerateTestForm = () => {
 							<button
 								className='position-absolute top-0 end-0 btn btn-sm btn-danger rounded-circle d-flex align-items-center justify-content-center'
 								style={{
-									width: '24px',
-									height: '24px',
+									width: '12px',
+									height: '12px',
 									padding: '0',
 									margin: '2px',
-									fontSize: '12px',
+									fontSize: '8px',
 									transform: 'translate(50%, -50%)',
 								}}
 								onClick={(e) => {
