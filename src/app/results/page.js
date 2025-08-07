@@ -83,11 +83,22 @@ function ResultsContent() {
 					userAnswers: answers, // Save user's answers
 				};
 
-				const updatedHistory = [newTest, ...testHistory].slice(0, 10);
-				localStorage.setItem(
-					STORAGE_KEYS.TEST_HISTORY,
-					JSON.stringify(updatedHistory),
+				// Check if this exact test was already saved in the last minute
+				const oneMinuteAgo = Date.now() - 60000; // 1 minute ago
+				const existingTest = testHistory.find(
+					(test) =>
+						test.topic === newTest.topic &&
+						test.score === newTest.score &&
+						test.timestamp > oneMinuteAgo,
 				);
+
+				if (!existingTest) {
+					const updatedHistory = [newTest, ...testHistory].slice(0, 10);
+					localStorage.setItem(
+						STORAGE_KEYS.TEST_HISTORY,
+						JSON.stringify(updatedHistory),
+					);
+				}
 			}
 		} else {
 			console.log('Could not load test data');

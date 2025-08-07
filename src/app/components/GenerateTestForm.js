@@ -31,11 +31,9 @@ const GenerateTestForm = () => {
 	// Base predefined prompts
 	const predefinedPrompts = [
 		'JavaScript fundamentals: variables, functions, and objects',
-		'Data structures and algorithms',
 		'Mathematics: algebra, calculus, and statistics',
 		'Biology: cell structure, genetics, and human anatomy',
-		'World War II history',
-		'Machine learning: supervised learning, neural networks, and data preprocessing',
+		'World War II history for UPSC exams',
 		'English grammar, punctuation, and common writing mistakes',
 	];
 
@@ -86,8 +84,12 @@ const GenerateTestForm = () => {
 			const questionPaper = await response.json();
 
 			// Save the topic to user prompts if it's not already there
-			if (!userPrompts.includes(topic) && !predefinedPrompts.includes(topic)) {
-				const updatedPrompts = [topic, ...userPrompts].slice(0, 5); // Keep only last 5 user prompts
+			if (!predefinedPrompts.includes(topic)) {
+				// Remove any existing duplicate of this topic
+				const filteredPrompts = userPrompts.filter(
+					(p) => p.trim().toLowerCase() !== topic.trim().toLowerCase(),
+				);
+				const updatedPrompts = [topic, ...filteredPrompts].slice(0, 5); // Keep only last 5 user prompts
 				setUserPrompts(updatedPrompts);
 				localStorage.setItem(
 					STORAGE_KEYS.USER_PROMPTS,
@@ -217,7 +219,7 @@ const GenerateTestForm = () => {
 			<form onSubmit={handleSubmit} className='w-100 w-md-50'>
 				<div className='form-group mb-3'>
 					<label htmlFor='topic' className='form-label'>
-						Test Description
+						Topic Description
 					</label>
 					<textarea
 						id='topic'
