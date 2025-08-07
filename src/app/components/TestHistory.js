@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from '../constants';
 
 export default function TestHistory() {
 	const [testHistory, setTestHistory] = useState([]);
+	const [unsubmittedTest, setUnsubmittedTest] = useState(null);
 	const router = useRouter();
 
 	const loadTestHistory = () => {
@@ -27,11 +28,22 @@ export default function TestHistory() {
 		const handleStorageChange = (e) => {
 			if (e.key === STORAGE_KEYS.TEST_HISTORY) {
 				loadTestHistory();
+			} else if (e.key === STORAGE_KEYS.UNSUBMITTED_TEST) {
+				setUnsubmittedTest(e.newValue ? JSON.parse(e.newValue) : null);
 			}
 		};
 
 		window.addEventListener('storage', handleStorageChange);
 		return () => window.removeEventListener('storage', handleStorageChange);
+	}, []);
+
+	useEffect(() => {
+		const storedUnsubmitted = localStorage.getItem(
+			STORAGE_KEYS.UNSUBMITTED_TEST,
+		);
+		if (storedUnsubmitted) {
+			setUnsubmittedTest(JSON.parse(storedUnsubmitted));
+		}
 	}, []);
 
 	const clearHistory = () => {
@@ -50,49 +62,73 @@ export default function TestHistory() {
 		);
 	};
 
-	if (testHistory.length === 0) {
+	if (testHistory.length === 0 && !unsubmittedTest) {
 		return null;
 	}
 
 	return (
 		<div className='mt-5 w-100'>
-			<div className='d-flex justify-content-between align-items-center mb-3'>
-				<h2 className='h4 mb-0'>Previous Tests</h2>
-				<button
-					className='btn btn-outline-danger btn-sm'
-					onClick={clearHistory}
-				>
-					Clear History
-				</button>
-			</div>
-			<div className='list-group'>
-				{testHistory.map((test, index) => (
-					<div
-						key={test.id || index}
-						className='list-group-item list-group-item-action d-flex justify-content-between align-items-center'
-						role='button'
-						onClick={() => router.push(`/results?id=${test.id}`)}
-					>
+			{unsubmittedTest && (
+				<div className='card mb-3 bg-warning-subtle border-warning'>
+					<div className='card-body d-flex justify-content-between align-items-center'>
 						<div>
-							<h6 className='mb-1'>{test.topic || 'Untitled Test'}</h6>
-							<small className='text-muted'>
-								Taken on: {formatDateTime(test.timestamp)}
-							</small>
+							<h5 className='card-title mb-1'>Unsubmitted Test</h5>
+							<p className='card-text text-muted small'>
+								A test on &quot;{unsubmittedTest.topic}&quot; is waiting to be
+								completed.
+							</p>
 						</div>
-						<span
-							className={`badge ${
-								test.score / test.totalQuestions >= 0.7
-									? 'bg-success'
-									: test.score / test.totalQuestions >= 0.4
-									? 'bg-warning'
-									: 'bg-danger'
-							} rounded-pill`}
+						<button
+							className='btn btn-warning btn-sm'
+							onClick={() => router.push('/test')}
 						>
-							Score: {test.score}/{test.totalQuestions}
-						</span>
+							Continue Test
+						</button>
 					</div>
-				))}
-			</div>
+				</div>
+			)}
+
+			{testHistory.length > 0 && (
+				<>
+					<div className='d-flex justify-content-between align-items-center mb-3'>
+						<h2 className='h4 mb-0'>Previous Tests</h2>
+						<button
+							className='btn btn-outline-danger btn-sm'
+							onClick={clearHistory}
+						>
+							Clear History
+						</button>
+					</div>
+					<div className='list-group'>
+						{testHistory.map((test, index) => (
+							<div
+								key={test.id || index}
+								className='list-group-item list-group-item-action d-flex justify-content-between align-items-center'
+								role='button'
+								onClick={() => router.push(`/results?id=${test.id}`)}
+							>
+								<div>
+									<h6 className='mb-1'>{test.topic || 'Untitled Test'}</h6>
+									<small className='text-muted'>
+										Taken on: {formatDateTime(test.timestamp)}
+									</small>
+								</div>
+								<span
+									className={`badge ${
+										test.score / test.totalQuestions >= 0.7
+											? 'bg-success'
+											: test.score / test.totalQuestions >= 0.4
+											? 'bg-warning'
+											: 'bg-danger'
+									} rounded-pill`}
+								>
+									Score: {test.score}/{test.totalQuestions}
+								</span>
+							</div>
+						))}
+					</div>
+				</>
+			)}
 		</div>
 	);
 }

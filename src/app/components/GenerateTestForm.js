@@ -45,7 +45,7 @@ const GenerateTestForm = () => {
 
             const questionPaper = await response.json();
             localStorage.setItem(
-                STORAGE_KEYS.QUESTION_PAPER,
+                STORAGE_KEYS.UNSUBMITTED_TEST,
                 JSON.stringify(questionPaper),
             );
             router.push('/test');

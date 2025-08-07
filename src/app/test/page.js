@@ -12,9 +12,10 @@ export default function Test() {
 	const router = useRouter();
 
 	useEffect(() => {
-		const storedPaper = localStorage.getItem(STORAGE_KEYS.QUESTION_PAPER);
+		const storedPaper = localStorage.getItem(STORAGE_KEYS.UNSUBMITTED_TEST);
 		if (storedPaper) {
 			setQuestionPaper(JSON.parse(storedPaper));
+			localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST);
 		}
 		setLoading(false);
 	}, []);
@@ -43,9 +44,9 @@ export default function Test() {
 				<p>Please generate a test first.</p>
 				<button
 					className='btn btn-primary'
-					onClick={() => router.push('/generate')}
+					onClick={() => router.push('/')}
 				>
-					Generate a Test
+					Go to Home
 				</button>
 			</div>
 		);
