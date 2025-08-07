@@ -4,12 +4,21 @@ import { GoogleGenAI } from '@google/genai';
 
 export async function POST(request) {
 	try {
-		const { topic } = await request.json();
+		const { topic, previousTests = [] } = await request.json();
 		const apiKey = process.env.GEMINI_API_KEY;
 
 		if (!topic) {
 			return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
 		}
+
+		// Extract all previous questions to help AI avoid duplicates
+		const previousQuestions = previousTests.flatMap(
+			(test) =>
+				test.questions?.map((q) => ({
+					question: q.question,
+					answer: q.answer,
+				})) || [],
+		);
 
 		if (!apiKey) {
 			return NextResponse.json(
@@ -21,10 +30,24 @@ export async function POST(request) {
 		const ai = new GoogleGenAI(apiKey);
 
 		const prompt = `
-      Please generate a multiple-choice quiz with 10 questions based on the following description (unless a specific number of questions is mentioned in the description, in which case follow that instruction):
+      Please generate a multiple-choice quiz with 10 questions based on the following description (unless a specific number of questions is mentioned in the description, in which case follow that instruction).
+      IMPORTANT: Generate questions that are different from the previously asked questions listed below.
+      
+      Topic:
       ---
       ${topic}
       ---
+
+      Previously asked questions (AVOID generating similar questions):
+      ${
+				previousQuestions.length > 0
+					? '---\n' +
+					  previousQuestions
+							.map((q) => `Q: ${q.question}\nA: ${q.answer}`)
+							.join('\n\n') +
+					  '\n---'
+					: 'No previous questions.'
+			}
       Provide the output in a JSON format with the following structure:
       {
         "topic": "A suitable topic based on the description",

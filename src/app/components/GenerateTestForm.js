@@ -88,12 +88,20 @@ const GenerateTestForm = () => {
 		}
 
 		try {
+			// Get previous tests from history
+			const testHistory = JSON.parse(
+				localStorage.getItem(STORAGE_KEYS.TEST_HISTORY) || '[]',
+			);
+
 			const response = await fetch('/api/generate', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ topic }),
+				body: JSON.stringify({
+					topic,
+					previousTests: testHistory,
+				}),
 			});
 
 			if (!response.ok) {
