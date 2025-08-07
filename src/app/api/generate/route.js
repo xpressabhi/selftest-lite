@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from "@google/genai";
 
 export async function POST(request) {
   try {
@@ -12,6 +13,9 @@ export async function POST(request) {
     if (!apiKey) {
       return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     const prompt = `
       Please generate a multiple-choice quiz based on the following description:
@@ -33,23 +37,9 @@ export async function POST(request) {
       Do not include any text outside of the JSON object.
     `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      return NextResponse.json({ error: errorData.error.message || 'An error occurred while generating the test.' }, { status: response.status });
-    }
-
-    const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
     // Clean the response to ensure it's valid JSON
     const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -59,6 +49,7 @@ export async function POST(request) {
     return NextResponse.json(questionPaper);
 
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }
