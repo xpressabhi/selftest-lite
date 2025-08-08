@@ -25,8 +25,8 @@ export default function RootLayout({ children }) {
 	return (
 		<html lang='en'>
 			<body className={`${geistSans.variable} ${geistMono.variable}`}>
-				<link rel="manifest" href="/manifest.json" />
-				<meta name="theme-color" content="#000000" />
+				<link rel='manifest' href='/manifest.json' />
+				<meta name='theme-color' content='#000000' />
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `
@@ -44,6 +44,7 @@ export default function RootLayout({ children }) {
 				/>
 				<Navbar />
 				<main className='container-fluid mt-4'>{children}</main>
+				<Analytics />
 			</body>
 		</html>
 	);
