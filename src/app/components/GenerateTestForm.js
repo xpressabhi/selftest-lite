@@ -145,9 +145,13 @@ const GenerateTestForm = () => {
 			<p className='lead mb-4'>
 				Describe the test you want to generate or select a prompt below.
 			</p>
+			<p>
+				💡 Tip: Think outside the box — it works for history, coding, science,
+				hobbies, or even fun trivia!
+			</p>
 
 			{/* User prompts and Predefined prompts section */}
-			<div className='mb-4 w-100 w-md-75'>
+			<div className='mb-4 w-100 w-md-75 d-none'>
 				<div className='d-flex flex-wrap gap-1'>
 					{/* User prompts first */}
 					{userPrompts.map((prompt, index) => (
