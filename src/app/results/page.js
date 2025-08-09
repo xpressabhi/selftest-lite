@@ -149,7 +149,6 @@ function ResultsContent() {
 			</div>
 		);
 	}
-
 	return (
 		<div className='typeform-bg d-flex flex-column min-vh-100'>
 			<div>
@@ -178,12 +177,14 @@ function ResultsContent() {
 							<FaCheckCircle className='text-success fs-3' />
 							Review Your Answers
 						</h2>
+						<p className='lead text-center'>{questionPaper.topic || 'Test'}</p>
 						{questionPaper.questions.map((q, index) => {
 							const userAnswer = Array.isArray(userAnswers)
 								? userAnswers[index]
 								: userAnswers[index.toString()];
 							const isCorrect = userAnswer === q.answer;
 							const answered = !!userAnswer;
+							console.log(q.question);
 							return (
 								<div
 									key={index}
@@ -203,13 +204,17 @@ function ResultsContent() {
 									<div className='card-body py-4 px-4'>
 										<h3 className='card-title fs-5 mb-3 text-dark'>
 											<span className='me-2 fw-bold'>Q{index + 1}.</span>
-											<MarkdownRenderer content={q.question} />
+											<MarkdownRenderer>{q.question}</MarkdownRenderer>
 										</h3>
 										<div className='mb-3'>
 											<p className='card-text mb-1 text-secondary fw-medium'>
 												Your Answer:
 												<span className='fw-bold ms-2 text-dark'>
-													{answered ? userAnswer : 'Not Answered'}
+													{answered ? (
+														<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
+													) : (
+														'Not Answered'
+													)}
 												</span>
 												{isCorrect && answered && (
 													<FaCheckCircle className='text-success ms-2' />
@@ -221,14 +226,14 @@ function ResultsContent() {
 											<p className='card-text mb-0 text-secondary fw-medium'>
 												Correct Answer:
 												<span className='fw-bold ms-2 text-dark'>
-													{q.answer}
+													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 												</span>
 											</p>
 										</div>
 										{q.explanation && (
 											<div className='mt-4 pt-4 border-top border-light'>
 												<h4 className='fs-6 mb-2 text-dark'>Explanation:</h4>
-												<MarkdownRenderer content={q.explanation} />
+												<MarkdownRenderer>{q.explanation}</MarkdownRenderer>
 											</div>
 										)}
 									</div>
