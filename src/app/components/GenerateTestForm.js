@@ -140,61 +140,34 @@ const GenerateTestForm = () => {
 	};
 
 	return (
-		<div className='container d-flex flex-column align-items-center justify-content-center bg-light text-dark'>
-			<h1 className='display-4 mb-4'>Generate a Test</h1>
-			<p className='lead mb-4'>
+		<div className='container d-flex flex-column align-items-center justify-content-center text-dark'>
+			<h1 className='display-4 fw-bold text-center mb-3'>Generate a Test</h1>
+			<p className='lead text-center mb-4'>
 				Describe the test you want to generate or select a prompt below.
 			</p>
-			<p>
+			<p className='text-center text-muted mb-5'>
 				💡 Tip: Think outside the box — it works for history, coding, science,
 				hobbies, or even fun trivia!
 			</p>
 
-			{/* User prompts and Predefined prompts section */}
-			<div className='mb-4 w-100 w-md-75 d-none'>
-				<div className='d-flex flex-wrap gap-1'>
-					{/* User prompts first */}
+			<div className='mb-5 w-100' style={{ maxWidth: '800px' }}>
+				<div className='d-flex flex-wrap justify-content-center gap-2 mb-4 d-none'>
 					{userPrompts.map((prompt, index) => (
 						<div
 							key={`user-${index}`}
-							className='card shadow border-0 shadow-sm prompt-card position-relative'
-							style={{
-								cursor: 'pointer',
-								transition: 'all 0.2s ease',
-								border:
-									topic === prompt ? '2px solid #0d6efd' : '1px solid #dee2e6',
-								backgroundColor: topic === prompt ? '#f0f7ff' : '#fff5e6', // Slightly different background for user prompts
-							}}
+							className={`prompt-card user-prompt ${
+								topic === prompt ? 'selected' : ''
+							}`}
 							onClick={() => handlePromptSelect(prompt)}
-							onMouseOver={(e) => {
-								e.currentTarget.style.transform = 'translateY(-5px)';
-								e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-							}}
-							onMouseOut={(e) => {
-								e.currentTarget.style.transform = 'translateY(0)';
-								e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-							}}
 						>
-							<div className='card-body p-2 d-flex align-items-center justify-content-center'>
-								<small>
-									{prompt.length > 80
-										? `${prompt.substring(0, 80)}...`
-										: prompt}
-								</small>
-							</div>
+							<small>
+								{prompt.length > 80 ? `${prompt.substring(0, 80)}...` : prompt}
+							</small>
 							<button
-								className='position-absolute top-0 end-0 btn btn-sm btn-danger rounded-circle d-flex align-items-center justify-content-center'
-								style={{
-									width: '12px',
-									height: '12px',
-									padding: '0',
-									margin: '2px',
-									fontSize: '8px',
-									transform: 'translate(50%, -50%)',
-								}}
+								className='delete-prompt-btn'
 								title='Delete prompt'
 								onClick={(e) => {
-									e.stopPropagation(); // Prevent prompt selection when deleting
+									e.stopPropagation();
 									const updatedPrompts = userPrompts.filter(
 										(_, i) => i !== index,
 									);
@@ -203,57 +176,37 @@ const GenerateTestForm = () => {
 										STORAGE_KEYS.USER_PROMPTS,
 										JSON.stringify(updatedPrompts),
 									);
+									if (topic === prompt) {
+										setTopic('');
+									}
 								}}
 							>
-								<FaTimes size={12} />
+								<FaTimes />
 							</button>
 						</div>
 					))}
+				</div>
 
-					{/* Then predefined prompts, only if space remains in 5 total */}
-					{userPrompts.length < 5 &&
-						predefinedPrompts
-							.slice(0, 5 - userPrompts.length)
-							.map((prompt, index) => (
-								<div
-									key={index}
-									className='card shadow border-0 shadow-sm prompt-card'
-									style={{
-										cursor: 'pointer',
-										transition: 'all 0.2s ease',
-										border:
-											topic === prompt.text
-												? '2px solid #0d6efd'
-												: '1px solid #dee2e6',
-										backgroundColor:
-											topic === prompt.text ? '#f0f7ff' : 'white',
-									}}
-									onClick={() => handlePromptSelect(prompt.text)}
-									onMouseOver={(e) => {
-										e.currentTarget.style.transform = 'translateY(-5px)';
-										e.currentTarget.style.boxShadow =
-											'0 4px 8px rgba(0,0,0,0.1)';
-									}}
-									onMouseOut={(e) => {
-										e.currentTarget.style.transform = 'translateY(0)';
-										e.currentTarget.style.boxShadow =
-											'0 1px 3px rgba(0,0,0,0.1)';
-									}}
-								>
-									<div className='card-body p-2 d-flex align-items-center gap-2'>
-										{prompt.icon}
-										<small>
-											{prompt.text.length > 80
-												? `${prompt.text.substring(0, 80)}...`
-												: prompt.text}
-										</small>
-									</div>
-								</div>
-							))}
+				<div className='d-flex flex-wrap justify-content-center gap-2 d-none'>
+					{predefinedPrompts.map((prompt, index) => (
+						<div
+							key={`predefined-${index}`}
+							className={`prompt-card ${
+								topic === prompt.text ? 'selected' : ''
+							}`}
+							onClick={() => handlePromptSelect(prompt.text)}
+						>
+							{prompt.icon} <small>{prompt.text}</small>
+						</div>
+					))}
 				</div>
 			</div>
 
-			<form onSubmit={handleSubmit} className='w-100 w-md-50'>
+			<form
+				onSubmit={handleSubmit}
+				className='w-100'
+				style={{ maxWidth: '800px' }}
+			>
 				<div className='form-group mb-3'>
 					<label
 						htmlFor='topic'

@@ -14,6 +14,7 @@ import {
 	FaPencilAlt,
 	FaArrowRight,
 	FaPlusCircle,
+	FaBookOpen,
 } from 'react-icons/fa';
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
@@ -150,291 +151,106 @@ function ResultsContent() {
 	}
 
 	return (
-		<div
-			style={{
-				minHeight: '100vh',
-				background: '#f8f9fb',
-				padding: '0',
-				margin: '0',
-				display: 'flex',
-				flexDirection: 'column',
-				alignItems: 'center',
-				justifyContent: 'flex-start',
-			}}
-		>
-			<div
-				style={{
-					width: '100%',
-					maxWidth: 700,
-					marginTop: 48,
-					marginBottom: 24,
-				}}
-			>
-				<h1
-					style={{
-						fontWeight: 700,
-						fontSize: '2.5rem',
-						textAlign: 'center',
-						letterSpacing: '-1px',
-						marginBottom: 24,
-						color: '#222',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						gap: 12,
-					}}
-				>
-					<FaTrophy
-						style={{ color: '#ffd700', fontSize: '2.4rem', marginBottom: 3 }}
-					/>
-					Test Results
-				</h1>
-				<div
-					style={{
-						display: 'flex',
-						justifyContent: 'center',
-						marginBottom: 32,
-					}}
-				>
-					<div
-						style={{
-							background: 'linear-gradient(135deg, #f8d90f 0%, #f3f4f7 100%)',
-							boxShadow:
-								'0 4px 32px 0 rgba(0,0,0,0.05), 0 1.5px 6px 0 rgba(180,180,180,.10)',
-							borderRadius: 56,
-							padding: '36px 56px',
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							minWidth: 220,
-						}}
-					>
+		<div className='typeform-bg d-flex flex-column min-vh-100'>
+			<div>
+				<div>
+					<h1 className='text-center mb-4 text-dark d-flex align-items-center justify-content-center gap-2'>
+						<FaTrophy className='text-warning fs-1' />
+						Test Results
+					</h1>
+					<div className='d-flex justify-content-center mb-4'>
 						<div
+							className='bg-light rounded-3 shadow-sm p-4 text-center'
 							style={{
-								fontSize: '2.8rem',
-								fontWeight: 800,
-								color: '#222',
-								letterSpacing: '-2px',
-								lineHeight: 1.1,
-								textAlign: 'center',
+								minWidth: 200,
+								background: 'linear-gradient(135deg, #f8d90f 0%, #f3f4f7 100%)',
 							}}
 						>
-							{score}
-							<span
-								style={{
-									fontWeight: 400,
-									fontSize: '1.5rem',
-									color: '#888',
-									marginLeft: 10,
-								}}
-							>
-								/ {questionPaper.questions.length}
-							</span>
-						</div>
-						<div
-							style={{
-								fontSize: '1.1rem',
-								color: '#555',
-								marginTop: 8,
-								letterSpacing: 0,
-								fontWeight: 500,
-							}}
-						>
-							Your Score
+							<h2 className='fs-1 fw-bold mb-1 text-dark'>
+								{score} / {questionPaper.questions.length}
+							</h2>
+							<p className='fs-5 mb-0 text-secondary'>Score</p>
 						</div>
 					</div>
-				</div>
 
-				<div style={{ marginTop: 40 }}>
-					<div
-						style={{
-							textAlign: 'center',
-							fontSize: '1.45rem',
-							fontWeight: 600,
-							color: '#1b1b1b',
-							marginBottom: 32,
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: 10,
-						}}
-					>
-						<FaCheckCircle style={{ color: '#4fbb6b', fontSize: '1.3em' }} />
-						Review Your Answers
-					</div>
-					{questionPaper.questions.map((q, index) => {
-						const userAnswer = Array.isArray(userAnswers)
-							? userAnswers[index]
-							: userAnswers[index.toString()];
-						const isCorrect = userAnswer === q.answer;
-						const answered = !!userAnswer;
-						return (
-							<div
-								key={index}
-								style={{
-									background: '#fff',
-									borderRadius: 24,
-									boxShadow: '0 2px 16px 0 rgba(0,0,0,0.06)',
-									padding: '32px 32px 22px 32px',
-									marginBottom: 32,
-									display: 'flex',
-									flexDirection: 'column',
-									alignItems: 'stretch',
-									position: 'relative',
-								}}
-							>
-								<span
-									style={{
-										fontSize: 14,
-										color: '#b0b5bc',
-										fontWeight: 500,
-										letterSpacing: '0.5px',
-										marginBottom: 8,
-										display: 'block',
-										textAlign: 'left',
-										userSelect: 'none',
-									}}
-								>
-									Question {index + 1}
-								</span>
+					<div className='container mt-4 mb-4'>
+						<h2 className='text-center mb-4 fs-4 fw-bold text-dark d-flex align-items-center justify-content-center gap-2'>
+							<FaCheckCircle className='text-success fs-3' />
+							Review Your Answers
+						</h2>
+						{questionPaper.questions.map((q, index) => {
+							const userAnswer = Array.isArray(userAnswers)
+								? userAnswers[index]
+								: userAnswers[index.toString()];
+							const isCorrect = userAnswer === q.answer;
+							const answered = !!userAnswer;
+							return (
 								<div
+									key={index}
+									className={`card mb-4 shadow-sm rounded-4 ${
+										isCorrect
+											? 'border-success'
+											: answered
+											? 'border-danger'
+											: 'border-secondary'
+									}`}
 									style={{
-										fontSize: '1.25rem',
-										fontWeight: 600,
-										color: '#23272f',
-										marginBottom: 18,
-										lineHeight: 1.5,
-										textAlign: 'left',
+										borderLeft: `8px solid ${
+											isCorrect ? '#28a745' : answered ? '#dc3545' : '#6c757d'
+										}`,
 									}}
 								>
-									<MarkdownRenderer>{q.question}</MarkdownRenderer>
-								</div>
-								<div
-									style={{
-										marginBottom: 6,
-										display: 'flex',
-										alignItems: 'center',
-										gap: 10,
-										flexWrap: 'wrap',
-									}}
-								>
-									<span
-										style={{ fontWeight: 500, color: '#5d6472', fontSize: 17 }}
-									>
-										Your Answer:
-									</span>
-									{answered ? (
-										<span
-											style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: 6,
-												fontWeight: 500,
-												fontSize: 16,
-												padding: '4px 16px',
-												borderRadius: 32,
-												background: isCorrect ? '#4fbb6b' : '#e14c4c',
-												color: '#fff',
-												boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
-												marginRight: 8,
-											}}
-										>
-											{isCorrect ? (
-												<FaCheckCircle
-													style={{ color: '#fff', marginRight: 2 }}
-												/>
-											) : (
-												<FaTimesCircle
-													style={{ color: '#fff', marginRight: 2 }}
-												/>
-											)}
-											<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
-										</span>
-									) : (
-										<span
-											style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: 6,
-												fontWeight: 500,
-												fontSize: 16,
-												padding: '4px 16px',
-												borderRadius: 32,
-												background: '#b0b5bc',
-												color: '#fff',
-												boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
-												marginRight: 8,
-											}}
-										>
-											<FaExclamationCircle
-												style={{ color: '#fff', marginRight: 2 }}
-											/>
-											Not Answered
-										</span>
-									)}
-								</div>
-								{answered && !isCorrect && (
-									<div
-										style={{
-											marginTop: 7,
-											display: 'flex',
-											alignItems: 'center',
-											gap: 10,
-											flexWrap: 'wrap',
-										}}
-									>
-										<span
-											style={{
-												fontWeight: 500,
-												color: '#5d6472',
-												fontSize: 17,
-											}}
-										>
-											Correct Answer:
-										</span>
-										<span
-											style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: 6,
-												fontWeight: 500,
-												fontSize: 16,
-												padding: '4px 16px',
-												borderRadius: 32,
-												background: '#4fbb6b',
-												color: '#fff',
-												boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
-											}}
-										>
-											<FaArrowRight style={{ color: '#fff', marginRight: 2 }} />
-											<MarkdownRenderer>{q.answer}</MarkdownRenderer>
-										</span>
+									<div className='card-body py-4 px-4'>
+										<h3 className='card-title fs-5 mb-3 text-dark'>
+											<span className='me-2 fw-bold'>Q{index + 1}.</span>
+											<MarkdownRenderer content={q.question} />
+										</h3>
+										<div className='mb-3'>
+											<p className='card-text mb-1 text-secondary fw-medium'>
+												Your Answer:
+												<span className='fw-bold ms-2 text-dark'>
+													{answered ? userAnswer : 'Not Answered'}
+												</span>
+												{isCorrect && answered && (
+													<FaCheckCircle className='text-success ms-2' />
+												)}
+												{!isCorrect && answered && (
+													<FaTimesCircle className='text-danger ms-2' />
+												)}
+											</p>
+											<p className='card-text mb-0 text-secondary fw-medium'>
+												Correct Answer:
+												<span className='fw-bold ms-2 text-dark'>
+													{q.answer}
+												</span>
+											</p>
+										</div>
+										{q.explanation && (
+											<div className='mt-4 pt-4 border-top border-light'>
+												<h4 className='fs-6 mb-2 text-dark'>Explanation:</h4>
+												<MarkdownRenderer content={q.explanation} />
+											</div>
+										)}
 									</div>
-								)}
-							</div>
-						);
-					})}
+								</div>
+							);
+						})}
+					</div>
+					<div className='d-flex justify-content-center gap-3 mt-5 mb-5'>
+						<button
+							className='btn btn-primary btn-lg d-flex align-items-center gap-2'
+							onClick={handleNewTest}
+						>
+							<FaPlusCircle /> Start New Test
+						</button>
+						<button
+							className='btn btn-secondary btn-lg d-flex align-items-center gap-2'
+							onClick={() => router.push('/history')}
+						>
+							<FaBookOpen /> View Test History
+						</button>
+					</div>
 				</div>
-				<button
-					className='btn btn-primary'
-					style={{
-						width: '100%',
-						marginTop: 28,
-						fontSize: '1.15rem',
-						fontWeight: 600,
-						padding: '16px 0',
-						borderRadius: 32,
-						boxShadow: '0 1.5px 6px 0 rgba(180,180,180,.10)',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						gap: 12,
-						letterSpacing: '0.5px',
-					}}
-					onClick={handleNewTest}
-				>
-					<FaPlusCircle /> Start a New Test
-				</button>
 			</div>
 		</div>
 	);

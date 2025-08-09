@@ -76,73 +76,70 @@ export default function TestHistory() {
 	}
 
 	return (
-		<div className='mt-5 w-100'>
+		<div className='mt-5 w-100' style={{ maxWidth: '800px' }}>
 			{unsubmittedTest && (
-				<div className='card mb-3 bg-warning-subtle border-warning'>
-					<div className='card-body d-flex justify-content-between align-items-center'>
+				<div className='alert alert-warning d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm' role='alert'>
+					<div className='d-flex align-items-center'>
+						<FaExclamationTriangle className='text-warning me-3 fs-4' />
 						<div>
-							<h5 className='card-title mb-1'>
-								<FaExclamationTriangle className='text-warning me-2' />
-								Unsubmitted Test
-							</h5>
-							<p className='card-text text-muted small'>
-								A test on &quot;{unsubmittedTest.topic}&quot; is waiting to be
-								completed.
-							</p>
+							<h6 className='mb-0 fw-bold'>Unsubmitted Test</h6>
+							<small className='text-muted'>
+								A test on &quot;{unsubmittedTest.topic}&quot; is waiting to be completed.
+							</small>
 						</div>
-						<button
-							className='btn btn-warning btn-sm d-flex align-items-center gap-2'
-							onClick={() => router.push('/test')}
-						>
-							<FaPlayCircle /> Continue Test
-						</button>
 					</div>
+					<button
+						className='btn btn-warning btn-sm d-flex align-items-center gap-2 fw-bold'
+						onClick={() => router.push('/test')}
+					>
+						<FaPlayCircle /> Continue Test
+					</button>
 				</div>
 			)}
 
 			{testHistory.length > 0 && (
 				<>
 					<div className='d-flex justify-content-between align-items-center mb-3'>
-						<h2 className='h4 mb-0 d-flex align-items-center gap-2'>
-							<FaHistory /> Previous Tests
+						<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
+							<FaHistory className='text-primary' /> Previous Tests
 						</h2>
 						<button
-							className='btn btn-outline-danger btn-sm d-flex align-items-center gap-2'
+							className='btn btn-outline-danger btn-sm d-flex align-items-center gap-2 fw-bold'
 							onClick={clearHistory}
 						>
 							<FaTrashAlt /> Clear History
 						</button>
 					</div>
-					<div className='list-group'>
+					<div className='list-group shadow-sm rounded-3 overflow-hidden'>
 						{testHistory.map((test, index) => (
 							<div
 								key={test.id || index}
-								className='list-group-item list-group-item-action d-flex justify-content-between align-items-center'
+								className='list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3'
 								role='button'
 								onClick={() => {
-									// When navigating to a historical test, we should NOT clear the question paper and user answers
-									// as the results page needs this data to calculate the score
-									// Instead, we'll just navigate to the results page with the test ID
 									router.push(`/results?id=${test.id}`);
 								}}
 							>
 								<div>
-									<h6 className='mb-1'>{test.topic || 'Untitled Test'}</h6>
-									<small className='text-muted'>
-										Taken on: {formatDateTime(test.timestamp)}
+									<h6 className='mb-1 fw-bold text-primary'>{test.topic || 'Untitled Test'}</h6>
+									<small className='text-muted d-flex align-items-center gap-1'>
+										<FaClock /> Taken on: {formatDateTime(test.timestamp)}
 									</small>
 								</div>
-								<span
-									className={`badge ${
-										test.score / test.totalQuestions >= 0.7
-											? 'bg-success'
-											: test.score / test.totalQuestions >= 0.4
-											? 'bg-warning'
-											: 'bg-danger'
-									} rounded-pill`}
-								>
-									Score: {test.score}/{test.totalQuestions}
-								</span>
+								<div className='d-flex align-items-center gap-2'>
+									<span
+										className={`badge fs-6 px-3 py-2 ${
+											test.score / test.totalQuestions >= 0.7
+												? 'bg-success'
+												: test.score / test.totalQuestions >= 0.4
+												? 'bg-warning'
+												: 'bg-danger'
+										} rounded-pill d-flex align-items-center gap-1`}
+									>
+										<FaTrophy /> {test.score}/{test.totalQuestions}
+									</span>
+									<FaChevronRight className='text-muted' />
+								</div>
 							</div>
 						))}
 					</div>

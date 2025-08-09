@@ -175,33 +175,7 @@ export default function Test() {
 
 	return (
 		<>
-			<style>
-				{`
-				.fade-slide {
-					transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
-				}
-				.fade-in {
-					opacity: 1;
-					transform: translateY(0px);
-				}
-				.fade-out {
-					opacity: 0;
-					transform: translateY(30px);
-				}
-				.typeform-bg {
-					background: #f8f9fa;
-					min-height: 100vh;
-				}
-				.typeform-btn:active, .typeform-btn.active {
-					background-color: #e7f0fa !important;
-					border-color: #0d6efd !important;
-					color: #0d6efd !important;
-				}
-				.typeform-btn:focus {
-					box-shadow: 0 0 0 0.2rem rgba(13,110,253,.15);
-				}
-				`}
-			</style>
+
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
 				<div className='container d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
 					<h1

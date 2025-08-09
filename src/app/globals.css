@@ -3,6 +3,91 @@
   --foreground: #171717;
 }
 
+.fade-slide {
+	transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
+}
+.fade-in {
+	opacity: 1;
+	transform: translateY(0px);
+}
+.fade-out {
+	opacity: 0;
+	transform: translateY(30px);
+}
+.typeform-bg {
+	background: #f8f9fa;
+	min-height: 100vh;
+}
+.typeform-btn:active, .typeform-btn.active {
+	background-color: #e7f0fa !important;
+	border-color: #0d6efd !important;
+	color: #0d6efd !important;
+}
+.typeform-btn:focus {
+	box-shadow: 0 0 0 0.2rem rgba(13,110,253,.15);
+}
+
+.prompt-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fff;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  flex-grow: 1;
+  max-width: 100%;
+  text-align: center;
+  justify-content: center;
+}
+
+.prompt-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.prompt-card.selected {
+  border: 2px solid #0d6efd;
+  background-color: #e7f0ff;
+  box-shadow: 0 0.25rem 0.5rem rgba(13, 110, 253, 0.2);
+}
+
+.prompt-card.user-prompt {
+  background-color: #fff5e6;
+  position: relative;
+}
+
+.prompt-card.user-prompt.selected {
+  background-color: #ffe7cc;
+}
+
+.delete-prompt-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transform: translate(25%, -25%);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.prompt-card.user-prompt:hover .delete-prompt-btn {
+  opacity: 1;
+}
+
 /* Utility classes for navbar */
 .backdrop-blur {
   backdrop-filter: blur(8px);
