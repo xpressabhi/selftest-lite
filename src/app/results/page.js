@@ -150,72 +150,292 @@ function ResultsContent() {
 	}
 
 	return (
-		<div className='container mt-5'>
-			<h1 className='mb-4 text-center d-flex align-items-center justify-content-center gap-2'>
-				<FaTrophy className='text-warning' /> Test Results
-			</h1>
-			<div className='alert alert-info text-center'>
-				<h2>
-					Your Score: {score} / {questionPaper.questions.length}
-				</h2>
-			</div>
+		<div
+			style={{
+				minHeight: '100vh',
+				background: '#f8f9fb',
+				padding: '0',
+				margin: '0',
+				display: 'flex',
+				flexDirection: 'column',
+				alignItems: 'center',
+				justifyContent: 'flex-start',
+			}}
+		>
+			<div
+				style={{
+					width: '100%',
+					maxWidth: 700,
+					marginTop: 48,
+					marginBottom: 24,
+				}}
+			>
+				<h1
+					style={{
+						fontWeight: 700,
+						fontSize: '2.5rem',
+						textAlign: 'center',
+						letterSpacing: '-1px',
+						marginBottom: 24,
+						color: '#222',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: 12,
+					}}
+				>
+					<FaTrophy
+						style={{ color: '#ffd700', fontSize: '2.4rem', marginBottom: 3 }}
+					/>
+					Test Results
+				</h1>
+				<div
+					style={{
+						display: 'flex',
+						justifyContent: 'center',
+						marginBottom: 32,
+					}}
+				>
+					<div
+						style={{
+							background: 'linear-gradient(135deg, #f8d90f 0%, #f3f4f7 100%)',
+							boxShadow:
+								'0 4px 32px 0 rgba(0,0,0,0.05), 0 1.5px 6px 0 rgba(180,180,180,.10)',
+							borderRadius: 56,
+							padding: '36px 56px',
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'center',
+							minWidth: 220,
+						}}
+					>
+						<div
+							style={{
+								fontSize: '2.8rem',
+								fontWeight: 800,
+								color: '#222',
+								letterSpacing: '-2px',
+								lineHeight: 1.1,
+								textAlign: 'center',
+							}}
+						>
+							{score}
+							<span
+								style={{
+									fontWeight: 400,
+									fontSize: '1.5rem',
+									color: '#888',
+									marginLeft: 10,
+								}}
+							>
+								/ {questionPaper.questions.length}
+							</span>
+						</div>
+						<div
+							style={{
+								fontSize: '1.1rem',
+								color: '#555',
+								marginTop: 8,
+								letterSpacing: 0,
+								fontWeight: 500,
+							}}
+						>
+							Your Score
+						</div>
+					</div>
+				</div>
 
-			<div className='mt-5'>
-				<h3 className='mb-3 d-flex align-items-center gap-2'>
-					<FaCheckCircle className='text-primary' /> Review Your Answers
-				</h3>
-				{questionPaper.questions.map((q, index) => {
-					// Get user answer from either array or object format
-					const userAnswer = Array.isArray(userAnswers)
-						? userAnswers[index]
-						: userAnswers[index.toString()];
-					const isCorrect = userAnswer === q.answer;
-
-					return (
-						<div key={index} className='card mb-3'>
-							<div className='card-header d-flex align-items-center gap-2'>
-								<span className='badge bg-primary rounded-pill'>
-									{index + 1}
+				<div style={{ marginTop: 40 }}>
+					<div
+						style={{
+							textAlign: 'center',
+							fontSize: '1.45rem',
+							fontWeight: 600,
+							color: '#1b1b1b',
+							marginBottom: 32,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: 10,
+						}}
+					>
+						<FaCheckCircle style={{ color: '#4fbb6b', fontSize: '1.3em' }} />
+						Review Your Answers
+					</div>
+					{questionPaper.questions.map((q, index) => {
+						const userAnswer = Array.isArray(userAnswers)
+							? userAnswers[index]
+							: userAnswers[index.toString()];
+						const isCorrect = userAnswer === q.answer;
+						const answered = !!userAnswer;
+						return (
+							<div
+								key={index}
+								style={{
+									background: '#fff',
+									borderRadius: 24,
+									boxShadow: '0 2px 16px 0 rgba(0,0,0,0.06)',
+									padding: '32px 32px 22px 32px',
+									marginBottom: 32,
+									display: 'flex',
+									flexDirection: 'column',
+									alignItems: 'stretch',
+									position: 'relative',
+								}}
+							>
+								<span
+									style={{
+										fontSize: 14,
+										color: '#b0b5bc',
+										fontWeight: 500,
+										letterSpacing: '0.5px',
+										marginBottom: 8,
+										display: 'block',
+										textAlign: 'left',
+										userSelect: 'none',
+									}}
+								>
+									Question {index + 1}
 								</span>
-								<MarkdownRenderer>{q.question}</MarkdownRenderer>
-							</div>
-							<div className='card-body'>
-								<p className='d-flex align-items-center gap-2'>
-									<strong>Your Answer:</strong>{' '}
-									<span className={isCorrect ? 'text-success' : 'text-danger'}>
-										{isCorrect ? (
-											<FaCheckCircle className='text-success' />
-										) : (
-											<FaTimesCircle className='text-danger' />
-										)}{' '}
-										{userAnswer ? (
-											<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
-										) : (
-											'Not Answered'
-										)}
+								<div
+									style={{
+										fontSize: '1.25rem',
+										fontWeight: 600,
+										color: '#23272f',
+										marginBottom: 18,
+										lineHeight: 1.5,
+										textAlign: 'left',
+									}}
+								>
+									<MarkdownRenderer>{q.question}</MarkdownRenderer>
+								</div>
+								<div
+									style={{
+										marginBottom: 6,
+										display: 'flex',
+										alignItems: 'center',
+										gap: 10,
+										flexWrap: 'wrap',
+									}}
+								>
+									<span
+										style={{ fontWeight: 500, color: '#5d6472', fontSize: 17 }}
+									>
+										Your Answer:
 									</span>
-								</p>
-								{userAnswer !== q.answer && (
-									<p className='d-flex align-items-center gap-2'>
-										<strong>Correct Answer:</strong>{' '}
-										<span className='text-success d-flex align-items-center gap-2'>
-											<FaArrowRight />
+									{answered ? (
+										<span
+											style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: 6,
+												fontWeight: 500,
+												fontSize: 16,
+												padding: '4px 16px',
+												borderRadius: 32,
+												background: isCorrect ? '#4fbb6b' : '#e14c4c',
+												color: '#fff',
+												boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
+												marginRight: 8,
+											}}
+										>
+											{isCorrect ? (
+												<FaCheckCircle
+													style={{ color: '#fff', marginRight: 2 }}
+												/>
+											) : (
+												<FaTimesCircle
+													style={{ color: '#fff', marginRight: 2 }}
+												/>
+											)}
+											<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
+										</span>
+									) : (
+										<span
+											style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: 6,
+												fontWeight: 500,
+												fontSize: 16,
+												padding: '4px 16px',
+												borderRadius: 32,
+												background: '#b0b5bc',
+												color: '#fff',
+												boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
+												marginRight: 8,
+											}}
+										>
+											<FaExclamationCircle
+												style={{ color: '#fff', marginRight: 2 }}
+											/>
+											Not Answered
+										</span>
+									)}
+								</div>
+								{answered && !isCorrect && (
+									<div
+										style={{
+											marginTop: 7,
+											display: 'flex',
+											alignItems: 'center',
+											gap: 10,
+											flexWrap: 'wrap',
+										}}
+									>
+										<span
+											style={{
+												fontWeight: 500,
+												color: '#5d6472',
+												fontSize: 17,
+											}}
+										>
+											Correct Answer:
+										</span>
+										<span
+											style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: 6,
+												fontWeight: 500,
+												fontSize: 16,
+												padding: '4px 16px',
+												borderRadius: 32,
+												background: '#4fbb6b',
+												color: '#fff',
+												boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
+											}}
+										>
+											<FaArrowRight style={{ color: '#fff', marginRight: 2 }} />
 											<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 										</span>
-									</p>
+									</div>
 								)}
 							</div>
-						</div>
-					);
-				})}
+						);
+					})}
+				</div>
+				<button
+					className='btn btn-primary'
+					style={{
+						width: '100%',
+						marginTop: 28,
+						fontSize: '1.15rem',
+						fontWeight: 600,
+						padding: '16px 0',
+						borderRadius: 32,
+						boxShadow: '0 1.5px 6px 0 rgba(180,180,180,.10)',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: 12,
+						letterSpacing: '0.5px',
+					}}
+					onClick={handleNewTest}
+				>
+					<FaPlusCircle /> Start a New Test
+				</button>
 			</div>
-
-			<button
-				className='btn btn-primary w-100 mt-4 d-flex align-items-center justify-content-center gap-2'
-				onClick={handleNewTest}
-			>
-				<FaPlusCircle /> Start a New Test
-			</button>
 		</div>
 	);
 }
