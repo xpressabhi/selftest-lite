@@ -30,7 +30,18 @@ export async function POST(request) {
 		const ai = new GoogleGenAI(apiKey);
 
 		const prompt = `
-      Please generate a multiple-choice quiz with 10 questions based on the following description (unless a specific number of questions is mentioned in the description, in which case follow that instruction).
+      Please generate a practical, implementation-focused multiple-choice quiz with 10 questions based on the following description (unless a specific number of questions is mentioned in the description, in which case follow that instruction).
+      
+      IMPORTANT GUIDELINES:
+      1. Focus on real-world applications and problem-solving scenarios
+      2. Include numerical problems that require calculations
+      3. For programming topics, focus on actual coding challenges and debugging scenarios
+      4. For science topics, emphasize practical experiments and real-world phenomena
+      5. For math topics, focus on applied problems in engineering, finance, or data analysis
+      6. Include data interpretation, graph analysis, and practical measurements where relevant
+      7. Avoid purely theoretical or definition-based questions
+      8. Each question should demonstrate a practical use case or implementation
+      
       IMPORTANT: Generate questions that are different from the previously asked questions listed below.
       
       Topic:
