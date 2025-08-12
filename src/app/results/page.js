@@ -184,7 +184,6 @@ function ResultsContent() {
 								: userAnswers[index.toString()];
 							const isCorrect = userAnswer === q.answer;
 							const answered = !!userAnswer;
-							console.log(q.question);
 							return (
 								<div
 									key={index}

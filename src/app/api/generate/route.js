@@ -109,7 +109,7 @@ export async function POST(request) {
     `;
 
 		const response = await ai.models.generateContent({
-			model: 'gemini-2.0-flash-001',
+			model: 'gemini-2.5-flash-lite',
 			contents: prompt,
 			config: { responseMimeType: 'application/json' },
 		});
