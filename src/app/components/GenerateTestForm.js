@@ -70,9 +70,11 @@ const GenerateTestForm = () => {
 
 	return (
 		<div className='container d-flex flex-column align-items-center justify-content-center text-dark'>
-			<h1 className='display-4 fw-bold text-center mb-3'>Generate a Test</h1>
+			<h1 className='display-4 fw-bold text-center mb-3'>
+				Test your Knowledge
+			</h1>
 			<p className='lead text-center mb-4'>
-				Describe the test you want to generate.
+				Create a personalized quiz to test your understanding of any topic.
 			</p>
 			<p className='text-center text-muted mb-5'>
 				💡 Tip: Think outside the box — it works for history, coding, science,
@@ -89,7 +91,7 @@ const GenerateTestForm = () => {
 						htmlFor='topic'
 						className='form-label d-flex align-items-center gap-2'
 					>
-						<FaPencilAlt /> Topic Description
+						<FaPencilAlt /> What topic would you like to quiz yourself on?
 					</label>
 					<textarea
 						id='topic'
