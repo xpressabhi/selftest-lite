@@ -114,7 +114,7 @@ const GenerateTestForm = () => {
 							<FaSpinner className='spinner' /> Generating...
 						</>
 					) : (
-						'Generate Test'
+						'Generate Quiz'
 					)}
 				</button>
 			</form>
