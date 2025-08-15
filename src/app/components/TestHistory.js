@@ -65,7 +65,7 @@ export default function TestHistory({ onTestClick }) {
 		<div className='mt-5 w-100' style={{ maxWidth: '800px' }}>
 			{testHistory.length > 0 && (
 				<>
-					<div className='d-flex justify-content-between align-items-center mb-3'>
+					<div className='d-flex justify-content-between align-items-center mb-3 mx-3'>
 						<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
 							<FaHistory className='text-primary' /> Previous Tests
 						</h2>

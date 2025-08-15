@@ -45,20 +45,37 @@ const Navbar = () => {
 						: 'bg-light'
 				}`}
 			>
-				<div className='container'>
-					<Link href='/' className='navbar-brand d-flex align-items-center'>
-						<FaGraduationCap className='me-2' />
-						<span>SelfTest Lite</span>
-					</Link>
-
-					<button
-						className='navbar-toggler d-lg-none'
-						type='button'
-						onClick={() => setShowOffcanvas(!showOffcanvas)}
-						aria-label='Toggle history'
-					>
-						<FaHistory />
-					</button>
+				<div className='container-fluid px-0'>
+					<div className='d-flex w-100'>
+						{/* Left sidebar for desktop */}
+						<div className='d-none d-lg-block' style={{ width: '300px' }}>
+							<Link
+								href='/'
+								className='navbar-brand d-flex align-items-center px-3'
+							>
+								<FaGraduationCap className='me-2' />
+								<span>selftest.in</span>
+							</Link>
+						</div>
+						{/* Main navbar content */}
+						<div className='flex-grow-1 px-3 d-flex justify-content-between align-items-center'>
+							<Link
+								href='/'
+								className='navbar-brand d-flex d-lg-none align-items-center'
+							>
+								<FaGraduationCap className='me-2' />
+								<span>selftest.in</span>
+							</Link>
+							<button
+								className='navbar-toggler d-lg-none'
+								type='button'
+								onClick={() => setShowOffcanvas(!showOffcanvas)}
+								aria-label='Toggle history'
+							>
+								<FaHistory />
+							</button>
+						</div>
+					</div>
 				</div>
 			</nav>
 
@@ -66,13 +83,14 @@ const Navbar = () => {
 			<div
 				className='d-none d-lg-block position-fixed'
 				style={{
-					width: '300px',
-					right: '0',
+					width: '380px',
+					left: '20px',
 					top: '56px',
 					bottom: '0',
 					overflowY: 'auto',
 					backgroundColor: '#fff',
-					borderLeft: '1px solid #dee2e6',
+					borderRight: '1px solid #dee2e6',
+					zIndex: 1030,
 				}}
 			>
 				<TestHistory onTestClick={null} />
@@ -80,7 +98,7 @@ const Navbar = () => {
 
 			{/* Mobile Offcanvas */}
 			<div
-				className={`offcanvas offcanvas-end d-lg-none ${
+				className={`offcanvas offcanvas-start d-lg-none ${
 					showOffcanvas ? 'show' : ''
 				}`}
 				tabIndex='-1'

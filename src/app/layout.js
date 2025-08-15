@@ -43,7 +43,15 @@ export default function RootLayout({ children }) {
 					}}
 				/>
 				<Navbar />
-				<main className='container-fluid mt-4'>{children}</main>
+				<main className='container-fluid mt-4 d-lg-flex'>
+					{/* Spacer for desktop sidebar */}
+					<div
+						className='d-none d-lg-block'
+						style={{ width: '400px', flexShrink: 0 }}
+					></div>
+					{/* Main content */}
+					<div className='flex-grow-1'>{children}</div>
+				</main>
 				<Analytics />
 			</body>
 		</html>
