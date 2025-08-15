@@ -203,38 +203,37 @@ function ResultsContent() {
 									<div className='card-body py-4 px-4'>
 										<h3 className='card-title fs-5 mb-3 text-dark'>
 											<span className='me-2 fw-bold'>Q{index + 1}.</span>
-											<MarkdownRenderer>{q.question}</MarkdownRenderer>
 										</h3>
+										<MarkdownRenderer>{q.question}</MarkdownRenderer>
 										<div className='mb-3'>
-											<p className='card-text mb-1 text-secondary fw-medium'>
+											<div className='card-text mb-1 text-secondary fw-medium'>
 												Your Answer:
-												<span className='fw-bold ms-2 text-dark'>
+												<div className='fw-bold ms-2 text-dark'>
 													{answered ? (
 														<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
 													) : (
 														'Not Answered'
 													)}
-												</span>
+												</div>
 												{isCorrect && answered && (
 													<FaCheckCircle className='text-success ms-2' />
 												)}
 												{!isCorrect && answered && (
 													<FaTimesCircle className='text-danger ms-2' />
 												)}
-											</p>
-											<p className='card-text mb-0 text-secondary fw-medium'>
-												Correct Answer:
-												<span className='fw-bold ms-2 text-dark'>
-													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
-												</span>
-											</p>
-										</div>
-										{q.explanation && (
-											<div className='mt-4 pt-4 border-top border-light'>
-												<h4 className='fs-6 mb-2 text-dark'>Explanation:</h4>
-												<MarkdownRenderer>{q.explanation}</MarkdownRenderer>
 											</div>
-										)}
+											<div className='card-text mb-0 text-secondary fw-medium'>
+												Correct Answer:
+												<div className='fw-bold ms-2 text-dark'>
+													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
+												</div>
+											</div>
+										</div>
+										<Explanation
+											questionPaper={questionPaper}
+											index={index}
+											setQuestionPaper={setQuestionPaper}
+										/>
 									</div>
 								</div>
 							);
@@ -270,5 +269,100 @@ export default function Results() {
 		>
 			<ResultsContent />
 		</Suspense>
+	);
+}
+
+function Explanation({ questionPaper, index, setQuestionPaper }) {
+	const [loadingExplanation, setLoadingExplanation] = useState(false);
+	const [error, setError] = useState(null);
+	const q = questionPaper.questions[index];
+	const searchParams = useSearchParams();
+
+	const handleExplain = async (e, index) => {
+		e.preventDefault();
+		setLoadingExplanation(true);
+		setError(null);
+		console.log(questionPaper, index);
+		const topic = questionPaper.topic
+			? questionPaper.topic
+			: 'General Knowledge';
+		const question = questionPaper.questions[index].question;
+		const answer = questionPaper.questions[index].answer;
+
+		try {
+			const response = await fetch('/api/explain', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					topic,
+					question,
+					answer,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(
+					errorData.error || 'An error occurred while generating the test.',
+				);
+			}
+
+			const { explanation } = await response.json();
+			setQuestionPaper((prev) => ({
+				...prev,
+				questions: prev.questions.map((q, i) =>
+					i === index ? { ...q, explanation } : q,
+				),
+			}));
+
+			const testId = searchParams.get('id');
+			// Load test history from localStorage
+			const testHistory =
+				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
+			if (testId) {
+				// Update existing history entry
+				const historyEntry = testHistory.find((entry) => entry.id === testId);
+				if (historyEntry) {
+					historyEntry.questionPaper.questions[index].explanation = explanation;
+					localStorage.setItem(
+						STORAGE_KEYS.TEST_HISTORY,
+						JSON.stringify(testHistory),
+					);
+				}
+			}
+		} catch (err) {
+			setError(err.message);
+		} finally {
+			setLoadingExplanation(false);
+		}
+	};
+
+	if (loadingExplanation) {
+		return (
+			<div className='mt-4 pt-4 border-top border-light'>
+				<h4 className='fs-6 mb-2 text-dark'>Loading explanation...</h4>
+				<FaSpinner className='spinner' />
+			</div>
+		);
+	}
+
+	if (q.explanation) {
+		return (
+			<div className='mt-4 pt-4 border-top border-light'>
+				<h4 className='fs-6 mb-2 text-dark'>Explanation:</h4>
+				<MarkdownRenderer>{q.explanation}</MarkdownRenderer>
+			</div>
+		);
+	}
+
+	return (
+		<button
+			className='btn btn-primary'
+			onClick={(e) => handleExplain(e, index)}
+		>
+			Explain Answer?
+		</button>
 	);
 }

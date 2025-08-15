@@ -175,7 +175,6 @@ export default function Test() {
 
 	return (
 		<>
-
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
 				<div className='container d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
 					<h1
@@ -219,17 +218,7 @@ export default function Test() {
 							</div>
 							{/* Large, bold, centered question */}
 							<div className='w-100 text-center mb-4'>
-								<div
-									style={{
-										fontSize: '1.7rem',
-										fontWeight: 700,
-										lineHeight: 1.25,
-										color: '#212529',
-										letterSpacing: '-0.01em',
-									}}
-								>
-									<MarkdownRenderer>{q.question}</MarkdownRenderer>
-								</div>
+								<MarkdownRenderer>{q.question}</MarkdownRenderer>
 							</div>
 							{/* Typeform-style options */}
 							<div className='w-100'>
@@ -238,12 +227,10 @@ export default function Test() {
 										type='button'
 										key={i}
 										className={
-											`btn btn-outline-primary btn-lg w-100 py-3 mb-3 rounded-pill shadow-sm typeform-btn` +
+											`btn btn-outline-primary w-100 py-3 mb-3 rounded-pill shadow-sm typeform-btn d-flex align-items-center gap-2` +
 											(answers[index] === option ? ' active' : '')
 										}
 										style={{
-											fontWeight: 600,
-											fontSize: '1.15rem',
 											transition:
 												'background-color 0.12s, color 0.12s, box-shadow 0.2s',
 											cursor:
@@ -257,14 +244,14 @@ export default function Test() {
 										disabled={fadeState === 'fade-out'}
 										tabIndex={fadeState === 'fade-out' ? -1 : 0}
 									>
-										<span className='me-2'>
+										<div className='me-2'>
 											{answers[index] === option ? (
 												<FaDotCircle className='text-primary' size={24} />
 											) : (
 												<FaCircle className='text-muted' size={24} />
 											)}
-										</span>
-										<span
+										</div>
+										<div
 											style={{
 												textAlign: 'left',
 												display: 'inline-block',
@@ -272,7 +259,7 @@ export default function Test() {
 											}}
 										>
 											<MarkdownRenderer>{option}</MarkdownRenderer>
-										</span>
+										</div>
 									</button>
 								))}
 							</div>
@@ -295,7 +282,7 @@ export default function Test() {
 						})()}
 						<button
 							type='submit'
-							className='btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow'
+							className='btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5'
 							style={{
 								fontWeight: 700,
 								fontSize: '1.15rem',
