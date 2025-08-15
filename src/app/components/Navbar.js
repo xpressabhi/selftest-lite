@@ -81,15 +81,13 @@ const Navbar = () => {
 
 			{/* Desktop Test History Panel */}
 			<div
-				className='d-none d-lg-block position-fixed'
+				className='d-none d-lg-block position-fixed bg-white border-end'
 				style={{
 					width: '380px',
 					left: '20px',
 					top: '56px',
 					bottom: '0',
 					overflowY: 'auto',
-					backgroundColor: '#fff',
-					borderRight: '1px solid #dee2e6',
 					zIndex: 1030,
 				}}
 			>
