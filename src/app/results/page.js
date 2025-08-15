@@ -206,9 +206,9 @@ function ResultsContent() {
 										</h3>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>
 										<div className='mb-3'>
-											<div className='card-text mb-1 text-secondary fw-medium'>
+											<div className='card-text mb-1 text-secondary'>
 												Your Answer:
-												<div className='fw-bold ms-2 text-dark'>
+												<div className='ms-2 text-dark'>
 													{answered ? (
 														<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
 													) : (
@@ -222,9 +222,9 @@ function ResultsContent() {
 													<FaTimesCircle className='text-danger ms-2' />
 												)}
 											</div>
-											<div className='card-text mb-0 text-secondary fw-medium'>
+											<div className='card-text mb-0 text-secondary'>
 												Correct Answer:
-												<div className='fw-bold ms-2 text-dark'>
+												<div className='ms-2 text-dark'>
 													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 												</div>
 											</div>

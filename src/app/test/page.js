@@ -177,10 +177,7 @@ export default function Test() {
 		<>
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
 				<div className='container d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
-					<h1
-						className='mb-4 d-flex align-items-center gap-2 mt-4'
-						style={{ fontWeight: 700, fontSize: '2rem' }}
-					>
+					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
 					</h1>
