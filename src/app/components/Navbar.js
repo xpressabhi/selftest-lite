@@ -1,35 +1,28 @@
-// src/app/components/Navbar.js
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { FaGraduationCap, FaHome, FaBars } from 'react-icons/fa';
+import { FaGraduationCap, FaHistory } from 'react-icons/fa';
+import TestHistory from './TestHistory';
 
-/**
- * Renders a minimal navigation bar with a link to the home page.
- * Uses Bootstrap 5 for styling with scroll-based transparency.
- */
 const Navbar = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const [isTop, setIsTop] = useState(true);
+	const [showOffcanvas, setShowOffcanvas] = useState(false);
 	const scrollTimer = useRef(null);
 
 	useEffect(() => {
 		const handleScroll = () => {
-			// Set transparent while actively scrolling
 			setIsScrolling(true);
 			setIsTop(window.scrollY <= 10);
 
-			// Clear the previous timer
 			if (scrollTimer.current) {
 				clearTimeout(scrollTimer.current);
 			}
 
-			// Set a new timer to remove transparency after scrolling stops
 			scrollTimer.current = setTimeout(() => {
 				setIsScrolling(false);
-			}, 150); // Adjust timing to match Twitter's behavior
+			}, 150);
 		};
 
 		window.addEventListener('scroll', handleScroll);
@@ -42,53 +35,83 @@ const Navbar = () => {
 	}, []);
 
 	return (
-		<nav
-			className={`navbar navbar-expand-lg navbar-light fixed-top transition-all ${
-				isTop
-					? 'bg-light'
-					: isScrolling
-					? 'bg-light/60 backdrop-blur'
-					: 'bg-light'
-			}`}
-			style={{
-				transition: 'all 0.2s ease-in-out',
-				boxShadow: isTop ? 'none' : '0 0 10px rgba(0,0,0,0.1)',
-			}}
-		>
-			<div className='container'>
-				<Link
-					href='/'
-					className='navbar-brand d-flex align-items-center gap-2 text-primary'
-				>
-					<FaGraduationCap size={24} />
-					<span className='fw-bold'>Selftest.in</span>
-				</Link>
-				<button
-					className='navbar-toggler border-0'
-					type='button'
-					data-bs-toggle='collapse'
-					data-bs-target='#navbarNav'
-					aria-controls='navbarNav'
-					aria-expanded='false'
-					aria-label='Toggle navigation'
-				>
-					<FaBars className='text-primary' size={20} />
-				</button>
-				<div className='collapse navbar-collapse' id='navbarNav'>
-					<ul className='navbar-nav ms-auto'>
-						<li className='nav-item'>
-							<Link
-								href='/'
-								className='nav-link active d-flex align-items-center gap-2'
-								aria-current='page'
-							>
-								<FaHome /> Home
-							</Link>
-						</li>
-					</ul>
+		<>
+			<nav
+				className={`navbar navbar-expand-lg navbar-light fixed-top transition-all ${
+					isTop
+						? 'bg-light'
+						: isScrolling
+						? 'bg-light/60 backdrop-blur'
+						: 'bg-light'
+				}`}
+			>
+				<div className='container'>
+					<Link href='/' className='navbar-brand d-flex align-items-center'>
+						<FaGraduationCap className='me-2' />
+						<span>SelfTest Lite</span>
+					</Link>
+
+					<button
+						className='navbar-toggler d-lg-none'
+						type='button'
+						onClick={() => setShowOffcanvas(!showOffcanvas)}
+						aria-label='Toggle history'
+					>
+						<FaHistory />
+					</button>
+				</div>
+			</nav>
+
+			{/* Desktop Test History Panel */}
+			<div
+				className='d-none d-lg-block position-fixed'
+				style={{
+					width: '300px',
+					right: '0',
+					top: '56px',
+					bottom: '0',
+					overflowY: 'auto',
+					backgroundColor: '#fff',
+					borderLeft: '1px solid #dee2e6',
+				}}
+			>
+				<TestHistory onTestClick={null} />
+			</div>
+
+			{/* Mobile Offcanvas */}
+			<div
+				className={`offcanvas offcanvas-end d-lg-none ${
+					showOffcanvas ? 'show' : ''
+				}`}
+				tabIndex='-1'
+				id='offcanvasHistory'
+				aria-labelledby='offcanvasHistoryLabel'
+				style={{ visibility: showOffcanvas ? 'visible' : 'hidden' }}
+			>
+				<div className='offcanvas-header'>
+					<h5 className='offcanvas-title' id='offcanvasHistoryLabel'>
+						Test History
+					</h5>
+					<button
+						type='button'
+						className='btn-close'
+						onClick={() => setShowOffcanvas(false)}
+						aria-label='Close'
+					></button>
+				</div>
+				<div className='offcanvas-body'>
+					<TestHistory onTestClick={() => setShowOffcanvas(false)} />
 				</div>
 			</div>
-		</nav>
+
+			{/* Mobile Backdrop */}
+			{showOffcanvas && (
+				<div
+					className='offcanvas-backdrop fade show d-lg-none'
+					onClick={() => setShowOffcanvas(false)}
+				></div>
+			)}
+		</>
 	);
 };
 
