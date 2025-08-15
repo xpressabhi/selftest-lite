@@ -192,10 +192,6 @@ export default function Test() {
 							onTouchStart={onTouchStart}
 							onTouchEnd={onTouchEnd}
 							style={{
-								background: 'white',
-								borderRadius: '2rem',
-								boxShadow: '0 8px 32px rgba(60,60,70,0.08)',
-								padding: '3rem 2rem 2rem 2rem',
 								marginBottom: '2rem',
 								minHeight: '350px',
 								display: 'flex',
@@ -224,7 +220,7 @@ export default function Test() {
 										type='button'
 										key={i}
 										className={
-											`btn btn-outline-primary w-100 py-3 mb-3 rounded-pill shadow-sm typeform-btn d-flex align-items-center gap-2` +
+											`btn btn-outline-primary w-100 mb-3 shadow-sm typeform-btn d-flex align-items-center gap-2` +
 											(answers[index] === option ? ' active' : '')
 										}
 										style={{
