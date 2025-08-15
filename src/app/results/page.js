@@ -246,12 +246,6 @@ function ResultsContent() {
 						>
 							<FaPlusCircle /> Start New Test
 						</button>
-						<button
-							className='btn btn-secondary btn-lg d-flex align-items-center gap-2'
-							onClick={() => router.push('/history')}
-						>
-							<FaBookOpen /> View Test History
-						</button>
 					</div>
 				</div>
 			</div>
@@ -282,7 +276,6 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 		e.preventDefault();
 		setLoadingExplanation(true);
 		setError(null);
-		console.log(questionPaper, index);
 		const topic = questionPaper.topic
 			? questionPaper.topic
 			: 'General Knowledge';
@@ -304,9 +297,19 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				throw new Error(
-					errorData.error || 'An error occurred while generating the test.',
-				);
+				if (response.status === 429) {
+					// Rate limit error
+					const resetTime = new Date(errorData.resetTime);
+					const minutes = Math.ceil((resetTime - new Date()) / 60000);
+					setError(errorData.error || 'Rate limit exceeded');
+					setLoadingExplanation(false);
+				} else {
+					setError(
+						errorData.error ||
+							'An error occurred while generating the explanation.',
+					);
+				}
+				return;
 			}
 
 			const { explanation } = await response.json();
@@ -358,11 +361,19 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 	}
 
 	return (
-		<button
-			className='btn btn-primary'
-			onClick={(e) => handleExplain(e, index)}
-		>
-			Explain Answer?
-		</button>
+		<>
+			<button
+				className='btn btn-primary'
+				onClick={(e) => handleExplain(e, index)}
+			>
+				Explain Answer?
+			</button>
+			{error && (
+				<div className='alert alert-danger mt-3'>
+					<FaExclamationCircle className='me-2' />
+					{error}
+				</div>
+			)}
+		</>
 	);
 }

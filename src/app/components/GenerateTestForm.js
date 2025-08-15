@@ -49,9 +49,19 @@ const GenerateTestForm = () => {
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				throw new Error(
-					errorData.error || 'An error occurred while generating the test.',
-				);
+				if (response.status === 429) {
+					// Rate limit error
+					const resetTime = new Date(errorData.resetTime);
+					const minutes = Math.ceil((resetTime - new Date()) / 60000);
+					setError(errorData.error || 'Rate limit exceeded');
+					setLoading(false);
+				} else {
+					setError(
+						errorData.error ||
+							'An error occurred while generating the explanation.',
+					);
+				}
+				return;
 			}
 
 			const questionPaper = await response.json();

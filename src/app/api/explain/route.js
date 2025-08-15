@@ -1,9 +1,29 @@
 import { NextResponse } from 'next/server';
-
 import { GoogleGenAI } from '@google/genai';
+import { rateLimiter } from '../utils/rateLimiter';
 
 export async function POST(request) {
 	try {
+		// Check rate limit
+		const rateLimit = await rateLimiter(request);
+		if (rateLimit.limited) {
+			return NextResponse.json(
+				{
+					error: 'Rate limit exceeded. Please try again later.',
+					resetTime: new Date(rateLimit.resetTime).toISOString(),
+					remaining: rateLimit.remaining,
+				},
+				{
+					status: 429,
+					headers: {
+						'X-RateLimit-Limit': '10',
+						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+					},
+				},
+			);
+		}
+
 		const { topic, question, answer } = await request.json();
 		const apiKey = process.env.GEMINI_API_KEY;
 
