@@ -183,9 +183,69 @@ export default function Test() {
 					</h1>
 					<form
 						onSubmit={handleSubmit}
-						className='w-100'
+						className='w-100 position-relative'
 						style={{ maxWidth: 600 }}
 					>
+						{/* Navigation buttons for non-mobile screens */}
+						<div
+							className='d-none d-md-flex justify-content-between position-absolute w-100'
+							style={{
+								top: '50%',
+								transform: 'translateY(-50%)',
+								left: 0,
+								zIndex: 1,
+							}}
+						>
+							<button
+								type='button'
+								className='btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center'
+								style={{ width: '48px', height: '48px', marginLeft: '-60px' }}
+								onClick={handlePrevClick}
+								disabled={
+									currentQuestionIndex === 0 || fadeState === 'fade-out'
+								}
+							>
+								<svg
+									width='24'
+									height='24'
+									fill='none'
+									viewBox='0 0 24 24'
+									stroke='currentColor'
+								>
+									<path
+										strokeLinecap='round'
+										strokeLinejoin='round'
+										strokeWidth={2}
+										d='M15 19l-7-7 7-7'
+									/>
+								</svg>
+							</button>
+							<button
+								type='button'
+								className='btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center'
+								style={{ width: '48px', height: '48px', marginRight: '-60px' }}
+								onClick={handleNextClick}
+								disabled={
+									currentQuestionIndex === questionPaper.questions.length - 1 ||
+									fadeState === 'fade-out'
+								}
+							>
+								<svg
+									width='24'
+									height='24'
+									fill='none'
+									viewBox='0 0 24 24'
+									stroke='currentColor'
+								>
+									<path
+										strokeLinecap='round'
+										strokeLinejoin='round'
+										strokeWidth={2}
+										d='M9 5l7 7-7 7'
+									/>
+								</svg>
+							</button>
+						</div>
 						<div
 							key={index}
 							className={`fade-slide ${fadeState} w-100`}
