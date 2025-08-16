@@ -144,42 +144,34 @@ const GenerateTestForm = () => {
 	};
 
 	return (
-		<div className='container d-flex flex-column align-items-center justify-content-center text-dark'>
-			<h1 className='display-4 fw-bold text-center mb-3'>
+		<div className='container py-3 d-flex flex-column align-items-center justify-content-center'>
+			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
 				Test your Knowledge
 			</h1>
 
 			<form
 				onSubmit={handleSubmit}
-				className='w-100'
-				style={{ maxWidth: '800px' }}
+				className='w-100 card border-0'
+				style={{ maxWidth: '720px' }}
 			>
 				<div className='form-group mb-3'>
 					<textarea
 						id='topic'
-						className='form-control shadow-sm'
+						className='form-control mb-3'
 						rows='3'
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
 						placeholder='Describe what you want to learn about... (e.g., "Basic Spanish phrases for travel" or "Marvel movies trivia 2020-2023")'
-						style={{
-							border: '1px solid #e5e7eb',
-							borderRadius: '0.5rem',
-							padding: '1rem',
-							fontSize: '1rem',
-							resize: 'none',
-						}}
 					/>
 				</div>
 
-				<div className='d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-2 mb-3'>
+				<div className='d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 mb-4'>
 					<div className='d-flex gap-2 align-items-center order-1 order-sm-0'>
 						<button
 							type='button'
 							onClick={() => setShowAdvanced(!showAdvanced)}
-							className='btn btn-outline-secondary btn-sm text-decoration-none'
+							className='btn btn-outline-secondary btn-sm'
 							style={{
-								fontSize: '0.9rem',
 								width: 'auto',
 								whiteSpace: 'nowrap',
 							}}
@@ -206,7 +198,7 @@ const GenerateTestForm = () => {
 					<button
 						ref={submitButtonRef}
 						type='submit'
-						className='btn btn-primary w-100 w-sm-auto order-0 order-sm-1'
+						className='btn btn-primary'
 						disabled={loading}
 					>
 						{loading ? (
@@ -221,10 +213,7 @@ const GenerateTestForm = () => {
 				</div>
 
 				{showAdvanced && (
-					<div
-						className='advanced-options p-3 mb-3 rounded shadow-sm'
-						style={{ backgroundColor: '#f8f9fa' }}
-					>
+					<div className='advanced-options bg-light p-3 rounded shadow-sm mb-4'>
 						<div className='row g-3'>
 							<div className='col-12'>
 								<div className='d-flex flex-column flex-sm-row gap-2'>
@@ -294,12 +283,12 @@ const GenerateTestForm = () => {
 										</button>
 									)}
 								</label>
-								<div className='categories-grid row row-cols-2 row-cols-sm-3 row-cols-md-4 g-2'>
+								<div className='categories-grid row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3'>
 									{Object.keys(topicCategories).map((category) => (
 										<div className='col' key={category}>
 											<button
 												type='button'
-												className={`btn btn-sm w-100 ${
+												className={`btn btn-sm w-100 text-truncate ${
 													selectedCategory === category
 														? 'btn-primary'
 														: 'btn-outline-secondary'
@@ -374,7 +363,7 @@ const GenerateTestForm = () => {
 				{error && <div className='alert alert-danger'>{error}</div>}
 			</form>
 
-			<p className='text-center text-muted mt-4' style={{ fontSize: '0.9rem' }}>
+			<p className='text-center text-muted mt-4 small'>
 				💡 Try specific topics like &ldquo;Advanced React Hooks&rdquo; or
 				broader ones like &ldquo;World History&rdquo;
 			</p>
