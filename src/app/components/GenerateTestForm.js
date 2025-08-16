@@ -368,7 +368,10 @@ const GenerateTestForm = () => {
 
 			<p className='text-center text-muted mt-4 small'>
 				💡 Tip: Be as specific as possible. Try “Advanced React Hooks” for depth
-				or “World History” for breadth.
+				or “World History” for breadth. <br />
+				💡 सुझाव: और अधिक स्पष्ट लिखें। जैसे “Advanced React Hooks” गहराई के लिए
+				या “World History” व्यापकता के लिए। <br />✨ Add “Hindi medium” in your
+				topic to generate quizzes in Hindi.
 			</p>
 		</div>
 	);
