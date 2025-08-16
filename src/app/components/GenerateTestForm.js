@@ -146,7 +146,7 @@ const GenerateTestForm = () => {
 	return (
 		<div className='container py-3 d-flex flex-column align-items-center justify-content-center'>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
-				Test your Knowledge
+				Create Your Personalized Quiz
 			</h1>
 
 			<form
@@ -158,10 +158,10 @@ const GenerateTestForm = () => {
 					<textarea
 						id='topic'
 						className='form-control mb-3'
-						rows='3'
+						rows='4'
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
-						placeholder='Describe what you want to learn about... (e.g., "Basic Spanish phrases for travel" or "Marvel movies trivia 2020-2023")'
+						placeholder='What do you want to test yourself on today? (e.g., "Spanish travel phrases", "Marvel movie trivia", or "System Design basics")'
 					/>
 				</div>
 
@@ -176,7 +176,9 @@ const GenerateTestForm = () => {
 								whiteSpace: 'nowrap',
 							}}
 						>
-							{showAdvanced ? '− Less options' : '+ More options'}
+							{showAdvanced
+								? 'Hide advanced settings'
+								: 'Show advanced settings'}
 						</button>
 
 						{!showAdvanced && (
@@ -207,7 +209,7 @@ const GenerateTestForm = () => {
 								<span>Generating...</span>
 							</div>
 						) : (
-							'Generate Quiz'
+							'Start Quiz'
 						)}
 					</button>
 				</div>
@@ -219,7 +221,7 @@ const GenerateTestForm = () => {
 								<div className='d-flex flex-column flex-sm-row gap-2'>
 									<div className='flex-grow-1'>
 										<label className='form-label small text-muted'>
-											Test Type
+											Question Format
 										</label>
 										<select
 											className='form-select form-select-sm'
@@ -234,7 +236,7 @@ const GenerateTestForm = () => {
 									</div>
 									<div className='flex-grow-1'>
 										<label className='form-label small text-muted'>
-											Number of Questions
+											How many questions?
 										</label>
 										<select
 											className='form-select form-select-sm'
@@ -250,7 +252,7 @@ const GenerateTestForm = () => {
 									</div>
 									<div className='flex-grow-1'>
 										<label className='form-label small text-muted'>
-											Difficulty Level
+											Select Difficulty
 										</label>
 										<select
 											className='form-select form-select-sm'
@@ -268,7 +270,7 @@ const GenerateTestForm = () => {
 
 							<div className='col-12'>
 								<label className='form-label small text-muted d-flex justify-content-between align-items-center mb-2'>
-									<span>Select a Category</span>
+									<span>Pick a Category (optional)</span>
 									{selectedCategory && (
 										<button
 											type='button'
@@ -279,7 +281,7 @@ const GenerateTestForm = () => {
 												setSelectedTopics([]);
 											}}
 										>
-											Clear Selection
+											Reset
 										</button>
 									)}
 								</label>
@@ -318,7 +320,7 @@ const GenerateTestForm = () => {
 								{selectedCategory && (
 									<div className='selected-topics mt-3'>
 										<label className='form-label small text-muted d-flex justify-content-between align-items-center'>
-											<span>Popular {selectedCategory} Topics</span>
+											<span>Suggested {selectedCategory} Topics</span>
 											<button
 												type='button'
 												className='btn btn-link btn-sm p-0 text-muted'
@@ -364,8 +366,8 @@ const GenerateTestForm = () => {
 			</form>
 
 			<p className='text-center text-muted mt-4 small'>
-				💡 Try specific topics like &ldquo;Advanced React Hooks&rdquo; or
-				broader ones like &ldquo;World History&rdquo;
+				💡 Tip: Be as specific as possible. Try “Advanced React Hooks” for depth
+				or “World History” for breadth.
 			</p>
 		</div>
 	);
