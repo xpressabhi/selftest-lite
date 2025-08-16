@@ -141,6 +141,11 @@ For all questions:
 TOPIC INFORMATION:
 ${topicContext}
 
+      LANGUAGE INSTRUCTIONS:
+      - If the subject itself is a language (e.g., Hindi, English, French), generate the paper in that language.
+      - If the user specifies "Hindi medium" (or any other medium), generate the entire quiz in that medium language, regardless of the subject.
+      - Otherwise, default to English unless the topic context clearly indicates another language.
+
       Quiz Type Instructions:
       ${
 				testType === 'multiple-choice'
