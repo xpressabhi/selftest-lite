@@ -6,6 +6,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { FaPencilAlt, FaSpinner } from 'react-icons/fa';
+import { HiOutlineSparkles } from 'react-icons/hi2';
 
 /**
  * Renders a form for generating a new test.
@@ -204,6 +205,7 @@ const GenerateTestForm = () => {
 						className='btn btn-primary'
 						disabled={loading || !topic.trim()}
 					>
+						<HiOutlineSparkles />{' '}
 						{loading ? (
 							<div className='d-flex align-items-center justify-content-center gap-2'>
 								<FaSpinner className='spinner' />
