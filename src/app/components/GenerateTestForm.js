@@ -162,6 +162,7 @@ const GenerateTestForm = () => {
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
 						placeholder='What do you want to test yourself on today? (e.g., "Spanish travel phrases", "Marvel movie trivia", or "System Design basics")'
+						autoFocus
 					/>
 				</div>
 
@@ -201,7 +202,7 @@ const GenerateTestForm = () => {
 						ref={submitButtonRef}
 						type='submit'
 						className='btn btn-primary'
-						disabled={loading}
+						disabled={loading || !topic.trim()}
 					>
 						{loading ? (
 							<div className='d-flex align-items-center justify-content-center gap-2'>
@@ -209,7 +210,7 @@ const GenerateTestForm = () => {
 								<span>Generating...</span>
 							</div>
 						) : (
-							'Start Quiz'
+							'Generate Quiz'
 						)}
 					</button>
 				</div>
