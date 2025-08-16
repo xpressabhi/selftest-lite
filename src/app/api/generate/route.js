@@ -24,12 +24,62 @@ export async function POST(request) {
 			);
 		}
 
-		const { topic, previousTests = [] } = await request.json();
+		const {
+			topic,
+			category,
+			selectedTopics = [],
+			previousTests = [],
+			testType = 'multiple-choice',
+			numQuestions = 10,
+			difficulty = 'intermediate',
+		} = await request.json();
 		const apiKey = process.env.GEMINI_API_KEY;
 
-		if (!topic) {
-			return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
+		if (!topic && selectedTopics.length === 0) {
+			return NextResponse.json(
+				{ error: 'Topic or selected topics are required' },
+				{ status: 400 },
+			);
 		}
+
+		// Validate test type
+		const validTestTypes = ['multiple-choice', 'true-false', 'coding', 'mixed'];
+		if (!validTestTypes.includes(testType)) {
+			return NextResponse.json({ error: 'Invalid test type' }, { status: 400 });
+		}
+
+		// Validate number of questions
+		if (numQuestions < 1 || numQuestions > 30) {
+			return NextResponse.json(
+				{ error: 'Number of questions must be between 1 and 30' },
+				{ status: 400 },
+			);
+		}
+
+		// Validate difficulty
+		const validDifficulties = [
+			'beginner',
+			'intermediate',
+			'advanced',
+			'expert',
+		];
+		if (!validDifficulties.includes(difficulty)) {
+			return NextResponse.json(
+				{ error: 'Invalid difficulty level' },
+				{ status: 400 },
+			);
+		}
+
+		// Construct the topic context
+		const topicContext = [
+			category ? `Category: ${category}` : null,
+			selectedTopics.length > 0
+				? `Selected topics: ${selectedTopics.join(', ')}`
+				: null,
+			topic ? `Additional context: ${topic}` : null,
+		]
+			.filter(Boolean)
+			.join('\n');
 
 		// Extract all previous questions to help AI avoid duplicates
 		const previousQuestions = previousTests.flatMap(
@@ -49,8 +99,99 @@ export async function POST(request) {
 
 		const ai = new GoogleGenAI(apiKey);
 
-		const prompt = `
-      Please generate a practical, implementation-focused multiple-choice quiz with 10 questions based on the following description (unless a specific number of questions is mentioned in the description, in which case follow that instruction).
+		const prompt = `You are a quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
+
+OUTPUT FORMAT:
+The response must be a valid JSON object with this exact structure:
+{
+  "topic": "A clear topic description",
+  "questions": [
+    {
+      "question": "Question text with formatting",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": "Must match exactly one of the options"
+    }
+  ]
+}
+
+IMPORTANT RULES:
+1. Response must be ONLY the JSON object - no other text
+2. Use double quotes for all strings
+3. Multiple choice questions must have exactly 4 options
+4. True/False questions use exactly ["True", "False"] as options
+5. Each answer must match exactly one of the options
+6. Questions must match the specified difficulty level
+7. Do not repeat previous questions
+
+CONTENT FORMATTING:
+For code questions (especially when testType is 'coding'):
+- Use properly formatted code blocks with language specification
+- Maintain correct code indentation
+- Include practical scenarios and common bugs
+- Example: When asking about a function bug, show the incorrect code
+- For JavaScript/TypeScript: Include real-world DOM, React, or Node.js scenarios
+- For Python: Include data structure manipulation and algorithm challenges
+
+For all questions:
+- Use **bold** for emphasis
+- Use *italic* for terms
+- Use LaTeX for math: $x^2$
+- Use proper symbols: °C, km², π
+
+TOPIC INFORMATION:
+${topicContext}
+
+      Quiz Type Instructions:
+      ${
+				testType === 'multiple-choice'
+					? `
+      - Create challenging multiple-choice questions with 4 options each
+      - Ensure distractors (wrong options) are plausible and educational
+      - Include practical, real-world scenarios when possible
+      - For code questions, show short code snippets in proper format`
+					: testType === 'true-false'
+					? `
+      - Create nuanced true/false statements that test deep understanding
+      - Include some slightly tricky but fair statements
+      - Focus on common misconceptions and important concepts
+      - For code, present statements about code behavior or best practices`
+					: testType === 'coding'
+					? `
+      - Create practical coding problems using proper code block formatting
+      - Include a mix of:
+        * Debug and fix broken code
+        * Complete partial implementations
+        * Optimize inefficient code
+        * Fix security or performance issues
+      - Focus on real-world programming scenarios
+      - Show expected inputs/outputs for clarity`
+					: `
+      - Mix different question types for comprehensive assessment
+      - Include properly formatted code examples where relevant
+      - Balance theoretical concepts with practical application
+      - Use appropriate formatting for each question type`
+			}      Difficulty Level (${difficulty}):
+      ${
+				difficulty === 'beginner'
+					? `
+      - Focus on fundamental concepts and basic understanding
+      - Use simple, clear language and straightforward scenarios
+      - Include some easy wins to build confidence`
+					: difficulty === 'intermediate'
+					? `
+      - Mix basic and advanced concepts
+      - Include some challenging but fair questions
+      - Test practical application of knowledge`
+					: difficulty === 'advanced'
+					? `
+      - Focus on complex scenarios and edge cases
+      - Test deep understanding and problem-solving skills
+      - Include challenging real-world applications`
+					: `
+      - Include expert-level concepts and advanced scenarios
+      - Test mastery of the subject matter
+      - Focus on optimization, best practices, and intricate details`
+			}
       
       IMPORTANT GUIDELINES:
       1. Focus on real-world applications and problem-solving scenarios
@@ -69,62 +210,23 @@ export async function POST(request) {
       ${topic}
       ---
 
-      Previously asked questions (AVOID generating similar questions):
+      PREVIOUS QUESTIONS TO AVOID:
       ${
 				previousQuestions.length > 0
-					? '---\n' +
-					  previousQuestions
+					? previousQuestions
 							.map((q) => `Q: ${q.question}\nA: ${q.answer}`)
-							.join('\n\n') +
-					  '\n---'
+							.join('\n\n')
 					: 'No previous questions.'
 			}
-      Provide the output in a JSON format with the following structure:
-      {
-        "topic": "A suitable topic based on the description",
-        "questions": [
-          {
-            "question": "Question text with formatting",
-            "options": ["Option A", "Option B", "Option C", "Option D"],
-            "answer": "Correct option text"
-          }
-          // More questions should follow this pattern
-        ]
-      }
+
+      FORMATTING GUIDELINES:
+      - Use markdown for emphasis (**bold**, *italic*)
+      - Use LaTeX for math ($E = mc^2$)
+      - Use triple backticks for code blocks
+      - Use proper unicode for symbols (Ω, μ, λ, θ)
+      - Use LaTeX for complex formulas ($H_2SO_4$)
       
-      IMPORTANT: Generate 10 questions total by default (or as specified in the description).
-
-      IMPORTANT FORMATTING INSTRUCTIONS:
-      1. Use Markdown formatting for all text in questions and options:
-         - **Bold text** for emphasis
-         - *Italic text* for definitions or terms
-         - ~~Strikethrough~~ when needed
-         - > Blockquotes for important notes
-         - Bullet lists with * or - when appropriate
-         - Numbered lists with 1., 2., etc. when sequence matters
-
-      2. For mathematical expressions, use LaTeX syntax:
-         - Inline math with $...$ (e.g., $E = mc^2$)
-         - Block math with $$...$$
-         - Examples: $\frac{a}{b}$, $\sqrt{x}$, $\sum_{i=1}^{n}$
-
-      3. For chemical formulas:
-         - Use proper subscripts and superscripts: H₂O, CO₂
-         - For complex formulas, use LaTeX: $H_2SO_4$, $Fe^{2+}$
-
-      4. For physics symbols:
-         - Use Unicode characters when possible: Ω, μ, λ, θ
-         - For complex expressions, use LaTeX: $\Delta G = \Delta H - T\Delta S$
-
-      5. For code snippets, use code blocks with language specification:
-         Use triple backticks followed by the language name, then the code, then triple backticks again.
-         For example, a Python code block would look like this (but with backticks instead of quotes):
-         """python
-         def example():
-             return True
-         """
-      
-      The "answer" must be one of the strings from the "options" array.
+      Remember: Provide ONLY the JSON response, no additional text or explanations.
       Do not include any text outside of the JSON object.
     `;
 
@@ -133,8 +235,62 @@ export async function POST(request) {
 			contents: prompt,
 			config: { responseMimeType: 'application/json' },
 		});
-		const questionPaper = JSON.parse(response.text);
-		return NextResponse.json(questionPaper);
+
+		let questionPaper;
+		try {
+			// Try to parse the response as JSON
+			const cleanedText = response.text.trim();
+			questionPaper = JSON.parse(cleanedText);
+
+			// Validate the structure
+			if (!questionPaper.topic || !Array.isArray(questionPaper.questions)) {
+				throw new Error('Invalid response structure');
+			}
+
+			// Validate each question
+			questionPaper.questions.forEach((q, index) => {
+				if (!q.question || !Array.isArray(q.options) || !q.answer) {
+					throw new Error(`Invalid question structure at index ${index}`);
+				}
+
+				// Validate options and answer
+				if (testType === 'multiple-choice' && q.options.length !== 4) {
+					throw new Error(`Question ${index + 1} must have exactly 4 options`);
+				}
+
+				if (
+					testType === 'true-false' &&
+					(!q.options.includes('True') || !q.options.includes('False'))
+				) {
+					throw new Error(`Question ${index + 1} must have True/False options`);
+				}
+
+				if (!q.options.includes(q.answer)) {
+					throw new Error(
+						`Question ${index + 1} answer must match one of the options`,
+					);
+				}
+			});
+
+			// Validate number of questions
+			if (questionPaper.questions.length !== numQuestions) {
+				throw new Error(
+					`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
+				);
+			}
+
+			return NextResponse.json(questionPaper);
+		} catch (parseError) {
+			console.error('Failed to parse or validate response:', parseError);
+			console.error('Raw response:', response.text);
+			return NextResponse.json(
+				{
+					error: 'Failed to generate valid quiz questions. Please try again.',
+					details: parseError.message,
+				},
+				{ status: 500 },
+			);
+		}
 	} catch (error) {
 		console.error(error);
 		return NextResponse.json(
