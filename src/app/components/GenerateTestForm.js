@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { FaPencilAlt, FaSpinner } from 'react-icons/fa';
@@ -24,6 +24,31 @@ const GenerateTestForm = () => {
 	const router = useRouter();
 	// Reference to the submit button
 	const submitButtonRef = useRef(null);
+
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+
+		const topicParam = params.get('topic');
+		const categoryParam = params.get('category');
+		const selectedTopicsParam = params.get('selectedTopics');
+		const testTypeParam = params.get('testType');
+		const numQuestionsParam = params.get('numQuestions');
+		const difficultyParam = params.get('difficulty');
+
+		if (topicParam) setTopic(topicParam);
+		if (categoryParam) setSelectedCategory(categoryParam);
+		if (selectedTopicsParam) setSelectedTopics(selectedTopicsParam.split(','));
+		if (testTypeParam) setTestType(testTypeParam);
+		if (numQuestionsParam) setNumQuestions(Number(numQuestionsParam));
+		if (difficultyParam) setDifficulty(difficultyParam);
+
+		if (topicParam) {
+			// auto-start quiz generation after state is set
+			setTimeout(() => {
+				submitButtonRef.current?.click();
+			}, 300);
+		}
+	}, []);
 
 	const topicCategories = {
 		'Programming & Tech': [
@@ -97,20 +122,21 @@ const GenerateTestForm = () => {
 				localStorage.getItem(STORAGE_KEYS.TEST_HISTORY) || '[]',
 			);
 
+			const requestParams = {
+				topic,
+				category: selectedCategory,
+				selectedTopics,
+				testType,
+				numQuestions,
+				difficulty,
+			};
+
 			const response = await fetch('/api/generate', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					topic,
-					category: selectedCategory,
-					selectedTopics,
-					previousTests: testHistory,
-					testType,
-					numQuestions,
-					difficulty,
-				}),
+				body: JSON.stringify({ ...requestParams, previousTests: testHistory }),
 			});
 
 			if (!response.ok) {
@@ -131,6 +157,7 @@ const GenerateTestForm = () => {
 			}
 
 			const questionPaper = await response.json();
+			questionPaper.requestParams = requestParams;
 
 			localStorage.setItem(
 				STORAGE_KEYS.UNSUBMITTED_TEST,
