@@ -31,7 +31,7 @@ export default function Share({ requestParams }) {
 			className='btn btn-outline-secondary d-flex align-items-center gap-2'
 			onClick={handleShare}
 		>
-			<FaArrowRight /> Share
+			<FaArrowRight /> Share Test
 		</button>
 	);
 }

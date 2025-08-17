@@ -182,8 +182,8 @@ export default function Test() {
 					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
-						<Share requestParams={questionPaper.requestParams} />
 					</h1>
+					<Share requestParams={questionPaper.requestParams} />
 					<form
 						onSubmit={handleSubmit}
 						className='w-100 position-relative'
