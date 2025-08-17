@@ -15,6 +15,7 @@ import {
 	FaCircle,
 	FaDotCircle,
 	FaArrowRight,
+	FaPrint,
 } from 'react-icons/fa';
 import Share from '../components/Share';
 
@@ -147,6 +148,110 @@ export default function Test() {
 		touchStartXRef.current = null;
 	};
 
+	const handlePrint = () => {
+		if (!questionPaper) return;
+		const printWindow = window.open('', '_blank');
+		const content = `
+    <html>
+      <head>
+        <title>Print Test</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+        <style>
+          h1, h2, h3, h4, h5, h6 { margin: 16px 0 8px; font-weight: bold; }
+          p { margin: 8px 0; }
+          ul, ol { margin: 8px 0 8px 24px; }
+          li { margin: 4px 0; }
+          code { background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+          pre { background: #f5f5f5; padding: 8px; border-radius: 5px; overflow-x: auto; }
+          blockquote { border-left: 4px solid #ccc; margin: 8px 0; padding-left: 12px; color: #555; }
+          strong { font-weight: bold; }
+          em { font-style: italic; }
+          .watermark {
+            position: fixed;
+            top: 40%;
+            left: 20%;
+            font-size: 5rem;
+            color: rgba(200,200,200,0.2);
+            transform: rotate(-30deg);
+            z-index: -1;
+          }
+          @media print {
+            .watermark { position: fixed; }
+          }
+          body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+          h2 { text-align: center; margin-bottom: 20px; }
+          .question { margin-bottom: 20px; }
+          .options { margin-left: 20px; }
+          .option { margin: 4px 0; }
+          .answers { margin-top: 40px; }
+          /* KaTeX styles */
+          .katex { font: normal 1.21em KaTeX_Main, Times New Roman, serif; line-height: 1.2; }
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/css/texmath.min.css" />
+      </head>
+      <body>
+        <div class="watermark">selftest.in</div>
+        <h2>${questionPaper.topic || 'Test'}</h2>
+        ${questionPaper.questions
+					.map(
+						(q, i) => `
+          <div class="question">
+            <strong>Q${
+							i + 1
+						}. <div class="question-text" data-md="${encodeURIComponent(
+							q.question,
+						)}"></div></strong>
+            <div class="options">
+              ${q.options
+								.map(
+									(opt, idx) => `
+                <div class="option">${String.fromCharCode(
+									65 + idx,
+								)}. <div class="option-text" data-md="${encodeURIComponent(
+										opt,
+									)}"></div></div>
+              `,
+								)
+								.join('')}
+            </div>
+          </div>
+        `,
+					)
+					.join('')}
+        <div class="answers">
+          <h3>Answers</h3>
+          <ol>
+            ${questionPaper.questions
+							.map(
+								(q, i) =>
+									`<li><div class="answer-text" data-md="${encodeURIComponent(
+										q.answer,
+									)}"></div></li>`,
+							)
+							.join('')}
+          </ol>
+        </div>
+        <script>
+          const md = window.markdownit().use(texmath.use(katex));
+          document.querySelectorAll('[data-md]').forEach(el => {
+            el.innerHTML = md.render(decodeURIComponent(el.getAttribute('data-md')));
+          });
+          document.querySelectorAll('.answer-text').forEach(el => {
+            katex.render(el.textContent, el, { throwOnError: false });
+          });
+        </script>
+      </body>
+    </html>
+  `;
+		printWindow.document.write(content);
+		printWindow.document.close();
+		printWindow.focus();
+		printWindow.print();
+	};
+
 	if (loading) {
 		return (
 			<div className='container text-center mt-5'>
@@ -183,7 +288,16 @@ export default function Test() {
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
 					</h1>
-					<Share requestParams={questionPaper.requestParams} />
+					<div className='d-flex gap-2 mb-3'>
+						<Share requestParams={questionPaper.requestParams} />
+						<button
+							type='button'
+							className='btn btn-outline-secondary d-flex align-items-center gap-2'
+							onClick={handlePrint}
+						>
+							<FaPrint /> Print Test
+						</button>
+					</div>
 					<form
 						onSubmit={handleSubmit}
 						className='w-100 position-relative'
