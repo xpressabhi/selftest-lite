@@ -16,6 +16,7 @@ import {
 	FaDotCircle,
 	FaArrowRight,
 } from 'react-icons/fa';
+import Share from '../components/Share';
 
 export default function Test() {
 	const [questionPaper, setQuestionPaper] = useState(null);
@@ -87,28 +88,6 @@ export default function Test() {
 		localStorage.removeItem(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`);
 		// Navigate to results page
 		router.push('/results');
-	};
-
-	const handleShare = async () => {
-		if (!questionPaper?.requestParams) return;
-
-		const params = new URLSearchParams(questionPaper.requestParams).toString();
-		const shareUrl = `${window.location.origin}/?${params}`;
-
-		if (navigator.share) {
-			try {
-				await navigator.share({
-					title: questionPaper.topic || 'Test',
-					text: 'Check out this test!',
-					url: shareUrl,
-				});
-			} catch (err) {
-				console.error('Share failed:', err);
-			}
-		} else {
-			await navigator.clipboard.writeText(shareUrl);
-			alert('Share link copied to clipboard!');
-		}
 	};
 
 	// Clean up timeout on unmount
@@ -203,6 +182,7 @@ export default function Test() {
 					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
+						<Share requestParams={questionPaper.requestParams} />
 					</h1>
 					<form
 						onSubmit={handleSubmit}
@@ -367,18 +347,6 @@ export default function Test() {
 							}}
 						>
 							<FaCheckCircle /> Submit Answers
-						</button>
-						<button
-							type='button'
-							className='btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-3'
-							style={{
-								fontWeight: 600,
-								fontSize: '1.05rem',
-								padding: '0.8rem 0',
-							}}
-							onClick={handleShare}
-						>
-							<FaArrowRight /> Share Test
 						</button>
 					</form>
 				</div>

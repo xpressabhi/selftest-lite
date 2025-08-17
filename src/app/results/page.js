@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import Share from '../components/Share';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {
 	FaTrophy,
@@ -12,9 +13,7 @@ import {
 	FaSpinner,
 	FaExclamationCircle,
 	FaPencilAlt,
-	FaArrowRight,
 	FaPlusCircle,
-	FaBookOpen,
 } from 'react-icons/fa';
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
@@ -125,29 +124,6 @@ function ResultsContent() {
 		router.push('/');
 	};
 
-	const handleShare = async () => {
-		if (!questionPaper?.requestParams) return;
-
-		const params = new URLSearchParams(questionPaper.requestParams).toString();
-		const shareUrl = `${window.location.origin}/?${params}`;
-
-		if (navigator.share) {
-			try {
-				await navigator.share({
-					title: questionPaper.topic || 'Test Results',
-					text: 'Check out this test!',
-					url: shareUrl,
-				});
-			} catch (err) {
-				console.error('Share failed:', err);
-			}
-		} else {
-			// fallback: copy link
-			await navigator.clipboard.writeText(shareUrl);
-			alert('Share link copied to clipboard!');
-		}
-	};
-
 	if (loading) {
 		return (
 			<div className='container text-center mt-5'>
@@ -179,12 +155,7 @@ function ResultsContent() {
 					<h1 className='text-center mb-4 text-dark d-flex align-items-center justify-content-between gap-2'>
 						<FaTrophy className='text-warning fs-1' />
 						Test Results
-						<button
-							className='btn btn-outline-secondary btn-lg d-flex align-items-center gap-2'
-							onClick={handleShare}
-						>
-							<FaArrowRight /> Share
-						</button>
+						<Share requestParams={questionPaper.requestParams} />
 					</h1>
 					<div className='d-flex justify-content-center mb-4'>
 						<div
@@ -274,12 +245,6 @@ function ResultsContent() {
 							onClick={handleNewTest}
 						>
 							<FaPlusCircle /> Start New Test
-						</button>
-						<button
-							className='btn btn-outline-secondary btn-lg d-flex align-items-center gap-2'
-							onClick={handleShare}
-						>
-							<FaArrowRight /> Share
 						</button>
 					</div>
 				</div>
