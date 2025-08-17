@@ -289,7 +289,7 @@ export default function Test() {
 						{questionPaper.topic}
 					</h1>
 					<div className='d-flex gap-2 mb-3'>
-						<Share requestParams={questionPaper.requestParams} />
+						<Share paper={questionPaper} />
 						<button
 							type='button'
 							className='btn btn-outline-secondary d-flex align-items-center gap-2'

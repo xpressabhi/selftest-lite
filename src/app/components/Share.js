@@ -1,7 +1,9 @@
 import React from 'react';
 import { FaArrowRight } from 'react-icons/fa';
 
-export default function Share({ requestParams }) {
+export default function Share({ paper }) {
+	console.log(paper);
+	const { requestParams, topic } = paper || {};
 	const handleShare = async () => {
 		if (!requestParams) return;
 
@@ -11,7 +13,7 @@ export default function Share({ requestParams }) {
 		if (navigator.share) {
 			try {
 				await navigator.share({
-					title: questionPaper.topic || 'Test Results',
+					title: topic || 'Test Results',
 					text: 'Check out this test!',
 					url: shareUrl,
 				});

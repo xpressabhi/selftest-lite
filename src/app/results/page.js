@@ -253,7 +253,7 @@ function ResultsContent() {
 					<h1 className='text-center mb-4 text-dark d-flex align-items-center justify-content-between gap-2'>
 						<FaTrophy className='text-warning fs-1' />
 						Test Results
-						<Share requestParams={questionPaper.requestParams} />
+						<Share paper={questionPaper} />
 					</h1>
 					<div className='d-flex justify-content-center mb-4'>
 						<div
