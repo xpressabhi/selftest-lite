@@ -21,8 +21,15 @@ const PrintableContent = ({ questionPaper }) => {
 						top: 0;
 					}
 					.watermark {
+						display: block !important;
 						position: fixed !important;
 						visibility: visible !important;
+						opacity: 0.2 !important;
+						z-index: 9999 !important;
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
+						color-adjust: exact !important;
+						forced-color-adjust: none !important;
 					}
 					@page {
 						size: A4;
@@ -46,10 +53,15 @@ const PrintableContent = ({ questionPaper }) => {
 					position: fixed;
 					top: 40%;
 					left: 20%;
+					width: 60%;
 					font-size: 5rem;
 					color: rgba(200, 200, 200, 0.2);
 					transform: rotate(-30deg);
-					z-index: -1;
+					pointer-events: none;
+					user-select: none;
+					z-index: 1;
+					text-align: center;
+					font-weight: bold;
 				}
 				.question {
 					margin: 1.5rem 0;
