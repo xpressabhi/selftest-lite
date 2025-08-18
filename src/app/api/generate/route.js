@@ -99,7 +99,7 @@ export async function POST(request) {
 
 		const ai = new GoogleGenAI(apiKey);
 
-		const prompt = `You are a quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
+		const prompt = `You are an expert quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
 
 OUTPUT FORMAT:
 The response must be a valid JSON object with this exact structure:
@@ -231,7 +231,7 @@ ${topicContext}
       - Use proper unicode for symbols (Ω, μ, λ, θ)
       - Use LaTeX for complex formulas ($H_2SO_4$)
       
-      Remember: Provide ONLY the JSON response, no additional text or explanations.
+      Remember: Must Provide ONLY the VALID JSON response, no additional text or explanations.
       Do not include any text outside of the JSON object.
     `;
 

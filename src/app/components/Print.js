@@ -8,7 +8,7 @@ export default function Print({ questionPaper }) {
 		const content = `
 			<html>
 				<head>
-					<title>Print Test</title>
+					<title>selftest.in</title>
 					<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
 					<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/css/texmath.min.css" />
 					<style>
@@ -89,14 +89,16 @@ export default function Print({ questionPaper }) {
 								console.error('KaTeX render error:', e);
 							}
 						});
+						// trigger print after rendering finishes
+						setTimeout(() => {
+							window.print();
+						}, 300);
 					</script>
 				</body>
 			</html>
 		`;
 		printWindow.document.write(content);
 		printWindow.document.close();
-		printWindow.focus();
-		printWindow.print();
 	};
 
 	return (
