@@ -131,7 +131,22 @@ export default function Print({ questionPaper }) {
 	};
 
 	const handlePrintContent = () => {
-		window.print();
+		const printContents = document.querySelector('.print-content').outerHTML;
+		const styles = Array.from(
+			document.querySelectorAll('style, link[rel="stylesheet"]'),
+		)
+			.map((node) => node.outerHTML)
+			.join('');
+		const newWin = window.open('', '', 'width=800,height=600');
+		newWin.document.write('<html><head><title>Print</title>');
+		newWin.document.write(styles);
+		newWin.document.write('</head><body>');
+		newWin.document.write(printContents);
+		newWin.document.write('</body></html>');
+		newWin.document.close();
+		newWin.focus();
+		newWin.print();
+		newWin.close();
 	};
 
 	if (!showPreview) {
