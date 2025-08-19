@@ -138,7 +138,7 @@ export default function Print({ questionPaper }) {
 			.map((node) => node.outerHTML)
 			.join('');
 		const newWin = window.open('', '', 'width=800,height=600');
-		newWin.document.write('<html><head><title>Print</title>');
+		newWin.document.write('<html><head><title>selftest.in</title>');
 		newWin.document.write(styles);
 		newWin.document.write('</head><body>');
 		newWin.document.write(printContents);
