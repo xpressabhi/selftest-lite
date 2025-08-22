@@ -25,6 +25,8 @@ function ResultsContent() {
 	const [questionPaper, setQuestionPaper] = useState(null);
 	const [userAnswers, setUserAnswers] = useState(null);
 	const [loading, setLoading] = useState(true);
+	const [isGenerating, setIsGenerating] = useState(false);
+	const [generationError, setGenerationError] = useState(null);
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -131,7 +133,8 @@ function ResultsContent() {
 	const handleRegenerateQuiz = async () => {
 		if (!questionPaper.requestParams.topic) return;
 
-		setLoading(true);
+		setIsGenerating(true);
+		setGenerationError(null);
 		try {
 			// Get previous tests from history
 			const testHistory = JSON.parse(
@@ -154,15 +157,14 @@ function ResultsContent() {
 					// Rate limit error
 					const resetTime = new Date(errorData.resetTime);
 					const minutes = Math.ceil((resetTime - new Date()) / 60000);
-					setError(errorData.error || 'Rate limit exceeded');
-					setLoading(false);
+					throw new Error(
+						`Rate limit exceeded. Please try again in ${minutes} minutes.`,
+					);
 				} else {
-					setError(
-						errorData.error ||
-							'An error occurred while generating the explanation.',
+					throw new Error(
+						errorData.error || 'Failed to generate quiz. Please try again.',
 					);
 				}
-				return;
 			}
 
 			const newQuestionPaper = await response.json();
@@ -175,9 +177,9 @@ function ResultsContent() {
 			router.push('/test');
 		} catch (error) {
 			console.error('Error regenerating quiz:', error);
-			alert('Failed to generate new quiz. Please try again.');
+			setGenerationError(error.message);
 		} finally {
-			setLoading(false);
+			setIsGenerating(false);
 		}
 	};
 
@@ -303,19 +305,29 @@ function ResultsContent() {
 						>
 							<FaPlusCircle /> Start New Quiz
 						</button>
-						<button
-							className='btn btn-secondary btn-lg d-flex align-items-center gap-2'
-							onClick={handleRegenerateQuiz}
-							disabled={!questionPaper?.requestParams?.topic || loading}
-							title={
-								!questionPaper?.requestParams?.topic
-									? "Can't regenerate this quiz"
-									: 'Generate a similar quiz'
-							}
-						>
-							<FaSyncAlt className={`${loading ? 'spinner' : ''}`} />
-							Regenerate Similar Quiz
-						</button>
+						<div className='d-flex flex-column align-items-center'>
+							<button
+								className='btn btn-secondary btn-lg d-flex align-items-center gap-2'
+								onClick={handleRegenerateQuiz}
+								disabled={!questionPaper?.requestParams?.topic || isGenerating}
+								title={
+									!questionPaper?.requestParams?.topic
+										? "Can't regenerate this quiz"
+										: 'Generate a similar quiz'
+								}
+							>
+								<FaSyncAlt className={`${isGenerating ? 'spinner' : ''}`} />
+								{isGenerating
+									? 'Generating Quiz...'
+									: 'Regenerate Similar Quiz'}
+							</button>
+							{generationError && (
+								<div className='text-danger mt-2 small'>
+									<FaExclamationCircle className='me-1' />
+									{generationError}
+								</div>
+							)}
+						</div>
 						<Print questionPaper={questionPaper} />
 					</div>
 				</div>
