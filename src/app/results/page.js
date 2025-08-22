@@ -15,6 +15,7 @@ import {
 	FaPencilAlt,
 	FaPlusCircle,
 	FaPrint,
+	FaSyncAlt,
 } from 'react-icons/fa';
 import Print from '../components/Print';
 
@@ -124,6 +125,60 @@ function ResultsContent() {
 		// We don't need to remove USER_ANSWERS as it won't affect new test creation
 		localStorage.removeItem(STORAGE_KEYS.QUESTION_PAPER);
 		router.push('/');
+	};
+	console.log('Question Paper:', questionPaper);
+
+	const handleRegenerateQuiz = async () => {
+		if (!questionPaper.requestParams.topic) return;
+
+		setLoading(true);
+		try {
+			// Get previous tests from history
+			const testHistory = JSON.parse(
+				localStorage.getItem(STORAGE_KEYS.TEST_HISTORY) || '[]',
+			);
+			const response = await fetch('/api/generate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					...questionPaper.requestParams,
+					previousTests: testHistory,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				if (response.status === 429) {
+					// Rate limit error
+					const resetTime = new Date(errorData.resetTime);
+					const minutes = Math.ceil((resetTime - new Date()) / 60000);
+					setError(errorData.error || 'Rate limit exceeded');
+					setLoading(false);
+				} else {
+					setError(
+						errorData.error ||
+							'An error occurred while generating the explanation.',
+					);
+				}
+				return;
+			}
+
+			const newQuestionPaper = await response.json();
+			newQuestionPaper.requestParams = questionPaper.requestParams;
+
+			localStorage.setItem(
+				STORAGE_KEYS.UNSUBMITTED_TEST,
+				JSON.stringify(newQuestionPaper),
+			);
+			router.push('/test');
+		} catch (error) {
+			console.error('Error regenerating quiz:', error);
+			alert('Failed to generate new quiz. Please try again.');
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	if (loading) {
@@ -246,7 +301,20 @@ function ResultsContent() {
 							className='btn btn-primary btn-lg d-flex align-items-center gap-2'
 							onClick={handleNewTest}
 						>
-							<FaPlusCircle /> Start New Test
+							<FaPlusCircle /> Start New Quiz
+						</button>
+						<button
+							className='btn btn-secondary btn-lg d-flex align-items-center gap-2'
+							onClick={handleRegenerateQuiz}
+							disabled={!questionPaper?.requestParams?.topic || loading}
+							title={
+								!questionPaper?.requestParams?.topic
+									? "Can't regenerate this quiz"
+									: 'Generate a similar quiz'
+							}
+						>
+							<FaSyncAlt className={`${loading ? 'spinner' : ''}`} />
+							Regenerate Similar Quiz
 						</button>
 						<Print questionPaper={questionPaper} />
 					</div>
