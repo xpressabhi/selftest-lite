@@ -52,7 +52,18 @@ export async function POST(request) {
       Provide the output in a JSON format with the following structure:
       {
         "explanation": "Detailed explanation of why the answer is correct"
-      }
+	  }
+
+	  IMPORTANT EXPLANATION INSTRUCTIONS: Ensure the explanation is comprehensive, clear, and educational. Please provide a comprehensive explanation in the same language as the question, within 200 words that includes (optional):
+                1. Validation of the question and its options
+                2. Analysis of the user's answer (correct/incorrect)
+                3. Detailed explanation of the correct answer with underlying concepts
+                4. Step-by-step solution process (especially for numerical problems)
+                5. Common misconceptions related to this topic
+                6. Relevant formulas and their applications
+                7. Real-world applications or examples
+                Use appropriate formatting (bold, italic, lists) for better readability.
+                For numerical questions, show all calculations with proper units and significant figures.
 
       IMPORTANT FORMATTING INSTRUCTIONS:
       1. Use Markdown formatting for all text in questions and options:
