@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { rateLimiter } from '../utils/rateLimiter';
 
+const cache = new Map();
+
 export async function POST(request) {
 	try {
 		// Check rate limit
@@ -32,9 +34,13 @@ export async function POST(request) {
 			testType = 'multiple-choice',
 			numQuestions = 10,
 			difficulty = 'intermediate',
+			id,
 		} = await request.json();
 		const apiKey = process.env.GEMINI_API_KEY;
-
+		if (id && cache.has(id)) {
+			console.log('Cache hit for id:', id);
+			return NextResponse.json(cache.get(id));
+		}
 		if (!topic && selectedTopics.length === 0) {
 			return NextResponse.json(
 				{ error: 'Topic or selected topics are required' },
@@ -283,7 +289,10 @@ ${topicContext}
 					`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
 				);
 			}
-
+			// Cache the result
+			if (id) {
+				cache.set(id, questionPaper);
+			}
 			return NextResponse.json(questionPaper);
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);

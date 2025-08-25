@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { FaPencilAlt, FaSpinner } from 'react-icons/fa';
 import { HiOutlineSparkles } from 'react-icons/hi2';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Renders a form for generating a new test.
@@ -21,6 +22,7 @@ const GenerateTestForm = () => {
 	const [numQuestions, setNumQuestions] = useState(10);
 	const [selectedTopics, setSelectedTopics] = useState([]);
 	const [difficulty, setDifficulty] = useState('intermediate');
+	const [id, setId] = useState(null);
 	const router = useRouter();
 	// Reference to the submit button
 	const submitButtonRef = useRef(null);
@@ -34,7 +36,9 @@ const GenerateTestForm = () => {
 		const testTypeParam = params.get('testType');
 		const numQuestionsParam = params.get('numQuestions');
 		const difficultyParam = params.get('difficulty');
+		const idParam = params.get('id');
 
+		if (idParam) setId(idParam);
 		if (topicParam) setTopic(topicParam);
 		if (categoryParam) setSelectedCategory(categoryParam);
 		if (selectedTopicsParam) setSelectedTopics(selectedTopicsParam.split(','));
@@ -129,6 +133,7 @@ const GenerateTestForm = () => {
 				testType,
 				numQuestions,
 				difficulty,
+				id: id || uuidv4(),
 			};
 
 			const response = await fetch('/api/generate', {
