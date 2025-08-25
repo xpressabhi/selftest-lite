@@ -193,6 +193,7 @@ const GenerateTestForm = () => {
 						autoFocus
 					/>
 				</div>
+				{error && <div className='alert alert-danger'>{error}</div>}
 
 				<div className='d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 mb-4'>
 					<div className='d-flex gap-2 align-items-center order-1 order-sm-0'>
@@ -391,8 +392,6 @@ const GenerateTestForm = () => {
 						</div>
 					</div>
 				)}
-
-				{error && <div className='alert alert-danger'>{error}</div>}
 			</form>
 
 			<p className='text-center text-muted mt-4 small'>
