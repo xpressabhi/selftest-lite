@@ -8,16 +8,6 @@ import { STORAGE_KEYS } from '../constants';
 import { FaPencilAlt, FaSpinner } from 'react-icons/fa';
 import { HiOutlineSparkles } from 'react-icons/hi2';
 import { v4 as uuidv4 } from 'uuid';
-import {
-	Container,
-	Form,
-	Button,
-	Alert,
-	Card,
-	Row,
-	Col,
-	Spinner,
-} from 'react-bootstrap';
 
 /**
  * Renders a form for generating a new test.
@@ -187,34 +177,34 @@ const GenerateTestForm = () => {
 	};
 
 	return (
-		<Container
+		<div
 			className='py-3 d-flex flex-column align-items-center justify-content-center'
 		>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
 				Create Your Personalized Quiz
 			</h1>
 
-			<Card className='w-100 border-0' style={{ maxWidth: '720px' }}>
-				<Card.Body>
-					<Form onSubmit={handleSubmit}>
-						<Form.Group className='mb-3'>
-							<Form.Control
-								as='textarea'
+			<div className='card w-100 border-0' style={{ maxWidth: '720px' }}>
+				<div className='card-body'>
+					<form onSubmit={handleSubmit}>
+						<div className='mb-3'>
+							<textarea
 								id='topic'
 								rows={4}
 								value={topic}
 								onChange={(e) => setTopic(e.target.value)}
 								placeholder='What do you want to test yourself on today? (e.g., "Spanish travel phrases", "Marvel movie trivia", or "System Design basics")'
 								autoFocus
+								className='form-control'
 							/>
-						</Form.Group>
-						{error && <Alert variant='danger'>{error}</Alert>}
+						</div>
+						{error && <div className='alert alert-danger'>{error}</div>}
 
 						<div className='d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 mb-4'>
 							<div className='d-flex gap-2 align-items-center order-1 order-sm-0'>
-								<Button
-									variant='outline-secondary'
-									size='sm'
+								<button
+									type='button'
+									className='btn btn-outline-secondary btn-sm'
 									onClick={() => setShowAdvanced(!showAdvanced)}
 									style={{
 										width: 'auto',
@@ -224,11 +214,11 @@ const GenerateTestForm = () => {
 									{showAdvanced
 										? 'Hide advanced settings'
 										: 'Show advanced settings'}
-								</Button>
+								</button>
 
 								{!showAdvanced && (
-									<Form.Select
-										size='sm'
+									<select
+										className='form-select form-select-sm'
 										value={numQuestions}
 										onChange={(e) => setNumQuestions(Number(e.target.value))}
 										style={{ width: 'auto', minWidth: '120px' }}
@@ -238,39 +228,44 @@ const GenerateTestForm = () => {
 												{num} questions
 											</option>
 										))}
-									</Form.Select>
+									</select>
 								)}
 							</div>
 
-							<Button
+							<button
 								ref={submitButtonRef}
-								variant='primary'
+								className='btn btn-primary'
 								type='submit'
 								disabled={loading || !topic.trim()}
 							>
 								<HiOutlineSparkles />{' '}
 								{loading ? (
 									<div className='d-flex align-items-center justify-content-center gap-2'>
-										<Spinner as='span' animation='border' size='sm' />
+										<div
+											className='spinner-border spinner-border-sm'
+											role='status'
+										>
+											<span className='visually-hidden'>Loading...</span>
+										</div>
 										<span>Generating...</span>
 									</div>
 								) : (
 									'Generate Quiz'
 								)}
-							</Button>
+							</button>
 						</div>
 
 						{showAdvanced && (
 							<div className='advanced-options bg-light p-3 rounded shadow-sm mb-4'>
-								<Row className='g-3'>
-									<Col xs={12}>
+								<div className='row g-3'>
+									<div className='col-12'>
 										<div className='d-flex flex-column flex-sm-row gap-2'>
 											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
+												<label className='form-label small text-muted'>
 													Question Format
-												</Form.Label>
-												<Form.Select
-													size='sm'
+												</label>
+												<select
+													className='form-select form-select-sm'
 													value={testType}
 													onChange={(e) => setTestType(e.target.value)}
 												>
@@ -280,14 +275,14 @@ const GenerateTestForm = () => {
 													<option value='true-false'>True/False</option>
 													<option value='coding'>Coding Problems</option>
 													<option value='mixed'>Mixed Format</option>
-												</Form.Select>
+												</select>
 											</div>
 											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
+												<label className='form-label small text-muted'>
 													How many questions?
-												</Form.Label>
-												<Form.Select
-													size='sm'
+												</label>
+												<select
+													className='form-select form-select-sm'
 													value={numQuestions}
 													onChange={(e) =>
 														setNumQuestions(Number(e.target.value))
@@ -298,14 +293,14 @@ const GenerateTestForm = () => {
 															{num} questions
 														</option>
 													))}
-												</Form.Select>
+												</select>
 											</div>
 											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
+												<label className='form-label small text-muted'>
 													Select Difficulty
-												</Form.Label>
-												<Form.Select
-													size='sm'
+												</label>
+												<select
+													className='form-select form-select-sm'
 													value={difficulty}
 													onChange={(e) => setDifficulty(e.target.value)}
 												>
@@ -313,19 +308,18 @@ const GenerateTestForm = () => {
 													<option value='intermediate'>Intermediate</option>
 													<option value='advanced'>Advanced</option>
 													<option value='expert'>Expert</option>
-												</Form.Select>
+												</select>
 											</div>
 										</div>
-									</Col>
+									</div>
 
-									<Col xs={12}>
-										<Form.Label className='small text-muted d-flex justify-content-between align-items-center mb-2'>
+									<div className='col-12'>
+										<label className='form-label small text-muted d-flex justify-content-between align-items-center mb-2'>
 											<span>Pick a Category (optional)</span>
 											{selectedCategory && (
-												<Button
-													variant='link'
-													size='sm'
-													className='p-0 text-muted'
+												<button
+													type='button'
+													className='btn btn-link btn-sm p-0 text-muted'
 													style={{
 														fontSize: '0.8rem',
 														textDecoration: 'none',
@@ -336,20 +330,19 @@ const GenerateTestForm = () => {
 													}}
 												>
 													Reset
-												</Button>
+												</button>
 											)}
-										</Form.Label>
-										<Row xs={2} sm={3} md={4} className='g-3'>
+										</label>
+										<div className='row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3'>
 											{Object.keys(topicCategories).map((category) => (
-												<Col key={category}>
-													<Button
-														variant={
+												<div className='col' key={category}>
+													<button
+														type='button'
+														className={`btn ${
 															selectedCategory === category
-																? 'primary'
-																: 'outline-secondary'
-														}
-														size='sm'
-														className='w-100 text-truncate'
+																? 'btn-primary'
+																: 'btn-outline-secondary'
+														} btn-sm w-100 text-truncate`}
 														style={{
 															whiteSpace: 'normal',
 															height: '100%',
@@ -367,19 +360,18 @@ const GenerateTestForm = () => {
 														}
 													>
 														{category}
-													</Button>
-												</Col>
+													</button>
+												</div>
 											))}
-										</Row>
+										</div>
 
 										{selectedCategory && (
 											<div className='selected-topics mt-3'>
-												<Form.Label className='small text-muted d-flex justify-content-between align-items-center'>
+												<label className='form-label small text-muted d-flex justify-content-between align-items-center'>
 													<span>Suggested {selectedCategory} Topics</span>
-													<Button
-														variant='link'
-														size='sm'
-														className='p-0 text-muted'
+													<button
+														type='button'
+														className='btn btn-link btn-sm p-0 text-muted'
 														style={{
 															fontSize: '0.8rem',
 															textDecoration: 'none',
@@ -390,18 +382,18 @@ const GenerateTestForm = () => {
 														}}
 													>
 														Change Category
-													</Button>
-												</Form.Label>
+													</button>
+												</label>
 												<div className='d-flex flex-wrap gap-2'>
 													{topicCategories[selectedCategory]?.map((topic) => (
-														<Button
+														<button
+															type='button'
 															key={topic}
-															variant={
+															className={`btn ${
 																selectedTopics.includes(topic)
-																	? 'primary'
-																	: 'outline-secondary'
-															}
-															size='sm'
+																	? 'btn-primary'
+																	: 'btn-outline-secondary'
+															} btn-sm`}
 															onClick={() => {
 																setSelectedTopics((prev) =>
 																	prev.includes(topic)
@@ -411,18 +403,18 @@ const GenerateTestForm = () => {
 															}}
 														>
 															{topic}
-														</Button>
+														</button>
 													))}
 												</div>
 											</div>
 										)}
-									</Col>
-								</Row>
+									</div>
+								</div>
 							</div>
 						)}
-					</Form>
-				</Card.Body>
-			</Card>
+					</form>
+				</div>
+			</div>
 
 			<p className='text-center text-muted mt-4 small'>
 				💡 Tip: Be as specific as possible. Try “Advanced React Hooks” for depth

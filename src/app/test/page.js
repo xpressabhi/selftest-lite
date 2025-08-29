@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
-import MarkdownRenderer from '../components/MarkdownRenderer';
 import {
 	FaSpinner,
 	FaExclamationCircle,
@@ -18,7 +18,13 @@ import {
 } from 'react-icons/fa';
 import Share from '../components/Share';
 import Print from '../components/Print';
-import { Container, Button, Spinner } from 'react-bootstrap';
+
+const MarkdownRenderer = dynamic(
+	() => import('../components/MarkdownRenderer'),
+	{
+		loading: () => <p>Loading...</p>,
+	},
+);
 
 export default function Test() {
 	const [questionPaper, setQuestionPaper] = useState(null);
@@ -151,27 +157,28 @@ export default function Test() {
 
 	if (loading) {
 		return (
-			<Container className='text-center mt-5'>
-				<Spinner animation='border' className='mb-2' />
+			<div className='container text-center mt-5'>
+				<div className='spinner-border mb-2' role='status'>
+					<span className='visually-hidden'>Loading...</span>
+				</div>
 				<div>Loading test...</div>
-			</Container>
+			</div>
 		);
 	}
 
 	if (!questionPaper) {
 		return (
-			<Container className='text-center mt-5'>
+			<div className='container text-center mt-5'>
 				<FaExclamationCircle className='text-warning mb-3' size={48} />
 				<h1>No test found!</h1>
 				<p>Please generate a test first.</p>
-				<Button
-					variant='primary'
-					className='d-flex align-items-center gap-2 mx-auto'
+				<button
+					className='btn btn-primary d-flex align-items-center gap-2 mx-auto'
 					onClick={() => router.push('/')}
 				>
 					<FaHome /> Go to Home
-				</Button>
-			</Container>
+				</button>
+			</div>
 		);
 	}
 
@@ -181,7 +188,7 @@ export default function Test() {
 	return (
 		<>
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
-				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
+				<div className='container d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
 					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
@@ -205,9 +212,8 @@ export default function Test() {
 								zIndex: 1,
 							}}
 						>
-							<Button
-								variant='light'
-								className='rounded-circle shadow-sm d-flex align-items-center justify-content-center'
+							<button
+								className='btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center'
 								style={{ width: '48px', height: '48px', marginLeft: '-60px' }}
 								onClick={handlePrevClick}
 								disabled={
@@ -228,10 +234,9 @@ export default function Test() {
 										d='M15 19l-7-7 7-7'
 									/>
 								</svg>
-							</Button>
-							<Button
-								variant='light'
-								className='rounded-circle shadow-sm d-flex align-items-center justify-content-center'
+							</button>
+							<button
+								className='btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center'
 								style={{ width: '48px', height: '48px', marginRight: '-60px' }}
 								onClick={handleNextClick}
 								disabled={
@@ -253,7 +258,7 @@ export default function Test() {
 										d='M9 5l7 7-7 7'
 									/>
 								</svg>
-							</Button>
+							</button>
 						</div>
 						<div
 							key={index}
@@ -285,11 +290,10 @@ export default function Test() {
 							{/* Typeform-style options */}
 							<div className='w-100'>
 								{q.options.map((option, i) => (
-									<Button
+									<button
 										key={i}
-										variant='outline-primary'
 										className={
-											`w-100 mb-3 shadow-sm typeform-btn d-flex align-items-center gap-2` +
+											`btn btn-outline-primary w-100 mb-3 shadow-sm typeform-btn d-flex align-items-center gap-2` +
 											(answers[index] === option ? ' active' : '')
 										}
 										style={{
@@ -322,7 +326,7 @@ export default function Test() {
 										>
 											<MarkdownRenderer>{option}</MarkdownRenderer>
 										</div>
-									</Button>
+									</button>
 								))}
 							</div>
 						</div>
@@ -342,10 +346,9 @@ export default function Test() {
 								</div>
 							);
 						})()}
-						<Button
+						<button
 							type='submit'
-							variant='success'
-							className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5'
+							className='btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5'
 							style={{
 								fontWeight: 700,
 								fontSize: '1.15rem',
@@ -354,9 +357,9 @@ export default function Test() {
 							}}
 						>
 							<FaCheckCircle /> Submit Answers
-						</Button>
+						</button>
 					</form>
-				</Container>
+				</div>
 			</div>
 		</>
 	);
