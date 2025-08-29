@@ -177,9 +177,7 @@ const GenerateTestForm = () => {
 	};
 
 	return (
-		<div
-			className='py-3 d-flex flex-column align-items-center justify-content-center'
-		>
+		<div className='py-3 d-flex flex-column align-items-center justify-content-center'>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
 				Create Your Personalized Quiz
 			</h1>
@@ -423,7 +421,7 @@ const GenerateTestForm = () => {
 				या “World History” व्यापकता के लिए। <br />✨ Add “Hindi medium” in your
 				topic to generate quizzes in Hindi.
 			</p>
-		</Container>
+		</div>
 	);
 };
 
