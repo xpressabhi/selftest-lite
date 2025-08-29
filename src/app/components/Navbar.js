@@ -42,7 +42,7 @@ const CustomNavbar = () => {
 		<>
 			<Navbar
 				fixed='top'
-				expand='lg'
+				expand='xl'
 				className={`transition-all ${
 					isTop
 						? 'bg-light'
@@ -54,7 +54,7 @@ const CustomNavbar = () => {
 				<Container fluid className='px-0'>
 					<div className='d-flex w-100'>
 						{/* Left sidebar for desktop */}
-						<div className='d-none d-lg-block' style={{ width: '300px' }}>
+						<div className='d-block' style={{ width: '300px' }}>
 							<Navbar.Brand
 								as={Link}
 								href='/'
@@ -65,18 +65,10 @@ const CustomNavbar = () => {
 							</Navbar.Brand>
 						</div>
 						{/* Main navbar content */}
-						<div className='flex-grow-1 px-3 d-flex justify-content-between align-items-center'>
-							<Navbar.Brand
-								as={Link}
-								href='/'
-								className='d-flex d-lg-none align-items-center'
-							>
-								<FaGraduationCap className='me-2' />
-								<span>selftest.in</span>
-							</Navbar.Brand>
+						<div className='px-3 ms-auto'>
 							<Button
 								variant='link'
-								className='d-lg-none'
+								className='d-xl-none'
 								onClick={handleShow}
 								aria-label='Toggle history'
 							>
@@ -89,10 +81,10 @@ const CustomNavbar = () => {
 
 			{/* Desktop Test History Panel */}
 			<div
-				className='d-none d-lg-block position-fixed bg-white border-end'
+				className='d-none d-xl-block position-fixed bg-white border-end'
 				style={{
 					width: '380px',
-					left: '20px',
+					left: '0px',
 					top: '56px',
 					bottom: '0',
 					overflowY: 'auto',
