@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import MarkdownRenderer from '../components/MarkdownRenderer';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import {
 	FaSpinner,
 	FaExclamationCircle,
@@ -19,6 +18,7 @@ import {
 } from 'react-icons/fa';
 import Share from '../components/Share';
 import Print from '../components/Print';
+import { Container, Button, Spinner } from 'react-bootstrap';
 
 export default function Test() {
 	const [questionPaper, setQuestionPaper] = useState(null);
@@ -151,26 +151,27 @@ export default function Test() {
 
 	if (loading) {
 		return (
-			<div className='container text-center mt-5'>
-				<FaSpinner className='spinner mb-2' size={24} />
+			<Container className='text-center mt-5'>
+				<Spinner animation='border' className='mb-2' />
 				<div>Loading test...</div>
-			</div>
+			</Container>
 		);
 	}
 
 	if (!questionPaper) {
 		return (
-			<div className='container text-center mt-5'>
+			<Container className='text-center mt-5'>
 				<FaExclamationCircle className='text-warning mb-3' size={48} />
 				<h1>No test found!</h1>
 				<p>Please generate a test first.</p>
-				<button
-					className='btn btn-primary d-flex align-items-center gap-2 mx-auto'
+				<Button
+					variant='primary'
+					className='d-flex align-items-center gap-2 mx-auto'
 					onClick={() => router.push('/')}
 				>
 					<FaHome /> Go to Home
-				</button>
-			</div>
+				</Button>
+			</Container>
 		);
 	}
 
@@ -180,7 +181,7 @@ export default function Test() {
 	return (
 		<>
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
-				<div className='container d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
+				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
 					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
@@ -204,9 +205,9 @@ export default function Test() {
 								zIndex: 1,
 							}}
 						>
-							<button
-								type='button'
-								className='btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center'
+							<Button
+								variant='light'
+								className='rounded-circle shadow-sm d-flex align-items-center justify-content-center'
 								style={{ width: '48px', height: '48px', marginLeft: '-60px' }}
 								onClick={handlePrevClick}
 								disabled={
@@ -227,10 +228,10 @@ export default function Test() {
 										d='M15 19l-7-7 7-7'
 									/>
 								</svg>
-							</button>
-							<button
-								type='button'
-								className='btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center'
+							</Button>
+							<Button
+								variant='light'
+								className='rounded-circle shadow-sm d-flex align-items-center justify-content-center'
 								style={{ width: '48px', height: '48px', marginRight: '-60px' }}
 								onClick={handleNextClick}
 								disabled={
@@ -252,7 +253,7 @@ export default function Test() {
 										d='M9 5l7 7-7 7'
 									/>
 								</svg>
-							</button>
+							</Button>
 						</div>
 						<div
 							key={index}
@@ -284,11 +285,11 @@ export default function Test() {
 							{/* Typeform-style options */}
 							<div className='w-100'>
 								{q.options.map((option, i) => (
-									<button
-										type='button'
+									<Button
 										key={i}
+										variant='outline-primary'
 										className={
-											`btn btn-outline-primary w-100 mb-3 shadow-sm typeform-btn d-flex align-items-center gap-2` +
+											`w-100 mb-3 shadow-sm typeform-btn d-flex align-items-center gap-2` +
 											(answers[index] === option ? ' active' : '')
 										}
 										style={{
@@ -321,7 +322,7 @@ export default function Test() {
 										>
 											<MarkdownRenderer>{option}</MarkdownRenderer>
 										</div>
-									</button>
+									</Button>
 								))}
 							</div>
 						</div>
@@ -341,9 +342,10 @@ export default function Test() {
 								</div>
 							);
 						})()}
-						<button
+						<Button
 							type='submit'
-							className='btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5'
+							variant='success'
+							className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5'
 							style={{
 								fontWeight: 700,
 								fontSize: '1.15rem',
@@ -352,9 +354,9 @@ export default function Test() {
 							}}
 						>
 							<FaCheckCircle /> Submit Answers
-						</button>
+						</Button>
 					</form>
-				</div>
+				</Container>
 			</div>
 		</>
 	);

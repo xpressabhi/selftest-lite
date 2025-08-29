@@ -1,9 +1,10 @@
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import Navbar from './components/Navbar';
+import CustomNavbar from './components/Navbar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'katex/dist/katex.min.css';
+import { Container, Row, Col } from 'react-bootstrap';
 
 const geistSans = Geist({
 	variable: '--font-geist-sans',
@@ -42,16 +43,17 @@ export default function RootLayout({ children }) {
 						`,
 					}}
 				/>
-				<Navbar />
-				<main className='container-fluid mt-4 d-lg-flex'>
-					{/* Spacer for desktop sidebar */}
-					<div
-						className='d-none d-lg-block'
-						style={{ width: '400px', flexShrink: 0 }}
-					></div>
-					{/* Main content */}
-					<div className='flex-grow-1'>{children}</div>
-				</main>
+				<CustomNavbar />
+				<Container fluid className='mt-4'>
+					<Row>
+						{/* Spacer for desktop sidebar */}
+						<Col lg={4} className='d-none d-lg-block' style={{ width: '400px' }} />
+						{/* Main content */}
+						<Col lg={8} className='flex-grow-1'>
+							{children}
+						</Col>
+					</Row>
+				</Container>
 				<Analytics />
 			</body>
 		</html>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import GenerateTestForm from './components/GenerateTestForm';
 import UnsubmittedTestAlert from './components/UnsubmittedTestAlert';
 
