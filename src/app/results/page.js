@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
-import MarkdownRenderer from '../components/MarkdownRenderer';
+import dynamic from 'next/dynamic';
 import Share from '../components/Share';
 import {
 	FaTrophy,
@@ -26,6 +26,14 @@ import {
 	Spinner,
 	Alert,
 } from 'react-bootstrap';
+
+const MarkdownRenderer = dynamic(
+	() => import('../components/MarkdownRenderer'),
+	{
+		loading: () => <p>Loading...</p>,
+		ssr: false,
+	},
+);
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
 function ResultsContent() {

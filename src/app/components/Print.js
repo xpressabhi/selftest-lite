@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { FaPrint } from 'react-icons/fa';
 import { IoMdClose } from 'react-icons/io';
-import MarkdownRenderer from './MarkdownRenderer';
+import dynamic from 'next/dynamic';
+
+const MarkdownRenderer = dynamic(
+	() => import('../components/MarkdownRenderer'),
+	{
+		loading: () => <p>Loading...</p>,
+		ssr: false,
+	},
+);
 
 const PrintableContent = ({ questionPaper }) => {
 	return (

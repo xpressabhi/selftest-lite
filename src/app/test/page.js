@@ -2,8 +2,17 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
-import MarkdownRenderer from '../components/MarkdownRenderer';
+
+const MarkdownRenderer = dynamic(
+	() => import('../components/MarkdownRenderer'),
+	{
+		loading: () => <p>Loading...</p>,
+		ssr: false,
+	},
+);
+
 import {
 	FaSpinner,
 	FaExclamationCircle,
