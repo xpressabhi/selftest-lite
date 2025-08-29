@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FaGraduationCap, FaHistory } from 'react-icons/fa';
 import TestHistory from './TestHistory';
+import { Navbar, Container, Offcanvas, Button } from 'react-bootstrap';
 
-const Navbar = () => {
+const CustomNavbar = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const [isTop, setIsTop] = useState(true);
 	const [showOffcanvas, setShowOffcanvas] = useState(false);
@@ -34,10 +35,15 @@ const Navbar = () => {
 		};
 	}, []);
 
+	const handleClose = () => setShowOffcanvas(false);
+	const handleShow = () => setShowOffcanvas(true);
+
 	return (
 		<>
-			<nav
-				className={`navbar navbar-expand-lg navbar-light fixed-top transition-all ${
+			<Navbar
+				fixed='top'
+				expand='xl'
+				className={`transition-all ${
 					isTop
 						? 'bg-light'
 						: isScrolling
@@ -45,46 +51,40 @@ const Navbar = () => {
 						: 'bg-light'
 				}`}
 			>
-				<div className='container-fluid px-0'>
+				<Container fluid className='px-0'>
 					<div className='d-flex w-100'>
 						{/* Left sidebar for desktop */}
-						<div className='d-none d-lg-block' style={{ width: '300px' }}>
-							<Link
+						<div className='d-block' style={{ width: '300px' }}>
+							<Navbar.Brand
+								as={Link}
 								href='/'
-								className='navbar-brand d-flex align-items-center px-3'
+								className='d-flex align-items-center px-3'
 							>
 								<FaGraduationCap className='me-2' />
 								<span>selftest.in</span>
-							</Link>
+							</Navbar.Brand>
 						</div>
 						{/* Main navbar content */}
-						<div className='flex-grow-1 px-3 d-flex justify-content-between align-items-center'>
-							<Link
-								href='/'
-								className='navbar-brand d-flex d-lg-none align-items-center'
-							>
-								<FaGraduationCap className='me-2' />
-								<span>selftest.in</span>
-							</Link>
-							<button
-								className='navbar-toggler d-lg-none'
-								type='button'
-								onClick={() => setShowOffcanvas(!showOffcanvas)}
+						<div className='px-3 ms-auto'>
+							<Button
+								variant='link'
+								className='d-xl-none'
+								onClick={handleShow}
 								aria-label='Toggle history'
 							>
 								<FaHistory />
-							</button>
+							</Button>
 						</div>
 					</div>
-				</div>
-			</nav>
+				</Container>
+			</Navbar>
 
 			{/* Desktop Test History Panel */}
 			<div
-				className='d-none d-lg-block position-fixed bg-white border-end'
+				className='d-none d-xl-block position-fixed bg-white border-end'
 				style={{
 					width: '380px',
-					left: '20px',
+					left: '0px',
 					top: '56px',
 					bottom: '0',
 					overflowY: 'auto',
@@ -95,40 +95,16 @@ const Navbar = () => {
 			</div>
 
 			{/* Mobile Offcanvas */}
-			<div
-				className={`offcanvas offcanvas-start d-lg-none ${
-					showOffcanvas ? 'show' : ''
-				}`}
-				tabIndex='-1'
-				id='offcanvasHistory'
-				aria-labelledby='offcanvasHistoryLabel'
-				style={{ visibility: showOffcanvas ? 'visible' : 'hidden' }}
-			>
-				<div className='offcanvas-header'>
-					<h5 className='offcanvas-title' id='offcanvasHistoryLabel'>
-						Test History
-					</h5>
-					<button
-						type='button'
-						className='btn-close'
-						onClick={() => setShowOffcanvas(false)}
-						aria-label='Close'
-					></button>
-				</div>
-				<div className='offcanvas-body'>
-					<TestHistory onTestClick={() => setShowOffcanvas(false)} />
-				</div>
-			</div>
-
-			{/* Mobile Backdrop */}
-			{showOffcanvas && (
-				<div
-					className='offcanvas-backdrop fade show d-lg-none'
-					onClick={() => setShowOffcanvas(false)}
-				></div>
-			)}
+			<Offcanvas show={showOffcanvas} onHide={handleClose} placement='start'>
+				<Offcanvas.Header closeButton>
+					<Offcanvas.Title>Test History</Offcanvas.Title>
+				</Offcanvas.Header>
+				<Offcanvas.Body>
+					<TestHistory onTestClick={handleClose} />
+				</Offcanvas.Body>
+			</Offcanvas>
 		</>
 	);
 };
 
-export default Navbar;
+export default CustomNavbar;

@@ -10,6 +10,7 @@ import {
 	FaTrophy,
 	FaChevronRight,
 } from 'react-icons/fa';
+import { Button, ListGroup, Badge } from 'react-bootstrap';
 
 export default function TestHistory({ onTestClick }) {
 	const [testHistory, setTestHistory] = useState([]);
@@ -69,23 +70,25 @@ export default function TestHistory({ onTestClick }) {
 						<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
 							<FaHistory className='text-primary' /> Previous Tests
 						</h2>
-						<button
-							className='btn btn-outline-danger btn-sm d-flex align-items-center gap-2 fw-bold'
+						<Button
+							variant='outline-danger'
+							size='sm'
+							className='d-flex align-items-center gap-2 fw-bold'
 							onClick={clearHistory}
 						>
 							<FaTrashAlt /> Clear History
-						</button>
+						</Button>
 					</div>
-					<div className='list-group shadow-sm rounded-3 overflow-hidden'>
+					<ListGroup className='shadow-sm rounded-3 overflow-hidden'>
 						{testHistory.map((test, index) => (
-							<div
+							<ListGroup.Item
 								key={test.id || index}
-								className='list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-0'
-								role='button'
+								action
 								onClick={() => {
 									if (onTestClick) onTestClick();
 									router.push(`/results?id=${test.id}`);
 								}}
+								className='d-flex justify-content-between align-items-center py-3 border-0'
 							>
 								<div>
 									<h6 className='mb-1 text-primary'>
@@ -96,22 +99,24 @@ export default function TestHistory({ onTestClick }) {
 									</small>
 								</div>
 								<div className='d-flex align-items-center gap-2'>
-									<span
-										className={`badge fs-6 px-3 py-2 ${
+									<Badge
+										pill
+										bg={
 											test.score / test.totalQuestions >= 0.7
-												? 'bg-success'
+												? 'success'
 												: test.score / test.totalQuestions >= 0.4
-												? 'bg-warning'
-												: 'bg-danger'
-										} rounded-pill d-flex align-items-center gap-1`}
+												? 'warning'
+												: 'danger'
+										}
+										className='fs-6 px-3 py-2 d-flex align-items-center gap-1'
 									>
 										<FaTrophy /> {test.score}/{test.totalQuestions}
-									</span>
+									</Badge>
 									<FaChevronRight className='text-muted' />
 								</div>
-							</div>
+							</ListGroup.Item>
 						))}
-					</div>
+					</ListGroup>
 				</>
 			)}
 		</div>
