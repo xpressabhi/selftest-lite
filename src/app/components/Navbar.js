@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FaGraduationCap, FaHistory } from 'react-icons/fa';
 import TestHistory from './TestHistory';
-import { Navbar, Container, Offcanvas, Button } from 'react-bootstrap';
 
 const CustomNavbar = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
@@ -40,10 +39,8 @@ const CustomNavbar = () => {
 
 	return (
 		<>
-			<Navbar
-				fixed='top'
-				expand='xl'
-				className={`transition-all ${
+			<nav
+				className={`navbar navbar-expand-xl fixed-top transition-all ${
 					isTop
 						? 'bg-light'
 						: isScrolling
@@ -51,33 +48,28 @@ const CustomNavbar = () => {
 						: 'bg-light'
 				}`}
 			>
-				<Container fluid className='px-0'>
+				<div className='container-fluid px-0'>
 					<div className='d-flex w-100'>
 						{/* Left sidebar for desktop */}
 						<div className='d-block' style={{ width: '300px' }}>
-							<Navbar.Brand
-								as={Link}
-								href='/'
-								className='d-flex align-items-center px-3'
-							>
+							<Link href='/' className='navbar-brand d-flex align-items-center px-3'>
 								<FaGraduationCap className='me-2' />
 								<span>selftest.in</span>
-							</Navbar.Brand>
+							</Link>
 						</div>
 						{/* Main navbar content */}
 						<div className='px-3 ms-auto'>
-							<Button
-								variant='link'
-								className='d-xl-none'
+							<button
+								className='btn btn-link d-xl-none'
 								onClick={handleShow}
 								aria-label='Toggle history'
 							>
 								<FaHistory />
-							</Button>
+							</button>
 						</div>
 					</div>
-				</Container>
-			</Navbar>
+				</div>
+			</nav>
 
 			{/* Desktop Test History Panel */}
 			<div
@@ -95,14 +87,24 @@ const CustomNavbar = () => {
 			</div>
 
 			{/* Mobile Offcanvas */}
-			<Offcanvas show={showOffcanvas} onHide={handleClose} placement='start'>
-				<Offcanvas.Header closeButton>
-					<Offcanvas.Title>Test History</Offcanvas.Title>
-				</Offcanvas.Header>
-				<Offcanvas.Body>
+			<div
+				className={`offcanvas offcanvas-start ${showOffcanvas ? 'show' : ''}`}
+				tabIndex='-1'
+				style={{ visibility: showOffcanvas ? 'visible' : 'hidden' }}
+			>
+				<div className='offcanvas-header'>
+					<h5 className='offcanvas-title'>Test History</h5>
+					<button
+						type='button'
+						className='btn-close'
+						onClick={handleClose}
+						aria-label='Close'
+					></button>
+				</div>
+				<div className='offcanvas-body'>
 					<TestHistory onTestClick={handleClose} />
-				</Offcanvas.Body>
-			</Offcanvas>
+				</div>
+			</div>
 		</>
 	);
 };

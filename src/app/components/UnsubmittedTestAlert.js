@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { FaExclamationTriangle, FaPlayCircle } from 'react-icons/fa';
-import { Alert, Button } from 'react-bootstrap';
 
 export default function UnsubmittedTestAlert() {
 	const [unsubmittedTest, setUnsubmittedTest] = useState(null);
@@ -33,10 +32,10 @@ export default function UnsubmittedTestAlert() {
 	if (!unsubmittedTest) return null;
 
 	return (
-		<Alert
-			variant='warning'
-			className='my-5 d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm w-100'
+		<div
+			className='alert alert-warning my-5 d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm w-100'
 			style={{ maxWidth: '800px' }}
+			role='alert'
 		>
 			<div className='d-flex align-items-center'>
 				<FaExclamationTriangle className='text-warning me-3 fs-4' />
@@ -48,14 +47,12 @@ export default function UnsubmittedTestAlert() {
 					</small>
 				</div>
 			</div>
-			<Button
-				variant='warning'
-				size='sm'
-				className='d-flex align-items-center gap-2 fw-bold'
+			<button
+				className='btn btn-warning btn-sm d-flex align-items-center gap-2 fw-bold'
 				onClick={() => router.push('/test')}
 			>
 				<FaPlayCircle /> Continue Test
-			</Button>
-		</Alert>
+			</button>
+		</div>
 	);
 }

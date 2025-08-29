@@ -2,8 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
-import MarkdownRenderer from '../components/MarkdownRenderer';
 import Share from '../components/Share';
 import {
 	FaTrophy,
@@ -17,15 +17,13 @@ import {
 	FaSyncAlt,
 } from 'react-icons/fa';
 import Print from '../components/Print';
-import {
-	Container,
-	Row,
-	Col,
-	Card,
-	Button,
-	Spinner,
-	Alert,
-} from 'react-bootstrap';
+
+const MarkdownRenderer = dynamic(
+	() => import('../components/MarkdownRenderer'),
+	{
+		loading: () => <p>Loading...</p>,
+	},
+);
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
 function ResultsContent() {
@@ -193,27 +191,28 @@ function ResultsContent() {
 
 	if (loading) {
 		return (
-			<Container className='text-center mt-5'>
-				<Spinner animation='border' className='mb-2' />
+			<div className='container text-center mt-5'>
+				<div className='spinner-border mb-2' role='status'>
+					<span className='visually-hidden'>Loading...</span>
+				</div>
 				<div>Calculating results...</div>
-			</Container>
+			</div>
 		);
 	}
 
 	if (!questionPaper || !userAnswers) {
 		return (
-			<Container className='text-center mt-5'>
+			<div className='container text-center mt-5'>
 				<FaExclamationCircle className='text-warning mb-3' size={48} />
 				<h1>No results found!</h1>
 				<p>Please take a test first.</p>
-				<Button
-					variant='primary'
-					className='d-inline-flex align-items-center gap-2'
+				<button
+					className='btn btn-primary d-inline-flex align-items-center gap-2'
 					onClick={() => router.push('/test')}
 				>
 					<FaPencilAlt /> Take a Test
-				</Button>
-			</Container>
+				</button>
+			</div>
 		);
 	}
 	return (
@@ -240,7 +239,7 @@ function ResultsContent() {
 						</div>
 					</div>
 
-					<Container className='mt-4 mb-4'>
+					<div className='container mt-4 mb-4'>
 						<h2 className='text-center mb-4 fs-4 fw-bold text-dark d-flex align-items-center justify-content-center gap-2'>
 							<FaCheckCircle className='text-success fs-3' />
 							Review Your Answers
@@ -253,9 +252,9 @@ function ResultsContent() {
 							const isCorrect = userAnswer === q.answer;
 							const answered = !!userAnswer;
 							return (
-								<Card
+								<div
 									key={index}
-									className={`mb-4 shadow-sm rounded-4 ${
+									className={`card mb-4 shadow-sm rounded-4 ${
 										isCorrect
 											? 'border-success'
 											: answered
@@ -268,13 +267,13 @@ function ResultsContent() {
 										}`,
 									}}
 								>
-									<Card.Body className='py-4 px-4'>
-										<Card.Title as='h3' className='fs-5 mb-3 text-dark'>
+									<div className='card-body py-4 px-4'>
+										<h3 className='card-title fs-5 mb-3 text-dark'>
 											<span className='me-2 fw-bold'>Q{index + 1}.</span>
-										</Card.Title>
+										</h3>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>
 										<div className='mb-3'>
-											<Card.Text as='div' className='mb-1 text-secondary'>
+											<div className='card-text mb-1 text-secondary'>
 												Your Answer:
 												<div className='ms-2 text-dark'>
 													{answered ? (
@@ -289,38 +288,34 @@ function ResultsContent() {
 												{!isCorrect && answered && (
 													<FaTimesCircle className='text-danger ms-2' />
 												)}
-											</Card.Text>
-											<Card.Text as='div' className='mb-0 text-secondary'>
+											</div>
+											<div className='card-text mb-0 text-secondary'>
 												Correct Answer:
 												<div className='ms-2 text-dark'>
 													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 												</div>
-											</Card.Text>
+											</div>
 										</div>
 										<Explanation
 											questionPaper={questionPaper}
 											index={index}
 											setQuestionPaper={setQuestionPaper}
 										/>
-									</Card.Body>
-								</Card>
+									</div>
+								</div>
 							);
 						})}
-					</Container>
+					</div>
 					<div className='d-flex justify-content-center gap-3 mt-5 mb-5'>
-						<Button
-							variant='primary'
-							size='lg'
-							className='d-flex align-items-center gap-2'
+						<button
+							className='btn btn-primary btn-lg d-flex align-items-center gap-2'
 							onClick={handleNewTest}
 						>
 							<FaPlusCircle /> Start New Quiz
-						</Button>
+						</button>
 						<div className='d-flex flex-column align-items-center'>
-							<Button
-								variant='secondary'
-								size='lg'
-								className='d-flex align-items-center gap-2'
+							<button
+								className='btn btn-secondary btn-lg d-flex align-items-center gap-2'
 								onClick={handleRegenerateQuiz}
 								disabled={!questionPaper?.requestParams?.topic || isGenerating}
 								title={
@@ -333,12 +328,12 @@ function ResultsContent() {
 								{isGenerating
 									? 'Generating Quiz...'
 									: 'Regenerate Similar Quiz'}
-							</Button>
+							</button>
 							{generationError && (
-								<Alert variant='danger' className='mt-2 small'>
+								<div className='alert alert-danger mt-2 small'>
 									<FaExclamationCircle className='me-1' />
 									{generationError}
-								</Alert>
+								</div>
 							)}
 						</div>
 						<Print questionPaper={questionPaper} />
@@ -354,7 +349,7 @@ export default function Results() {
 	return (
 		<Suspense
 			fallback={
-				<Container className='text-center mt-5'>Loading results...</Container>
+				<div className='container text-center mt-5'>Loading results...</div>
 			}
 		>
 			<ResultsContent />
@@ -416,7 +411,7 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 				),
 			}));
 
-			const testId = searchParams.get('id');
+			const testId = search_params.get('id');
 			// Load test history from localStorage
 			const testHistory =
 				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
@@ -442,7 +437,9 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 		return (
 			<div className='mt-4 pt-4 border-top border-light'>
 				<h4 className='fs-6 mb-2 text-dark'>Loading explanation...</h4>
-				<Spinner animation='border' />
+				<div className='spinner-border' role='status'>
+					<span className='visually-hidden'>Loading...</span>
+				</div>
 			</div>
 		);
 	}
@@ -458,14 +455,17 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 
 	return (
 		<>
-			<Button variant='primary' onClick={(e) => handleExplain(e, index)}>
+			<button
+				className='btn btn-primary'
+				onClick={(e) => handleExplain(e, index)}
+			>
 				Explain Answer?
-			</Button>
+			</button>
 			{error && (
-				<Alert variant='danger' className='mt-3'>
+				<div className='alert alert-danger mt-3'>
 					<FaExclamationCircle className='me-2' />
 					{error}
-				</Alert>
+				</div>
 			)}
 		</>
 	);
