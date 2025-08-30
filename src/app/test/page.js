@@ -48,7 +48,7 @@ export default function Test() {
 				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
 			const existingTest = history.find((t) => t.id == id); // use loose equality to handle string vs number
 			if (existingTest) {
-				setQuestionPaper(existingTest);
+				setQuestionPaper(existingTest.questionPaper);
 				setLoading(false);
 				return;
 			} else {
@@ -83,8 +83,6 @@ export default function Test() {
 			setLoading(false);
 		}
 	}, []);
-
-	useEffect(() => {}, []);
 
 	const handleAnswerChange = (questionIndex, answer) => {
 		const updatedAnswers = {
@@ -210,8 +208,9 @@ export default function Test() {
 			</Container>
 		);
 	}
+	if (!questionPaper.questions) return null;
 
-	const q = questionPaper.questions[currentQuestionIndex];
+	const q = questionPaper.questions?.[currentQuestionIndex];
 	const index = currentQuestionIndex;
 
 	return (
