@@ -1,15 +1,27 @@
 import withPWA from 'next-pwa';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Your existing Next.js config
+	// Your existing Next.js config
+	experimental: {
+		optimizePackageImports: ['react-icons/*', 'react-bootstrap'],
+	},
 };
 
-const pwaConfig = withPWA({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
+// Create bundle analyzer wrapper
+const withAnalyzer = withBundleAnalyzer({
+	enabled: process.env.ANALYZE === 'true',
 });
 
-export default pwaConfig;
+// Create PWA wrapper
+const withPWAConfig = withPWA({
+	dest: 'public',
+	register: true,
+	skipWaiting: true,
+});
+
+// Compose configurations
+const config = withPWAConfig(withAnalyzer(nextConfig));
+
+export default config;

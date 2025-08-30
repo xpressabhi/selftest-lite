@@ -3,8 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FaGraduationCap, FaHistory } from 'react-icons/fa';
-import TestHistory from './TestHistory';
+import dynamic from 'next/dynamic';
 import { Navbar, Container, Offcanvas, Button } from 'react-bootstrap';
+
+const TestHistory = dynamic(() => import('./TestHistory'), {
+	ssr: false,
+});
 
 const CustomNavbar = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
