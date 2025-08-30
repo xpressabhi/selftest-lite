@@ -3,8 +3,6 @@ import { GoogleGenAI } from '@google/genai';
 import { rateLimiter } from '../utils/rateLimiter';
 import { generatePrompt } from '../utils/prompt';
 
-const cache = new Map();
-
 export async function POST(request) {
 	try {
 		const {
@@ -15,13 +13,8 @@ export async function POST(request) {
 			testType = 'multiple-choice',
 			numQuestions = 10,
 			difficulty = 'intermediate',
-			id,
 		} = await request.json();
 
-		if (id && cache.has(id)) {
-			console.log('Cache hit for id:', id);
-			return NextResponse.json(cache.get(id));
-		}
 		if (!topic && selectedTopics.length === 0) {
 			return NextResponse.json(
 				{ error: 'Topic or selected topics are required' },
@@ -164,11 +157,29 @@ export async function POST(request) {
 					`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
 				);
 			}
-			// Cache the result
-			if (id) {
-				cache.set(id, questionPaper);
+			// Store the test in the database
+			const storeResponse = await fetch(
+				`${request.headers.get('origin')}/api/tests`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ test: questionPaper }),
+				},
+			);
+
+			if (!storeResponse.ok) {
+				throw new Error('Failed to store test in database');
 			}
-			return NextResponse.json(questionPaper);
+
+			const { id: testId } = await storeResponse.json();
+
+			// Return the question paper with the database ID
+			return NextResponse.json({
+				...questionPaper,
+				id: testId,
+			});
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
 			console.error('Raw response:', response.text);

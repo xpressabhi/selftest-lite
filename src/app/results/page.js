@@ -103,9 +103,8 @@ function ResultsContent() {
 
 			// If this is a newly submitted test (no testId in URL), save it to history
 			if (!testId) {
-				const newTestId = new Date().getTime().toString();
 				const newTest = {
-					id: newTestId,
+					id: paper.id || 'NO ID',
 					topic: paper.topic || 'Untitled Test',
 					timestamp: new Date().getTime(),
 					score: calculatedScore,

@@ -14,16 +14,12 @@ const MarkdownRenderer = dynamic(
 );
 
 import {
-	FaSpinner,
 	FaExclamationCircle,
 	FaHome,
 	FaBookOpen,
-	FaQuestion,
 	FaCheckCircle,
 	FaCircle,
 	FaDotCircle,
-	FaArrowRight,
-	FaPrint,
 } from 'react-icons/fa';
 import Share from '../components/Share';
 import Print from '../components/Print';
@@ -40,24 +36,43 @@ export default function Test() {
 	const touchStartXRef = useRef(null);
 
 	useEffect(() => {
-		// Load question paper from localStorage
-		const storedPaper = localStorage.getItem(STORAGE_KEYS.UNSUBMITTED_TEST);
-		if (storedPaper) {
-			setQuestionPaper(JSON.parse(storedPaper));
-			// Don't remove the unsubmitted test until it's actually submitted
-			// This ensures the test persists across page refreshes
-		}
+		const params = new URLSearchParams(window.location.search);
+		const id = params.get('id');
+		if (id) {
+			// Fetch the test from the database using the id
+			// For example:
+			fetch(`/api/tests?id=${id}`)
+				.then((res) => res.json())
+				.then((data) => {
+					setQuestionPaper(data.test);
+					setLoading(false);
+				})
+				.catch((err) => {
+					console.error('Error fetching test:', err);
+					setLoading(false);
+				});
+		} else {
+			// Load question paper from localStorage
+			const storedPaper = localStorage.getItem(STORAGE_KEYS.UNSUBMITTED_TEST);
+			if (storedPaper) {
+				setQuestionPaper(JSON.parse(storedPaper));
+				// Don't remove the unsubmitted test until it's actually submitted
+				// This ensures the test persists across page refreshes
+			}
 
-		// Load saved answers if they exist
-		const savedAnswers = localStorage.getItem(
-			`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`,
-		);
-		if (savedAnswers) {
-			setAnswers(JSON.parse(savedAnswers));
-		}
+			// Load saved answers if they exist
+			const savedAnswers = localStorage.getItem(
+				`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`,
+			);
+			if (savedAnswers) {
+				setAnswers(JSON.parse(savedAnswers));
+			}
 
-		setLoading(false);
+			setLoading(false);
+		}
 	}, []);
+
+	useEffect(() => {}, []);
 
 	const handleAnswerChange = (questionIndex, answer) => {
 		const updatedAnswers = {

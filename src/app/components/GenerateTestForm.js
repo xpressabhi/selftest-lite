@@ -2,12 +2,10 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { STORAGE_KEYS } from '../constants';
-import { FaPencilAlt, FaSpinner } from 'react-icons/fa';
+import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import { HiOutlineSparkles } from 'react-icons/hi2';
-import { v4 as uuidv4 } from 'uuid';
 import {
 	Container,
 	Form,
@@ -32,90 +30,8 @@ const GenerateTestForm = () => {
 	const [numQuestions, setNumQuestions] = useState(10);
 	const [selectedTopics, setSelectedTopics] = useState([]);
 	const [difficulty, setDifficulty] = useState('intermediate');
-	const [id, setId] = useState(null);
 	const router = useRouter();
 	// Reference to the submit button
-	const submitButtonRef = useRef(null);
-
-	useEffect(() => {
-		const params = new URLSearchParams(window.location.search);
-
-		const topicParam = params.get('topic');
-		const categoryParam = params.get('category');
-		const selectedTopicsParam = params.get('selectedTopics');
-		const testTypeParam = params.get('testType');
-		const numQuestionsParam = params.get('numQuestions');
-		const difficultyParam = params.get('difficulty');
-		const idParam = params.get('id');
-
-		if (idParam) setId(idParam);
-		if (topicParam) setTopic(topicParam);
-		if (categoryParam) setSelectedCategory(categoryParam);
-		if (selectedTopicsParam) setSelectedTopics(selectedTopicsParam.split(','));
-		if (testTypeParam) setTestType(testTypeParam);
-		if (numQuestionsParam) setNumQuestions(Number(numQuestionsParam));
-		if (difficultyParam) setDifficulty(difficultyParam);
-
-		if (topicParam) {
-			// auto-start quiz generation after state is set
-			setTimeout(() => {
-				submitButtonRef.current?.click();
-			}, 300);
-		}
-	}, []);
-
-	const topicCategories = {
-		'Programming & Tech': [
-			'JavaScript',
-			'Python',
-			'Web Development',
-			'Data Structures',
-			'System Design',
-		],
-		'Academic': ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'History'],
-		'Interview Prep': [
-			'Behavioral Questions',
-			'Problem Solving',
-			'Leadership Skills',
-			'System Design',
-			'Coding Challenges',
-		],
-		'Professional Skills': [
-			'Project Management',
-			'Communication',
-			'Team Leadership',
-			'Agile Methodology',
-			'Public Speaking',
-		],
-		'Fun & Trivia': [
-			'Movies & TV Shows',
-			'Video Games',
-			'Sports',
-			'Music',
-			'Pop Culture',
-		],
-		'Hobbies & Lifestyle': [
-			'Photography',
-			'Cooking',
-			'Fitness',
-			'Gardening',
-			'Travel',
-		],
-		'Language Learning': [
-			'English',
-			'Spanish',
-			'Japanese',
-			'German',
-			'Mandarin',
-		],
-		'Creative Arts': [
-			'Drawing',
-			'Writing',
-			'Music Theory',
-			'Design',
-			'Animation',
-		],
-	};
 
 	const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -143,7 +59,6 @@ const GenerateTestForm = () => {
 				testType,
 				numQuestions,
 				difficulty,
-				id: id || uuidv4(),
 			};
 
 			const response = await fetch('/api/generate', {
@@ -187,9 +102,7 @@ const GenerateTestForm = () => {
 	};
 
 	return (
-		<Container
-			className='py-3 d-flex flex-column align-items-center justify-content-center'
-		>
+		<Container className='py-3 d-flex flex-column align-items-center justify-content-center'>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
 				Create Your Personalized Quiz
 			</h1>
@@ -243,7 +156,6 @@ const GenerateTestForm = () => {
 							</div>
 
 							<Button
-								ref={submitButtonRef}
 								variant='primary'
 								type='submit'
 								disabled={loading || !topic.trim()}
@@ -340,7 +252,7 @@ const GenerateTestForm = () => {
 											)}
 										</Form.Label>
 										<Row xs={2} sm={3} md={4} className='g-3'>
-											{Object.keys(topicCategories).map((category) => (
+											{Object.keys(TOPIC_CATEGORIES).map((category) => (
 												<Col key={category}>
 													<Button
 														variant={

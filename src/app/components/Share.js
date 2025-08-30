@@ -2,18 +2,16 @@ import React from 'react';
 import { FaArrowRight } from 'react-icons/fa';
 
 export default function Share({ paper }) {
-	console.log(paper);
-	const { requestParams, topic } = paper || {};
+	const { id, topic } = paper || {};
 	const handleShare = async () => {
-		if (!requestParams) return;
-
-		const params = new URLSearchParams(requestParams).toString();
-		const shareUrl = `${window.location.origin}/?${params}`;
+		if (!id) return;
+		const params = new URLSearchParams({ id }).toString();
+		const shareUrl = `${window.location.origin}/test?${params}`;
 
 		if (navigator.share) {
 			try {
 				await navigator.share({
-					title: topic || 'Test Results',
+					title: topic || 'Test Topic',
 					text: 'Check out this test!',
 					url: shareUrl,
 				});
@@ -26,7 +24,7 @@ export default function Share({ paper }) {
 			alert('Share link copied to clipboard!');
 		}
 	};
-	if (!requestParams) return null;
+	if (!id) return null;
 
 	return (
 		<button
