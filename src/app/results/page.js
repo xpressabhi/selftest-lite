@@ -54,10 +54,9 @@ function ResultsContent() {
 		// Load test history from localStorage
 		const testHistory =
 			JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-
 		if (testId) {
 			// If testId is provided, try to load from history first
-			const historyEntry = testHistory.find((entry) => entry.id === testId);
+			const historyEntry = testHistory.find((entry) => entry.id == testId); // loose equality to handle string/number mismatch
 
 			if (
 				historyEntry &&

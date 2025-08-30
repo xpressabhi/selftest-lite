@@ -46,7 +46,7 @@ export default function Test() {
 			// this ensures that if user refreshes the page, they don't lose their progress
 			const history =
 				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-			const existingTest = history.find((t) => t.id === id);
+			const existingTest = history.find((t) => t.id == id); // use loose equality to handle string vs number
 			if (existingTest) {
 				setQuestionPaper(existingTest);
 				setLoading(false);
