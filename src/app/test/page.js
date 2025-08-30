@@ -41,16 +41,28 @@ export default function Test() {
 		if (id) {
 			// Fetch the test from the database using the id
 			// For example:
-			fetch(`/api/tests?id=${id}`)
-				.then((res) => res.json())
-				.then((data) => {
-					setQuestionPaper(data.test);
-					setLoading(false);
-				})
-				.catch((err) => {
-					console.error('Error fetching test:', err);
-					setLoading(false);
-				});
+			// check if this id exists in selftest_history localstorage
+			// if it does, load from there instead of fetching
+			// this ensures that if user refreshes the page, they don't lose their progress
+			const history =
+				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
+			const existingTest = history.find((t) => t.id === id);
+			if (existingTest) {
+				setQuestionPaper(existingTest);
+				setLoading(false);
+				return;
+			} else {
+				fetch(`/api/tests?id=${id}`)
+					.then((res) => res.json())
+					.then((data) => {
+						setQuestionPaper(data.test);
+						setLoading(false);
+					})
+					.catch((err) => {
+						console.error('Error fetching test:', err);
+						setLoading(false);
+					});
+			}
 		} else {
 			// Load question paper from localStorage
 			const storedPaper = localStorage.getItem(STORAGE_KEYS.UNSUBMITTED_TEST);
