@@ -13,11 +13,21 @@ export async function POST(request) {
 			testType = 'multiple-choice',
 			numQuestions = 10,
 			difficulty = 'intermediate',
+			language = 'english',
 		} = await request.json();
 
 		if (!topic && selectedTopics.length === 0) {
 			return NextResponse.json(
 				{ error: 'Topic or selected topics are required' },
+				{ status: 400 },
+			);
+		}
+
+		// Validate language
+		const validLanguages = ['english', 'hindi', 'spanish'];
+		if (!validLanguages.includes(language.toLowerCase())) {
+			return NextResponse.json(
+				{ error: 'Invalid language selection' },
 				{ status: 400 },
 			);
 		}
@@ -107,6 +117,7 @@ export async function POST(request) {
 			testType,
 			topicContext,
 			previousQuestions,
+			language,
 		});
 
 		const response = await ai.models.generateContent({

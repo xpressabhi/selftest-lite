@@ -30,6 +30,7 @@ const GenerateTestForm = () => {
 	const [numQuestions, setNumQuestions] = useState(10);
 	const [selectedTopics, setSelectedTopics] = useState([]);
 	const [difficulty, setDifficulty] = useState('intermediate');
+	const [language, setLanguage] = useState('english');
 	const router = useRouter();
 	// Reference to the submit button
 
@@ -59,6 +60,7 @@ const GenerateTestForm = () => {
 				testType,
 				numQuestions,
 				difficulty,
+				language,
 			};
 
 			const response = await fetch('/api/generate', {
@@ -164,6 +166,16 @@ const GenerateTestForm = () => {
 											<option value='advanced'>Advanced</option>
 											<option value='expert'>Expert</option>
 										</Form.Select>
+										<Form.Select
+											size='sm'
+											value={language}
+											onChange={(e) => setLanguage(e.target.value)}
+											style={{ width: 'auto', minWidth: '120px' }}
+										>
+											<option value='english'>English</option>
+											<option value='hindi'>Hindi</option>
+											<option value='spanish'>Spanish</option>
+										</Form.Select>
 									</>
 								)}
 							</div>
@@ -238,6 +250,20 @@ const GenerateTestForm = () => {
 													<option value='intermediate'>Intermediate</option>
 													<option value='advanced'>Advanced</option>
 													<option value='expert'>Expert</option>
+												</Form.Select>
+											</div>
+											<div className='flex-grow-1'>
+												<Form.Label className='small text-muted'>
+													Select Language
+												</Form.Label>
+												<Form.Select
+													size='sm'
+													value={language}
+													onChange={(e) => setLanguage(e.target.value)}
+												>
+													<option value='english'>English</option>
+													<option value='hindi'>Hindi</option>
+													<option value='spanish'>Spanish</option>
 												</Form.Select>
 											</div>
 										</div>
@@ -318,7 +344,7 @@ const GenerateTestForm = () => {
 													</Button>
 												</Form.Label>
 												<div className='d-flex flex-wrap gap-2'>
-													{topicCategories[selectedCategory]?.map((topic) => (
+													{TOPIC_CATEGORIES[selectedCategory]?.map((topic) => (
 														<Button
 															key={topic}
 															variant={

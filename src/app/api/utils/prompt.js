@@ -5,8 +5,11 @@ export function generatePrompt({
 	testType,
 	topicContext,
 	previousQuestions,
+	language,
 }) {
 	return `You are an expert quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
+    
+    LANGUAGE: ${language || 'English'}
     
     OUTPUT FORMAT:
     The response must be a valid JSON object with this exact structure:
