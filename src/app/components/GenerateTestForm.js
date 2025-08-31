@@ -124,7 +124,7 @@ const GenerateTestForm = () => {
 						{error && <Alert variant='danger'>{error}</Alert>}
 
 						<div className='d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 mb-4'>
-							<div className='d-flex gap-2 align-items-center order-1 order-sm-0'>
+							<div className='d-flex flex-wrap gap-2 align-items-center order-1 order-sm-0'>
 								<Button
 									variant='outline-secondary'
 									size='sm'
@@ -140,18 +140,31 @@ const GenerateTestForm = () => {
 								</Button>
 
 								{!showAdvanced && (
-									<Form.Select
-										size='sm'
-										value={numQuestions}
-										onChange={(e) => setNumQuestions(Number(e.target.value))}
-										style={{ width: 'auto', minWidth: '120px' }}
-									>
-										{[5, 10, 15, 20].map((num) => (
-											<option key={num} value={num}>
-												{num} questions
-											</option>
-										))}
-									</Form.Select>
+									<>
+										<Form.Select
+											size='sm'
+											value={numQuestions}
+											onChange={(e) => setNumQuestions(Number(e.target.value))}
+											style={{ width: 'auto', minWidth: '120px' }}
+										>
+											{[5, 10, 15, 20].map((num) => (
+												<option key={num} value={num}>
+													{num} questions
+												</option>
+											))}
+										</Form.Select>
+										<Form.Select
+											size='sm'
+											value={difficulty}
+											onChange={(e) => setDifficulty(e.target.value)}
+											style={{ width: 'auto', minWidth: '120px' }}
+										>
+											<option value='beginner'>Beginner</option>
+											<option value='intermediate'>Intermediate</option>
+											<option value='advanced'>Advanced</option>
+											<option value='expert'>Expert</option>
+										</Form.Select>
+									</>
 								)}
 							</div>
 
