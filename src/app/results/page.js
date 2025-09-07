@@ -359,6 +359,7 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 	const [error, setError] = useState(null);
 	const q = questionPaper.questions[index];
 	const searchParams = useSearchParams();
+	const [explanation, setExplanation] = useState(q.explanation || null);
 
 	const handleExplain = async (e, index) => {
 		e.preventDefault();
@@ -400,13 +401,8 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 				return;
 			}
 
-			const { explanation } = await response.json();
-			setQuestionPaper((prev) => ({
-				...prev,
-				questions: prev.questions.map((q, i) =>
-					i === index ? { ...q, explanation } : q,
-				),
-			}));
+			const res = await response.json();
+			setExplanation(res?.explanation);
 
 			const testId = searchParams.get('id');
 			// Load test history from localStorage
@@ -439,11 +435,11 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 		);
 	}
 
-	if (q.explanation) {
+	if (explanation) {
 		return (
 			<div className='mt-4 pt-4 border-top border-light'>
 				<h4 className='fs-6 mb-2 text-dark'>Explanation:</h4>
-				<MarkdownRenderer>{q.explanation}</MarkdownRenderer>
+				<MarkdownRenderer>{explanation}</MarkdownRenderer>
 			</div>
 		);
 	}
