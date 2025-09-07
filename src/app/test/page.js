@@ -221,10 +221,6 @@ export default function Test() {
 						<FaBookOpen className='text-primary' />
 						{questionPaper.topic}
 					</h1>
-					<div className='d-flex gap-2 mb-3'>
-						<Share paper={questionPaper} />
-						<Print questionPaper={questionPaper} />
-					</div>
 					<form
 						onSubmit={handleSubmit}
 						className='w-100 position-relative'
@@ -391,6 +387,10 @@ export default function Test() {
 							<FaCheckCircle /> Submit Answers
 						</Button>
 					</form>
+					<div className='d-flex gap-2 mb-3'>
+						<Share paper={questionPaper} />
+						<Print questionPaper={questionPaper} />
+					</div>
 				</Container>
 			</div>
 		</>

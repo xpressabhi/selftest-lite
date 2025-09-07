@@ -66,9 +66,6 @@ function ResultsContent() {
 				// If we have a complete history entry with question paper and answers, use it
 				paper = historyEntry.questionPaper;
 				answers = historyEntry.userAnswers;
-				console.log('Loaded test from history:', historyEntry.id);
-			} else {
-				console.log('History entry incomplete or not found for ID:', testId);
 			}
 		} else {
 			// No testId, load from localStorage (most recently completed test)
@@ -78,7 +75,6 @@ function ResultsContent() {
 			if (storedPaper && storedAnswers) {
 				paper = JSON.parse(storedPaper);
 				answers = JSON.parse(storedAnswers);
-				console.log('Loaded test from localStorage');
 			}
 		}
 
@@ -129,8 +125,6 @@ function ResultsContent() {
 					);
 				}
 			}
-		} else {
-			console.log('Could not load test data');
 		}
 
 		setLoading(false);
@@ -142,7 +136,6 @@ function ResultsContent() {
 		localStorage.removeItem(STORAGE_KEYS.QUESTION_PAPER);
 		router.push('/');
 	};
-	console.log('Question Paper:', questionPaper);
 
 	const handleRegenerateQuiz = async () => {
 		if (!questionPaper.requestParams.topic) return;
@@ -226,10 +219,9 @@ function ResultsContent() {
 		<div className='typeform-bg d-flex flex-column min-vh-100'>
 			<div>
 				<div>
-					<h1 className='text-center mb-4 text-dark d-flex align-items-center justify-content-between gap-2'>
-						<FaTrophy className='text-warning fs-1' />
+					<h1 className='text-center mb-4 text-dark'>
+						<FaTrophy className='text-warning fs-1 mx-2' />
 						Test Results
-						<Share paper={questionPaper} />
 					</h1>
 					<div className='d-flex justify-content-center mb-4'>
 						<div
@@ -313,7 +305,7 @@ function ResultsContent() {
 							);
 						})}
 					</Container>
-					<div className='d-flex justify-content-center gap-3 mt-5 mb-5'>
+					<div className='d-flex flex-wrap justify-content-center gap-3 mt-5 mb-5'>
 						<Button
 							variant='primary'
 							size='lg'
@@ -348,6 +340,7 @@ function ResultsContent() {
 							)}
 						</div>
 						<Print questionPaper={questionPaper} />
+						<Share paper={questionPaper} />
 					</div>
 				</div>
 			</div>
