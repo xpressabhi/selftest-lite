@@ -1,5 +1,6 @@
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import CustomNavbar from './components/Navbar';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -47,7 +48,11 @@ export default function RootLayout({ children }) {
 				<Container fluid className='mt-4'>
 					<Row>
 						{/* Spacer for desktop sidebar */}
-						<Col lg={4} className='d-none d-lg-block' style={{ width: '400px' }} />
+						<Col
+							lg={4}
+							className='d-none d-lg-block'
+							style={{ width: '400px' }}
+						/>
 						{/* Main content */}
 						<Col lg={8} className='flex-grow-1'>
 							{children}
@@ -55,6 +60,7 @@ export default function RootLayout({ children }) {
 					</Row>
 				</Container>
 				<Analytics />
+				<SpeedInsights />
 			</body>
 		</html>
 	);
