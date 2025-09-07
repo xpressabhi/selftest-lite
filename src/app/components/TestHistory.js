@@ -56,7 +56,7 @@ export default function TestHistory({ onTestClick }) {
 							<FaTrashAlt /> Clear History
 						</Button>
 					</div>
-					<ListGroup className='shadow-sm rounded-3 overflow-hidden'>
+					<ListGroup className='rounded-3 overflow-hidden'>
 						{testHistory.map((test, index) => (
 							<ListGroup.Item
 								key={test.id || index}
@@ -65,7 +65,7 @@ export default function TestHistory({ onTestClick }) {
 									if (onTestClick) onTestClick();
 									router.push(`/results?id=${test.id}`);
 								}}
-								className='d-flex justify-content-between align-items-center py-3 border-0'
+								className='d-flex justify-content-between align-items-center py-3 mb-2 border-0 shadow-sm'
 							>
 								<div>
 									<h6 className='mb-1 text-primary'>
