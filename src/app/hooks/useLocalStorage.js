@@ -9,6 +9,9 @@ import { useState, useEffect } from 'react';
 function useLocalStorage(key, initialValue) {
 	// State to store the current value
 	const [storedValue, setStoredValue] = useState(() => {
+		if (typeof window === 'undefined') {
+			return initialValue;
+		}
 		try {
 			const item = window.localStorage.getItem(key);
 			return item ? JSON.parse(item) : initialValue;
@@ -20,6 +23,7 @@ function useLocalStorage(key, initialValue) {
 
 	// Update localStorage whenever the state changes
 	useEffect(() => {
+		if (typeof window === 'undefined') return;
 		try {
 			window.localStorage.setItem(key, JSON.stringify(storedValue));
 		} catch (error) {
@@ -29,6 +33,7 @@ function useLocalStorage(key, initialValue) {
 
 	// Listen for changes in localStorage from other tabs or windows
 	useEffect(() => {
+		if (typeof window === 'undefined') return;
 		const handleStorageChange = (event) => {
 			if (event.key === key) {
 				try {
