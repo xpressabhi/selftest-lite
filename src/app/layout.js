@@ -29,6 +29,10 @@ export default function RootLayout({ children }) {
 			<body className={`${geistSans.variable} ${geistMono.variable}`}>
 				<link rel='manifest' href='/manifest.json' />
 				<meta name='theme-color' content='#000000' />
+				<meta
+					name='google-adsense-account'
+					content='ca-pub-7214001284506571'
+				></meta>
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `
