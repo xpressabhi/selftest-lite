@@ -78,6 +78,7 @@ const CustomNavbar = () => {
 						</div>
 						{/* Main navbar content */}
 						<div className='px-3 ms-auto d-flex align-items-center'>
+							{/* Desktop navigation with text */}
 							<nav className='d-none d-xl-flex align-items-center gap-3'>
 								<Link
 									href='/about'
@@ -111,17 +112,33 @@ const CustomNavbar = () => {
 								</Link>
 							</nav>
 
-							{/* Small screen: history toggle + quick menu button */}
-							<div className='d-flex align-items-center'>
+							{/* Mobile navigation with icons only */}
+							<nav className='d-flex d-xl-none align-items-center gap-2'>
+								<Link href='/about' className='nav-link p-2' aria-label='About'>
+									<FaInfoCircle />
+								</Link>
+								<Link href='/blog' className='nav-link p-2' aria-label='Blog'>
+									<FaBook />
+								</Link>
+								<Link href='/faq' className='nav-link p-2' aria-label='FAQ'>
+									<FaQuestionCircle />
+								</Link>
+								<Link
+									href='/contact'
+									className='nav-link p-2'
+									aria-label='Contact'
+								>
+									<FaEnvelope />
+								</Link>
 								<Button
 									variant='link'
-									className='d-xl-none'
+									className='p-2'
 									onClick={handleShow}
 									aria-label='Toggle history'
 								>
 									<FaHistory />
 								</Button>
-							</div>
+							</nav>
 						</div>
 					</div>
 				</Container>
