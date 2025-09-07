@@ -11,40 +11,17 @@ import {
 	FaChevronRight,
 } from 'react-icons/fa';
 import { Button, ListGroup, Badge } from 'react-bootstrap';
+import useLocalStorage from '../hooks/useLocalStorage';
 
 export default function TestHistory({ onTestClick }) {
-	const [testHistory, setTestHistory] = useState([]);
+	const [testHistory, setTestHistory] = useLocalStorage(
+		STORAGE_KEYS.TEST_HISTORY,
+		[],
+	);
 	const router = useRouter();
-
-	const loadTestHistory = () => {
-		try {
-			const history =
-				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-			setTestHistory(history);
-		} catch (error) {
-			console.error('Error loading test history:', error);
-			setTestHistory([]);
-		}
-	};
-
-	// Load history initially and set up storage event listener
-	useEffect(() => {
-		loadTestHistory();
-
-		// Update when localStorage changes
-		const handleStorageChange = (e) => {
-			if (e.key === STORAGE_KEYS.TEST_HISTORY) {
-				loadTestHistory();
-			}
-		};
-
-		window.addEventListener('storage', handleStorageChange);
-		return () => window.removeEventListener('storage', handleStorageChange);
-	}, []);
 
 	const clearHistory = () => {
 		if (window.confirm('Are you sure you want to clear all test history?')) {
-			localStorage.removeItem(STORAGE_KEYS.TEST_HISTORY);
 			setTestHistory([]);
 		}
 	};

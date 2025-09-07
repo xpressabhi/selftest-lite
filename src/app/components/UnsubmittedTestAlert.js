@@ -1,34 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { FaExclamationTriangle, FaPlayCircle } from 'react-icons/fa';
 import { Alert, Button } from 'react-bootstrap';
+import useLocalStorage from '../hooks/useLocalStorage';
 
 export default function UnsubmittedTestAlert() {
-	const [unsubmittedTest, setUnsubmittedTest] = useState(null);
+	const [unsubmittedTest] = useLocalStorage(
+		STORAGE_KEYS.UNSUBMITTED_TEST,
+		null,
+	);
 	const router = useRouter();
-
-	useEffect(() => {
-		// Load initial unsubmitted test
-		const storedUnsubmitted = localStorage.getItem(
-			STORAGE_KEYS.UNSUBMITTED_TEST,
-		);
-		if (storedUnsubmitted) {
-			setUnsubmittedTest(JSON.parse(storedUnsubmitted));
-		}
-
-		// Update when localStorage changes
-		const handleStorageChange = (e) => {
-			if (e.key === STORAGE_KEYS.UNSUBMITTED_TEST) {
-				setUnsubmittedTest(e.newValue ? JSON.parse(e.newValue) : null);
-			}
-		};
-
-		window.addEventListener('storage', handleStorageChange);
-		return () => window.removeEventListener('storage', handleStorageChange);
-	}, []);
 
 	if (!unsubmittedTest) return null;
 

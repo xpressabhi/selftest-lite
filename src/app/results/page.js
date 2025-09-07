@@ -26,6 +26,7 @@ import {
 	Spinner,
 	Alert,
 } from 'react-bootstrap';
+import useLocalStorage from '../hooks/useLocalStorage';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -37,9 +38,19 @@ const MarkdownRenderer = dynamic(
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
 function ResultsContent() {
+	const [testHistory, setTestHistory] = useLocalStorage(
+		STORAGE_KEYS.TEST_HISTORY,
+		[],
+	);
+	const [questionPaper, setQuestionPaper] = useLocalStorage(
+		STORAGE_KEYS.QUESTION_PAPER,
+		null,
+	);
+	const [userAnswers, setUserAnswers] = useLocalStorage(
+		STORAGE_KEYS.USER_ANSWERS,
+		null,
+	);
 	const [score, setScore] = useState(0);
-	const [questionPaper, setQuestionPaper] = useState(null);
-	const [userAnswers, setUserAnswers] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [generationError, setGenerationError] = useState(null);
@@ -48,37 +59,21 @@ function ResultsContent() {
 
 	useEffect(() => {
 		const testId = searchParams.get('id');
-		let paper = null;
-		let answers = null;
+		let paper = questionPaper;
+		let answers = userAnswers;
 
-		// Load test history from localStorage
-		const testHistory =
-			JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
 		if (testId) {
-			// If testId is provided, try to load from history first
-			const historyEntry = testHistory.find((entry) => entry.id == testId); // loose equality to handle string/number mismatch
-
+			const historyEntry = testHistory.find((entry) => entry.id == testId);
 			if (
 				historyEntry &&
 				historyEntry.questionPaper &&
 				historyEntry.userAnswers
 			) {
-				// If we have a complete history entry with question paper and answers, use it
 				paper = historyEntry.questionPaper;
 				answers = historyEntry.userAnswers;
 			}
-		} else {
-			// No testId, load from localStorage (most recently completed test)
-			const storedPaper = localStorage.getItem(STORAGE_KEYS.QUESTION_PAPER);
-			const storedAnswers = localStorage.getItem(STORAGE_KEYS.USER_ANSWERS);
-
-			if (storedPaper && storedAnswers) {
-				paper = JSON.parse(storedPaper);
-				answers = JSON.parse(storedAnswers);
-			}
 		}
 
-		// If we have both paper and answers, calculate score and update state
 		if (paper && answers) {
 			setQuestionPaper(paper);
 			setUserAnswers(answers);
@@ -118,22 +113,24 @@ function ResultsContent() {
 				);
 
 				if (!existingTest) {
-					const updatedHistory = [newTest, ...testHistory].slice(0, 10);
-					localStorage.setItem(
-						STORAGE_KEYS.TEST_HISTORY,
-						JSON.stringify(updatedHistory),
-					);
+					setTestHistory([newTest, ...testHistory].slice(0, 10));
 				}
 			}
 		}
 
 		setLoading(false);
-	}, [searchParams]);
+	}, [
+		searchParams,
+		questionPaper,
+		userAnswers,
+		testHistory,
+		setQuestionPaper,
+		setTestHistory,
+		setUserAnswers,
+	]);
 
 	const handleNewTest = () => {
-		// Clear only the question paper when starting a new test
-		// We don't need to remove USER_ANSWERS as it won't affect new test creation
-		localStorage.removeItem(STORAGE_KEYS.QUESTION_PAPER);
+		setQuestionPaper(null);
 		router.push('/');
 	};
 
@@ -143,10 +140,6 @@ function ResultsContent() {
 		setIsGenerating(true);
 		setGenerationError(null);
 		try {
-			// Get previous tests from history
-			const testHistory = JSON.parse(
-				localStorage.getItem(STORAGE_KEYS.TEST_HISTORY) || '[]',
-			);
 			const response = await fetch('/api/generate', {
 				method: 'POST',
 				headers: {
