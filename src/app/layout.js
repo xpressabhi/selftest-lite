@@ -21,6 +21,14 @@ export const metadata = {
 	title: 'selftest.in',
 	description:
 		'A web application that allows you to generate and take multiple-choice quizzes on any topic you can imagine.',
+	keywords: [
+		'quizzes',
+		'practice tests',
+		'study',
+		'learning',
+		'selftest',
+		'multiple choice',
+	],
 };
 
 export default function RootLayout({ children }) {
@@ -28,7 +36,11 @@ export default function RootLayout({ children }) {
 		<html lang='en'>
 			<body className={`${geistSans.variable} ${geistMono.variable}`}>
 				<link rel='manifest' href='/manifest.json' />
+				<link rel='icon' href='/icons/192.png' />
+				<meta name='viewport' content='width=device-width, initial-scale=1' />
 				<meta name='theme-color' content='#000000' />
+				<meta name='keywords' content={metadata.keywords.join(', ')} />
+				<link rel='canonical' href='https://selftest.in' />
 				<meta
 					name='google-adsense-account'
 					content='ca-pub-7214001284506571'

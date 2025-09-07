@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { FaGraduationCap, FaHistory } from 'react-icons/fa';
+import {
+	FaGraduationCap,
+	FaHistory,
+	FaInfoCircle,
+	FaBook,
+	FaQuestionCircle,
+	FaEnvelope,
+	FaFileAlt,
+} from 'react-icons/fa';
 import dynamic from 'next/dynamic';
 import { Navbar, Container, Offcanvas, Button } from 'react-bootstrap';
 
@@ -69,15 +77,51 @@ const CustomNavbar = () => {
 							</Navbar.Brand>
 						</div>
 						{/* Main navbar content */}
-						<div className='px-3 ms-auto'>
-							<Button
-								variant='link'
-								className='d-xl-none'
-								onClick={handleShow}
-								aria-label='Toggle history'
-							>
-								<FaHistory />
-							</Button>
+						<div className='px-3 ms-auto d-flex align-items-center'>
+							<nav className='d-none d-xl-flex align-items-center gap-3'>
+								<Link
+									href='/about'
+									className='nav-link d-flex align-items-center'
+								>
+									<FaInfoCircle className='me-1' /> About
+								</Link>
+								<Link
+									href='/blog'
+									className='nav-link d-flex align-items-center'
+								>
+									<FaBook className='me-1' /> Blog
+								</Link>
+								<Link
+									href='/faq'
+									className='nav-link d-flex align-items-center'
+								>
+									<FaQuestionCircle className='me-1' /> FAQ
+								</Link>
+								<Link
+									href='/privacy'
+									className='nav-link d-flex align-items-center'
+								>
+									<FaFileAlt className='me-1' /> Privacy
+								</Link>
+								<Link
+									href='/contact'
+									className='nav-link d-flex align-items-center'
+								>
+									<FaEnvelope className='me-1' /> Contact
+								</Link>
+							</nav>
+
+							{/* Small screen: history toggle + quick menu button */}
+							<div className='d-flex align-items-center'>
+								<Button
+									variant='link'
+									className='d-xl-none'
+									onClick={handleShow}
+									aria-label='Toggle history'
+								>
+									<FaHistory />
+								</Button>
+							</div>
 						</div>
 					</div>
 				</Container>

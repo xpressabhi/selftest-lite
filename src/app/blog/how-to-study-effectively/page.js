@@ -1,0 +1,40 @@
+import React from 'react';
+
+export const metadata = {
+	title: 'How to study effectively — selftest.in',
+	description:
+		'Evidence-backed study techniques: active recall, spaced repetition, and how to use selftest.in to improve retention.',
+};
+
+export default function Article() {
+	return (
+		<main className='container py-5'>
+			<h1>How to study effectively</h1>
+			<p>
+				Research shows active recall and spaced repetition are among the most
+				effective study techniques. Using practice tests and low-stakes quizzes
+				helps strengthen memory retrieval and identify gaps in knowledge.
+			</p>
+
+			<h2>Active recall</h2>
+			<p>
+				Active recall is the practice of retrieving information from memory, for
+				example by answering quiz questions without looking at notes.
+				selftest.in is built around this principle.
+			</p>
+
+			<h2>Spaced repetition</h2>
+			<p>
+				Spacing study sessions over time improves long-term retention. Combine
+				generated quizzes with a schedule to get better results.
+			</p>
+
+			<h2>Practical tips</h2>
+			<ol>
+				<li>Generate short quizzes and take them regularly.</li>
+				<li>Review explanations for questions you missed.</li>
+				<li>Keep sessions focused and limit duration to avoid fatigue.</li>
+			</ol>
+		</main>
+	);
+}
