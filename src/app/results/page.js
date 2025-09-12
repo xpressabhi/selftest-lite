@@ -118,6 +118,18 @@ function ResultsContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
+	// Set document title based on loaded question paper topic
+	useEffect(() => {
+		if (typeof document === 'undefined') return;
+		const prev = document.title;
+		if (questionPaper?.topic) {
+			document.title = `${questionPaper.topic} - selftest.in`;
+		}
+		return () => {
+			document.title = prev;
+		};
+	}, [questionPaper?.topic]);
+
 	useEffect(() => {
 		const testId = searchParams.get('id');
 		let paper = questionPaper;

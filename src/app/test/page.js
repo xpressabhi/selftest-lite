@@ -165,6 +165,18 @@ export default function Test() {
 		}
 	}, []);
 
+	// Set document title based on current questionPaper topic
+	useEffect(() => {
+		if (typeof document === 'undefined') return;
+		const prev = document.title;
+		if (questionPaper?.topic) {
+			document.title = `${questionPaper.topic} - selftest.in`;
+		}
+		return () => {
+			document.title = prev;
+		};
+	}, [questionPaper?.topic]);
+
 	const handleAnswerChange = (questionIndex, answer) => {
 		const updatedAnswers = {
 			...answers,
