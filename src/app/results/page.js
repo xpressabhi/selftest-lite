@@ -6,13 +6,6 @@ import { STORAGE_KEYS } from '../constants';
 import dynamic from 'next/dynamic';
 import Share from '../components/Share';
 // Inline minimal icons to avoid react-icons bundle overhead
-const TrophyIcon = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M6 2h12v2a4 4 0 01-4 4H10A4 4 0 016 4V2z' />
-		</svg>
-	</span>
-);
 
 const CheckCircle = () => (
 	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
@@ -285,10 +278,7 @@ function ResultsContent() {
 		<div className='typeform-bg d-flex flex-column min-vh-100'>
 			<div>
 				<div>
-					<h1 className='text-center mb-4 text-dark'>
-						<TrophyIcon className='text-warning fs-1 mx-2' />
-						Test Results
-					</h1>
+					<h1 className='text-center mb-4 text-dark'>Test Results</h1>
 					<div className='d-flex justify-content-center mb-4'>
 						<div
 							className='bg-light rounded-3 shadow-sm p-4 text-center'
