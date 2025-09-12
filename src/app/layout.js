@@ -37,31 +37,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
 	return (
 		<html lang='en'>
-			<head>
-				{/* Preload Bootstrap on the client: create the link element via an inline script so we don't pass event handlers in a Server Component */}
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `
-							(function(){
-								var href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css';
-								var l = document.createElement('link');
-								l.rel = 'preload';
-								l.as = 'style';
-								l.href = href;
-								l.onload = function(){ this.rel = 'stylesheet'; this.onload = null; };
-								document.head.appendChild(l);
-							})();
-						`,
-					}}
+			<body className={`${geistSans.variable} ${geistMono.variable}`}>
+				{/* Load bootstrap from CDN to avoid bundling the CSS into client JS */}
+				<link
+					rel='stylesheet'
+					href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css'
 				/>
-				{/* Fallback for users with JavaScript disabled */}
-				<noscript>
-					<link
-						rel='stylesheet'
-						href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css'
-					/>
-				</noscript>
-
 				<link rel='manifest' href='/manifest.json' />
 				<link rel='icon' href='/icons/192.png' />
 				<meta name='viewport' content='width=device-width, initial-scale=1' />
@@ -72,8 +53,6 @@ export default function RootLayout({ children }) {
 					name='google-adsense-account'
 					content='ca-pub-7214001284506571'
 				></meta>
-			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable}`}>
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `
@@ -89,7 +68,6 @@ export default function RootLayout({ children }) {
 						`,
 					}}
 				/>
-
 				{/* Navbar is client-heavy; load it dynamically on the client to defer its JS */}
 				{/* placeholder keeps layout height until client loads the full navbar */}
 				{/* client Navbar (dynamically loaded) */}
