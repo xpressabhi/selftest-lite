@@ -15,20 +15,6 @@ const Icon = ({ children, className }) => (
 	</span>
 );
 
-const GraduationCap = (props) => (
-	<Icon {...props}>
-		<svg
-			viewBox='0 0 64 64'
-			width='18'
-			height='18'
-			fill='currentColor'
-			aria-hidden
-		>
-			<path d='M32 10L2 24l30 14 30-14L32 10zm0 24L12 24v10l20 9 20-9V24L32 34z' />
-		</svg>
-	</Icon>
-);
-
 const Info = (props) => (
 	<Icon {...props}>
 		<svg
@@ -157,7 +143,6 @@ const CustomNavbar = () => {
 								href='/'
 								className='d-flex align-items-center px-3'
 							>
-								<GraduationCap className='me-2' />
 								<span>selftest.in</span>
 							</Navbar.Brand>
 						</div>
