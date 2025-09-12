@@ -2,19 +2,7 @@ import './globals.css';
 import dynamic from 'next/dynamic';
 import ClientNavbarWrapper from './components/ClientNavbarWrapper';
 import LazyMetrics from './components/LazyMetrics';
-import { Geist, Geist_Mono } from 'next/font/google';
-import 'katex/dist/katex.min.css';
 import { Container, Row, Col } from 'react-bootstrap';
-
-const geistSans = Geist({
-	variable: '--font-geist-sans',
-	subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-	variable: '--font-geist-mono',
-	subsets: ['latin'],
-});
 
 // ClientNavbarWrapper and LazyMetrics are client components that will
 // perform dynamic imports on the client. Importing them here is allowed
@@ -37,7 +25,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
 	return (
 		<html lang='en'>
-			<body className={`${geistSans.variable} ${geistMono.variable}`}>
+			<body>
 				{/* Load bootstrap from CDN to avoid bundling the CSS into client JS */}
 				<link
 					rel='stylesheet'
