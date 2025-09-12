@@ -5,14 +5,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
-// small inline sparkles icon to avoid importing react-icons
-const Sparkles = () => (
-	<span style={{ display: 'inline-flex', width: 18, height: 18 }} aria-hidden>
-		<svg viewBox='0 0 24 24' width='18' height='18' fill='currentColor'>
-			<path d='M12 2l1.5 3.5L17 7l-3.5 1.5L12 12 10.5 8.5 7 7l3.5-1.5L12 2zM4 14l1 2.5L8 18l-1.5 1.5L4 21l-.5-2.5L2 17l1.5-1.5L4 14z' />
-		</svg>
-	</span>
-);
+import Icon from './Icon';
 import {
 	Container,
 	Form,
@@ -192,7 +185,7 @@ const GenerateTestForm = () => {
 								type='submit'
 								disabled={loading || !topic.trim()}
 							>
-								<Sparkles />{' '}
+								<Icon name='sparkles' />{' '}
 								{loading ? (
 									<div className='d-flex align-items-center justify-content-center gap-2'>
 										<Spinner as='span' animation='border' size='sm' />

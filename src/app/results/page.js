@@ -5,71 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import dynamic from 'next/dynamic';
 import Share from '../components/Share';
-// Inline minimal icons to avoid react-icons bundle overhead
-
-const CheckCircle = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14l-4-4 1.5-1.5L11 12.5 17.5 6 19 7.5 11 15z' />
-		</svg>
-	</span>
-);
-
-const TimesCircle = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm4.3 13.3L13.3 12l3-3-1.4-1.4-3 3-3-3L7.5 9l3 3-3 3L8.9 16l3-3 3 3 1.4-1.4z' />
-		</svg>
-	</span>
-);
-
-const SpinnerIcon = () => (
-	<span style={{ display: 'inline-flex', width: 18, height: 18 }}>
-		<svg viewBox='0 0 50 50' width='18' height='18' fill='currentColor'>
-			<path d='M25 5a20 20 0 100 40 20 20 0 000-40zm0 4a16 16 0 110 32 16 16 0 010-32z' />
-		</svg>
-	</span>
-);
-
-const ExclamationCircle = () => (
-	<span style={{ display: 'inline-flex', width: 48, height: 48 }}>
-		<svg viewBox='0 0 24 24' width='48' height='48' fill='currentColor'>
-			<path d='M11 9h2v6h-2V9zm0-4h2v2h-2V5zm1-3a10 10 0 100 20 10 10 0 000-20z' />
-		</svg>
-	</span>
-);
-
-const PencilIcon = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z' />
-		</svg>
-	</span>
-);
-
-const PlusCircle = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z' />
-		</svg>
-	</span>
-);
-
-const PrintIcon = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M19 8H5V3h14v5zm-1 10H6v-6h12v6zM8 5h8v2H8V5z' />
-		</svg>
-	</span>
-);
-
-const SyncIcon = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M12 6V4l4 4-4 4V8a4 4 0 100 8h1v2h-1a6 6 0 110-12z' />
-		</svg>
-	</span>
-);
+import Icon from '../components/Icon';
 import Print from '../components/Print';
 import {
 	Container,
@@ -261,7 +197,7 @@ function ResultsContent() {
 	if (!questionPaper || !userAnswers) {
 		return (
 			<Container className='text-center mt-5'>
-				<ExclamationCircle className='text-warning mb-3' />
+				<Icon name='exclamationCircle' className='text-warning mb-3' />
 				<h1>No results found!</h1>
 				<p>Please take a test first.</p>
 				<Button
@@ -269,7 +205,7 @@ function ResultsContent() {
 					className='d-inline-flex align-items-center gap-2'
 					onClick={() => router.push('/test')}
 				>
-					<PencilIcon /> Take a Test
+					<Icon name='pencil' /> Take a Test
 				</Button>
 			</Container>
 		);
@@ -296,7 +232,7 @@ function ResultsContent() {
 
 					<Container className='mt-4 mb-4'>
 						<h2 className='text-center mb-4 fs-4 fw-bold text-dark d-flex align-items-center justify-content-center gap-2'>
-							<CheckCircle className='text-success fs-3' />
+							<Icon name='checkCircle' className='text-success fs-3' />
 							Review Your Answers
 						</h2>
 						<p className='lead text-center'>{questionPaper.topic || 'Test'}</p>
@@ -338,10 +274,16 @@ function ResultsContent() {
 													)}
 												</div>
 												{isCorrect && answered && (
-													<CheckCircle className='text-success ms-2' />
+													<Icon
+														name='checkCircle'
+														className='text-success ms-2'
+													/>
 												)}
 												{!isCorrect && answered && (
-													<TimesCircle className='text-danger ms-2' />
+													<Icon
+														name='timesCircle'
+														className='text-danger ms-2'
+													/>
 												)}
 											</Card.Text>
 											<Card.Text as='div' className='mb-0 text-secondary'>
@@ -368,7 +310,7 @@ function ResultsContent() {
 							className='d-flex align-items-center gap-2'
 							onClick={handleNewTest}
 						>
-							<PlusCircle /> Start New Quiz
+							<Icon name='plusCircle' /> Start New Quiz
 						</Button>
 						<div className='d-flex flex-column align-items-center'>
 							<Button
@@ -383,14 +325,15 @@ function ResultsContent() {
 										: 'Generate a similar quiz'
 								}
 							>
-								<SyncIcon className={`${isGenerating ? 'spinner' : ''}`} />
-								{isGenerating
-									? 'Generating Quiz...'
-									: 'Regenerate Similar Quiz'}
+								<Icon
+									name='repeat1'
+									className={`${isGenerating ? 'spinner' : ''}`}
+								/>
+								{isGenerating ? 'Generating Quiz...' : 'Similar Quiz'}
 							</Button>
 							{generationError && (
 								<Alert variant='danger' className='mt-2 small'>
-									<ExclamationCircle className='me-1' />
+									<Icon name='exclamationCircle' className='me-1' />
 									{generationError}
 								</Alert>
 							)}
@@ -514,7 +457,7 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 			</Button>
 			{error && (
 				<Alert variant='danger' className='mt-3'>
-					<ExclamationCircle className='me-2' />
+					<Icon name='exclamationCircle' className='me-2' />
 					{error}
 				</Alert>
 			)}

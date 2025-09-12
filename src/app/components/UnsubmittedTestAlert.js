@@ -6,21 +6,8 @@ import { Alert, Button } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 // small inline icons
-const Exclamation = () => (
-	<span style={{ display: 'inline-flex', width: 20, height: 20 }} aria-hidden>
-		<svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'>
-			<path d='M1 21h22L12 2 1 21zm13-3h-4v-2h4v2zm0-4h-4v-4h4v4z' />
-		</svg>
-	</span>
-);
 
-const Play = () => (
-	<span style={{ display: 'inline-flex', width: 16, height: 16 }} aria-hidden>
-		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
-			<path d='M8 5v14l11-7z' />
-		</svg>
-	</span>
-);
+import Icon from './Icon';
 
 export default function UnsubmittedTestAlert() {
 	const [unsubmittedTest] = useLocalStorage(
@@ -38,7 +25,7 @@ export default function UnsubmittedTestAlert() {
 			style={{ maxWidth: '800px' }}
 		>
 			<div className='d-flex align-items-center'>
-				<Exclamation className='text-warning me-3 fs-4' />
+				<Icon name='exclamation' className='text-warning me-3 fs-4' />
 				<div>
 					<h6 className='mb-0 fw-bold'>Unsubmitted Test</h6>
 					<small className='text-muted'>
@@ -53,7 +40,7 @@ export default function UnsubmittedTestAlert() {
 				className='d-flex align-items-center gap-2 fw-bold'
 				onClick={() => router.push('/test')}
 			>
-				<Play /> Continue Test
+				<Icon name='play' /> Continue Test
 			</Button>
 		</Alert>
 	);

@@ -1,0 +1,197 @@
+import React, { useLayoutEffect, useRef, useState } from 'react';
+
+// Centralized SVG icon registry. Keep all original path definitions here.
+const ICONS = {
+	history: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z' />
+			<path d='M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z' />
+			<path d='M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5' />
+		</svg>
+	),
+	trash: (props) => (
+		<svg viewBox='0 0 16 16' fill='currentColor' aria-hidden {...props}>
+			<path d='M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0' />
+		</svg>
+	),
+	clock: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm1 11h-4V7h2v4h2v2z' />
+		</svg>
+	),
+	trophy: (props) => (
+		<svg viewBox='0 0 16 16' fill='currentColor' aria-hidden {...props}>
+			<path d='M2.5.5A.5.5 0 0 1 3 0h10a.5.5 0 0 1 .5.5q0 .807-.034 1.536a3 3 0 1 1-1.133 5.89c-.79 1.865-1.878 2.777-2.833 3.011v2.173l1.425.356c.194.048.377.135.537.255L13.3 15.1a.5.5 0 0 1-.3.9H3a.5.5 0 0 1-.3-.9l1.838-1.379c.16-.12.343-.207.537-.255L6.5 13.11v-2.173c-.955-.234-2.043-1.146-2.833-3.012a3 3 0 1 1-1.132-5.89A33 33 0 0 1 2.5.5m.099 2.54a2 2 0 0 0 .72 3.935c-.333-1.05-.588-2.346-.72-3.935m10.083 3.935a2 2 0 0 0 .72-3.935c-.133 1.59-.388 2.885-.72 3.935' />
+		</svg>
+	),
+	chevronRight: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M9 6l6 6-6 6' />
+		</svg>
+	),
+	sparkles: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M12 2l1.5 3.5L17 7l-3.5 1.5L12 12 10.5 8.5 7 7l3.5-1.5L12 2zM4 14l1 2.5L8 18l-1.5 1.5L4 21l-.5-2.5L2 17l1.5-1.5L4 14z' />
+		</svg>
+	),
+	info: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z' />
+		</svg>
+	),
+	book: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M6 4v16a2 2 0 002 2h10V4H8a2 2 0 00-2 0zM20 4v16h2V4h-2z' />
+		</svg>
+	),
+	question: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm1.07-7.75c-.9.92-1.07 1.36-1.07 3h-2v-.5c0-1 .25-1.5 1.17-2.41.73-.74 1.33-1.24 1.33-2.09 0-1.1-.9-2-2-2s-2 .9-2 2H9c0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.2-.5 1.92-1.93 3.25z' />
+		</svg>
+	),
+	envelope: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm3.436-.586L16 11.801V4.697z' />
+		</svg>
+	),
+	file: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z' />
+		</svg>
+	),
+	print: (props) => (
+		<svg fill='currentColor' viewBox='0 0 16 16' aria-hidden {...props}>
+			<path d='M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1' />
+			<path d='M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1' />
+		</svg>
+	),
+	close: (props) => (
+		<svg viewBox='0 0 24 24' fill='none' aria-hidden {...props}>
+			<path
+				d='M18 6L6 18M6 6l12 12'
+				stroke='currentColor'
+				strokeWidth='2'
+				strokeLinecap='round'
+				strokeLinejoin='round'
+			/>
+		</svg>
+	),
+	share: (props) => (
+		<svg fill='currentColor' viewBox='0 0 16 16' aria-hidden {...props}>
+			<path d='M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.5 2.5 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5' />
+		</svg>
+	),
+	play: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M8 5v14l11-7z' />
+		</svg>
+	),
+	exclamation: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M1 21h22L12 2 1 21zm13-3h-4v-2h4v2zm0-4h-4v-4h4v4z' />
+		</svg>
+	),
+	checkCircle: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14l-4-4 1.5-1.5L11 12.5 17.5 6 19 7.5 11 15z' />
+		</svg>
+	),
+	timesCircle: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm4.3 13.3L13.3 12l3-3-1.4-1.4-3 3-3-3L7.5 9l3 3-3 3L8.9 16l3-3 3 3 1.4-1.4z' />
+		</svg>
+	),
+	spinner: (props) => (
+		<svg viewBox='0 0 50 50' fill='currentColor' aria-hidden {...props}>
+			<path d='M25 5a20 20 0 100 40 20 20 0 000-40zm0 4a16 16 0 110 32 16 16 0 010-32z' />
+		</svg>
+	),
+	exclamationCircle: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M11 9h2v6h-2V9zm0-4h2v2h-2V5zm1-3a10 10 0 100 20 10 10 0 000-20z' />
+		</svg>
+	),
+	pencil: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z' />
+		</svg>
+	),
+	plusCircle: (props) => (
+		<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden {...props}>
+			<path d='M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z' />
+		</svg>
+	),
+	repeat1: (props) => (
+		<svg fill='currentColor' viewBox='0 0 16 16' aria-hidden {...props}>
+			<path d='M11 4v1.466a.25.25 0 0 0 .41.192l2.36-1.966a.25.25 0 0 0 0-.384l-2.36-1.966a.25.25 0 0 0-.41.192V3H5a5 5 0 0 0-4.48 7.223.5.5 0 0 0 .896-.446A4 4 0 0 1 5 4zm4.48 1.777a.5.5 0 0 0-.896.446A4 4 0 0 1 11 12H5.001v-1.466a.25.25 0 0 0-.41-.192l-2.36 1.966a.25.25 0 0 0 0 .384l2.36 1.966a.25.25 0 0 0 .41-.192V13h6a5 5 0 0 0 4.48-7.223Z' />
+			<path d='M9 5.5a.5.5 0 0 0-.854-.354l-1.75 1.75a.5.5 0 1 0 .708.708L8 6.707V10.5a.5.5 0 0 0 1 0z' />
+		</svg>
+	),
+};
+
+function useMeasuredSize(ref, overrideSize) {
+	const [sizePx, setSizePx] = useState(null);
+
+	useLayoutEffect(() => {
+		if (overrideSize) {
+			// if override provided (number or css string), prefer that
+			if (typeof overrideSize === 'number') {
+				setSizePx(overrideSize);
+			} else if (typeof overrideSize === 'string') {
+				if (overrideSize.endsWith('px')) setSizePx(parseFloat(overrideSize));
+				else if (overrideSize.endsWith('em')) {
+					const fontSize =
+						parseFloat(
+							getComputedStyle(ref.current || document.body).fontSize,
+						) || 16;
+					setSizePx(parseFloat(overrideSize) * fontSize);
+				}
+			}
+			return;
+		}
+
+		const node = ref.current;
+		if (!node) return;
+
+		const parent = node.parentElement || node;
+		const cs = getComputedStyle(parent);
+		let lineHeight = cs.lineHeight;
+		let px = null;
+		if (lineHeight && lineHeight !== 'normal') {
+			px = parseFloat(lineHeight);
+		}
+		if (!px || Number.isNaN(px)) {
+			// fallback to font-size
+			px = parseFloat(cs.fontSize) || 16;
+		}
+		setSizePx(px);
+	}, [ref, overrideSize]);
+
+	return sizePx;
+}
+
+export default function Icon({ name, className, style, size, ...rest }) {
+	const containerRef = useRef(null);
+	const measured = useMeasuredSize(containerRef, size);
+
+	const iconFactory = ICONS[name];
+	if (!iconFactory) return null;
+
+	// pass explicit pixel sizes to svg so it matches line-height precisely
+	const svgProps = {};
+	if (measured) {
+		svgProps.width = measured;
+		svgProps.height = measured;
+	}
+
+	return (
+		<span
+			ref={containerRef}
+			className={className}
+			style={{ display: 'inline-flex', lineHeight: '1', ...style }}
+			{...rest}
+		>
+			{iconFactory(svgProps)}
+		</span>
+	);
+}
