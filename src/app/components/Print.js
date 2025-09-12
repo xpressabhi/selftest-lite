@@ -1,6 +1,26 @@
 import React, { useState } from 'react';
-import { FaPrint } from 'react-icons/fa';
-import { IoMdClose } from 'react-icons/io';
+// inline print and close icons
+const PrintIcon = () => (
+	<span style={{ display: 'inline-flex', width: 16, height: 16 }} aria-hidden>
+		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
+			<path d='M19 8H5V3h14v5zm-1 10H6v-6h12v6zM8 5h8v2H8V5z' />
+		</svg>
+	</span>
+);
+
+const CloseIcon = () => (
+	<span style={{ display: 'inline-flex', width: 16, height: 16 }} aria-hidden>
+		<svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'>
+			<path
+				d='M18 6L6 18M6 6l12 12'
+				stroke='currentColor'
+				strokeWidth='2'
+				strokeLinecap='round'
+				strokeLinejoin='round'
+			/>
+		</svg>
+	</span>
+);
 import dynamic from 'next/dynamic';
 
 const MarkdownRenderer = dynamic(
@@ -164,7 +184,7 @@ export default function Print({ questionPaper }) {
 				className='btn btn-outline-secondary d-flex align-items-center gap-2'
 				onClick={handlePrint}
 			>
-				<FaPrint /> Print Test
+				<PrintIcon /> Print Test
 			</button>
 		);
 	}
@@ -177,14 +197,14 @@ export default function Print({ questionPaper }) {
 					className='close-button btn btn-outline-secondary position-fixed top-0 end-0 m-3 d-flex align-items-center gap-2'
 					onClick={() => setShowPreview(false)}
 				>
-					<IoMdClose /> Close
+					<CloseIcon /> Close
 				</button>
 				<button
 					type='button'
 					className='btn btn-primary position-fixed top-0 start-0 m-3 d-flex align-items-center gap-2'
 					onClick={handlePrintContent}
 				>
-					<FaPrint /> Print
+					<PrintIcon /> Print
 				</button>
 				<PrintableContent questionPaper={questionPaper} />
 			</div>

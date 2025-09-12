@@ -13,14 +13,95 @@ const MarkdownRenderer = dynamic(
 	},
 );
 
-import {
-	FaExclamationCircle,
-	FaHome,
-	FaBookOpen,
-	FaCheckCircle,
-	FaCircle,
-	FaDotCircle,
-} from 'react-icons/fa';
+// inline icons
+const ExclamationCircle = () => (
+	<span style={{ display: 'inline-flex', width: 48, height: 48 }}>
+		<svg
+			viewBox='0 0 24 24'
+			width='48'
+			height='48'
+			fill='currentColor'
+			aria-hidden
+		>
+			<path d='M11 9h2v6h-2V9zm0-4h2v2h-2V5zm1-3a10 10 0 100 20 10 10 0 000-20z' />
+		</svg>
+	</span>
+);
+
+const HomeIcon = () => (
+	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
+		<svg
+			viewBox='0 0 24 24'
+			width='16'
+			height='16'
+			fill='currentColor'
+			aria-hidden
+		>
+			<path d='M12 3l9 8h-3v9h-12v-9H3l9-8z' />
+		</svg>
+	</span>
+);
+
+const BookOpen = () => (
+	<span style={{ display: 'inline-flex', width: 16, height: 16 }}>
+		<svg
+			viewBox='0 0 24 24'
+			width='16'
+			height='16'
+			fill='currentColor'
+			aria-hidden
+		>
+			<path d='M21 4H7a2 2 0 00-2 2v12a2 2 0 002 2h14V4zM5 6H3v14a2 2 0 002-2V6z' />
+		</svg>
+	</span>
+);
+
+const CheckCircle = () => (
+	<span style={{ display: 'inline-flex', width: 14, height: 14 }}>
+		<svg
+			viewBox='0 0 24 24'
+			width='14'
+			height='14'
+			fill='currentColor'
+			aria-hidden
+		>
+			<path d='M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14l-4-4 1.5-1.5L11 12.5 17.5 6 19 7.5 11 15z' />
+		</svg>
+	</span>
+);
+
+const Circle = ({ filled }) => (
+	<span style={{ display: 'inline-flex', width: 14, height: 14 }}>
+		{filled ? (
+			<svg
+				viewBox='0 0 24 24'
+				width='14'
+				height='14'
+				fill='currentColor'
+				aria-hidden
+			>
+				<circle cx='12' cy='12' r='8' />
+			</svg>
+		) : (
+			<svg
+				viewBox='0 0 24 24'
+				width='14'
+				height='14'
+				fill='currentColor'
+				aria-hidden
+			>
+				<circle
+					cx='12'
+					cy='12'
+					r='8'
+					stroke='currentColor'
+					strokeWidth='2'
+					fill='none'
+				/>
+			</svg>
+		)}
+	</span>
+);
 import Share from '../components/Share';
 import Print from '../components/Print';
 import { Container, Button, Spinner } from 'react-bootstrap';
@@ -195,7 +276,7 @@ export default function Test() {
 	if (!questionPaper) {
 		return (
 			<Container className='text-center mt-5'>
-				<FaExclamationCircle className='text-warning mb-3' size={48} />
+				<ExclamationCircle className='text-warning mb-3' />
 				<h1>No test found!</h1>
 				<p>Please generate a test first.</p>
 				<Button
@@ -203,7 +284,7 @@ export default function Test() {
 					className='d-flex align-items-center gap-2 mx-auto'
 					onClick={() => router.push('/')}
 				>
-					<FaHome /> Go to Home
+					<HomeIcon /> Go to Home
 				</Button>
 			</Container>
 		);
@@ -218,7 +299,7 @@ export default function Test() {
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
 				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
 					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
-						<FaBookOpen className='text-primary' />
+						<BookOpen className='text-primary' />
 						{questionPaper.topic}
 					</h1>
 					<form
@@ -339,9 +420,9 @@ export default function Test() {
 									>
 										<div className='me-2'>
 											{answers[index] === option ? (
-												<FaDotCircle className='text-primary' size={24} />
+												<Circle filled />
 											) : (
-												<FaCircle className='text-muted' size={24} />
+												<Circle filled={false} />
 											)}
 										</div>
 										<div
@@ -384,7 +465,7 @@ export default function Test() {
 								marginTop: '0.5rem',
 							}}
 						>
-							<FaCheckCircle /> Submit Answers
+							<CheckCircle /> Submit Answers
 						</Button>
 					</form>
 					<div className='d-flex gap-2 mb-3'>

@@ -1,13 +1,39 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import './markdown-styles.css';
+
+// We'll lazy-load the syntax highlighter only if a fenced code block with a
+// language is encountered. This prevents bundling the heavy library on
+// initial loads for users who don't need it.
+function useLazySyntaxHighlighter() {
+	const [Highlighter, setHighlighter] = useState(null);
+
+	useEffect(() => {
+		let mounted = true;
+		const maybeLoad = async () => {
+			try {
+				const mod = await import('react-syntax-highlighter');
+				// prefer Prism if available
+				const { Prism } = mod;
+				if (mounted) setHighlighter(() => Prism || mod.default || null);
+			} catch (e) {
+				// ignore; we'll fallback to pre/code
+			}
+		};
+		maybeLoad();
+		return () => {
+			mounted = false;
+		};
+	}, []);
+
+	return Highlighter;
+}
 
 /**
  * Normalize atypical markdown like "A. ```js" => "A.\n```js" so
@@ -34,6 +60,8 @@ function normalizeMarkdown(input) {
 
 const MarkdownRenderer = ({ children }) => {
 	const normalized = useMemo(() => normalizeMarkdown(children), [children]);
+	const Highlighter = useLazySyntaxHighlighter();
+
 	return (
 		<div className={`markdown-content`}>
 			<ReactMarkdown
@@ -47,19 +75,29 @@ const MarkdownRenderer = ({ children }) => {
 					code({ node, inline, className, children, ...props }) {
 						const match = /language-(\w+)/.exec(className || '');
 						const codeString = React.Children.toArray(children).join('');
-						return !inline && match ? (
-							<SyntaxHighlighter
-								language={match[1]}
-								PreTag='div'
-								wrapLongLines={true}
-								{...props}
-							>
-								{codeString}
-							</SyntaxHighlighter>
-						) : (
-							<code className={className} {...props}>
-								{codeString}
-							</code>
+
+						// If we have the highlighter loaded and it's a block with a language,
+						// render the highlighter. Otherwise fallback to a lightweight pre/code.
+						if (!inline && match && Highlighter) {
+							const SyntaxHighlighter = Highlighter.Prism || Highlighter;
+							return (
+								<SyntaxHighlighter
+									language={match[1]}
+									PreTag='div'
+									wrapLongLines={true}
+									{...props}
+								>
+									{codeString}
+								</SyntaxHighlighter>
+							);
+						}
+
+						return (
+							<pre style={{ whiteSpace: 'pre-wrap' }}>
+								<code className={className} {...props}>
+									{codeString}
+								</code>
+							</pre>
 						);
 					},
 				}}

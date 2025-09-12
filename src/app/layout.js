@@ -1,9 +1,8 @@
 import './globals.css';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
+import dynamic from 'next/dynamic';
+import ClientNavbarWrapper from './components/ClientNavbarWrapper';
+import LazyMetrics from './components/LazyMetrics';
 import { Geist, Geist_Mono } from 'next/font/google';
-import CustomNavbar from './components/Navbar';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import 'katex/dist/katex.min.css';
 import { Container, Row, Col } from 'react-bootstrap';
 
@@ -16,6 +15,10 @@ const geistMono = Geist_Mono({
 	variable: '--font-geist-mono',
 	subsets: ['latin'],
 });
+
+// ClientNavbarWrapper and LazyMetrics are client components that will
+// perform dynamic imports on the client. Importing them here is allowed
+// because they are simple components (no ssr:false in this file).
 
 export const metadata = {
 	title: 'selftest.in',
@@ -35,6 +38,11 @@ export default function RootLayout({ children }) {
 	return (
 		<html lang='en'>
 			<body className={`${geistSans.variable} ${geistMono.variable}`}>
+				{/* Load bootstrap from CDN to avoid bundling the CSS into client JS */}
+				<link
+					rel='stylesheet'
+					href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css'
+				/>
 				<link rel='manifest' href='/manifest.json' />
 				<link rel='icon' href='/icons/192.png' />
 				<meta name='viewport' content='width=device-width, initial-scale=1' />
@@ -60,7 +68,10 @@ export default function RootLayout({ children }) {
 						`,
 					}}
 				/>
-				<CustomNavbar />
+				{/* Navbar is client-heavy; load it dynamically on the client to defer its JS */}
+				{/* placeholder keeps layout height until client loads the full navbar */}
+				{/* client Navbar (dynamically loaded) */}
+				<ClientNavbarWrapper />
 				<Container fluid className='mt-4'>
 					<Row>
 						{/* Spacer for desktop sidebar */}
@@ -75,8 +86,7 @@ export default function RootLayout({ children }) {
 						</Col>
 					</Row>
 				</Container>
-				<Analytics />
-				<SpeedInsights />
+				<LazyMetrics />
 			</body>
 		</html>
 	);
