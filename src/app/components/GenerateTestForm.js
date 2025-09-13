@@ -413,8 +413,8 @@ const GenerateTestForm = () => {
 			</Card>
 
 			<p className='text-center text-muted mt-4 small'>
-				💡 Tip: Be as specific as possible. Try “Advanced React Hooks” for depth
-				or “World History” for breadth.
+				<Icon name='lightbulb' /> Tip: Be as specific as possible. Try “Advanced
+				React Hooks” for depth or “World History” for breadth.
 			</p>
 		</Container>
 	);
