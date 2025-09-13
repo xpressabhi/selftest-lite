@@ -12,7 +12,7 @@ export default function Share({ paper }) {
 			try {
 				await navigator.share({
 					title: topic || 'Test Topic',
-					text: topic + 'Check out this test!',
+					text: topic + ' - Check out this test!',
 					url: shareUrl,
 				});
 			} catch (err) {

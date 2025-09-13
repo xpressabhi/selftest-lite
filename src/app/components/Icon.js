@@ -158,30 +158,34 @@ export default function Icon({ name, className, style, size, ...rest }) {
 	const iconFactory = ICONS[name];
 	if (!iconFactory) return null;
 
-    // Default behavior: inherit size and color from parent.
-    // - If `size` is not provided, use '1em' so the SVG scales with font-size.
-    // - If `size` is a number, treat it as pixels (e.g. 16 -> '16px').
-    // - If `size` is a string, pass it through (e.g. '24px', '1.5em', '2rem').
-    let svgSize = null;
-    if (size == null) {
-        svgSize = '1em';
-    } else if (typeof size === 'number') {
-        svgSize = `${size}px`;
-    } else if (typeof size === 'string') {
-        svgSize = size;
-    }
+	// Default behavior: inherit size and color from parent.
+	// - If `size` is not provided, use '1em' so the SVG scales with font-size.
+	// - If `size` is a number, treat it as pixels (e.g. 16 -> '16px').
+	// - If `size` is a string, pass it through (e.g. '24px', '1.5em', '2rem').
+	let svgSize = null;
+	if (size == null) {
+		svgSize = '1em';
+	} else if (typeof size === 'number') {
+		svgSize = `${size}px`;
+	} else if (typeof size === 'string') {
+		svgSize = size;
+	}
 
-    const svgProps = {};
-    if (svgSize) {
-        svgProps.width = svgSize;
-        svgProps.height = svgSize;
-    }
+	const svgProps = {};
+	if (svgSize) {
+		svgProps.width = svgSize;
+		svgProps.height = svgSize;
+	}
 
-    // Icons use `fill="currentColor"` (and `stroke="currentColor"` where needed)
-    // so they inherit color from the parent by default.
-    return (
-        <span className={className} style={{ display: 'inline-flex', lineHeight: '1', ...style }} {...rest}>
-            {iconFactory(svgProps)}
-        </span>
-    );
+	// Icons use `fill="currentColor"` (and `stroke="currentColor"` where needed)
+	// so they inherit color from the parent by default.
+	return (
+		<span
+			className={className}
+			style={{ display: 'inline-flex', lineHeight: '1', ...style }}
+			{...rest}
+		>
+			{iconFactory(svgProps)}
+		</span>
+	);
 }
