@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import Icon from './Icon';
@@ -33,6 +33,8 @@ const GenerateTestForm = () => {
 	const [language, setLanguage] = useState('english');
 	const router = useRouter();
 	const [startTime, setStartTime] = useState(null);
+	const [elapsed, setElapsed] = useState(0);
+	const timerRef = useRef(null);
 	// Reference to the submit button
 
 	const [selectedCategory, setSelectedCategory] = useState('');
@@ -72,7 +74,6 @@ const GenerateTestForm = () => {
 				},
 				body: JSON.stringify({ ...requestParams, previousTests: testHistory }),
 			});
-			setStartTime(null);
 
 			if (!response.ok) {
 				const errorData = await response.json();
@@ -102,9 +103,36 @@ const GenerateTestForm = () => {
 		} catch (err) {
 			setError(err.message);
 		} finally {
+			// stop loading and clear timer/startTime
 			setLoading(false);
+			setStartTime(null);
 		}
 	};
+
+	useEffect(() => {
+		// start or stop the elapsed timer whenever startTime changes
+		if (startTime) {
+			setElapsed(Date.now() - startTime);
+			// clear any existing timer
+			if (timerRef.current) clearInterval(timerRef.current);
+			timerRef.current = setInterval(() => {
+				setElapsed(Date.now() - startTime);
+			}, 100);
+			return () => {
+				if (timerRef.current) {
+					clearInterval(timerRef.current);
+					timerRef.current = null;
+				}
+			};
+		} else {
+			// cleared
+			setElapsed(0);
+			if (timerRef.current) {
+				clearInterval(timerRef.current);
+				timerRef.current = null;
+			}
+		}
+	}, [startTime]);
 
 	return (
 		<Container className='py-3 d-flex flex-column align-items-center justify-content-center'>
@@ -192,7 +220,10 @@ const GenerateTestForm = () => {
 									{loading ? (
 										<div className='d-flex align-items-center justify-content-center gap-2'>
 											<Spinner as='span' animation='border' size='sm' />
-											<span>Generating...</span>
+											<span>
+												Generating... {Math.max(0, (elapsed / 1000).toFixed(1))}
+												s
+											</span>
 										</div>
 									) : (
 										'Generate Quiz'
