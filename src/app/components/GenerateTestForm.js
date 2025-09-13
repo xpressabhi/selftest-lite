@@ -221,8 +221,10 @@ const GenerateTestForm = () => {
 										<div className='d-flex align-items-center justify-content-center gap-2'>
 											<Spinner as='span' animation='border' size='sm' />
 											<span>
-												Generating... {Math.max(0, (elapsed / 1000).toFixed(1))}
-												s
+												Generating...{' '}
+												<span style={{ width: '24px' }}>
+													{Math.max(0, (elapsed / 1000).toFixed(1))}s
+												</span>
 											</span>
 										</div>
 									) : (
