@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React from 'react';
 
 // Centralized SVG icon registry. Keep all original path definitions here.
 const ICONS = {
@@ -154,69 +154,34 @@ const ICONS = {
 	),
 };
 
-function useMeasuredSize(ref, overrideSize) {
-	const [sizePx, setSizePx] = useState(null);
-
-	useLayoutEffect(() => {
-		if (overrideSize) {
-			// if override provided (number or css string), prefer that
-			if (typeof overrideSize === 'number') {
-				setSizePx(overrideSize);
-			} else if (typeof overrideSize === 'string') {
-				if (overrideSize.endsWith('px')) setSizePx(parseFloat(overrideSize));
-				else if (overrideSize.endsWith('em')) {
-					const fontSize =
-						parseFloat(
-							getComputedStyle(ref.current || document.body).fontSize,
-						) || 16;
-					setSizePx(parseFloat(overrideSize) * fontSize);
-				}
-			}
-			return;
-		}
-
-		const node = ref.current;
-		if (!node) return;
-
-		const parent = node.parentElement || node;
-		const cs = getComputedStyle(parent);
-		let lineHeight = cs.lineHeight;
-		let px = null;
-		if (lineHeight && lineHeight !== 'normal') {
-			px = parseFloat(lineHeight);
-		}
-		if (!px || Number.isNaN(px)) {
-			// fallback to font-size
-			px = parseFloat(cs.fontSize) || 16;
-		}
-		setSizePx(px);
-	}, [ref, overrideSize]);
-
-	return sizePx;
-}
-
 export default function Icon({ name, className, style, size, ...rest }) {
-	const containerRef = useRef(null);
-	const measured = useMeasuredSize(containerRef, size);
-
 	const iconFactory = ICONS[name];
 	if (!iconFactory) return null;
 
-	// pass explicit pixel sizes to svg so it matches line-height precisely
-	const svgProps = {};
-	if (measured) {
-		svgProps.width = measured;
-		svgProps.height = measured;
-	}
+    // Default behavior: inherit size and color from parent.
+    // - If `size` is not provided, use '1em' so the SVG scales with font-size.
+    // - If `size` is a number, treat it as pixels (e.g. 16 -> '16px').
+    // - If `size` is a string, pass it through (e.g. '24px', '1.5em', '2rem').
+    let svgSize = null;
+    if (size == null) {
+        svgSize = '1em';
+    } else if (typeof size === 'number') {
+        svgSize = `${size}px`;
+    } else if (typeof size === 'string') {
+        svgSize = size;
+    }
 
-	return (
-		<span
-			ref={containerRef}
-			className={className}
-			style={{ display: 'inline-flex', lineHeight: '1', ...style }}
-			{...rest}
-		>
-			{iconFactory(svgProps)}
-		</span>
-	);
+    const svgProps = {};
+    if (svgSize) {
+        svgProps.width = svgSize;
+        svgProps.height = svgSize;
+    }
+
+    // Icons use `fill="currentColor"` (and `stroke="currentColor"` where needed)
+    // so they inherit color from the parent by default.
+    return (
+        <span className={className} style={{ display: 'inline-flex', lineHeight: '1', ...style }} {...rest}>
+            {iconFactory(svgProps)}
+        </span>
+    );
 }
