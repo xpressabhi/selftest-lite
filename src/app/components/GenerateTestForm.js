@@ -120,7 +120,6 @@ const GenerateTestForm = () => {
 								value={topic}
 								onChange={(e) => setTopic(e.target.value)}
 								placeholder='What do you want to test yourself on today? (e.g., "Spanish travel phrases", "Marvel movie trivia", or "System Design basics")'
-								autoFocus
 							/>
 						</Form.Group>
 						{error && <Alert variant='danger'>{error}</Alert>}
@@ -185,15 +184,17 @@ const GenerateTestForm = () => {
 								type='submit'
 								disabled={loading || !topic.trim()}
 							>
-								<Icon name='sparkles' />{' '}
-								{loading ? (
-									<div className='d-flex align-items-center justify-content-center gap-2'>
-										<Spinner as='span' animation='border' size='sm' />
-										<span>Generating...</span>
-									</div>
-								) : (
-									'Generate Quiz'
-								)}
+								<div className='d-flex align-items-center gap-1'>
+									<Icon name='sparkles' />{' '}
+									{loading ? (
+										<div className='d-flex align-items-center justify-content-center gap-2'>
+											<Spinner as='span' animation='border' size='sm' />
+											<span>Generating...</span>
+										</div>
+									) : (
+										'Generate Quiz'
+									)}
+								</div>
 							</Button>
 						</div>
 
