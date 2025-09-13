@@ -374,6 +374,7 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 		const topic = questionPaper.topic
 			? questionPaper.topic
 			: 'General Knowledge';
+		const language = questionPaper.requestParams?.language || 'english';
 		const question = questionPaper.questions[index].question;
 		const answer = questionPaper.questions[index].answer;
 
@@ -385,6 +386,7 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 				},
 				body: JSON.stringify({
 					topic,
+					language,
 					question,
 					answer,
 				}),

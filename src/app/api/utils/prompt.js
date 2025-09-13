@@ -145,10 +145,16 @@ export function generatePrompt({
         `;
 }
 
-export function generateExplanationPrompt({ topic, question, answer }) {
+export function generateExplanationPrompt({
+	topic,
+	question,
+	answer,
+	language,
+}) {
 	return `
       Please generate accurate explanantion to show why this answer is correct.
       ${topic} is the topic of the question.
+      Explanation Language: ${language || 'English'}
       Question: ${question}
       Answer: ${answer}
 

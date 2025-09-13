@@ -25,7 +25,7 @@ export async function POST(request) {
 			);
 		}
 
-		const { topic, question, answer } = await request.json();
+		const { topic, question, answer, language } = await request.json();
 		const apiKey = process.env.GEMINI_API_KEY;
 
 		if (!topic || !question || !answer) {
@@ -44,7 +44,12 @@ export async function POST(request) {
 
 		const ai = new GoogleGenAI(apiKey);
 
-		const prompt = generateExplanationPrompt({ topic, question, answer });
+		const prompt = generateExplanationPrompt({
+			topic,
+			question,
+			answer,
+			language,
+		});
 
 		const response = await ai.models.generateContent({
 			model: 'gemini-2.5-flash-lite',
