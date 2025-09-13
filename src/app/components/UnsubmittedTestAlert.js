@@ -4,9 +4,6 @@ import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { Alert, Button } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
-
-// small inline icons
-
 import Icon from './Icon';
 
 export default function UnsubmittedTestAlert() {
