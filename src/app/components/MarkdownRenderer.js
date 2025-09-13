@@ -70,7 +70,9 @@ const MarkdownRenderer = ({ children }) => {
 				skipHtml={false}
 				components={{
 					p({ children }) {
-						return <p style={{ display: 'inline', margin: 0 }}>{children}</p>;
+						return (
+							<div style={{ display: 'inline', margin: 0 }}>{children}</div>
+						);
 					},
 					code({ node, inline, className, children, ...props }) {
 						const match = /language-(\w+)/.exec(className || '');
