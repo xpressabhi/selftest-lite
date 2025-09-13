@@ -32,6 +32,7 @@ const GenerateTestForm = () => {
 	const [difficulty, setDifficulty] = useState('intermediate');
 	const [language, setLanguage] = useState('english');
 	const router = useRouter();
+	const [startTime, setStartTime] = useState(null);
 	// Reference to the submit button
 
 	const [selectedCategory, setSelectedCategory] = useState('');
@@ -52,6 +53,7 @@ const GenerateTestForm = () => {
 			const testHistory = JSON.parse(
 				localStorage.getItem(STORAGE_KEYS.TEST_HISTORY) || '[]',
 			);
+			setStartTime(Date.now());
 
 			const requestParams = {
 				topic,
@@ -70,6 +72,7 @@ const GenerateTestForm = () => {
 				},
 				body: JSON.stringify({ ...requestParams, previousTests: testHistory }),
 			});
+			setStartTime(null);
 
 			if (!response.ok) {
 				const errorData = await response.json();
@@ -106,7 +109,7 @@ const GenerateTestForm = () => {
 	return (
 		<Container className='py-3 d-flex flex-column align-items-center justify-content-center'>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
-				Create Your Personalized Quiz
+				Create Personalized Quiz
 			</h1>
 
 			<Card className='w-100 border-0' style={{ maxWidth: '720px' }}>
@@ -378,10 +381,7 @@ const GenerateTestForm = () => {
 
 			<p className='text-center text-muted mt-4 small'>
 				💡 Tip: Be as specific as possible. Try “Advanced React Hooks” for depth
-				or “World History” for breadth. <br />
-				💡 सुझाव: और अधिक स्पष्ट लिखें। जैसे “Advanced React Hooks” गहराई के लिए
-				या “World History” व्यापकता के लिए। <br />✨ Add “Hindi medium” in your
-				topic to generate quizzes in Hindi.
+				or “World History” for breadth.
 			</p>
 		</Container>
 	);
