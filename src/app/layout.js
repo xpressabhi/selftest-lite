@@ -1,8 +1,8 @@
 import './globals.css';
-import dynamic from 'next/dynamic';
 import ClientNavbarWrapper from './components/ClientNavbarWrapper';
-import LazyMetrics from './components/LazyMetrics';
 import { Container, Row, Col } from 'react-bootstrap';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 // ClientNavbarWrapper and LazyMetrics are client components that will
 // perform dynamic imports on the client. Importing them here is allowed
@@ -74,7 +74,8 @@ export default function RootLayout({ children }) {
 						</Col>
 					</Row>
 				</Container>
-				<LazyMetrics />
+				<Analytics />
+				<SpeedInsights />
 			</body>
 		</html>
 	);
