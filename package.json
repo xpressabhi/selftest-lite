@@ -10,19 +10,19 @@
 		"analyze": "ANALYZE=true next build"
 	},
 	"dependencies": {
-		"@google/genai": "1.15.0",
+		"@google/genai": "1.20.0",
 		"@neondatabase/serverless": "^1.0.1",
 		"@vercel/analytics": "^1.5.0",
 		"@vercel/speed-insights": "^1.2.0",
 		"bootstrap": "^5.3.8",
 		"katex": "^0.16.22",
-		"next": "15.5.0",
+		"next": "15.5.3",
 		"next-pwa": "^5.6.0",
 		"react": "19.1.1",
 		"react-bootstrap": "^2.10.10",
 		"react-dom": "19.1.1",
 		"react-markdown": "^10.1.0",
-		"react-syntax-highlighter": "^15.6.5",
+		"react-syntax-highlighter": "^15.6.6",
 		"rehype-katex": "^7.0.1",
 		"rehype-raw": "^7.0.0",
 		"remark-gfm": "^4.0.1",
@@ -30,8 +30,8 @@
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3",
-		"@next/bundle-analyzer": "^15.5.2",
+		"@next/bundle-analyzer": "^15.5.3",
 		"eslint": "^9",
-		"eslint-config-next": "15.5.0"
+		"eslint-config-next": "15.5.3"
 	}
 }
