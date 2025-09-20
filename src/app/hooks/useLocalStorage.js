@@ -52,7 +52,18 @@ function useLocalStorage(key, initialValue) {
 		};
 	}, [key, initialValue]);
 
-	return [storedValue, setStoredValue];
+	const updateHistory = (updatedPaper) => {
+		const updatedHistory = storedValue.filter((t) => t.id !== updatedPaper.id);
+		updatedHistory.unshift({
+			...updatedPaper,
+			timestamp: Date.now(),
+		});
+		setStoredValue(
+			updatedHistory.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100),
+		); // keep only latest 20 entries
+	};
+
+	return [storedValue, setStoredValue, updateHistory];
 }
 
 export default useLocalStorage;

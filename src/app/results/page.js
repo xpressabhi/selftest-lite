@@ -7,15 +7,7 @@ import dynamic from 'next/dynamic';
 import Share from '../components/Share';
 import Icon from '../components/Icon';
 import Print from '../components/Print';
-import {
-	Container,
-	Row,
-	Col,
-	Card,
-	Button,
-	Spinner,
-	Alert,
-} from 'react-bootstrap';
+import { Container, Card, Button, Spinner, Alert } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const MarkdownRenderer = dynamic(
@@ -28,24 +20,16 @@ const MarkdownRenderer = dynamic(
 
 // Component that uses useSearchParams (must be wrapped in Suspense)
 function ResultsContent() {
-	const [testHistory, setTestHistory] = useLocalStorage(
+	const searchParams = useSearchParams();
+	const testId = searchParams.get('id');
+	const [testHistory, _, updateHistory] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
 		[],
 	);
-	const [questionPaper, setQuestionPaper] = useLocalStorage(
-		STORAGE_KEYS.QUESTION_PAPER,
-		null,
-	);
-	const [userAnswers, setUserAnswers] = useLocalStorage(
-		STORAGE_KEYS.USER_ANSWERS,
-		null,
-	);
-	const [score, setScore] = useState(0);
-	const [loading, setLoading] = useState(true);
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [generationError, setGenerationError] = useState(null);
+	const [questionPaper, setQuestionPaper] = useState();
 	const router = useRouter();
-	const searchParams = useSearchParams();
 
 	// Set document title based on loaded question paper topic
 	useEffect(() => {
@@ -60,76 +44,19 @@ function ResultsContent() {
 	}, [questionPaper?.topic]);
 
 	useEffect(() => {
-		const testId = searchParams.get('id');
-		let paper = questionPaper;
-		let answers = userAnswers;
-
 		if (testId) {
 			const historyEntry = testHistory.find((entry) => entry.id == testId);
-			if (
-				historyEntry &&
-				historyEntry.questionPaper &&
-				historyEntry.userAnswers
-			) {
-				paper = historyEntry.questionPaper;
-				answers = historyEntry.userAnswers;
+			if (historyEntry) {
+				if (!historyEntry.userAnswers) {
+					router.push('/test?id=' + historyEntry.id);
+				} else {
+					setQuestionPaper(historyEntry);
+				}
+			} else {
+				router.push('/test?id=' + testId);
 			}
 		}
-
-		if (paper && answers) {
-			setQuestionPaper(paper);
-			setUserAnswers(answers);
-
-			// Convert answers to array if it's an object (from test page)
-			const answersArray = Array.isArray(answers)
-				? answers
-				: Object.values(answers);
-
-			let calculatedScore = 0;
-			paper.questions.forEach((q, index) => {
-				if (answersArray[index] === q.answer) {
-					calculatedScore++;
-				}
-			});
-			setScore(calculatedScore);
-
-			// If this is a newly submitted test (no testId in URL), save it to history
-			if (!testId) {
-				const newTest = {
-					id: paper.id || 'NO ID',
-					topic: paper.topic || 'Untitled Test',
-					timestamp: new Date().getTime(),
-					score: calculatedScore,
-					totalQuestions: paper.questions.length,
-					questionPaper: paper, // Save full question paper
-					userAnswers: answers, // Save user's answers
-				};
-
-				// Check if this exact test was already saved in the last minute
-				const oneMinuteAgo = Date.now() - 60000; // 1 minute ago
-				const existingTest = testHistory.find(
-					(test) =>
-						test.topic === newTest.topic &&
-						test.score === newTest.score &&
-						test.timestamp > oneMinuteAgo,
-				);
-
-				if (!existingTest) {
-					setTestHistory([newTest, ...testHistory].slice(0, 10));
-				}
-			}
-		}
-
-		setLoading(false);
-	}, [
-		searchParams,
-		questionPaper,
-		userAnswers,
-		testHistory,
-		setQuestionPaper,
-		setTestHistory,
-		setUserAnswers,
-	]);
+	}, [testId, testHistory, router]);
 
 	const handleNewTest = () => {
 		setQuestionPaper(null);
@@ -171,12 +98,8 @@ function ResultsContent() {
 
 			const newQuestionPaper = await response.json();
 			newQuestionPaper.requestParams = questionPaper.requestParams;
-
-			localStorage.setItem(
-				STORAGE_KEYS.UNSUBMITTED_TEST,
-				JSON.stringify(newQuestionPaper),
-			);
-			router.push('/test');
+			updateHistory(newQuestionPaper);
+			router.push('/test?id=' + newQuestionPaper.id);
 		} catch (error) {
 			console.error('Error regenerating quiz:', error);
 			setGenerationError(error.message);
@@ -184,17 +107,10 @@ function ResultsContent() {
 			setIsGenerating(false);
 		}
 	};
+	const { score, topic, userAnswers, totalQuestions, questions } =
+		questionPaper || {};
 
-	if (loading) {
-		return (
-			<Container className='text-center mt-5'>
-				<Spinner animation='border' className='mb-2' />
-				<div>Calculating results...</div>
-			</Container>
-		);
-	}
-
-	if (!questionPaper || !userAnswers) {
+	if (!questionPaper) {
 		return (
 			<Container className='text-center mt-5'>
 				<Icon name='exclamationCircle' className='text-warning mb-3' />
@@ -203,13 +119,31 @@ function ResultsContent() {
 				<Button
 					variant='primary'
 					className='d-inline-flex align-items-center gap-2'
-					onClick={() => router.push('/test')}
+					onClick={() => router.push('/')}
 				>
-					<Icon name='pencil' /> Take a Test
+					<Icon name='pencil' /> Create a Test
 				</Button>
 			</Container>
 		);
 	}
+
+	if (questionPaper && !userAnswers) {
+		return (
+			<Container className='text-center mt-5'>
+				<Icon name='exclamationCircle' className='text-warning mb-3' />
+				<h1>{topic}</h1>
+				<p>Please take a test first.</p>
+				<Button
+					variant='primary'
+					className='d-inline-flex align-items-center gap-2'
+					onClick={() => router.push('/test?id=' + questionPaper.id)}
+				>
+					<Icon name='pencil' /> Attemp Test
+				</Button>
+			</Container>
+		);
+	}
+
 	return (
 		<div className='typeform-bg d-flex flex-column min-vh-100'>
 			<div>
@@ -224,7 +158,7 @@ function ResultsContent() {
 							}}
 						>
 							<h2 className='fs-1 fw-bold mb-1 text-dark'>
-								{score} / {questionPaper.questions.length}
+								{score} / {totalQuestions}
 							</h2>
 							<p className='fs-5 mb-0 text-secondary'>Score</p>
 						</div>
@@ -235,8 +169,8 @@ function ResultsContent() {
 							<Icon name='checkCircle' className='text-success fs-3' />
 							Review Your Answers
 						</h2>
-						<p className='lead text-center'>{questionPaper.topic || 'Test'}</p>
-						{questionPaper.questions.map((q, index) => {
+						<p className='lead text-center'>{topic || 'Test'}</p>
+						{questions.map((q, index) => {
 							const userAnswer = Array.isArray(userAnswers)
 								? userAnswers[index]
 								: userAnswers[index.toString()];
@@ -296,7 +230,7 @@ function ResultsContent() {
 										<Explanation
 											questionPaper={questionPaper}
 											index={index}
-											setQuestionPaper={setQuestionPaper}
+											updateHistory={updateHistory}
 										/>
 									</Card.Body>
 								</Card>
@@ -312,32 +246,34 @@ function ResultsContent() {
 						>
 							<Icon name='plusCircle' /> Start New Quiz
 						</Button>
-						<div className='d-flex flex-column align-items-center'>
-							<Button
-								variant='secondary'
-								size='lg'
-								className='d-flex align-items-center gap-2'
-								onClick={handleRegenerateQuiz}
-								disabled={!questionPaper?.requestParams?.topic || isGenerating}
-								title={
-									!questionPaper?.requestParams?.topic
-										? "Can't regenerate this quiz"
-										: 'Generate a similar quiz'
-								}
-							>
-								<Icon
-									name='repeat1'
-									className={`${isGenerating ? 'spinner' : ''}`}
-								/>
-								{isGenerating ? 'Generating Quiz...' : 'Similar Quiz'}
-							</Button>
-							{generationError && (
-								<Alert variant='danger' className='mt-2 small'>
-									<Icon name='exclamationCircle' className='me-1' />
-									{generationError}
-								</Alert>
-							)}
-						</div>
+						{questionPaper?.requestParams?.topic && (
+							<div className='d-flex flex-column align-items-center'>
+								<Button
+									variant='secondary'
+									size='lg'
+									className='d-flex align-items-center gap-2'
+									onClick={handleRegenerateQuiz}
+									disabled={isGenerating}
+									title={
+										!questionPaper?.requestParams?.topic
+											? "Can't regenerate this quiz"
+											: 'Generate a similar quiz'
+									}
+								>
+									<Icon
+										name='repeat1'
+										className={`${isGenerating ? 'spinner' : ''}`}
+									/>
+									{isGenerating ? 'Generating Quiz...' : 'Similar Quiz'}
+								</Button>
+								{generationError && (
+									<Alert variant='danger' className='mt-2 small'>
+										<Icon name='exclamationCircle' className='me-1' />
+										{generationError}
+									</Alert>
+								)}
+							</div>
+						)}
 						<Print questionPaper={questionPaper} />
 						<Share paper={questionPaper} />
 					</div>
@@ -360,7 +296,7 @@ export default function Results() {
 	);
 }
 
-function Explanation({ questionPaper, index, setQuestionPaper }) {
+function Explanation({ questionPaper, index, updateHistory }) {
 	const [loadingExplanation, setLoadingExplanation] = useState(false);
 	const [error, setError] = useState(null);
 	const q = questionPaper.questions[index];
@@ -411,22 +347,8 @@ function Explanation({ questionPaper, index, setQuestionPaper }) {
 
 			const res = await response.json();
 			setExplanation(res?.explanation);
-
-			const testId = searchParams.get('id');
-			// Load test history from localStorage
-			const testHistory =
-				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-			if (testId) {
-				// Update existing history entry
-				const historyEntry = testHistory.find((entry) => entry.id === testId);
-				if (historyEntry) {
-					historyEntry.questionPaper.questions[index].explanation = explanation;
-					localStorage.setItem(
-						STORAGE_KEYS.TEST_HISTORY,
-						JSON.stringify(testHistory),
-					);
-				}
-			}
+			questionPaper.questions[index].explanation = res?.explanation;
+			updateHistory(questionPaper);
 		} catch (err) {
 			setError(err.message);
 		} finally {

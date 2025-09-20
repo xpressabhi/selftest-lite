@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import useLocalStorage from '../hooks/useLocalStorage';
 import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import Icon from './Icon';
 import {
@@ -22,6 +23,11 @@ import {
  * Allows users to input a topic and submit to generate a test.
  */
 const GenerateTestForm = () => {
+	const [testHistory, _, updateHistory] = useLocalStorage(
+		STORAGE_KEYS.TEST_HISTORY,
+		[],
+	);
+
 	const [topic, setTopic] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
@@ -52,9 +58,6 @@ const GenerateTestForm = () => {
 
 		try {
 			// Get previous tests from history
-			const testHistory = JSON.parse(
-				localStorage.getItem(STORAGE_KEYS.TEST_HISTORY) || '[]',
-			);
 			setStartTime(Date.now());
 
 			const requestParams = {
@@ -94,12 +97,8 @@ const GenerateTestForm = () => {
 
 			const questionPaper = await response.json();
 			questionPaper.requestParams = requestParams;
-
-			localStorage.setItem(
-				STORAGE_KEYS.UNSUBMITTED_TEST,
-				JSON.stringify(questionPaper),
-			);
-			router.push('/test');
+			updateHistory(questionPaper);
+			router.push('/test?id=' + questionPaper.id);
 		} catch (err) {
 			setError(err.message);
 		} finally {

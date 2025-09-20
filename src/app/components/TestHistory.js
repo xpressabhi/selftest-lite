@@ -61,42 +61,56 @@ export default function TestHistory({ onTestClick }) {
 				</Button>
 			</div>
 			<ListGroup className='rounded-3 overflow-hidden'>
-				{testHistory.map((test, index) => (
-					<ListGroup.Item
-						key={test.id || index}
-						action
-						onClick={() => {
-							if (onTestClick) onTestClick();
-							router.push(`/results?id=${test.id}`);
-						}}
-						className='d-flex justify-content-between align-items-center py-3 mb-2 border-0 shadow-sm'
-					>
-						<div>
-							<h6 className='mb-1 text-primary'>
-								{test.topic || 'Untitled Test'}
-							</h6>
-							<small className='text-muted d-flex align-items-center gap-1'>
-								<Icon name='clock' /> {formatDateTime(test.timestamp)}
-							</small>
-						</div>
-						<div className='d-flex align-items-center gap-2'>
-							<Badge
-								pill
-								bg={
-									test.score / test.totalQuestions >= 0.7
-										? 'success'
-										: test.score / test.totalQuestions >= 0.4
-										? 'warning'
-										: 'danger'
-								}
-								className='fs-6 px-3 py-2 d-flex align-items-center gap-1'
-							>
-								<Icon name='trophy' /> {test.score}/{test.totalQuestions}
-							</Badge>
-							<Icon name='chevronRight' className='text-muted' />
-						</div>
-					</ListGroup.Item>
-				))}
+				{testHistory
+					.sort((a, b) => b.timestamp - a.timestamp)
+					.map((test, index) => (
+						<ListGroup.Item
+							key={test.id || index}
+							action
+							onClick={() => {
+								if (onTestClick) onTestClick();
+								router.push(
+									test.timestamp
+										? `/results?id=${test.id}`
+										: `/test?id=${test.id}`,
+								);
+							}}
+							className='d-flex justify-content-between align-items-center py-3 mb-2 border-0 shadow-sm'
+						>
+							<div>
+								<h6 className='mb-1 text-primary'>
+									{test.topic || 'Untitled Test'}
+								</h6>
+								{test.timestamp && (
+									<small className='text-muted d-flex align-items-center gap-1'>
+										<Icon name='clock' /> {formatDateTime(test.timestamp)}
+									</small>
+								)}
+							</div>
+							{test.userAnswers ? (
+								<div className='d-flex align-items-center gap-2'>
+									<Badge
+										pill
+										bg={
+											test.score / test.totalQuestions >= 0.7
+												? 'success'
+												: test.score / test.totalQuestions >= 0.4
+												? 'warning'
+												: 'danger'
+										}
+										className='fs-6 px-3 py-2 d-flex align-items-center gap-1'
+									>
+										<Icon name='trophy' /> {test.score}/{test.totalQuestions}
+									</Badge>
+									<Icon name='chevronRight' className='text-muted' />
+								</div>
+							) : (
+								<Badge pill className='fs-6'>
+									NEW
+								</Badge>
+							)}
+						</ListGroup.Item>
+					))}
 			</ListGroup>
 		</div>
 	);

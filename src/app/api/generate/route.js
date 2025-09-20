@@ -170,7 +170,7 @@ export async function POST(request) {
 			}
 			// Store the test in the database
 			const storeResponse = await fetch(
-				`${request.headers.get('origin')}/api/tests`,
+				`${request.headers.get('origin')}/api/test`,
 				{
 					method: 'POST',
 					headers: {

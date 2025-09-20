@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
+import useLocalStorage from '../hooks/useLocalStorage';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -16,44 +17,54 @@ const MarkdownRenderer = dynamic(
 
 import Share from '../components/Share';
 import Print from '../components/Print';
-import { Container, Button, Spinner } from 'react-bootstrap';
+import { Container, Button, Spinner, Alert } from 'react-bootstrap';
 
 export default function Test() {
+	const [testHistory, _, updateHistory] = useLocalStorage(
+		STORAGE_KEYS.TEST_HISTORY,
+		[],
+	);
 	const [questionPaper, setQuestionPaper] = useState(null);
 	const [answers, setAnswers] = useState({});
 	const [loading, setLoading] = useState(true);
+
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [fadeState, setFadeState] = useState('fade-in'); // 'fade-in' or 'fade-out'
 	const router = useRouter();
 	const timeoutRef = useRef(null);
 	const touchStartXRef = useRef(null);
+	const searchParams = useSearchParams();
+	const testId = searchParams.get('id');
+	const [error, setError] = useState(null);
 
 	useEffect(() => {
-		const params = new URLSearchParams(window.location.search);
-		const id = params.get('id');
-		if (id) {
-			// Fetch the test from the database using the id
-			// For example:
-			// check if this id exists in selftest_history localstorage
-			// if it does, load from there instead of fetching
-			// this ensures that if user refreshes the page, they don't lose their progress
-			const history =
-				JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-			const existingTest = history.find((t) => t.id == id); // use loose equality to handle string vs number
+		if (testId) {
+			const existingTest = testHistory.find((t) => t.id == testId); // use loose equality to handle string vs number
 			if (existingTest) {
-				setQuestionPaper(existingTest.questionPaper);
-				setLoading(false);
+				if (existingTest.userAnswers) {
+					router.push('/results?id=' + existingTest.id);
+				} else {
+					setQuestionPaper(existingTest);
+					setLoading(false);
+				}
 				return;
 			} else {
-				fetch(`/api/tests?id=${id}`)
+				fetch(`/api/test?id=${testId}`)
 					.then((res) => res.json())
 					.then((data) => {
-						setQuestionPaper(data.test);
+						if (data.error) {
+							setError(data.error);
+							setLoading(false);
+							return;
+						}
+						const paper = { ...data.test, id: data.id };
+						updateHistory(paper);
+						setQuestionPaper(paper);
 						setLoading(false);
 					})
 					.catch((err) => {
-						console.error('Error fetching test:', err);
 						setLoading(false);
+						setError('Failed to load test. Please try again. ' + err.message);
 					});
 			}
 		} else {
@@ -75,7 +86,7 @@ export default function Test() {
 
 			setLoading(false);
 		}
-	}, []);
+	}, [testId]);
 
 	// Set document title based on current questionPaper topic
 	useEffect(() => {
@@ -117,18 +128,28 @@ export default function Test() {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
-		// Save user answers to localStorage for results page
-		localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(answers));
-		// Save the question paper to localStorage for the results page
-		localStorage.setItem(
-			STORAGE_KEYS.QUESTION_PAPER,
-			JSON.stringify(questionPaper),
-		);
-		// Remove unsubmitted test and its answers
-		localStorage.removeItem(STORAGE_KEYS.UNSUBMITTED_TEST);
-		localStorage.removeItem(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`);
-		// Navigate to results page
-		router.push('/results');
+		const calculatedScore =
+			questionPaper.questions.filter((q, index) => answers[index] === q.answer)
+				.length || 0;
+		const updatedPaper = {
+			...questionPaper,
+			userAnswers: answers,
+			timestamp: Date.now(),
+			totalQuestions: questionPaper.questions.length,
+			score: calculatedScore,
+		};
+		let history =
+			JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
+		const existingTest = history.find((t) => t.id == testId); // use loose equality to handle string vs number
+		if (existingTest) {
+			history = history.map((t) => (t.id == testId ? updatedPaper : t));
+		} else {
+			// New test submission
+			history.push(updatedPaper);
+		}
+		localStorage.setItem(STORAGE_KEYS.TEST_HISTORY, JSON.stringify(history));
+		setQuestionPaper(updatedPaper);
+		router.push('/results?id=' + questionPaper.id);
 	};
 
 	// Clean up timeout on unmount
@@ -200,9 +221,12 @@ export default function Test() {
 	if (!questionPaper) {
 		return (
 			<Container className='text-center mt-5'>
-				<Icon name='exclamationCircle' className='text-warning mb-3' />
-				<h1>No test found!</h1>
-				<p>Please generate a test first.</p>
+				<h1>
+					<Icon name='exclamationCircle' className='text-warning mb-3' /> No
+					test found!
+				</h1>
+				<p>Please generate a new test.</p>
+				{error && <Alert variant='danger'>{error}</Alert>}
 				<Button
 					variant='primary'
 					className='d-flex align-items-center gap-2 mx-auto'
