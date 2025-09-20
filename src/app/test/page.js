@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
@@ -19,7 +19,7 @@ import Share from '../components/Share';
 import Print from '../components/Print';
 import { Container, Button, Spinner, Alert } from 'react-bootstrap';
 
-export default function Test() {
+function TestContent() {
 	const searchParams = useSearchParams();
 	const testId = searchParams.get('id');
 	const [testHistory, _, updateHistory] = useLocalStorage(
@@ -398,5 +398,18 @@ export default function Test() {
 				</Container>
 			</div>
 		</>
+	);
+}
+
+// Main component that wraps ResultsContent in Suspense
+export default function Test() {
+	return (
+		<Suspense
+			fallback={
+				<Container className='text-center mt-5'>Loading test...</Container>
+			}
+		>
+			<TestContent />
+		</Suspense>
 	);
 }
