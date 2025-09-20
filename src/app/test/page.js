@@ -20,12 +20,17 @@ import Print from '../components/Print';
 import { Container, Button, Spinner, Alert } from 'react-bootstrap';
 
 export default function Test() {
+	const searchParams = useSearchParams();
+	const testId = searchParams.get('id');
 	const [testHistory, _, updateHistory] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
 		[],
 	);
+	const [answers, setAnswers, __, cleanUpAnswers] = useLocalStorage(
+		`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers_${testId}`,
+		{},
+	);
 	const [questionPaper, setQuestionPaper] = useState(null);
-	const [answers, setAnswers] = useState({});
 	const [loading, setLoading] = useState(true);
 
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -33,8 +38,6 @@ export default function Test() {
 	const router = useRouter();
 	const timeoutRef = useRef(null);
 	const touchStartXRef = useRef(null);
-	const searchParams = useSearchParams();
-	const testId = searchParams.get('id');
 	const [error, setError] = useState(null);
 
 	useEffect(() => {
@@ -47,7 +50,6 @@ export default function Test() {
 					setQuestionPaper(existingTest);
 					setLoading(false);
 				}
-				return;
 			} else {
 				fetch(`/api/test?id=${testId}`)
 					.then((res) => res.json())
@@ -67,26 +69,10 @@ export default function Test() {
 						setError('Failed to load test. Please try again. ' + err.message);
 					});
 			}
-		} else {
-			// Load question paper from localStorage
-			const storedPaper = localStorage.getItem(STORAGE_KEYS.UNSUBMITTED_TEST);
-			if (storedPaper) {
-				setQuestionPaper(JSON.parse(storedPaper));
-				// Don't remove the unsubmitted test until it's actually submitted
-				// This ensures the test persists across page refreshes
-			}
-
-			// Load saved answers if they exist
-			const savedAnswers = localStorage.getItem(
-				`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`,
-			);
-			if (savedAnswers) {
-				setAnswers(JSON.parse(savedAnswers));
-			}
 
 			setLoading(false);
 		}
-	}, [testId]);
+	}, [router, testHistory, testId, updateHistory]);
 
 	// Set document title based on current questionPaper topic
 	useEffect(() => {
@@ -106,11 +92,6 @@ export default function Test() {
 			[questionIndex]: answer,
 		};
 		setAnswers(updatedAnswers);
-		// Save answers to localStorage whenever they change
-		localStorage.setItem(
-			`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers`,
-			JSON.stringify(updatedAnswers),
-		);
 
 		// Only advance if not last question
 		if (
@@ -138,17 +119,9 @@ export default function Test() {
 			totalQuestions: questionPaper.questions.length,
 			score: calculatedScore,
 		};
-		let history =
-			JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_HISTORY)) || [];
-		const existingTest = history.find((t) => t.id == testId); // use loose equality to handle string vs number
-		if (existingTest) {
-			history = history.map((t) => (t.id == testId ? updatedPaper : t));
-		} else {
-			// New test submission
-			history.push(updatedPaper);
-		}
-		localStorage.setItem(STORAGE_KEYS.TEST_HISTORY, JSON.stringify(history));
-		setQuestionPaper(updatedPaper);
+		updateHistory(updatedPaper);
+		cleanUpAnswers();
+
 		router.push('/results?id=' + questionPaper.id);
 	};
 

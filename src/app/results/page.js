@@ -76,7 +76,7 @@ function ResultsContent() {
 				},
 				body: JSON.stringify({
 					...questionPaper.requestParams,
-					previousTests: testHistory,
+					previousTests: testHistory.slice(0, 10),
 				}),
 			});
 

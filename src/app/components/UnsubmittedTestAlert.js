@@ -7,11 +7,9 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import Icon from './Icon';
 
 export default function UnsubmittedTestAlert() {
-	const [unsubmittedTest] = useLocalStorage(
-		STORAGE_KEYS.UNSUBMITTED_TEST,
-		null,
-	);
+	const [testHistory] = useLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
 	const router = useRouter();
+	const unsubmittedTest = testHistory.find((test) => !test.userAnswers);
 
 	if (!unsubmittedTest) return null;
 
@@ -35,7 +33,7 @@ export default function UnsubmittedTestAlert() {
 				variant='warning'
 				size='sm'
 				className='d-flex align-items-center gap-2 fw-bold'
-				onClick={() => router.push('/test')}
+				onClick={() => router.push('/test?id=' + unsubmittedTest.id)}
 			>
 				<Icon name='play' /> Continue Test
 			</Button>

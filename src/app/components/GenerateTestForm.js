@@ -75,7 +75,10 @@ const GenerateTestForm = () => {
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ ...requestParams, previousTests: testHistory }),
+				body: JSON.stringify({
+					...requestParams,
+					previousTests: testHistory.slice(0, 10),
+				}),
 			});
 
 			if (!response.ok) {

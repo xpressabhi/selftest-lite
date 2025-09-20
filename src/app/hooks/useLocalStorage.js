@@ -62,8 +62,16 @@ function useLocalStorage(key, initialValue) {
 			updatedHistory.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100),
 		); // keep only latest 20 entries
 	};
+	const cleanUpKey = () => {
+		if (typeof window === 'undefined') return;
+		try {
+			window.localStorage.removeItem(key);
+		} catch (error) {
+			console.error('Error removing localStorage key', key, error);
+		}
+	};
 
-	return [storedValue, setStoredValue, updateHistory];
+	return [storedValue, setStoredValue, updateHistory, cleanUpKey];
 }
 
 export default useLocalStorage;
