@@ -1,0 +1,56 @@
+---
+import '../styles/globals.css';
+import { Analytics } from '@vercel/analytics/astro';
+import { SpeedInsights } from '@vercel/speed-insights/astro';
+import Navbar from '../components/Navbar.astro';
+
+export interface Props {
+	title: string;
+    description: string;
+    keywords: string[];
+}
+
+const { title, description, keywords } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+        <meta name="keywords" content={keywords.join(', ')} />
+		<link rel="manifest" href="/manifest.json" />
+		<link rel="icon" href="/icons/192.png" />
+		<meta name="theme-color" content="#000000" />
+		<link rel="canonical" href="https://selftest.in" />
+		<meta name="google-adsense-account" content="ca-pub-7214001284506571"></meta>
+		<script>
+			if ('serviceWorker' in navigator) {
+				window.addEventListener('load', function() {
+					navigator.serviceworker.register('/sw.js').then(function(registration) {
+						console.log('Service Worker registration successful with scope: ', registration.scope);
+					}, function(err) {
+						console.log('Service Worker registration failed: ', err);
+					});
+				});
+			}
+		</script>
+	</head>
+	<body>
+        <Navbar />
+		<div class="container-fluid mt-4">
+			<div class="flex">
+				<!-- Spacer for desktop sidebar -->
+				<div class="hidden lg:block" style="width: 400px;"></div>
+				<!-- Main content -->
+				<div class="flex-grow">
+					<slot />
+				</div>
+			</div>
+		</div>
+		<Analytics />
+		<SpeedInsights />
+	</body>
+</html>

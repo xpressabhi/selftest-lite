@@ -1,0 +1,300 @@
+---
+import Icon from './Icon.astro';
+import { TOPIC_CATEGORIES } from '../lib/constants';
+---
+
+<div class="py-3 flex flex-col items-center justify-center">
+    <h1 class="text-center mb-4 text-4xl md:text-5xl text-dark">
+        Create Personalized Quiz
+    </h1>
+
+    <div class="w-full border-0 max-w-3xl">
+        <div class="p-4">
+            <form id="generate-test-form">
+                <div class="mb-3">
+                    <textarea id="topic" rows="4" placeholder="What do you want to test yourself on today? (e.g., 'Spanish travel phrases', 'Marvel movie trivia', or 'System Design basics')" class="w-full p-2 border rounded"></textarea>
+                </div>
+                <div id="error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span class="block sm:inline"></span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-2 mb-4">
+                    <div class="flex flex-wrap gap-2 items-center order-1 sm:order-0">
+                        <button type="button" id="advanced-settings-toggle" class="btn btn-outline-secondary btn-sm" style="width: auto; white-space: nowrap;">
+                            Show advanced settings
+                        </button>
+
+                        <div id="simple-settings" class="flex flex-wrap gap-2 items-center">
+                            <select id="num-questions-simple" class="form-select-sm" style="width: auto; min-width: 120px;">
+                                {[5, 10, 15, 20].map((num) => `<option value="${num}">${num} questions</option>`).join('')}
+                            </select>
+                            <select id="difficulty-simple" class="form-select-sm" style="width: auto; min-width: 120px;">
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate" selected>Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                            <select id="language-simple" class="form-select-sm" style="width: auto; min-width: 120px;">
+                                <option value="english" selected>English</option>
+                                <option value="hindi">Hindi</option>
+                                <option value="spanish">Spanish</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submit-button" class="btn btn-primary">
+                        <div class="flex items-center gap-1">
+                            <Icon name='sparkles' />
+                            <span id="submit-button-text">Generate Quiz</span>
+                            <div id="loading-spinner" class="hidden">
+                                <Icon name="spinner" className="animate-spin" />
+                                <span>Generating... <span id="timer">0.0s</span></span>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <div id="advanced-settings" class="hidden bg-light p-3 rounded shadow-sm mb-4">
+                    <div class="grid grid-cols-1 gap-3">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <div class="flex-grow-1">
+                                <label class="small text-muted">Question Format</label>
+                                <select id="test-type" class="form-select-sm w-full">
+                                    <option value="multiple-choice">Multiple Choice</option>
+                                    <option value="true-false">True/False</option>
+                                    <option value="coding">Coding Problems</option>
+                                    <option value="mixed">Mixed Format</option>
+                                </select>
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="small text-muted">How many questions?</label>
+                                <select id="num-questions-advanced" class="form-select-sm w-full">
+                                    {[5, 10, 15, 20, 25, 30].map((num) => `<option value="${num}">${num} questions</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="small text-muted">Select Difficulty</label>
+                                <select id="difficulty-advanced" class="form-select-sm w-full">
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate" selected>Intermediate</option>
+                                    <option value="advanced">Advanced</option>
+                                    <option value="expert">Expert</option>
+                                </select>
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="small text-muted">Select Language</label>
+                                <select id="language-advanced" class="form-select-sm w-full">
+                                    <option value="english" selected>English</option>
+                                    <option value="hindi">Hindi</option>
+                                    <option value="spanish">Spanish</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="small text-muted flex justify-between items-center mb-2">
+                                <span>Pick a Category (optional)</span>
+                                <button type="button" id="reset-category" class="p-0 text-muted" style="font-size: 0.8rem; text-decoration: none;">Reset</button>
+                            </label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="topic-categories">
+                                {Object.keys(TOPIC_CATEGORIES).map((category) => `
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-full text-truncate" style="white-space: normal; height: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0.5rem;" data-category="${category}">
+                                        ${category}
+                                    </button>
+                                `).join('')}
+                            </div>
+
+                            <div id="selected-topics-container" class="hidden mt-3">
+                                <label class="small text-muted flex justify-between items-center">
+                                    <span id="selected-category-label"></span>
+                                    <button type="button" id="change-category" class="p-0 text-muted" style="font-size: 0.8rem; text-decoration: none;">Change Category</button>
+                                </label>
+                                <div class="flex flex-wrap gap-2" id="selected-topics">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <p class="text-center text-muted mt-4 small">
+        <Icon name='lightbulb' /> Tip: Be as specific as possible. Try “Advanced React Hooks” for depth or “World History” for breadth.
+    </p>
+</div>
+
+<script type="module">
+    import { getLocalStorage, updateHistory } from '../lib/localStorage.js';
+    import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../lib/constants.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('generate-test-form');
+        const topicInput = document.getElementById('topic');
+        const errorAlert = document.getElementById('error-alert');
+        const advancedSettingsToggle = document.getElementById('advanced-settings-toggle');
+        const advancedSettings = document.getElementById('advanced-settings');
+        const simpleSettings = document.getElementById('simple-settings');
+        const submitButton = document.getElementById('submit-button');
+        const submitButtonText = document.getElementById('submit-button-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const timerSpan = document.getElementById('timer');
+
+        let loading = false;
+        let startTime = null;
+        let timerRef = null;
+
+        advancedSettingsToggle.addEventListener('click', () => {
+            const isHidden = advancedSettings.classList.contains('hidden');
+            advancedSettings.classList.toggle('hidden');
+            simpleSettings.classList.toggle('hidden');
+            advancedSettingsToggle.textContent = isHidden ? 'Hide advanced settings' : 'Show advanced settings';
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (loading) return;
+
+            const topic = topicInput.value;
+            if (!topic.trim()) {
+                showError('Please provide a description for the test.');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const testHistory = getLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
+                const requestParams = getRequestParams();
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...requestParams, previousTests: testHistory.slice(0, 10) }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    showError(errorData.error || 'An error occurred.');
+                    setLoading(false);
+                    return;
+                }
+
+                const questionPaper = await response.json();
+                questionPaper.requestParams = requestParams;
+                updateHistory(STORAGE_KEYS.TEST_HISTORY, questionPaper);
+                window.location.href = '/test?id=' + questionPaper.id;
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            loading = isLoading;
+            submitButton.disabled = isLoading;
+            if (isLoading) {
+                submitButtonText.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden');
+                startTime = Date.now();
+                timerRef = setInterval(() => {
+                    timerSpan.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+                }, 100);
+            } else {
+                submitButtonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                clearInterval(timerRef);
+                startTime = null;
+            }
+        }
+
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('hidden');
+        }
+
+        function getRequestParams() {
+            const showAdvanced = !advancedSettings.classList.contains('hidden');
+            return {
+                topic: topicInput.value,
+                category: document.querySelector('[data-category].active')?.dataset.category || '',
+                selectedTopics: Array.from(document.querySelectorAll('#selected-topics .active')).map(btn => btn.textContent),
+                testType: document.getElementById('test-type').value,
+                numQuestions: showAdvanced ? document.getElementById('num-questions-advanced').value : document.getElementById('num-questions-simple').value,
+                difficulty: showAdvanced ? document.getElementById('difficulty-advanced').value : document.getElementById('difficulty-simple').value,
+                language: showAdvanced ? document.getElementById('language-advanced').value : document.getElementById('language-simple').value,
+            };
+        }
+
+        // Category and topic selection logic
+        const categoryButtons = document.getElementById('topic-categories');
+        const selectedTopicsContainer = document.getElementById('selected-topics-container');
+        const selectedTopicsDiv = document.getElementById('selected-topics');
+        const selectedCategoryLabel = document.getElementById('selected-category-label');
+        const resetCategoryButton = document.getElementById('reset-category');
+        const changeCategoryButton = document.getElementById('change-category');
+
+        let selectedCategory = '';
+
+        categoryButtons.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const category = e.target.dataset.category;
+                if (selectedCategory === category) {
+                    selectedCategory = '';
+                    e.target.classList.remove('active', 'btn-primary');
+                    e.target.classList.add('btn-outline-secondary');
+                    selectedTopicsContainer.classList.add('hidden');
+                } else {
+                    if(selectedCategory) {
+                        document.querySelector(`[data-category="${selectedCategory}"]`).classList.remove('active', 'btn-primary');
+                        document.querySelector(`[data-category="${selectedCategory}"]`).classList.add('btn-outline-secondary');
+                    }
+                    selectedCategory = category;
+                    e.target.classList.add('active', 'btn-primary');
+                    e.target.classList.remove('btn-outline-secondary');
+                    updateSelectedTopics();
+                }
+            }
+        });
+
+        function updateSelectedTopics() {
+            if (selectedCategory) {
+                selectedCategoryLabel.textContent = `Suggested ${selectedCategory} Topics`;
+                selectedTopicsDiv.innerHTML = TOPIC_CATEGORIES[selectedCategory].map(topic =>
+                    `<button type="button" class="btn btn-outline-secondary btn-sm" data-topic="${topic}">${topic}</button>`
+                ).join('');
+                selectedTopicsContainer.classList.remove('hidden');
+            } else {
+                selectedTopicsContainer.classList.add('hidden');
+            }
+        }
+
+        selectedTopicsDiv.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                e.target.classList.toggle('active');
+                e.target.classList.toggle('btn-primary');
+                e.target.classList.toggle('btn-outline-secondary');
+            }
+        });
+
+        resetCategoryButton.addEventListener('click', () => {
+            if(selectedCategory) {
+                document.querySelector(`[data-category="${selectedCategory}"]`).classList.remove('active', 'btn-primary');
+                document.querySelector(`[data-category="${selectedCategory}"]`).classList.add('btn-outline-secondary');
+            }
+            selectedCategory = '';
+            selectedTopicsContainer.classList.add('hidden');
+        });
+
+        changeCategoryButton.addEventListener('click', () => {
+            if(selectedCategory) {
+                document.querySelector(`[data-category="${selectedCategory}"]`).classList.remove('active', 'btn-primary');
+                document.querySelector(`[data-category="${selectedCategory}"]`).classList.add('btn-outline-secondary');
+            }
+            selectedCategory = '';
+            selectedTopicsContainer.classList.add('hidden');
+        });
+    });
+</script>

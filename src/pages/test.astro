@@ -1,0 +1,230 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+
+const metadata = {
+    title: 'Test - selftest.in',
+    description: 'Take a test on any topic.',
+    keywords: ['test', 'quiz', 'practice'],
+};
+---
+
+<Layout title={metadata.title} description={metadata.description} keywords={metadata.keywords}>
+    <div id="test-container" class="typeform-bg flex flex-col min-h-screen">
+        <!-- Loading spinner -->
+        <div id="loading-spinner" class="text-center mt-5">
+            <Icon name="spinner" className="animate-spin mb-2" />
+            <div>Loading test...</div>
+        </div>
+
+        <!-- Error message -->
+        <div id="error-container" class="hidden text-center mt-5">
+            <h1>
+                <Icon name='exclamationCircle' className='text-warning mb-3' /> No
+                test found!
+            </h1>
+            <p>Please generate a new test.</p>
+            <div id="error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"></div>
+            <a href="/" class="btn btn-primary flex items-center gap-2 mx-auto">
+                <Icon name='home' />
+                Go to Home
+            </a>
+        </div>
+
+        <!-- Test content -->
+        <div id="test-content" class="hidden flex-col flex-grow-1 justify-center items-center px-2">
+            <h1 id="test-topic" class="mb-4 flex items-center gap-2 mt-4">
+                <Icon name='bookOpen' className='text-primary' />
+                <span></span>
+            </h1>
+            <form id="test-form" class="w-full relative" style="max-width: 600px;">
+                <!-- Navigation buttons -->
+                <div class="hidden md:flex justify-between absolute w-full" style="top: 50%; transform: translateY(-50%); left: 0; z-index: 1;">
+                    <button id="prev-button" type="button" class="btn btn-light rounded-circle shadow-sm flex items-center justify-center" style="width: 48px; height: 48px; margin-left: -60px;">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button id="next-button" type="button" class="btn btn-light rounded-circle shadow-sm flex items-center justify-center" style="width: 48px; height: 48px; margin-right: -60px;">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+
+                <div id="question-container" class="fade-slide w-100" style="margin-bottom: 2rem; min-height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <!-- Question will be rendered here -->
+                </div>
+
+                <div class="mb-3 text-center">
+                    <small id="remaining-questions" class="text-muted"></small>
+                </div>
+
+                <button type="submit" class="btn btn-success w-full flex items-center justify-center gap-2 rounded-pill shadow mb-5" style="font-weight: 700; font-size: 1.15rem; padding: 0.9rem 0; margin-top: 0.5rem;">
+                    <Icon name='checkCircle' />
+                    Submit Answers
+                </button>
+            </form>
+        </div>
+    </div>
+</Layout>
+
+<script type="module">
+    import { getLocalStorage, setLocalStorage, updateHistory, cleanUpKey } from '../lib/localStorage.js';
+    import { STORAGE_KEYS } from '../lib/constants.js';
+    import { marked } from 'marked';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const testContainer = document.getElementById('test-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorContainer = document.getElementById('error-container');
+        const errorAlert = document.getElementById('error-alert');
+        const testContent = document.getElementById('test-content');
+        const testTopic = document.getElementById('test-topic').querySelector('span');
+        const testForm = document.getElementById('test-form');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const questionContainer = document.getElementById('question-container');
+        const remainingQuestions = document.getElementById('remaining-questions');
+
+        const searchParams = new URLSearchParams(window.location.search);
+        const testId = searchParams.get('id');
+
+        let testHistory = getLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
+        let answers = getLocalStorage(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers_${testId}`, {});
+        let questionPaper = null;
+        let currentQuestionIndex = 0;
+        let fadeState = 'fade-in';
+        let timeoutRef = null;
+        let touchStartX = null;
+
+        async function initializeTest() {
+            if (testId) {
+                const existingTest = testHistory.find((t) => t.id == testId);
+                if (existingTest) {
+                    if (existingTest.userAnswers) {
+                        window.location.href = '/results?id=' + existingTest.id;
+                    } else {
+                        questionPaper = existingTest;
+                        renderTest();
+                    }
+                } else {
+                    try {
+                        const response = await fetch(`/api/test?id=${testId}`);
+                        const data = await response.json();
+                        if (data.error) {
+                            showError(data.error);
+                            return;
+                        }
+                        const paper = { ...data.test, id: data.id };
+                        updateHistory(STORAGE_KEYS.TEST_HISTORY, paper);
+                        questionPaper = paper;
+                        renderTest();
+                    } catch (err) {
+                        showError('Failed to load test. Please try again. ' + err.message);
+                    }
+                }
+            } else {
+                showError('No test ID provided.');
+            }
+        }
+
+        function renderTest() {
+            loadingSpinner.classList.add('hidden');
+            if (questionPaper) {
+                testContent.classList.remove('hidden');
+                testTopic.textContent = questionPaper.topic;
+                document.title = `${questionPaper.topic} - selftest.in`;
+                renderQuestion();
+            } else {
+                errorContainer.classList.remove('hidden');
+            }
+        }
+
+        function renderQuestion() {
+            if (!questionPaper || !questionPaper.questions) return;
+            const q = questionPaper.questions[currentQuestionIndex];
+            const index = currentQuestionIndex;
+
+            const checkCircleIcon = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1em" height="1em"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14l-4-4 1.5-1.5L11 12.5 17.5 6 19 7.5 11 15z"></path></svg>`;
+            const circleIcon = `<svg aria-hidden="true" fill="currentColor" viewBox="0 0 16 16" width="1em" height="1em"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"></path></svg>`;
+
+            questionContainer.innerHTML = `
+                <div class="w-100 text-center mb-2">
+                    <small class="text-muted" style="letter-spacing: 0.05em; font-weight: 500">
+                        Question ${index + 1} of ${questionPaper.questions.length}
+                    </small>
+                </div>
+                <div class="w-100 text-center mb-4">
+                    <div class="markdown-content">${marked.parse(q.question)}</div>
+                </div>
+                <div class="w-100">
+                    ${q.options.map((option, i) => `
+                        <button type="button" class="w-100 mb-3 shadow-sm typeform-btn flex items-center gap-2 ${answers[index] === option ? 'active' : ''}" data-option="${option}">
+                            <div class="me-2">
+                                ${answers[index] === option ? checkCircleIcon : circleIcon}
+                            </div>
+                            <div style="text-align: left; display: inline-block; width: 85%;">
+                                <div class="markdown-content">${marked.parse(option)}</div>
+                            </div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+
+            const remainingCount = questionPaper.questions.length - Object.keys(answers).length;
+            remainingQuestions.textContent = remainingCount > 0 ? `${remainingCount} question${remainingCount !== 1 ? 's' : ''} unanswered` : 'All questions answered';
+
+            // Add event listeners to new buttons
+            questionContainer.querySelectorAll('[data-option]').forEach(button => {
+                button.addEventListener('click', () => handleAnswerChange(index, button.dataset.option));
+            });
+        }
+
+        function handleAnswerChange(questionIndex, answer) {
+            answers[questionIndex] = answer;
+            setLocalStorage(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers_${testId}`, answers);
+
+            if (currentQuestionIndex < questionPaper.questions.length - 1) {
+                changeQuestion(currentQuestionIndex + 1);
+            }
+            renderQuestion();
+        }
+
+        function changeQuestion(newIndex) {
+            if (newIndex < 0 || newIndex >= questionPaper.questions.length) return;
+
+            questionContainer.classList.add('fade-out');
+            clearTimeout(timeoutRef);
+            timeoutRef = setTimeout(() => {
+                currentQuestionIndex = newIndex;
+                renderQuestion();
+                questionContainer.classList.remove('fade-out');
+                questionContainer.classList.add('fade-in');
+            }, 300);
+        }
+
+        prevButton.addEventListener('click', () => changeQuestion(currentQuestionIndex - 1));
+        nextButton.addEventListener('click', () => changeQuestion(currentQuestionIndex + 1));
+
+        testForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const calculatedScore = questionPaper.questions.filter((q, index) => answers[index] === q.answer).length || 0;
+            const updatedPaper = {
+                ...questionPaper,
+                userAnswers: answers,
+                timestamp: Date.now(),
+                totalQuestions: questionPaper.questions.length,
+                score: calculatedScore,
+            };
+            updateHistory(STORAGE_KEYS.TEST_HISTORY, updatedPaper);
+            cleanUpKey(`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers_${testId}`);
+            window.location.href = '/results?id=' + questionPaper.id;
+        });
+
+        function showError(message) {
+            loadingSpinner.classList.add('hidden');
+            errorContainer.classList.remove('hidden');
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('hidden');
+        }
+
+        initializeTest();
+    });
+</script>

@@ -1,0 +1,40 @@
+---
+import Icon from './Icon.astro';
+
+export interface Props {
+    paper: any;
+}
+
+const { paper } = Astro.props;
+const { id, topic } = paper || {};
+---
+
+{id && (
+    <button id="share-button" class="btn btn-outline-secondary flex items-center gap-2">
+        <Icon name='share' /> Share Test
+    </button>
+)}
+
+<script>
+    document.getElementById('share-button')?.addEventListener('click', async () => {
+        const id = new URLSearchParams(window.location.search).get('id');
+        if (!id) return;
+
+        const shareUrl = `${window.location.origin}/test?id=${id}`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Test Topic',
+                    text: 'Check out this test!',
+                    url: shareUrl,
+                });
+            } catch (err) {
+                console.error('Share failed:', err);
+            }
+        } else {
+            await navigator.clipboard.writeText(shareUrl);
+            alert('Share link copied to clipboard!');
+        }
+    });
+</script>

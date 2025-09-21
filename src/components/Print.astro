@@ -1,0 +1,55 @@
+---
+import Icon from './Icon.astro';
+import PrintableContent from './PrintableContent.astro';
+
+export interface Props {
+    questionPaper: any;
+}
+
+const { questionPaper } = Astro.props;
+---
+
+<div>
+    <button id="print-button" type="button" class="btn btn-outline-secondary flex items-center gap-2">
+        <Icon name='print' /> Print Test
+    </button>
+
+    <div id="print-dialog" class="hidden fixed top-0 left-0 vh-100 w-100 bg-light overflow-auto">
+        <div class="container relative">
+            <button id="close-print-button" type="button" class="close-button btn btn-outline-secondary fixed top-0 end-0 m-3 flex items-center gap-2">
+                <Icon name='close' /> Close
+            </button>
+            <button id="do-print-button" type="button" class="btn btn-primary fixed top-0 start-0 m-3 flex items-center gap-2">
+                <Icon name='print' /> Print
+            </button>
+            <PrintableContent questionPaper={questionPaper} />
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('print-button')?.addEventListener('click', () => {
+        document.getElementById('print-dialog')?.classList.remove('hidden');
+    });
+
+    document.getElementById('close-print-button')?.addEventListener('click', () => {
+        document.getElementById('print-dialog')?.classList.add('hidden');
+    });
+
+    document.getElementById('do-print-button')?.addEventListener('click', () => {
+        const printContents = document.querySelector('.print-content').outerHTML;
+        const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+            .map((node) => node.outerHTML)
+            .join('');
+        const newWin = window.open('', '', 'width=800,height=600');
+        newWin.document.write('<html><head><title>selftest.in</title>');
+        newWin.document.write(styles);
+        newWin.document.write('</head><body>');
+        newWin.document.write(printContents);
+        newWin.document.write('</body></html>');
+        newWin.document.close();
+        newWin.focus();
+        newWin.print();
+        newWin.close();
+    });
+</script>

@@ -1,0 +1,26 @@
+---
+import Layout from '../layouts/Layout.astro';
+import GenerateTestForm from '../components/GenerateTestForm.astro';
+import UnsubmittedTestAlert from '../components/UnsubmittedTestAlert.astro';
+
+const metadata = {
+	title: 'selftest.in',
+	description:
+		'A web application that allows you to generate and take multiple-choice quizzes on any topic you can imagine.',
+	keywords: [
+		'quizzes',
+		'practice tests',
+		'study',
+		'learning',
+		'selftest',
+		'multiple choice',
+	],
+};
+---
+
+<Layout title={metadata.title} description={metadata.description} keywords={metadata.keywords}>
+	<main class="flex flex-col items-center py-5 text-dark">
+		<GenerateTestForm />
+		<UnsubmittedTestAlert />
+	</main>
+</Layout>
