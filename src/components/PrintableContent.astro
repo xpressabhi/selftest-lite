@@ -1,0 +1,122 @@
+---
+import MarkdownRenderer from './MarkdownRenderer.astro';
+
+export interface Props {
+    questionPaper: any;
+}
+
+const { questionPaper } = Astro.props;
+---
+
+<div class="print-content">
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-content,
+            .print-content * {
+                visibility: visible;
+            }
+            .print-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+            }
+            .watermark {
+                display: block !important;
+                position: fixed !important;
+                visibility: visible !important;
+                opacity: 0.2 !important;
+                z-index: 9999 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                forced-color-adjust: none !important;
+            }
+            @page {
+                size: A4;
+                margin: 2cm;
+            }
+            .print-dialog {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .close-button {
+                display: none !important;
+            }
+        }
+        .print-content {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+        }
+        .watermark {
+            position: fixed;
+            top: 40%;
+            left: 20%;
+            width: 60%;
+            font-size: 5rem;
+            color: rgba(200, 200, 200, 0.2);
+            transform: rotate(-30deg);
+            pointer-events: none;
+            user-select: none;
+            z-index: 1;
+            text-align: center;
+            font-weight: bold;
+        }
+        .question {
+            margin: 1.5rem 0;
+        }
+        .question-number {
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .options {
+            margin-left: 2rem;
+            margin-top: 0.5rem;
+        }
+        .option {
+            margin: 0.5rem 0;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .option-letter {
+            flex-shrink: 0;
+        }
+        .answers {
+            margin-top: 2rem;
+            page-break-before: always;
+        }
+        .answer-item {
+            margin: 0.5rem 0;
+        }
+    </style>
+    <div class="watermark">selftest.in</div>
+    <h2>{questionPaper.topic || 'Test'}</h2>
+    {questionPaper.questions.map((q, i) => (
+        <div class="question">
+            <span class="question-number">Q{i + 1}.</span>
+            <MarkdownRenderer content={q.question} />
+            <div class="options">
+                {q.options.map((opt, idx) => (
+                    <div class="option">
+                        <span class="option-letter">{String.fromCharCode(65 + idx)}.</span>
+                        <MarkdownRenderer content={opt} />
+                    </div>
+                ))}
+            </div>
+        </div>
+    ))}
+    <div class="answers">
+        <h3>Answers</h3>
+        <ol>
+            {questionPaper.questions.map((q, i) => (
+                <li class="answer-item">
+                    <MarkdownRenderer content={q.answer} />
+                </li>
+            ))}
+        </ol>
+    </div>
+</div>

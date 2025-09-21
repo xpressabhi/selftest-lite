@@ -1,0 +1,42 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const metadata = {
+    title: 'About — selftest.in',
+	description:
+		'Learn about selftest.in — mission, features, and how we generate custom quizzes for learning and assessment.',
+    keywords: ['about', 'mission', 'features'],
+};
+---
+
+<Layout title={metadata.title} description={metadata.description} keywords={metadata.keywords}>
+    <main class="container py-5">
+        <h1>About selftest.in</h1>
+        <p>
+            selftest.in helps learners create and take customized multiple-choice
+            quizzes on any topic. We use AI to generate high-quality questions and
+            answers to support active recall and spaced repetition.
+        </p>
+
+        <h2>Our mission</h2>
+        <p>
+            We want to make learning fast, focused, and accessible. Whether you are
+            studying for an exam, preparing for interviews, or just exploring new
+            topics, selftest.in makes it easy to practice with well-structured
+            quizzes.
+        </p>
+
+        <h2>What we offer</h2>
+        <ul>
+            <li>Generate quizzes on any subject or topic.</li>
+            <li>Store and review test history to track progress.</li>
+            <li>Export or print results for offline study.</li>
+        </ul>
+
+        <h2>Contact & feedback</h2>
+        <p>
+            We welcome feedback and suggestions to improve the platform. Visit our
+            Contact page to get in touch.
+        </p>
+    </main>
+</Layout>

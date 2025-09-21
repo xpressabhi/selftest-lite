@@ -1,0 +1,112 @@
+---
+import Icon from './Icon.astro';
+import TestHistory from './TestHistory.astro';
+---
+
+<nav class="fixed top-0 left-0 right-0 z-50 transition-all bg-light">
+    <div class="container-fluid px-0">
+        <div class="flex w-full">
+            <!-- Left sidebar for desktop -->
+            <div class="block" style="width: 300px;">
+                <a href="/" class="flex items-center px-3">
+                    <span>selftest.in</span>
+                </a>
+            </div>
+            <!-- Main navbar content -->
+            <div class="px-3 ms-auto flex items-center">
+                <!-- Desktop navigation with text -->
+                <nav class="hidden xl:flex items-center gap-3">
+                    <a href="/about" class="nav-link flex items-center">
+                        <Icon name='info' className='me-1' /> About
+                    </a>
+                    <a href="/blog" class="nav-link flex items-center">
+                        <Icon name='book' className='me-1' /> Blog
+                    </a>
+                    <a href="/faq" class="nav-link flex items-center">
+                        <Icon name='question' className='me-1' /> FAQ
+                    </a>
+                    <a href="/privacy" class="nav-link flex items-center">
+                        <Icon name='file' className='me-1' /> Privacy
+                    </a>
+                    <a href="/contact" class="nav-link flex items-center">
+                        <Icon name='envelope' className='me-1' /> Contact
+                    </a>
+                </nav>
+
+                <!-- Mobile navigation with icons only -->
+                <nav class="flex xl:hidden items-center gap-2">
+                    <a href="/about" class="nav-link p-2" aria-label="About">
+                        <Icon name='info' />
+                    </a>
+                    <a href="/blog" class="nav-link p-2" aria-label="Blog">
+                        <Icon name='book' />
+                    </a>
+                    <a href="/faq" class="nav-link p-2" aria-label="FAQ">
+                        <Icon name='question' />
+                    </a>
+                    <a href="/contact" class="nav-link p-2" aria-label="Contact">
+                        <Icon name='envelope' />
+                    </a>
+                    <button type="button" class="p-2" aria-label="Toggle history" id="history-button">
+                        <Icon name='history' />
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Desktop Test History Panel -->
+<div class="hidden xl:block fixed bg-white border-e" style="width: 380px; left: 0px; top: 56px; bottom: 0; overflow-y: auto; z-index: 1030;">
+    <TestHistory onTestClick={null} />
+</div>
+
+<!-- Mobile Offcanvas -->
+<div id="offcanvas-history" class="fixed top-0 left-0 h-full w-64 bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="flex justify-between items-center p-4 border-b">
+        <h5 class="text-lg font-bold">Test History</h5>
+        <button type="button" class="p-2" id="close-history-button">
+            <Icon name="close" />
+        </button>
+    </div>
+    <div class="p-4">
+        <TestHistory onTestClick={null} />
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const navbar = document.querySelector('nav');
+        const historyButton = document.getElementById('history-button');
+        const closeHistoryButton = document.getElementById('close-history-button');
+        const offcanvasHistory = document.getElementById('offcanvas-history');
+
+        let isScrolling = false;
+        let isTop = true;
+
+        window.addEventListener('scroll', () => {
+            isTop = window.scrollY <= 10;
+            if (!isScrolling) {
+                window.requestAnimationFrame(() => {
+                    if (isTop) {
+                        navbar.classList.add('bg-light');
+                        navbar.classList.remove('bg-light/60', 'backdrop-blur');
+                    } else {
+                        navbar.classList.remove('bg-light');
+                        navbar.classList.add('bg-light/60', 'backdrop-blur');
+                    }
+                    isScrolling = false;
+                });
+            }
+            isScrolling = true;
+        });
+
+        historyButton.addEventListener('click', () => {
+            offcanvasHistory.classList.remove('-translate-x-full');
+        });
+
+        closeHistoryButton.addEventListener('click', () => {
+            offcanvasHistory.classList.add('-translate-x-full');
+        });
+    });
+</script>

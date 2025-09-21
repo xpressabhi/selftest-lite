@@ -1,0 +1,190 @@
+import { GoogleGenAI } from '@google/genai';
+import { rateLimiter } from '../../lib/rateLimiter';
+import { generatePrompt } from '../../lib/prompt';
+
+export async function POST({ request, clientAddress, site }) {
+	try {
+		const {
+			topic,
+			category,
+			selectedTopics = [],
+			previousTests = [],
+			testType = 'multiple-choice',
+			numQuestions = 10,
+			difficulty = 'intermediate',
+			language = 'english',
+		} = await request.json();
+
+		if (!topic && selectedTopics.length === 0) {
+			return new Response(JSON.stringify({ error: 'Topic or selected topics are required' }), { status: 400 });
+		}
+
+		// Validate language
+		const validLanguages = ['english', 'hindi', 'spanish'];
+		if (!validLanguages.includes(language.toLowerCase())) {
+			return new Response(JSON.stringify({ error: 'Invalid language selection' }), { status: 400 });
+		}
+
+		// Check rate limit
+        const requestWithIP = new Request(request, { headers: { 'x-forwarded-for': clientAddress } });
+		const rateLimit = await rateLimiter(requestWithIP);
+		if (rateLimit.limited) {
+			return new Response(JSON.stringify({
+					error: 'Rate limit exceeded. Please try again later.',
+					resetTime: new Date(rateLimit.resetTime).toISOString(),
+					remaining: rateLimit.remaining,
+				}), {
+					status: 429,
+					headers: {
+						'X-RateLimit-Limit': '10',
+						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+					},
+				},
+			);
+		}
+
+		// Validate test type
+		const validTestTypes = ['multiple-choice', 'true-false', 'coding', 'mixed'];
+		if (!validTestTypes.includes(testType)) {
+			return new Response(JSON.stringify({ error: 'Invalid test type' }), { status: 400 });
+		}
+
+		// Validate number of questions
+		if (numQuestions < 1 || numQuestions > 30) {
+			return new Response(JSON.stringify({ error: 'Number of questions must be between 1 and 30' }), { status: 400 });
+		}
+
+		// Validate difficulty
+		const validDifficulties = [
+			'beginner',
+			'intermediate',
+			'advanced',
+			'expert',
+		];
+		if (!validDifficulties.includes(difficulty)) {
+			return new Response(JSON.stringify({ error: 'Invalid difficulty level' }), { status: 400 });
+		}
+
+		// Construct the topic context
+		const topicContext = [
+			category ? `Category: ${category}` : null,
+			selectedTopics.length > 0
+				? `Selected topics: ${selectedTopics.join(', ')}`
+				: null,
+			topic ? `Additional context: ${topic}` : null,
+		]
+			.filter(Boolean)
+			.join('\n');
+
+		// Extract all previous questions to help AI avoid duplicates
+		const previousQuestions = previousTests.flatMap(
+			(test) =>
+				test.questions?.map((q) => ({
+					question: q.question,
+					answer: q.answer,
+				})) || [],
+		);
+		const apiKey = import.meta.env.GEMINI_API_KEY;
+		if (!apiKey) {
+			return new Response(JSON.stringify({ error: 'Gemini API key is not configured' }), { status: 500 });
+		}
+
+		const ai = new GoogleGenAI(apiKey);
+
+		const prompt = generatePrompt({
+			topic,
+			numQuestions,
+			difficulty,
+			testType,
+			topicContext,
+			previousQuestions,
+			language,
+		});
+
+		const response = await ai.models.generateContent({
+			model: 'gemini-2.5-flash',
+			contents: prompt,
+			config: { responseMimeType: 'application/json' },
+		});
+
+		let questionPaper;
+		try {
+			// Try to parse the response as JSON
+			const cleanedText = response.text.trim();
+			questionPaper = JSON.parse(cleanedText);
+
+			// Validate the structure
+			if (!questionPaper.topic || !Array.isArray(questionPaper.questions)) {
+				throw new Error('Invalid response structure');
+			}
+
+			// Validate each question
+			questionPaper.questions.forEach((q, index) => {
+				if (!q.question || !Array.isArray(q.options) || !q.answer) {
+					throw new Error(`Invalid question structure at index ${index}`);
+				}
+
+				// Validate options and answer
+				if (testType === 'multiple-choice' && q.options.length !== 4) {
+					throw new Error(`Question ${index + 1} must have exactly 4 options`);
+				}
+
+				if (
+					testType === 'true-false' &&
+					(!q.options.includes('True') || !q.options.includes('False'))
+				) {
+					throw new Error(`Question ${index + 1} must have True/False options`);
+				}
+
+				if (!q.options.includes(q.answer)) {
+					throw new Error(
+						`Question ${index + 1} answer must match one of the options`,
+					);
+				}
+			});
+
+			// Validate number of questions
+			if (questionPaper.questions.length !== numQuestions) {
+				throw new Error(
+					`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
+				);
+			}
+			// Store the test in the database
+			const storeResponse = await fetch(
+				`${site.origin}/api/test`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ test: questionPaper }),
+				},
+			);
+
+			if (!storeResponse.ok) {
+				throw new Error('Failed to store test in database');
+			}
+
+			const { id: testId } = await storeResponse.json();
+
+			// Return the question paper with the database ID
+			return new Response(JSON.stringify({
+				...questionPaper,
+				id: testId,
+			}));
+		} catch (parseError) {
+			console.error('Failed to parse or validate response:', parseError);
+			console.error('Raw response:', response.text);
+			return new Response(JSON.stringify({
+					error: 'Failed to generate valid quiz questions. Please try again.',
+					details: parseError.message,
+				}),
+				{ status: 500 },
+			);
+		}
+	} catch (error) {
+		console.error(error);
+		return new Response(JSON.stringify({ error: 'An unexpected error occurred' }), { status: 500 });
+	}
+}

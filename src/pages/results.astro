@@ -1,0 +1,278 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import MarkdownRenderer from '../components/MarkdownRenderer.astro';
+import Share from '../components/Share.astro';
+import Print from '../components/Print.astro';
+import Explanation from '../components/Explanation.astro';
+
+const metadata = {
+    title: 'Test Results - selftest.in',
+    description: 'Review your test results and explanations.',
+    keywords: ['results', 'score', 'review'],
+};
+---
+
+<Layout title={metadata.title} description={metadata.description} keywords={metadata.keywords}>
+    <div id="results-container" class="typeform-bg flex flex-col min-h-screen">
+        <!-- Loading spinner -->
+        <div id="loading-spinner" class="text-center mt-5">
+            <Icon name="spinner" className="animate-spin mb-2" />
+            <div>Loading results...</div>
+        </div>
+
+        <!-- Error message -->
+        <div id="error-container" class="hidden text-center mt-5">
+            <h1>
+                <Icon name='exclamationCircle' className='text-warning mb-3' /> No
+                results found!
+            </h1>
+            <p>Please take a test first.</p>
+            <a href="/" class="btn btn-primary flex items-center gap-2 mx-auto">
+                <Icon name='pencil' /> Create a Test
+            </a>
+        </div>
+
+        <!-- Results content -->
+        <div id="results-content" class="hidden">
+            <div>
+                <h1 class="text-center mb-4 text-dark">Test Results</h1>
+                <div class="flex justify-center mb-4">
+                    <div class="bg-light rounded-lg shadow-sm p-4 text-center" style="min-width: 200px; background: linear-gradient(135deg, #f8d90f 0%, #f3f4f7 100%);">
+                        <h2 id="score" class="text-4xl font-bold mb-1 text-dark"></h2>
+                        <p class="text-lg mb-0 text-secondary">Score</p>
+                    </div>
+                </div>
+
+                <div class="container mt-4 mb-4">
+                    <h2 class="text-center mb-4 text-xl font-bold text-dark flex items-center justify-center gap-2">
+                        <Icon name='checkCircle' className='text-success text-2xl' />
+                        Review Your Answers
+                    </h2>
+                    <p id="test-topic" class="lead text-center"></p>
+                    <div id="questions-container"></div>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-3 mt-5 mb-5">
+                    <button id="new-test-button" class="btn btn-primary btn-lg flex items-center gap-2">
+                        <Icon name='plusCircle' /> Start New Quiz
+                    </button>
+                    <div class="flex flex-col items-center">
+                        <button id="regenerate-button" class="btn btn-secondary btn-lg flex items-center gap-2">
+                            <Icon name='repeat1' />
+                            <span>Similar Quiz</span>
+                        </button>
+                        <div id="regeneration-error" class="hidden mt-2 small bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"></div>
+                    </div>
+                    <div id="share-print-container" class="flex gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</Layout>
+
+<script type="module">
+    import { getLocalStorage, updateHistory } from '../lib/localStorage.js';
+    import { STORAGE_KEYS } from '../lib/constants.js';
+    import { marked } from 'marked';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const resultsContainer = document.getElementById('results-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorContainer = document.getElementById('error-container');
+        const resultsContent = document.getElementById('results-content');
+        const scoreEl = document.getElementById('score');
+        const testTopicEl = document.getElementById('test-topic');
+        const questionsContainer = document.getElementById('questions-container');
+        const newTestButton = document.getElementById('new-test-button');
+        const regenerateButton = document.getElementById('regenerate-button');
+        const regenerateButtonText = regenerateButton.querySelector('span');
+        const regenerationError = document.getElementById('regeneration-error');
+        const sharePrintContainer = document.getElementById('share-print-container');
+
+        const searchParams = new URLSearchParams(window.location.search);
+        const testId = searchParams.get('id');
+
+        let testHistory = getLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
+        let questionPaper = null;
+
+        function initializeResults() {
+            if (testId) {
+                const historyEntry = testHistory.find((entry) => entry.id == testId);
+                if (historyEntry) {
+                    if (!historyEntry.userAnswers) {
+                        window.location.href = '/test?id=' + historyEntry.id;
+                    } else {
+                        questionPaper = historyEntry;
+                        renderResults();
+                    }
+                } else {
+                    window.location.href = '/test?id=' + testId;
+                }
+            } else {
+                showError();
+            }
+        }
+
+        function renderResults() {
+            loadingSpinner.classList.add('hidden');
+            if (questionPaper) {
+                resultsContent.classList.remove('hidden');
+                document.title = `${questionPaper.topic} - selftest.in`;
+                scoreEl.textContent = `${questionPaper.score} / ${questionPaper.totalQuestions}`;
+                testTopicEl.textContent = questionPaper.topic;
+
+                questionsContainer.innerHTML = questionPaper.questions.map((q, index) => {
+                    const userAnswer = Array.isArray(questionPaper.userAnswers) ? questionPaper.userAnswers[index] : questionPaper.userAnswers[index.toString()];
+                    const isCorrect = userAnswer === q.answer;
+                    const answered = !!userAnswer;
+                    const checkCircleIcon = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1em" height="1em"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14l-4-4 1.5-1.5L11 12.5 17.5 6 19 7.5 11 15z"></path></svg>`;
+                    const timesCircleIcon = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1em" height="1em"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.3 13.3L13.3 12l3-3-1.4-1.4-3 3-3-3L7.5 9l3 3-3 3L8.9 16l3-3 3 3 1.4-1.4z"></path></svg>`;
+
+                    return `
+                        <div class="mb-4 shadow-sm rounded-lg ${isCorrect ? 'border-green-500' : answered ? 'border-red-500' : 'border-gray-400'}" style="border-left-width: 8px;">
+                            <div class="p-4">
+                                <h3 class="text-lg mb-3 text-dark"><span class="font-bold mr-2">Q${index + 1}.</span></h3>
+                                <div class="markdown-content">${marked.parse(q.question)}</div>
+                                <div class="mb-3">
+                                    <div class="mb-1 text-gray-500">Your Answer:
+                                        <div class="ml-2 text-dark">
+                                            ${answered ? marked.parse(userAnswer) : 'Not Answered'}
+                                            ${isCorrect && answered ? checkCircleIcon : ''}
+                                            ${!isCorrect && answered ? timesCircleIcon : ''}
+                                        </div>
+                                    </div>
+                                    <div class="mb-0 text-gray-500">Correct Answer:
+                                        <div class="ml-2 text-dark">${marked.parse(q.answer)}</div>
+                                    </div>
+                                </div>
+                                <div class="explanation-container mt-4 pt-4 border-t border-gray-200" data-question-index="${index}">
+                                    ${q.explanation ? `
+                                        <div class="explanation-content">
+                                            <h4 class="text-base mb-2 text-dark">Explanation:</h4>
+                                            <div class="markdown-renderer">${marked.parse(q.explanation)}</div>
+                                        </div>
+                                    ` : `
+                                        <button type="button" class="btn btn-primary explain-button">Explain Answer?</button>
+                                        <div class="explanation-content hidden">
+                                            <h4 class="text-base mb-2 text-dark">Explanation:</h4>
+                                            <div class="markdown-renderer"></div>
+                                        </div>
+                                        <div class="loading-spinner hidden">
+                                            <Icon name="spinner" className="animate-spin" />
+                                            <span>Loading explanation...</span>
+                                        </div>
+                                        <div class="error-alert hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"></div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.querySelectorAll('.explain-button').forEach(button => {
+                    button.addEventListener('click', handleExplain);
+                });
+
+            } else {
+                showError();
+            }
+        }
+
+        async function handleExplain(e) {
+            const container = e.target.closest('.explanation-container');
+            const index = container.dataset.questionIndex;
+            const q = questionPaper.questions[index];
+
+            const loadingSpinner = container.querySelector('.loading-spinner');
+            const errorAlert = container.querySelector('.error-alert');
+            const explainButton = container.querySelector('.explain-button');
+            const explanationContent = container.querySelector('.explanation-content');
+            const markdownRenderer = container.querySelector('.markdown-renderer');
+
+            loadingSpinner.classList.remove('hidden');
+            explainButton.classList.add('hidden');
+            errorAlert.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic: questionPaper.topic,
+                        language: questionPaper.requestParams?.language || 'english',
+                        question: q.question,
+                        answer: q.answer,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get explanation.');
+                }
+
+                const res = await response.json();
+                const explanation = res?.explanation;
+
+                markdownRenderer.innerHTML = marked.parse(explanation);
+                explanationContent.classList.remove('hidden');
+
+                questionPaper.questions[index].explanation = explanation;
+                updateHistory(STORAGE_KEYS.TEST_HISTORY, questionPaper);
+
+            } catch (err) {
+                errorAlert.textContent = err.message;
+                errorAlert.classList.remove('hidden');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        newTestButton.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+
+        regenerateButton.addEventListener('click', async () => {
+            if (!questionPaper.requestParams.topic) return;
+
+            regenerateButton.disabled = true;
+            regenerateButtonText.textContent = 'Generating Quiz...';
+            regenerationError.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...questionPaper.requestParams,
+                        previousTests: testHistory.slice(0, 10),
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to generate quiz.');
+                }
+
+                const newQuestionPaper = await response.json();
+                newQuestionPaper.requestParams = questionPaper.requestParams;
+                updateHistory(STORAGE_KEYS.TEST_HISTORY, newQuestionPaper);
+                window.location.href = '/test?id=' + newQuestionPaper.id;
+
+            } catch (error) {
+                regenerationError.textContent = error.message;
+                regenerationError.classList.remove('hidden');
+            } finally {
+                regenerateButton.disabled = false;
+                regenerateButtonText.textContent = 'Similar Quiz';
+            }
+        });
+
+        function showError() {
+            loadingSpinner.classList.add('hidden');
+            errorContainer.classList.remove('hidden');
+        }
+
+        initializeResults();
+    });
+</script>

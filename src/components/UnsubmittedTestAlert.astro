@@ -1,0 +1,38 @@
+---
+import Icon from './Icon.astro';
+---
+
+<div id="unsubmitted-test-alert" class="hidden my-5 flex items-center justify-between p-3 mb-4 rounded-lg shadow-sm w-full" style="max-width: 800px;">
+    <div class="flex items-center">
+        <Icon name='exclamation' className='text-warning me-3 fs-4' />
+        <div>
+            <h6 class="mb-0 font-bold">Unsubmitted Test</h6>
+            <small class="text-muted">
+                A test on "<span id="unsubmitted-test-topic"></span>" is waiting to be completed.
+            </small>
+        </div>
+    </div>
+    <a id="continue-test-button" href="#" class="btn btn-warning btn-sm flex items-center gap-2 font-bold">
+        <Icon name='play' /> Continue Test
+    </a>
+</div>
+
+<script type="module">
+    import { getLocalStorage } from '../lib/localStorage.js';
+    import { STORAGE_KEYS } from '../lib/constants.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const alertDiv = document.getElementById('unsubmitted-test-alert');
+        const topicSpan = document.getElementById('unsubmitted-test-topic');
+        const continueButton = document.getElementById('continue-test-button');
+
+        const testHistory = getLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
+        const unsubmittedTest = testHistory.find((test) => !test.userAnswers);
+
+        if (unsubmittedTest) {
+            alertDiv.classList.remove('hidden');
+            topicSpan.textContent = unsubmittedTest.topic;
+            continueButton.href = '/test?id=' + unsubmittedTest.id;
+        }
+    });
+</script>
