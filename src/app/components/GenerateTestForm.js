@@ -218,7 +218,7 @@ const GenerateTestForm = () => {
 								disabled={loading || !topic.trim()}
 							>
 								<div className='d-flex align-items-center gap-1'>
-									<Icon name='sparkles' />{' '}
+									{!loading && <Icon name='sparkles' />}
 									{loading ? (
 										<div className='d-flex align-items-center justify-content-center gap-2'>
 											<Spinner as='span' animation='border' size='sm' />
