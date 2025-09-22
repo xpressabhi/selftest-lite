@@ -65,8 +65,6 @@ const MarkdownRenderer = ({ children }) => {
 	// If the incoming markdown already contains KaTeX-generated HTML, skip
 	// running rehype-katex to avoid producing duplicate KaTeX output.
 	const containsKaTeXHtml = /<span\s+class=("|')katex\1/.test(normalized);
-	// Configure rehype-katex to output only HTML (not MathML) to avoid
-	// rendering both mathml and html branches which look duplicated in the DOM.
 	const katexPlugin = [rehypeKatex, { output: 'mathml' }];
 	const rehypePlugins = containsKaTeXHtml
 		? [rehypeRaw]
