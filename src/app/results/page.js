@@ -131,7 +131,9 @@ function ResultsContent() {
 		return (
 			<Container className='text-center mt-5'>
 				<Icon name='exclamationCircle' className='text-warning mb-3' />
-				<h1>{topic}</h1>
+				<h1>
+					<MarkdownRenderer>{topic}</MarkdownRenderer>
+				</h1>
 				<p>Please take a test first.</p>
 				<Button
 					variant='primary'

@@ -222,7 +222,7 @@ function TestContent() {
 				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
 					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
 						<Icon name='bookOpen' className='text-primary' />
-						{questionPaper.topic}
+						<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
 					</h1>
 					<form
 						onSubmit={handleSubmit}
