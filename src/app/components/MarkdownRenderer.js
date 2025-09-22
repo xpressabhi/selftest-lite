@@ -62,18 +62,23 @@ const MarkdownRenderer = ({ children }) => {
 	const normalized = useMemo(() => normalizeMarkdown(children), [children]);
 	const Highlighter = useLazySyntaxHighlighter();
 
+	// If the incoming markdown already contains KaTeX-generated HTML, skip
+	// running rehype-katex to avoid producing duplicate KaTeX output.
+	const containsKaTeXHtml = /<span\s+class=("|')katex\1/.test(normalized);
+	// Configure rehype-katex to output only HTML (not MathML) to avoid
+	// rendering both mathml and html branches which look duplicated in the DOM.
+	const katexPlugin = [rehypeKatex, { output: 'mathml' }];
+	const rehypePlugins = containsKaTeXHtml
+		? [rehypeRaw]
+		: [katexPlugin, rehypeRaw];
+
 	return (
 		<div className={`markdown-content`}>
 			<ReactMarkdown
 				remarkPlugins={[remarkMath, remarkGfm]}
-				rehypePlugins={[rehypeRaw, rehypeKatex]}
+				rehypePlugins={rehypePlugins}
 				skipHtml={false}
 				components={{
-					p({ children }) {
-						return (
-							<div style={{ display: 'inline', margin: 0 }}>{children}</div>
-						);
-					},
 					code({ node, inline, className, children, ...props }) {
 						const match = /language-(\w+)/.exec(className || '');
 						const codeString = React.Children.toArray(children).join('');
@@ -93,7 +98,6 @@ const MarkdownRenderer = ({ children }) => {
 								</SyntaxHighlighter>
 							);
 						}
-
 						return (
 							<pre style={{ whiteSpace: 'pre-wrap' }}>
 								<code className={className} {...props}>
