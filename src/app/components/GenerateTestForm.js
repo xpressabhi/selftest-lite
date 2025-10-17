@@ -44,8 +44,9 @@ const GenerateTestForm = () => {
 	const [startTime, setStartTime] = useState(null);
 	const [elapsed, setElapsed] = useState(0);
 	const timerRef = useRef(null);
-	// Reference to the submit button
-
+	const [retryCount, setRetryCount] = useState(0);
+	const MAX_RETRIES = 3;
+	
 	const [selectedCategory, setSelectedCategory] = useState('');
 
 	/**
@@ -61,8 +62,17 @@ const GenerateTestForm = () => {
 		}
 	};
 
+	/**
+	 * Handles test generation submission with automatic retry logic
+	 * @param {Event} e - Form submit event (optional during retries)
+	 */
 	const handleSubmit = async (e) => {
-		e.preventDefault();
+		// Only prevent default and reset retry count on initial submission
+		if (e) {
+			e.preventDefault();
+			setRetryCount(0);
+		}
+		
 		setLoading(true);
 		setError(null);
 
@@ -86,6 +96,11 @@ const GenerateTestForm = () => {
 				language,
 			};
 
+			// Show retry attempt message if this is a retry
+			if (retryCount > 0) {
+				setError(`Retrying... (Attempt ${retryCount} of ${MAX_RETRIES})`);
+			}
+
 			const response = await fetch('/api/generate', {
 				method: 'POST',
 				headers: {
@@ -99,31 +114,71 @@ const GenerateTestForm = () => {
 
 			if (!response.ok) {
 				const errorData = await response.json();
+				
 				if (response.status === 429) {
-					// Rate limit error
-					const resetTime = new Date(errorData.resetTime);
-					const minutes = Math.ceil((resetTime - new Date()) / 60000);
+					// Rate limit error - don't retry
 					setError(errorData.error || 'Rate limit exceeded');
 					setLoading(false);
+					setRetryCount(0);
 				} else {
-					setError(
-						errorData.error ||
-							'An error occurred while generating the explanation.',
-					);
+					// Other API errors - attempt retry
+					if (retryCount < MAX_RETRIES - 1) {
+						// Increment retry count
+						const nextRetryCount = retryCount + 1;
+						setRetryCount(nextRetryCount);
+						
+						// Wait before retrying
+						setTimeout(() => {
+							handleSubmit(); // No event parameter for retries
+						}, 1500);
+					} else {
+						// Max retries reached
+						setError(
+							'Failed to generate test after multiple attempts. Please try again later.'
+						);
+						setRetryCount(0);
+						setLoading(false);
+					}
 				}
 				return;
 			}
 
+			// Success! Process response
 			const questionPaper = await response.json();
 			questionPaper.requestParams = requestParams;
 			updateHistory(questionPaper);
+			
+			// Reset retry count on success
+			setRetryCount(0);
+			setLoading(false);
+			
+			// Navigate to test page
 			router.push('/test?id=' + questionPaper.id);
 		} catch (err) {
-			setError(err.message);
+			// Handle unexpected errors
+			if (retryCount < MAX_RETRIES - 1) {
+				// Increment retry count
+				const nextRetryCount = retryCount + 1;
+				setRetryCount(nextRetryCount);
+				setError(`Error: ${err.message}. Retrying... (Attempt ${nextRetryCount} of ${MAX_RETRIES})`);
+				
+				// Wait before retrying
+				setTimeout(() => {
+					handleSubmit(); // No event parameter for retries
+				}, 1500);
+			} else {
+				// Max retries reached
+				setError(
+					`Failed after ${MAX_RETRIES} attempts: ${err.message}. Please try again later.`
+				);
+				setRetryCount(0);
+				setLoading(false);
+			}
 		} finally {
-			// stop loading and clear timer/startTime
-			setLoading(false);
-			setStartTime(null);
+			// Only clear timer if we're done (success or max retries reached)
+			if (retryCount === 0) {
+				setStartTime(null);
+			}
 		}
 	};
 
