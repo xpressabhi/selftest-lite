@@ -16,11 +16,13 @@ import {
 	Row,
 	Col,
 	Spinner,
+	InputGroup,
 } from 'react-bootstrap';
 
 /**
  * Renders a form for generating a new test.
  * Allows users to input a topic and submit to generate a test.
+ * Also provides an option to directly navigate to an existing test by ID.
  */
 const GenerateTestForm = () => {
 	const [testHistory, _, updateHistory] = useLocalStorage(
@@ -28,6 +30,7 @@ const GenerateTestForm = () => {
 		[],
 	);
 
+	const [testId, setTestId] = useState('');
 	const [topic, setTopic] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
@@ -44,6 +47,19 @@ const GenerateTestForm = () => {
 	// Reference to the submit button
 
 	const [selectedCategory, setSelectedCategory] = useState('');
+
+	/**
+	 * Handles navigation to a test by ID
+	 * @param {Event} e - Form submit event
+	 */
+	const handleTestIdSubmit = (e) => {
+		e.preventDefault();
+		if (testId && testId.trim()) {
+			router.push(`/test?id=${testId.trim()}`);
+		} else {
+			setError('Please enter a valid test ID');
+		}
+	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -137,13 +153,32 @@ const GenerateTestForm = () => {
 	}, [startTime]);
 
 	return (
-		<Container className='py-3 d-flex flex-column align-items-center justify-content-center'>
+		<Container className='pb-3 d-flex flex-column align-items-center justify-content-center'>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
 				Create Personalized Quiz
 			</h1>
 
 			<Card className='w-100 border-0' style={{ maxWidth: '720px' }}>
 				<Card.Body>
+					{/* Test ID Input Form */}
+					<Form onSubmit={handleTestIdSubmit} className='mb-4'>
+						<Form.Group>
+							<InputGroup>
+								<Form.Control
+									type='text'
+									placeholder='Have a test ID? Enter here'
+									value={testId}
+									onChange={(e) => setTestId(e.target.value)}
+								/>
+								<Button variant='outline-primary' type='submit'>
+									Go to Test
+								</Button>
+							</InputGroup>
+						</Form.Group>
+					</Form>
+
+					<hr className='my-4' />
+
 					<Form onSubmit={handleSubmit}>
 						<Form.Group className='mb-3'>
 							<Form.Control

@@ -8,7 +8,7 @@ export default function Home() {
 	const router = useRouter();
 
 	return (
-		<div className='typeform-bg container d-flex flex-column align-items-center py-5 text-dark'>
+		<div className='typeform-bg container d-flex flex-column align-items-center pb-5 text-dark'>
 			<GenerateTestForm />
 			<UnsubmittedTestAlert />
 		</div>
