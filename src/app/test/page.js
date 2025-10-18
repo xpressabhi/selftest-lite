@@ -69,8 +69,6 @@ function TestContent() {
 						setError('Failed to load test. Please try again. ' + err.message);
 					});
 			}
-
-			setLoading(false);
 		}
 	}, [router, testHistory, testId, updateHistory]);
 

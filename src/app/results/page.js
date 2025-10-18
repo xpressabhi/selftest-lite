@@ -29,6 +29,7 @@ function ResultsContent() {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [generationError, setGenerationError] = useState(null);
 	const [questionPaper, setQuestionPaper] = useState();
+	const [loading, setLoading] = useState(true);
 	const router = useRouter();
 
 	// Set document title based on loaded question paper topic
@@ -51,6 +52,7 @@ function ResultsContent() {
 					router.push('/test?id=' + historyEntry.id);
 				} else {
 					setQuestionPaper(historyEntry);
+					setLoading(false);
 				}
 			} else {
 				router.push('/test?id=' + testId);
@@ -109,6 +111,15 @@ function ResultsContent() {
 	};
 	const { score, topic, userAnswers, totalQuestions, questions } =
 		questionPaper || {};
+
+	if (loading) {
+		return (
+			<Container className='text-center mt-5'>
+				<Spinner animation='border' className='mb-2' />
+				<div>Loading results...</div>
+			</Container>
+		);
+	}
 
 	if (!questionPaper) {
 		return (
