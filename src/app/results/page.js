@@ -9,6 +9,7 @@ import Icon from '../components/Icon';
 import Print from '../components/Print';
 import { Container, Card, Button, Spinner, Alert } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
+import Loading from '../components/Loading';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -113,12 +114,7 @@ function ResultsContent() {
 		questionPaper || {};
 
 	if (loading) {
-		return (
-			<Container className='text-center mt-5'>
-				<Spinner animation='border' className='mb-2' />
-				<div>Loading results...</div>
-			</Container>
-		);
+		return <Loading />;
 	}
 
 	if (!questionPaper) {

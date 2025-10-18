@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
+import Loading from '../components/Loading';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -181,12 +182,7 @@ function TestContent() {
 	};
 
 	if (loading) {
-		return (
-			<Container className='text-center mt-5'>
-				<Spinner animation='border' className='mb-2' />
-				<div>Loading test...</div>
-			</Container>
-		);
+		return <Loading />;
 	}
 
 	if (!questionPaper) {
