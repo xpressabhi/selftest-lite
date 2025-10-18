@@ -1,19 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import dynamic from 'next/dynamic';
-// Import document generation libraries
-import {
-	Document,
-	Packer,
-	Paragraph,
-	TextRun,
-	HeadingLevel,
-	Table,
-	TableRow,
-	TableCell,
-	BorderStyle,
-} from 'docx';
-import PptxGenJS from 'pptxgenjs';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -23,13 +10,7 @@ const MarkdownRenderer = dynamic(
 	},
 );
 
-/**
- * Renders content for printing based on the selected format
- * @param {Object} props - Component props
- * @param {Object} props.questionPaper - The question paper data
- * @param {string} props.format - The print format (test, doc, ppt)
- */
-const PrintableContent = ({ questionPaper, format = 'test' }) => {
+const PrintableContent = ({ questionPaper }) => {
 	return (
 		<div className='print-content'>
 			<style jsx global>{`
@@ -75,12 +56,6 @@ const PrintableContent = ({ questionPaper, format = 'test' }) => {
 					}
 					.close-button {
 						display: none !important;
-					}
-					.ppt-question {
-						page-break-after: always;
-					}
-					.ppt-question:last-child {
-						page-break-after: auto;
 					}
 				}
 				.print-content {
@@ -129,170 +104,44 @@ const PrintableContent = ({ questionPaper, format = 'test' }) => {
 				.answer-item {
 					margin: 0.5rem 0;
 				}
-				.ppt-question {
-					min-height: 80vh;
-					display: flex;
-					flex-direction: column;
-					padding: 2rem;
-					position: relative;
-				}
-				.ppt-header {
-					text-align: center;
-					margin-bottom: 2rem;
-				}
-				.ppt-footer {
-					position: absolute;
-					bottom: 1rem;
-					width: 100%;
-					text-align: center;
-					font-size: 0.8rem;
-					color: #666;
-				}
-				.doc-content {
-					line-height: 1.6;
-				}
-				.doc-header {
-					text-align: center;
-					margin-bottom: 2rem;
-					border-bottom: 1px solid #ddd;
-					padding-bottom: 1rem;
-				}
-				.doc-section {
-					margin-bottom: 2rem;
-				}
 			`}</style>
 			<div className='watermark'>selftest.in</div>
-
-			{format === 'test' && (
-				<>
-					<h2>{questionPaper.topic || 'Test'}</h2>
-					{questionPaper.questions.map((q, i) => (
-						<div key={i} className='question'>
-							<span className='question-number'>Q{i + 1}.</span>
-							<MarkdownRenderer>{q.question}</MarkdownRenderer>
-							<div className='options'>
-								{q.options.map((opt, idx) => (
-									<div key={idx} className='option'>
-										<span className='option-letter'>
-											{String.fromCharCode(65 + idx)}.
-										</span>
-										<MarkdownRenderer>{opt}</MarkdownRenderer>
-									</div>
-								))}
-							</div>
-						</div>
-					))}
-					<div className='answers'>
-						<h3>Answers</h3>
-						<ol>
-							{questionPaper.questions.map((q, i) => (
-								<li key={i} className='answer-item'>
-									<MarkdownRenderer>{q.answer}</MarkdownRenderer>
-								</li>
-							))}
-						</ol>
-					</div>
-				</>
-			)}
-
-			{format === 'doc' && (
-				<div className='doc-content'>
-					<div className='doc-header'>
-						<h1>{questionPaper.topic || 'Test Document'}</h1>
-						<p>Generated from selftest.in</p>
-					</div>
-
-					<div className='doc-section'>
-						<h2>Questions</h2>
-						{questionPaper.questions.map((q, i) => (
-							<div key={i} className='question'>
-								<h3>Question {i + 1}</h3>
-								<MarkdownRenderer>{q.question}</MarkdownRenderer>
-								<h4>Options:</h4>
-								<div className='options'>
-									{q.options.map((opt, idx) => (
-										<div key={idx} className='option'>
-											<span className='option-letter'>
-												{String.fromCharCode(65 + idx)}.
-											</span>
-											<MarkdownRenderer>{opt}</MarkdownRenderer>
-										</div>
-									))}
-								</div>
-							</div>
-						))}
-					</div>
-
-					<div className='doc-section'>
-						<h2>Answers and Explanations</h2>
-						{questionPaper.questions.map((q, i) => (
-							<div key={i} className='answer-item'>
-								<h3>Answer to Question {i + 1}</h3>
-								<MarkdownRenderer>{q.answer}</MarkdownRenderer>
+			<h2>{questionPaper.topic || 'Test'}</h2>
+			{questionPaper.questions.map((q, i) => (
+				<div key={i} className='question'>
+					<span className='question-number'>Q{i + 1}.</span>
+					<MarkdownRenderer>{q.question}</MarkdownRenderer>
+					<div className='options'>
+						{q.options.map((opt, idx) => (
+							<div key={idx} className='option'>
+								<span className='option-letter'>
+									{String.fromCharCode(65 + idx)}.
+								</span>
+								<MarkdownRenderer>{opt}</MarkdownRenderer>
 							</div>
 						))}
 					</div>
 				</div>
-			)}
-
-			{format === 'ppt' && (
-				<>
-					{/* Title slide */}
-					<div className='ppt-question'>
-						<div className='ppt-header'>
-							<h1>{questionPaper.topic || 'Test Presentation'}</h1>
-							<p>Generated from selftest.in</p>
-						</div>
-						<div className='ppt-footer'>
-							selftest.in | Slide 1 of {questionPaper.questions.length + 1}
-						</div>
-					</div>
-
-					{/* One slide per question */}
+			))}
+			<div className='answers'>
+				<h3>Answers</h3>
+				<ol>
 					{questionPaper.questions.map((q, i) => (
-						<div key={i} className='ppt-question'>
-							<h2>Question {i + 1}</h2>
-							<div className='question-content'>
-								<MarkdownRenderer>{q.question}</MarkdownRenderer>
-							</div>
-							<div className='options'>
-								{q.options.map((opt, idx) => (
-									<div key={idx} className='option'>
-										<span className='option-letter'>
-											{String.fromCharCode(65 + idx)}.
-										</span>
-										<MarkdownRenderer>{opt}</MarkdownRenderer>
-									</div>
-								))}
-							</div>
-							<div className='answer mt-4'>
-								<h4>Answer:</h4>
-								<MarkdownRenderer>{q.answer}</MarkdownRenderer>
-							</div>
-							<div className='ppt-footer'>
-								selftest.in | Slide {i + 2} of{' '}
-								{questionPaper.questions.length + 1}
-							</div>
-						</div>
+						<li key={i} className='answer-item'>
+							<MarkdownRenderer>{q.answer}</MarkdownRenderer>
+						</li>
 					))}
-				</>
-			)}
+				</ol>
+			</div>
 		</div>
 	);
 };
 
-/**
- * Print component that allows printing test papers in different formats
- * @param {Object} props - Component props
- * @param {Object} props.questionPaper - The question paper data
- */
 export default function Print({ questionPaper }) {
 	const [showPreview, setShowPreview] = useState(false);
-	const [printFormat, setPrintFormat] = useState('ppt'); // Default to PPT format
 
-	const handlePrint = (format = 'ppt') => {
+	const handlePrint = () => {
 		if (!questionPaper) return;
-		setPrintFormat(format);
 		setShowPreview(true);
 	};
 
@@ -561,7 +410,6 @@ export default function Print({ questionPaper }) {
 		if (printFormat === 'test') {
 			// For test format, use browser print functionality
 			const printContents = document.querySelector('.print-content').outerHTML;
-			const watermark = '<div class="watermark" style="display: block !important; position: fixed !important; visibility: visible !important; opacity: 0.2 !important; z-index: 9999 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; forced-color-adjust: none !important; transform: rotate(-30deg) !important; top: 40% !important; left: 20% !important; width: 60% !important; font-size: 5rem !important; text-align: center !important; font-weight: bold !important; color: rgba(200, 200, 200, 0.2) !important;">selftest.in</div>';
 			const styles = Array.from(
 				document.querySelectorAll('style, link[rel="stylesheet"]'),
 			)
@@ -571,7 +419,6 @@ export default function Print({ questionPaper }) {
 			newWin.document.write('<html><head><title>selftest.in</title>');
 			newWin.document.write(styles);
 			newWin.document.write('</head><body>');
-			newWin.document.write(watermark); // Add watermark explicitly
 			newWin.document.write(printContents);
 			newWin.document.write('</body></html>');
 			newWin.document.close();
@@ -588,13 +435,11 @@ export default function Print({ questionPaper }) {
 	};
 
 	if (!showPreview) {
-		// Show only one button on the main page
 		return (
 			<button
 				type='button'
 				className='btn btn-outline-secondary d-flex align-items-center gap-2'
-				onClick={() => handlePrint('ppt')}
-				title='Print test in presentation format'
+				onClick={handlePrint}
 			>
 				<Icon name='print' /> Print Test
 			</button>
@@ -604,60 +449,21 @@ export default function Print({ questionPaper }) {
 	return (
 		<div className='print-dialog fixed-top vh-100 w-100 bg-light overflow-auto'>
 			<div className='container position-relative'>
-				<div className='d-flex justify-content-between position-fixed top-0 p-3 bg-light gap-5'>
-					<div className='d-flex gap-2'>
-						<button
-							type='button'
-							className='btn btn-primary d-flex align-items-center gap-2'
-							onClick={handlePrintContent}
-						>
-							<Icon name={printFormat === 'test' ? 'print' : 'download'} />
-							{printFormat === 'test' ? 'Print' : 'Download'}
-						</button>
-						<div className='btn-group'>
-							<button
-								type='button'
-								className={`btn btn-outline-secondary ${
-									printFormat === 'test' ? 'active' : ''
-								}`}
-								onClick={() => setPrintFormat('test')}
-							>
-								Test
-							</button>
-							<button
-								type='button'
-								className={`btn btn-outline-secondary ${
-									printFormat === 'doc' ? 'active' : ''
-								}`}
-								onClick={() => setPrintFormat('doc')}
-							>
-								Doc
-							</button>
-							<button
-								type='button'
-								className={`btn btn-outline-secondary ${
-									printFormat === 'ppt' ? 'active' : ''
-								}`}
-								onClick={() => setPrintFormat('ppt')}
-							>
-								PPT
-							</button>
-						</div>
-					</div>
-					<button
-						type='button'
-						className='close-button btn btn-outline-secondary d-flex align-items-center gap-2'
-						onClick={() => setShowPreview(false)}
-					>
-						<Icon name='close' /> Close
-					</button>
-				</div>
-				<div style={{ marginTop: '70px' }}>
-					<PrintableContent
-						questionPaper={questionPaper}
-						format={printFormat}
-					/>
-				</div>
+				<button
+					type='button'
+					className='close-button btn btn-outline-secondary position-fixed top-0 end-0 m-3 d-flex align-items-center gap-2'
+					onClick={() => setShowPreview(false)}
+				>
+					<Icon name='close' /> Close
+				</button>
+				<button
+					type='button'
+					className='btn btn-primary position-fixed top-0 start-0 m-3 d-flex align-items-center gap-2'
+					onClick={handlePrintContent}
+				>
+					<Icon name='print' /> Print
+				</button>
+				<PrintableContent questionPaper={questionPaper} />
 			</div>
 		</div>
 	);
