@@ -407,31 +407,23 @@ export default function Print({ questionPaper }) {
 	 * Handles printing or downloading content based on format
 	 */
 	const handlePrintContent = async () => {
-		if (printFormat === 'test') {
-			// For test format, use browser print functionality
-			const printContents = document.querySelector('.print-content').outerHTML;
-			const styles = Array.from(
-				document.querySelectorAll('style, link[rel="stylesheet"]'),
-			)
-				.map((node) => node.outerHTML)
-				.join('');
-			const newWin = window.open('', '', 'width=800,height=600');
-			newWin.document.write('<html><head><title>selftest.in</title>');
-			newWin.document.write(styles);
-			newWin.document.write('</head><body>');
-			newWin.document.write(printContents);
-			newWin.document.write('</body></html>');
-			newWin.document.close();
-			newWin.focus();
-			newWin.print();
-			newWin.close();
-		} else if (printFormat === 'doc') {
-			// Generate and download DOCX file
-			await generateDocx();
-		} else if (printFormat === 'ppt') {
-			// Generate and download PPTX file
-			await generatePptx();
-		}
+		// For test format, use browser print functionality
+		const printContents = document.querySelector('.print-content').outerHTML;
+		const styles = Array.from(
+			document.querySelectorAll('style, link[rel="stylesheet"]'),
+		)
+			.map((node) => node.outerHTML)
+			.join('');
+		const newWin = window.open('', '', 'width=800,height=600');
+		newWin.document.write('<html><head><title>selftest.in</title>');
+		newWin.document.write(styles);
+		newWin.document.write('</head><body>');
+		newWin.document.write(printContents);
+		newWin.document.write('</body></html>');
+		newWin.document.close();
+		newWin.focus();
+		newWin.print();
+		newWin.close();
 	};
 
 	if (!showPreview) {
