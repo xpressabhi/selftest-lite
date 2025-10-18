@@ -220,10 +220,10 @@ function TestContent() {
 		<>
 			<div className='typeform-bg d-flex flex-column min-vh-100'>
 				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
-					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
+					<h3 className='mb-4 d-flex align-items-center gap-2 mt-2'>
 						<Icon name='bookOpen' className='text-primary' />
 						<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
-					</h1>
+					</h3>
 					<form
 						onSubmit={handleSubmit}
 						className='w-100 position-relative'
