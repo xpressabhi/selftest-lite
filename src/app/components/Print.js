@@ -56,6 +56,14 @@ const PrintableContent = ({ questionPaper, format = 'test' }) => {
 						print-color-adjust: exact !important;
 						color-adjust: exact !important;
 						forced-color-adjust: none !important;
+						transform: rotate(-30deg) !important;
+						top: 40% !important;
+						left: 20% !important;
+						width: 60% !important;
+						font-size: 5rem !important;
+						text-align: center !important;
+						font-weight: bold !important;
+						color: rgba(200, 200, 200, 0.2) !important;
 					}
 					@page {
 						size: A4;
@@ -553,6 +561,7 @@ export default function Print({ questionPaper }) {
 		if (printFormat === 'test') {
 			// For test format, use browser print functionality
 			const printContents = document.querySelector('.print-content').outerHTML;
+			const watermark = '<div class="watermark" style="display: block !important; position: fixed !important; visibility: visible !important; opacity: 0.2 !important; z-index: 9999 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; forced-color-adjust: none !important; transform: rotate(-30deg) !important; top: 40% !important; left: 20% !important; width: 60% !important; font-size: 5rem !important; text-align: center !important; font-weight: bold !important; color: rgba(200, 200, 200, 0.2) !important;">selftest.in</div>';
 			const styles = Array.from(
 				document.querySelectorAll('style, link[rel="stylesheet"]'),
 			)
@@ -562,6 +571,7 @@ export default function Print({ questionPaper }) {
 			newWin.document.write('<html><head><title>selftest.in</title>');
 			newWin.document.write(styles);
 			newWin.document.write('</head><body>');
+			newWin.document.write(watermark); // Add watermark explicitly
 			newWin.document.write(printContents);
 			newWin.document.write('</body></html>');
 			newWin.document.close();
