@@ -433,7 +433,7 @@ export default function Print({ questionPaper }) {
 				className='btn btn-outline-secondary d-flex align-items-center gap-2'
 				onClick={handlePrint}
 			>
-				<Icon name='print' /> Print Test
+				<Icon name='print' /> Print
 			</button>
 		);
 	}

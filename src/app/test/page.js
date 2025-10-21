@@ -212,12 +212,12 @@ function TestContent() {
 
 	return (
 		<>
-			<div className='typeform-bg d-flex flex-column min-vh-100'>
+			<div className='typeform-bg d-flex flex-column'>
 				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
-					<h1 className='mb-4 d-flex align-items-center gap-2 mt-4'>
+					<h3 className='mb-4 d-flex align-items-center gap-2 mt-2'>
 						<Icon name='bookOpen' className='text-primary' />
 						<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
-					</h1>
+					</h3>
 					<form
 						onSubmit={handleSubmit}
 						className='w-100 position-relative'
@@ -307,7 +307,7 @@ function TestContent() {
 								</small>
 							</div>
 							{/* Large, bold, centered question */}
-							<div className='w-100 text-center mb-4'>
+							<div className='w-100 text-center mb-4 card card-body shadow-sm border-0'>
 								<MarkdownRenderer>{q.question}</MarkdownRenderer>
 							</div>
 							{/* Typeform-style options */}
@@ -373,13 +373,7 @@ function TestContent() {
 						<Button
 							type='submit'
 							variant='success'
-							className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5'
-							style={{
-								fontWeight: 700,
-								fontSize: '1.15rem',
-								padding: '0.9rem 0',
-								marginTop: '0.5rem',
-							}}
+							className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5 p-2 fw-bold'
 						>
 							<Icon name='checkCircle' />
 							Submit Answers

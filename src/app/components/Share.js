@@ -31,7 +31,7 @@ export default function Share({ paper }) {
 			className='btn btn-outline-secondary d-flex align-items-center gap-2'
 			onClick={handleShare}
 		>
-			<Icon name='share' /> Share Test
+			<Icon name='share' /> Share
 		</button>
 	);
 }
