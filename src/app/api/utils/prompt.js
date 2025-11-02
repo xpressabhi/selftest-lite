@@ -207,6 +207,8 @@ export function generateExplanationPrompt({
       The "answer" must be one of the strings from the "options" array.
       Do not include any text outside of the JSON object.
       Keep explanation short and crisp, ideally under 200 words.
-      Ensure the explanation is in the same language as the question.
+      Ensure the explanation is in the same language ${
+				language || 'English'
+			} as the question.
     `;
 }
