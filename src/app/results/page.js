@@ -10,6 +10,7 @@ import Print from '../components/Print';
 import { Container, Card, Button, Spinner, Alert } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
+import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -247,6 +248,7 @@ function ResultsContent() {
 						})}
 					</Container>
 					<div className='d-flex flex-wrap justify-content-center gap-3 mt-5 mb-5'>
+						<FloatingButtonWithCopy data={testId} label='Test Id' />
 						<Button
 							variant='primary'
 							size='lg'

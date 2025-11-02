@@ -7,6 +7,7 @@ import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
+import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -214,7 +215,7 @@ function TestContent() {
 		<>
 			<div className='typeform-bg d-flex flex-column'>
 				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
-					<h3 className='mb-4 d-flex align-items-center gap-2 mt-2'>
+					<h3 className='d-flex align-items-center gap-2 mt-2'>
 						<Icon name='bookOpen' className='text-primary' />
 						<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
 					</h3>
@@ -380,6 +381,7 @@ function TestContent() {
 						</Button>
 					</form>
 					<div className='d-flex gap-2 mb-3'>
+						<FloatingButtonWithCopy data={testId} label='Test Id' />
 						<Share paper={questionPaper} />
 						<Print questionPaper={questionPaper} />
 					</div>
