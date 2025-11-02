@@ -46,7 +46,7 @@ const GenerateTestForm = () => {
 	const timerRef = useRef(null);
 	const [retryCount, setRetryCount] = useState(0);
 	const MAX_RETRIES = 3;
-	
+
 	const [selectedCategory, setSelectedCategory] = useState('');
 
 	/**
@@ -72,7 +72,7 @@ const GenerateTestForm = () => {
 			e.preventDefault();
 			setRetryCount(0);
 		}
-		
+
 		setLoading(true);
 		setError(null);
 
@@ -114,7 +114,7 @@ const GenerateTestForm = () => {
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				
+
 				if (response.status === 429) {
 					// Rate limit error - don't retry
 					setError(errorData.error || 'Rate limit exceeded');
@@ -126,7 +126,7 @@ const GenerateTestForm = () => {
 						// Increment retry count
 						const nextRetryCount = retryCount + 1;
 						setRetryCount(nextRetryCount);
-						
+
 						// Wait before retrying
 						setTimeout(() => {
 							handleSubmit(); // No event parameter for retries
@@ -134,7 +134,7 @@ const GenerateTestForm = () => {
 					} else {
 						// Max retries reached
 						setError(
-							'Failed to generate test after multiple attempts. Please try again later.'
+							'Failed to generate test after multiple attempts. Please try again later.',
 						);
 						setRetryCount(0);
 						setLoading(false);
@@ -147,11 +147,11 @@ const GenerateTestForm = () => {
 			const questionPaper = await response.json();
 			questionPaper.requestParams = requestParams;
 			updateHistory(questionPaper);
-			
+
 			// Reset retry count on success
 			setRetryCount(0);
 			setLoading(false);
-			
+
 			// Navigate to test page
 			router.push('/test?id=' + questionPaper.id);
 		} catch (err) {
@@ -160,8 +160,10 @@ const GenerateTestForm = () => {
 				// Increment retry count
 				const nextRetryCount = retryCount + 1;
 				setRetryCount(nextRetryCount);
-				setError(`Error: ${err.message}. Retrying... (Attempt ${nextRetryCount} of ${MAX_RETRIES})`);
-				
+				setError(
+					`Error: ${err.message}. Retrying... (Attempt ${nextRetryCount} of ${MAX_RETRIES})`,
+				);
+
 				// Wait before retrying
 				setTimeout(() => {
 					handleSubmit(); // No event parameter for retries
@@ -169,7 +171,7 @@ const GenerateTestForm = () => {
 			} else {
 				// Max retries reached
 				setError(
-					`Failed after ${MAX_RETRIES} attempts: ${err.message}. Please try again later.`
+					`Failed after ${MAX_RETRIES} attempts: ${err.message}. Please try again later.`,
 				);
 				setRetryCount(0);
 				setLoading(false);
@@ -210,7 +212,7 @@ const GenerateTestForm = () => {
 	return (
 		<Container className='pb-3 d-flex flex-column align-items-center justify-content-center'>
 			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
-				Create Personalized Quiz
+				Create Personalized Quiz (अपना क्विज़ बनाएं)
 			</h1>
 
 			<Card className='w-100 border-0' style={{ maxWidth: '720px' }}>
@@ -221,7 +223,7 @@ const GenerateTestForm = () => {
 							<InputGroup>
 								<Form.Control
 									type='text'
-									placeholder='Have a test ID? Enter here'
+									placeholder='Have a Test ID? Enter here (अगर आपके पास टेस्ट आईडी है तो यहाँ डालें)'
 									value={testId}
 									onChange={(e) => setTestId(e.target.value)}
 								/>
@@ -242,7 +244,7 @@ const GenerateTestForm = () => {
 								rows={4}
 								value={topic}
 								onChange={(e) => setTopic(e.target.value)}
-								placeholder='What do you want to test yourself on today? (e.g., "Spanish travel phrases", "Marvel movie trivia", or "System Design basics")'
+								placeholder='What do you want to test yourself on today? (आज आप किस टॉपिक पर टेस्ट देना चाहते हैं? जैसे "हिंदी व्याकरण", "भारत का इतिहास", या "गणित के सवाल")'
 							/>
 						</Form.Group>
 						{error && <Alert variant='danger'>{error}</Alert>}
@@ -259,8 +261,8 @@ const GenerateTestForm = () => {
 									}}
 								>
 									{showAdvanced
-										? 'Hide advanced settings'
-										: 'Show advanced settings'}
+										? 'Hide advanced settings (कम विकल्प दिखाएं)'
+										: 'Show advanced settings (अधिक विकल्प दिखाएं)'}
 								</Button>
 
 								{!showAdvanced && (
@@ -313,14 +315,14 @@ const GenerateTestForm = () => {
 										<div className='d-flex align-items-center justify-content-center gap-2'>
 											<Spinner as='span' animation='border' size='sm' />
 											<span>
-												Generating...{' '}
+												Generating... (बनाया जा रहा है...){' '}
 												<span style={{ width: '24px' }}>
 													{Math.max(0, (elapsed / 1000).toFixed(1))}s
 												</span>
 											</span>
 										</div>
 									) : (
-										'Generate Quiz'
+										'Generate Quiz (क्विज़ बनाएं)'
 									)}
 								</div>
 							</Button>
@@ -333,7 +335,7 @@ const GenerateTestForm = () => {
 										<div className='d-flex flex-column flex-sm-row gap-2'>
 											<div className='flex-grow-1'>
 												<Form.Label className='small text-muted'>
-													Question Format
+													Question Format (प्रश्न का प्रकार)
 												</Form.Label>
 												<Form.Select
 													size='sm'
@@ -350,7 +352,7 @@ const GenerateTestForm = () => {
 											</div>
 											<div className='flex-grow-1'>
 												<Form.Label className='small text-muted'>
-													How many questions?
+													How many questions? (कितने प्रश्न चाहिए?)
 												</Form.Label>
 												<Form.Select
 													size='sm'
@@ -368,7 +370,7 @@ const GenerateTestForm = () => {
 											</div>
 											<div className='flex-grow-1'>
 												<Form.Label className='small text-muted'>
-													Select Difficulty
+													Select Difficulty (कठिनाई स्तर चुनें)
 												</Form.Label>
 												<Form.Select
 													size='sm'
@@ -383,7 +385,7 @@ const GenerateTestForm = () => {
 											</div>
 											<div className='flex-grow-1'>
 												<Form.Label className='small text-muted'>
-													Select Language
+													Select Language (भाषा चुनें)
 												</Form.Label>
 												<Form.Select
 													size='sm'
@@ -400,7 +402,7 @@ const GenerateTestForm = () => {
 
 									<Col xs={12}>
 										<Form.Label className='small text-muted d-flex justify-content-between align-items-center mb-2'>
-											<span>Pick a Category (optional)</span>
+											<span>Pick a Category (श्रेणी चुनें - वैकल्पिक)</span>
 											{selectedCategory && (
 												<Button
 													variant='link'
@@ -455,7 +457,9 @@ const GenerateTestForm = () => {
 										{selectedCategory && (
 											<div className='selected-topics mt-3'>
 												<Form.Label className='small text-muted d-flex justify-content-between align-items-center'>
-													<span>Suggested {selectedCategory} Topics</span>
+													<span>
+														Suggested {selectedCategory} Topics (सुझाए गए टॉपिक)
+													</span>
 													<Button
 														variant='link'
 														size='sm'
@@ -505,8 +509,9 @@ const GenerateTestForm = () => {
 			</Card>
 
 			<p className='text-center text-muted mt-4 small'>
-				<Icon name='lightbulb' /> Tip: Be as specific as possible. Try “Advanced
-				React Hooks” for depth or “World History” for breadth.
+				<Icon name='lightbulb' /> 💡 Tip (सलाह): Be as specific as possible
+				(जितना साफ बताएँगे उतना अच्छा क्विज़ बनेगा)। Try “Advanced React Hooks”
+				for depth (गहराई) या “World History” for breadth (विस्तार)।
 			</p>
 		</Container>
 	);
