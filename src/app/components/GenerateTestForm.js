@@ -223,7 +223,7 @@ const GenerateTestForm = () => {
 							<InputGroup>
 								<Form.Control
 									type='text'
-									placeholder='Have a Test ID? Enter here (अगर आपके पास टेस्ट आईडी है तो यहाँ डालें)'
+									placeholder='Test ID (टेस्ट आईडी डालें)'
 									value={testId}
 									onChange={(e) => setTestId(e.target.value)}
 								/>
@@ -231,6 +231,13 @@ const GenerateTestForm = () => {
 									Go to Test
 								</Button>
 							</InputGroup>
+							<Form.Text
+								className='text-muted small d-block mt-1'
+								style={{ fontSize: '0.8rem' }}
+							>
+								Have a Test ID? Enter here (अगर आपके पास टेस्ट आईडी है तो यहाँ
+								डालें)
+							</Form.Text>
 						</Form.Group>
 					</Form>
 
@@ -508,11 +515,26 @@ const GenerateTestForm = () => {
 				</Card.Body>
 			</Card>
 
-			<p className='text-center text-muted mt-4 small'>
-				<Icon name='lightbulb' /> 💡 Tip (सलाह): Be as specific as possible
-				(जितना साफ बताएँगे उतना अच्छा क्विज़ बनेगा)। Try “Advanced React Hooks”
-				for depth (गहराई) या “World History” for breadth (विस्तार)।
-			</p>
+			<Card className='mt-4 shadow-sm border-0 bg-light'>
+				<Card.Body className='text-center p-3'>
+					<div className='d-flex flex-column align-items-center'>
+						<Icon name='lightbulb' className='mb-2 text-warning' />
+						<h6 className='fw-bold mb-3'>💡 सलाह (Tip)</h6>
+						<p className='text-muted mb-2'>
+							जब आप टेस्ट का टॉपिक लिखें तो साफ-साफ लिखें कि आप किस चीज़ पर
+							क्विज़ बनाना चाहते हैं।
+						</p>
+						<ul className='list-unstyled text-muted small mb-2'>
+							<li>👉 भारत का स्वतंत्रता संग्राम</li>
+							<li>👉 गणित के सूत्र (Formulas)</li>
+							<li>👉 कंप्यूटर के बेसिक सवाल</li>
+						</ul>
+						<p className='fw-semibold text-secondary mb-0'>
+							जितना साफ़ टॉपिक बताएँगे, उतना सही और आसान क्विज़ बनेगा।
+						</p>
+					</div>
+				</Card.Body>
+			</Card>
 		</Container>
 	);
 };
