@@ -292,10 +292,12 @@ const GenerateTestForm = () => {
 											onChange={(e) => setDifficulty(e.target.value)}
 											style={{ width: 'auto', minWidth: '120px' }}
 										>
-											<option value='beginner'>Beginner</option>
-											<option value='intermediate'>Intermediate</option>
-											<option value='advanced'>Advanced</option>
-											<option value='expert'>Expert</option>
+											<option value='beginner'>Beginner (शुरुआती)</option>
+											<option value='intermediate'>
+												Intermediate (मध्यवर्ती)
+											</option>
+											<option value='advanced'>Advanced (विकसित)</option>
+											<option value='expert'>Expert (विशेषज्ञ)</option>
 										</Form.Select>
 										<Form.Select
 											size='sm'
