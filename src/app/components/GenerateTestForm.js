@@ -384,10 +384,12 @@ const GenerateTestForm = () => {
 													value={difficulty}
 													onChange={(e) => setDifficulty(e.target.value)}
 												>
-													<option value='beginner'>Beginner</option>
-													<option value='intermediate'>Intermediate</option>
-													<option value='advanced'>Advanced</option>
-													<option value='expert'>Expert</option>
+													<option value='beginner'>Beginner (शुरुआती)</option>
+													<option value='intermediate'>
+														Intermediate (मध्यवर्ती)
+													</option>
+													<option value='advanced'>Advanced (विकसित)</option>
+													<option value='expert'>Expert (विशेषज्ञ)</option>
 												</Form.Select>
 											</div>
 											<div className='flex-grow-1'>
@@ -525,9 +527,9 @@ const GenerateTestForm = () => {
 							क्विज़ बनाना चाहते हैं।
 						</p>
 						<ul className='list-unstyled text-muted small mb-2'>
-							<li>👉 भारत का स्वतंत्रता संग्राम</li>
-							<li>👉 गणित के सूत्र (Formulas)</li>
-							<li>👉 कंप्यूटर के बेसिक सवाल</li>
+							<li>👉 कक्षा 10 गणित अध्याय 2</li>
+							<li>👉 CUET Chemistry Resonance</li>
+							<li>👉 इतिहास मौर्य वंश</li>
 						</ul>
 						<p className='fw-semibold text-secondary mb-0'>
 							जितना साफ़ टॉपिक बताएँगे, उतना सही और आसान क्विज़ बनेगा।
