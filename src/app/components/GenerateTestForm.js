@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 import {
 	Container,
 	Form,
@@ -46,8 +47,18 @@ const GenerateTestForm = () => {
 	const timerRef = useRef(null);
 	const [retryCount, setRetryCount] = useState(0);
 	const MAX_RETRIES = 3;
+	const { t, language: uiLanguage } = useLanguage();
 
 	const [selectedCategory, setSelectedCategory] = useState('');
+
+	// Sync test language with UI language
+	useEffect(() => {
+		if (uiLanguage === 'hindi') {
+			setLanguage('hindi');
+		} else {
+			setLanguage('english');
+		}
+	}, [uiLanguage]);
 
 	/**
 	 * Handles navigation to a test by ID
@@ -213,10 +224,10 @@ const GenerateTestForm = () => {
 		<Container className='pb-3 d-flex flex-column align-items-center justify-content-center'>
 			<div className='text-center mb-5'>
 				<h1 className='display-4 fw-bold mb-2' style={{ letterSpacing: '-1px' }}>
-					Create Personalized Quiz
+					{t('createQuiz')}
 				</h1>
 				<p className='text-muted fs-5'>
-					अपना क्विज़ बनाएं और खुद को टेस्ट करें
+					{t('createQuizSubtitle')}
 				</p>
 			</div>
 
@@ -228,7 +239,7 @@ const GenerateTestForm = () => {
 							<InputGroup className='mb-1'>
 								<Form.Control
 									type='text'
-									placeholder='Enter Test ID (टेस्ट आईडी डालें)'
+									placeholder={t('enterTestId')}
 									value={testId}
 									onChange={(e) => setTestId(e.target.value)}
 									className='glass-input border-end-0'
@@ -240,31 +251,31 @@ const GenerateTestForm = () => {
 									className='border-start-0 px-4'
 									style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
 								>
-									Go
+									{t('go')}
 								</Button>
 							</InputGroup>
 							<Form.Text className='text-muted small'>
-								Have a Test ID? Enter here (अगर आपके पास टेस्ट आईडी है तो यहाँ डालें)
+								{t('haveTestId')}
 							</Form.Text>
 						</Form.Group>
 					</Form>
 
 					<div className='d-flex align-items-center mb-4'>
 						<hr className='flex-grow-1 opacity-25' />
-						<span className='px-3 text-muted small text-uppercase fw-semibold'>OR</span>
+						<span className='px-3 text-muted small text-uppercase fw-semibold'>{t('or')}</span>
 						<hr className='flex-grow-1 opacity-25' />
 					</div>
 
 					<Form onSubmit={handleSubmit}>
 						<Form.Group className='mb-4'>
-							<Form.Label className='fw-medium'>What do you want to learn today?</Form.Label>
+							<Form.Label className='fw-medium'>{t('whatToLearn')}</Form.Label>
 							<Form.Control
 								as='textarea'
 								id='topic'
 								rows={4}
 								value={topic}
 								onChange={(e) => setTopic(e.target.value)}
-								placeholder='e.g., &quot;Organic Chemistry Class 12&quot;, &quot;History of Ancient India&quot;, or &quot;Python Programming Basics&quot;'
+								placeholder={t('placeholderTopic')}
 								className='glass-input'
 								style={{ resize: 'none' }}
 							/>
@@ -279,7 +290,7 @@ const GenerateTestForm = () => {
 									onClick={() => setShowAdvanced(!showAdvanced)}
 								>
 									<Icon name={showAdvanced ? 'chevronUp' : 'chevronDown'} size={14} />
-									{showAdvanced ? 'Hide options' : 'More options'}
+									{showAdvanced ? t('hideOptions') : t('moreOptions')}
 								</Button>
 
 								{!showAdvanced && (
@@ -439,14 +450,14 @@ const GenerateTestForm = () => {
 										<>
 											<Spinner as='span' animation='border' size='sm' />
 											<span>
-												Generating...
+												{t('generating')}
 												<span className='ms-2 opacity-75 fs-6'>
 													{Math.max(0, (elapsed / 1000).toFixed(1))}s
 												</span>
 											</span>
 										</>
 									) : (
-										'Generate Quiz'
+										t('generateQuiz')
 									)}
 								</div>
 							</Button>
@@ -460,10 +471,10 @@ const GenerateTestForm = () => {
 					<div className='d-flex flex-column align-items-center opacity-75'>
 						<div className='d-flex align-items-center gap-2 mb-2'>
 							<Icon name='lightbulb' className='text-warning' />
-							<span className='fw-semibold'>Pro Tip</span>
+							<span className='fw-semibold'>{t('proTip')}</span>
 						</div>
 						<p className='text-muted small mb-0' style={{ maxWidth: '400px' }}>
-							Be specific for better results. Try &quot;Class 10 Math Quadratic Equations&quot; instead of just &quot;Math&quot;.
+							{t('proTipContent')}
 						</p>
 					</div>
 				</Card.Body>

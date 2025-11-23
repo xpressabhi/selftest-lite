@@ -1,16 +1,13 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { STORAGE_KEYS } from '../constants';
+import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import Share from '../components/Share';
+import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
-import Print from '../components/Print';
-import { Container, Card, Button, Spinner, Alert, Row, Col } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
-import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
+import { useLanguage } from '../context/LanguageContext';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -20,58 +17,47 @@ const MarkdownRenderer = dynamic(
 	},
 );
 
-// Component that uses useSearchParams (must be wrapped in Suspense)
+import Share from '../components/Share';
+import Print from '../components/Print';
+import { Container, Button, Card, Badge, Alert, Accordion } from 'react-bootstrap';
+
 function ResultsContent() {
 	const searchParams = useSearchParams();
-	const testId = searchParams.get('id');
+	const id = searchParams.get('id');
 	const [testHistory, _, updateHistory] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
 		[],
 	);
+	const [questionPaper, setQuestionPaper] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+	const router = useRouter();
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [generationError, setGenerationError] = useState(null);
-	const [questionPaper, setQuestionPaper] = useState();
-	const [loading, setLoading] = useState(true);
-	const router = useRouter();
-
-	// Set document title based on loaded question paper topic
-	useEffect(() => {
-		if (typeof document === 'undefined') return;
-		const prev = document.title;
-		if (questionPaper?.topic) {
-			document.title = `${questionPaper.topic} - selftest.in`;
-		}
-		return () => {
-			document.title = prev;
-		};
-	}, [questionPaper?.topic]);
+	const { t } = useLanguage();
 
 	useEffect(() => {
-		if (testId) {
-			const historyEntry = testHistory.find((entry) => entry.id == testId);
-			if (historyEntry) {
-				if (!historyEntry.userAnswers) {
-					router.push('/test?id=' + historyEntry.id);
-				} else {
-					setQuestionPaper(historyEntry);
-					setLoading(false);
-				}
+		if (id) {
+			const paper = testHistory.find((t) => t.id == id);
+			if (paper) {
+				setQuestionPaper(paper);
 			} else {
-				router.push('/test?id=' + testId);
+				setError('Test result not found.');
 			}
+			setLoading(false);
 		}
-	}, [testId, testHistory, router]);
+	}, [id, testHistory]);
 
 	const handleNewTest = () => {
-		setQuestionPaper(null);
 		router.push('/');
 	};
 
 	const handleRegenerateQuiz = async () => {
-		if (!questionPaper.requestParams.topic) return;
+		if (!questionPaper?.requestParams) return;
 
 		setIsGenerating(true);
 		setGenerationError(null);
+
 		try {
 			const response = await fetch('/api/generate', {
 				method: 'POST',
@@ -86,92 +72,53 @@ function ResultsContent() {
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				if (response.status === 429) {
-					// Rate limit error
-					const resetTime = new Date(errorData.resetTime);
-					const minutes = Math.ceil((resetTime - new Date()) / 60000);
-					throw new Error(
-						`Rate limit exceeded. Please try again in ${minutes} minutes.`,
-					);
-				} else {
-					throw new Error(
-						errorData.error || 'Failed to generate quiz. Please try again.',
-					);
-				}
+				throw new Error(errorData.error || t('failedToGenerateQuiz'));
 			}
 
 			const newQuestionPaper = await response.json();
 			newQuestionPaper.requestParams = questionPaper.requestParams;
 			updateHistory(newQuestionPaper);
 			router.push('/test?id=' + newQuestionPaper.id);
-		} catch (error) {
-			console.error('Error regenerating quiz:', error);
-			setGenerationError(error.message);
-		} finally {
+		} catch (err) {
+			setGenerationError(err.message);
 			setIsGenerating(false);
 		}
 	};
-	const { score, topic, userAnswers, totalQuestions, questions } =
-		questionPaper || {};
 
-	if (loading) {
-		return <Loading />;
-	}
+	if (loading) return <Loading />;
 
-	if (!questionPaper) {
+	if (error || !questionPaper) {
 		return (
 			<Container className='text-center mt-5'>
-				<Icon name='exclamationCircle' className='text-warning mb-3' />
-				<h1>No results found!</h1>
-				<p>Please take a test first.</p>
-				<Button
-					variant='primary'
-					className='d-inline-flex align-items-center gap-2'
-					onClick={() => router.push('/')}
-				>
-					<Icon name='pencil' /> Create a Test
+				<Alert variant='danger'>{error || t('testNotFound')}</Alert>
+				<Button onClick={handleNewTest} variant='primary'>
+					{t('home')}
 				</Button>
 			</Container>
 		);
 	}
 
-	if (questionPaper && !userAnswers) {
-		return (
-			<Container className='text-center mt-5'>
-				<Icon name='exclamationCircle' className='text-warning mb-3' />
-				<h1>
-					<MarkdownRenderer>{topic}</MarkdownRenderer>
-				</h1>
-				<p>Please take a test first.</p>
-				<Button
-					variant='primary'
-					className='d-inline-flex align-items-center gap-2'
-					onClick={() => router.push('/test?id=' + questionPaper.id)}
-				>
-					<Icon name='pencil' /> Attempt Test
-				</Button>
-			</Container>
-		);
-	}
-
+	const { score, totalQuestions, userAnswers, questions } = questionPaper;
 	const percentage = Math.round((score / totalQuestions) * 100);
-	let feedbackColor = '#10b981'; // green
-	let feedbackText = 'Excellent!';
-	if (percentage < 40) {
-		feedbackColor = '#ef4444'; // red
-		feedbackText = 'Keep Practicing!';
-	} else if (percentage < 70) {
-		feedbackColor = '#f59e0b'; // yellow
-		feedbackText = 'Good Job!';
+
+	let feedbackColor = '#3b82f6'; // blue-500
+	let feedbackText = t('goodJob');
+
+	if (percentage >= 80) {
+		feedbackColor = '#10b981'; // emerald-500
+		feedbackText = t('excellent');
+	} else if (percentage < 50) {
+		feedbackColor = '#f59e0b'; // amber-500
+		feedbackText = t('keepPracticing');
 	}
 
 	return (
-		<div className='d-flex flex-column min-vh-100 pb-5'>
-			<Container style={{ maxWidth: 800 }}>
+		<div className='min-vh-100 pb-5'>
+			<Container style={{ maxWidth: '800px' }}>
 				<div className='text-center mb-5'>
-					<h1 className='display-5 fw-bold mb-2'>Test Results</h1>
+					<h1 className='display-5 fw-bold mb-2'>{t('testResults')}</h1>
 					<p className='text-muted fs-5'>
-						Here&apos;s how you performed
+						{t('performanceText')}
 					</p>
 				</div>
 
@@ -198,12 +145,12 @@ function ResultsContent() {
 							>
 								<div>
 									<div className='display-4 fw-bold lh-1'>{score}</div>
-									<div className='small opacity-75'>out of {totalQuestions}</div>
+									<div className='small opacity-75'>{t('outOf')} {totalQuestions}</div>
 								</div>
 							</div>
 
 							<h2 className='fw-bold mb-1' style={{ color: feedbackColor }}>{feedbackText}</h2>
-							<p className='text-muted mb-4'>You scored {percentage}%</p>
+							<p className='text-muted mb-4'>{t('score')} {percentage}%</p>
 
 							<div className='d-flex justify-content-center gap-2 flex-wrap'>
 								<Button
@@ -211,7 +158,7 @@ function ResultsContent() {
 									className='d-flex align-items-center gap-2 px-4 rounded-pill'
 									onClick={handleNewTest}
 								>
-									<Icon name='plusCircle' /> New Quiz
+									<Icon name='plusCircle' /> {t('startNewQuiz')}
 								</Button>
 
 								{questionPaper?.requestParams?.topic && (
@@ -225,7 +172,7 @@ function ResultsContent() {
 											name='repeat1'
 											className={`${isGenerating ? 'spinner' : ''}`}
 										/>
-										{isGenerating ? 'Generating...' : 'Similar Quiz'}
+										{isGenerating ? t('generating') : t('similarQuiz')}
 									</Button>
 								)}
 							</div>
@@ -242,92 +189,97 @@ function ResultsContent() {
 
 				<div className='d-flex align-items-center gap-2 mb-4 px-2'>
 					<Icon name='checkCircle' className='text-success fs-4' />
-					<h3 className='fw-bold m-0'>Review Answers</h3>
+					<h3 className='fw-bold m-0'>{t('reviewAnswers')}</h3>
 				</div>
 
-				{/* Review List */}
 				<div className='d-flex flex-column gap-4'>
 					{questions.map((q, index) => {
-						const userAnswer = Array.isArray(userAnswers)
-							? userAnswers[index]
-							: userAnswers[index.toString()];
+						const userAnswer = userAnswers[index];
 						const isCorrect = userAnswer === q.answer;
-						const answered = !!userAnswer;
+						const isSkipped = !userAnswer;
+
+						let statusColor = 'danger';
+						let statusIcon = 'xCircle';
+						let statusText = t('incorrect');
+
+						if (isCorrect) {
+							statusColor = 'success';
+							statusIcon = 'checkCircle';
+							statusText = t('correct');
+						} else if (isSkipped) {
+							statusColor = 'warning';
+							statusIcon = 'minusCircle';
+							statusText = t('skipped');
+						}
 
 						return (
-							<Card
-								key={index}
-								className='glass-card border-0 shadow-sm overflow-hidden'
-							>
-								<div
-									className='position-absolute start-0 top-0 bottom-0'
-									style={{
-										width: '6px',
-										background: isCorrect ? '#10b981' : answered ? '#ef4444' : '#9ca3af'
-									}}
-								/>
-								<Card.Body className='p-4 ps-5'>
+							<Card key={index} className='border-0 glass-card shadow-sm overflow-hidden'>
+								<div className={`h-100 w-2 position-absolute top-0 start-0 bg-${statusColor}`} style={{ width: '6px' }} />
+								<Card.Body className='p-4'>
 									<div className='d-flex justify-content-between align-items-start mb-3'>
-										<h5 className='fw-bold text-dark mb-0'>Question {index + 1}</h5>
-										{isCorrect ? (
-											<span className='badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill'>
-												Correct
-											</span>
-										) : answered ? (
-											<span className='badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill'>
-												Incorrect
-											</span>
-										) : (
-											<span className='badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill'>
-												Skipped
-											</span>
-										)}
+										<Badge bg={statusColor} className='d-flex align-items-center gap-1 px-3 py-2 rounded-pill'>
+											<Icon name={statusIcon} size={14} />
+											{statusText}
+										</Badge>
+										<span className='text-muted fw-bold opacity-50'>#{index + 1}</span>
 									</div>
 
-									<div className='fs-5 mb-4 text-dark'>
+									<div className='mb-4 fs-5 fw-medium text-dark'>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>
 									</div>
 
-									<Row className='g-3'>
-										<Col md={6}>
-											<div className={`p-3 rounded-3 h-100 ${isCorrect ? 'bg-success bg-opacity-10 border border-success border-opacity-25' : 'bg-light border'}`}>
-												<small className='text-muted d-block mb-1 fw-semibold text-uppercase' style={{ fontSize: '0.7rem' }}>
-													Your Answer
-												</small>
-												<div className={isCorrect ? 'text-success fw-medium' : 'text-dark'}>
-													{answered ? (
-														<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
-													) : (
-														<span className='text-muted fst-italic'>Not Answered</span>
-													)}
-												</div>
+									<div className='d-flex flex-column gap-3'>
+										{/* User Answer */}
+										<div className={`p-3 rounded-3 border ${isCorrect ? 'bg-success bg-opacity-10 border-success' : isSkipped ? 'bg-warning bg-opacity-10 border-warning' : 'bg-danger bg-opacity-10 border-danger'}`}>
+											<small className={`d-block mb-1 fw-bold text-${statusColor} text-uppercase`} style={{ fontSize: '0.75rem' }}>
+												{t('yourAnswer')}
+											</small>
+											<div className={isSkipped ? 'text-muted fst-italic' : 'text-dark'}>
+												{isSkipped ? t('notAnswered') : <MarkdownRenderer>{userAnswer}</MarkdownRenderer>}
 											</div>
-										</Col>
-										<Col md={6}>
-											<div className='p-3 rounded-3 h-100 bg-light border'>
-												<small className='text-muted d-block mb-1 fw-semibold text-uppercase' style={{ fontSize: '0.7rem' }}>
-													Correct Answer
+										</div>
+
+										{/* Correct Answer (if wrong or skipped) */}
+										{(!isCorrect || isSkipped) && (
+											<div className='p-3 rounded-3 border bg-success bg-opacity-10 border-success'>
+												<small className='d-block mb-1 fw-bold text-success text-uppercase' style={{ fontSize: '0.75rem' }}>
+													{t('correctAnswer')}
 												</small>
-												<div className='text-dark fw-medium'>
+												<div className='text-dark'>
 													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 												</div>
 											</div>
-										</Col>
-									</Row>
+										)}
+									</div>
 
-									<Explanation
-										questionPaper={questionPaper}
-										index={index}
-										updateHistory={updateHistory}
-									/>
+									{/* Explanation */}
+									<Accordion className='mt-3' flush>
+										<Accordion.Item eventKey='0' className='border-0 bg-transparent'>
+											<Accordion.Header className='small'>
+												<span className='d-flex align-items-center gap-2 text-primary fw-semibold'>
+													<Icon name='info' size={16} />
+													{t('explainAnswer')}
+												</span>
+											</Accordion.Header>
+											<Accordion.Body className='text-muted bg-light bg-opacity-50 rounded-3 mt-2'>
+												<div className='d-flex gap-2'>
+													<div className='fw-bold text-dark'>{t('explanation')}:</div>
+													<div>
+														<MarkdownRenderer>
+															{q.explanation || `${t('correctAnswerIs')} **${q.answer}**.`}
+														</MarkdownRenderer>
+													</div>
+												</div>
+											</Accordion.Body>
+										</Accordion.Item>
+									</Accordion>
 								</Card.Body>
 							</Card>
 						);
 					})}
 				</div>
 
-				<div className='d-flex justify-content-center gap-3 mt-5 opacity-75'>
-					<FloatingButtonWithCopy data={testId} label='Test Id' />
+				<div className='d-flex gap-3 mt-5 justify-content-center opacity-75'>
 					<Share paper={questionPaper} />
 					<Print questionPaper={questionPaper} />
 				</div>
@@ -346,109 +298,5 @@ export default function Results() {
 		>
 			<ResultsContent />
 		</Suspense>
-	);
-}
-
-function Explanation({ questionPaper, index, updateHistory }) {
-	const [loadingExplanation, setLoadingExplanation] = useState(false);
-	const [error, setError] = useState(null);
-	const q = questionPaper.questions[index];
-	const [explanation, setExplanation] = useState(q.explanation || null);
-
-	const handleExplain = async (e) => {
-		e.preventDefault();
-		setLoadingExplanation(true);
-		setError(null);
-		const topic = questionPaper.topic
-			? questionPaper.topic
-			: 'General Knowledge';
-		const language = questionPaper.requestParams?.language || 'english';
-		const question = questionPaper.questions[index].question;
-		const answer = questionPaper.questions[index].answer;
-
-		try {
-			const response = await fetch('/api/explain', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					topic,
-					language,
-					question,
-					answer,
-				}),
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json();
-				if (response.status === 429) {
-					// Rate limit error
-					const resetTime = new Date(errorData.resetTime);
-					const minutes = Math.ceil((resetTime - new Date()) / 60000);
-					setError(errorData.error || 'Rate limit exceeded');
-					setLoadingExplanation(false);
-				} else {
-					setError(
-						errorData.error ||
-						'An error occurred while generating the explanation.',
-					);
-				}
-				return;
-			}
-
-			const res = await response.json();
-			setExplanation(res?.explanation);
-			questionPaper.questions[index].explanation = res?.explanation;
-			updateHistory(questionPaper);
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setLoadingExplanation(false);
-		}
-	};
-
-	if (loadingExplanation) {
-		return (
-			<div className='mt-3 pt-3 border-top border-light'>
-				<div className='d-flex align-items-center gap-2 text-muted'>
-					<Spinner animation='border' size='sm' />
-					<small>Generating explanation...</small>
-				</div>
-			</div>
-		);
-	}
-
-	if (explanation) {
-		return (
-			<div className='mt-3 pt-3 border-top border-light'>
-				<div className='d-flex align-items-center gap-2 mb-2'>
-					<Icon name='lightbulb' className='text-warning' size={16} />
-					<h6 className='fw-bold m-0 text-dark'>Explanation</h6>
-				</div>
-				<div className='text-secondary small'>
-					<MarkdownRenderer>{explanation}</MarkdownRenderer>
-				</div>
-			</div>
-		);
-	}
-
-	return (
-		<div className='mt-3 pt-3 border-top border-light'>
-			<Button
-				variant='link'
-				className='p-0 text-decoration-none d-flex align-items-center gap-2 text-primary'
-				style={{ fontSize: '0.9rem' }}
-				onClick={handleExplain}
-			>
-				<Icon name='info' size={16} />
-				Explain Answer
-			</Button>
-			{error && (
-				<Alert variant='danger' className='mt-2 py-2 px-3 small'>
-					{error}
-				</Alert>
-			)}
-		</div>
 	);
 }

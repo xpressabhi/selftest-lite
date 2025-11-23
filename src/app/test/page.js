@@ -8,6 +8,7 @@ import Icon from '../components/Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
+import { useLanguage } from '../context/LanguageContext';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -42,6 +43,7 @@ function TestContent() {
 	const touchStartXRef = useRef(null);
 	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
+	const { t } = useLanguage();
 
 	useEffect(() => {
 		if (testId) {
@@ -195,10 +197,9 @@ function TestContent() {
 		return (
 			<Container className='text-center mt-5'>
 				<h1>
-					<Icon name='exclamationCircle' className='text-warning mb-3' /> No
-					test found!
+					<Icon name='exclamationCircle' className='text-warning mb-3' /> {t('noTestFound')}
 				</h1>
-				<p>Please generate a new test.</p>
+				<p>{t('pleaseGenerate')}</p>
 				{error && <Alert variant='danger'>{error}</Alert>}
 				<Button
 					variant='primary'
@@ -206,7 +207,7 @@ function TestContent() {
 					onClick={() => router.push('/')}
 				>
 					<Icon name='home' />
-					Go to Home
+					{t('home')}
 				</Button>
 			</Container>
 		);
@@ -227,7 +228,7 @@ function TestContent() {
 				<div className='w-100 mb-4' style={{ maxWidth: 720 }}>
 					<div className='d-flex justify-content-between align-items-center mb-2'>
 						<small className='text-muted fw-semibold'>
-							Question {index + 1} of {questionPaper.questions.length}
+							{t('question')} {index + 1} {t('of')} {questionPaper.questions.length}
 						</small>
 						<small className='text-muted fw-semibold'>
 							{Math.round(progress)}%
@@ -382,7 +383,7 @@ function TestContent() {
 						}}
 					>
 						<Icon name='checkCircle' />
-						Submit Test
+						{t('submitTest')}
 					</Button>
 				</form>
 
@@ -399,21 +400,21 @@ function TestContent() {
 					className='glass-modal'
 				>
 					<Modal.Header border='0' closeButton>
-						<Modal.Title className='fw-bold text-dark'>Submit Test?</Modal.Title>
+						<Modal.Title className='fw-bold text-dark'>{t('submitTestConfirm')}</Modal.Title>
 					</Modal.Header>
 					<Modal.Body>
 						<div className='text-center mb-4'>
 							<div className='mb-3'>
 								<Icon name='checkCircle' className='text-success' size={48} />
 							</div>
-							<p className='fs-5 mb-2'>You are about to submit your test.</p>
+							<p className='fs-5 mb-2'>{t('submitTestBody')}</p>
 							<p className='text-muted'>
-								You have answered <span className='fw-bold text-dark'>{answeredCount}</span> out of <span className='fw-bold text-dark'>{totalCount}</span> questions.
+								{t('answeredCount')} <span className='fw-bold text-dark'>{answeredCount}</span> {t('outOf')} <span className='fw-bold text-dark'>{totalCount}</span> {t('questions')}.
 							</p>
 							{remainingCount > 0 && (
 								<Alert variant='warning' className='d-inline-flex align-items-center gap-2 mt-2'>
 									<Icon name='exclamationCircle' />
-									You have {remainingCount} unanswered question{remainingCount !== 1 ? 's' : ''}.
+									{t('unansweredWarning')} {remainingCount} {t('unansweredQuestions')}.
 								</Alert>
 							)}
 						</div>
@@ -424,7 +425,7 @@ function TestContent() {
 							onClick={() => setShowSubmitModal(false)}
 							className='px-4 rounded-pill'
 						>
-							Back to Test
+							{t('backToTest')}
 						</Button>
 						<Button
 							variant='success'
@@ -436,7 +437,7 @@ function TestContent() {
 							}}
 						>
 							<Icon name='checkCircle' />
-							Submit Now
+							{t('submitNow')}
 						</Button>
 					</Modal.Footer>
 				</Modal>

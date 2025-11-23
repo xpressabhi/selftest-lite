@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Navbar, Container, Offcanvas, Button } from 'react-bootstrap';
 import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 
 const TestHistory = dynamic(() => import('./TestHistory'), {
 	ssr: false,
@@ -15,6 +16,7 @@ const CustomNavbar = () => {
 	const [isTop, setIsTop] = useState(true);
 	const [showOffcanvas, setShowOffcanvas] = useState(false);
 	const scrollTimer = useRef(null);
+	const { language, toggleLanguage } = useLanguage();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -47,13 +49,12 @@ const CustomNavbar = () => {
 			<Navbar
 				fixed='top'
 				expand='xl'
-				className={`transition-all ${
-					isTop
+				className={`transition-all ${isTop
 						? 'bg-light'
 						: isScrolling
-						? 'bg-light/60 backdrop-blur'
-						: 'bg-light'
-				}`}
+							? 'bg-light/60 backdrop-blur'
+							: 'bg-light'
+					}`}
 			>
 				<Container fluid className='px-0'>
 					<div className='d-flex w-100'>
@@ -71,6 +72,14 @@ const CustomNavbar = () => {
 						<div className='px-3 ms-auto d-flex align-items-center'>
 							{/* Desktop navigation with text */}
 							<nav className='d-none d-xl-flex align-items-center gap-3'>
+								<Button
+									variant='outline-primary'
+									size='sm'
+									className='rounded-pill px-3 fw-bold'
+									onClick={toggleLanguage}
+								>
+									{language === 'english' ? 'हिंदी' : 'English'}
+								</Button>
 								<Link
 									href='/about'
 									className='nav-link d-flex align-items-center'
@@ -105,6 +114,15 @@ const CustomNavbar = () => {
 
 							{/* Mobile navigation with icons only */}
 							<nav className='d-flex d-xl-none align-items-center gap-2'>
+								<Button
+									variant='outline-primary'
+									size='sm'
+									className='rounded-pill px-2 fw-bold'
+									onClick={toggleLanguage}
+									style={{ fontSize: '0.8rem' }}
+								>
+									{language === 'english' ? 'हिंदी' : 'EN'}
+								</Button>
 								<Link href='/about' className='nav-link p-2' aria-label='About'>
 									<Icon name='info' />
 								</Link>
