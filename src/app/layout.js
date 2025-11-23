@@ -27,6 +27,8 @@ export default function RootLayout({ children }) {
 		<html lang='en'>
 			<body>
 				{/* Load bootstrap from CDN to avoid bundling the CSS into client JS */}
+				<link rel='preconnect' href='https://cdn.jsdelivr.net' />
+				<link rel='dns-prefetch' href='https://cdn.jsdelivr.net' />
 				<link
 					rel='stylesheet'
 					href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css'
@@ -41,21 +43,6 @@ export default function RootLayout({ children }) {
 					name='google-adsense-account'
 					content='ca-pub-7214001284506571'
 				></meta>
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `
-							if ('serviceWorker' in navigator) {
-								window.addEventListener('load', function() {
-									navigator.serviceWorker.register('/sw.js').then(function(registration) {
-										console.log('Service Worker registration successful with scope: ', registration.scope);
-									}, function(err) {
-										console.log('Service Worker registration failed: ', err);
-									});
-								});
-							}
-						`,
-					}}
-				/>
 				{/* Navbar is client-heavy; load it dynamically on the client to defer its JS */}
 				{/* placeholder keeps layout height until client loads the full navbar */}
 				{/* client Navbar (dynamically loaded) */}
