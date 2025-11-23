@@ -19,7 +19,7 @@ const MarkdownRenderer = dynamic(
 
 import Share from '../components/Share';
 import Print from '../components/Print';
-import { Container, Button, Spinner, Alert, Card, ProgressBar } from 'react-bootstrap';
+import { Container, Button, Spinner, Alert, Card, ProgressBar, Modal } from 'react-bootstrap';
 
 function TestContent() {
 	const searchParams = useSearchParams();
@@ -41,6 +41,7 @@ function TestContent() {
 	const timeoutRef = useRef(null);
 	const touchStartXRef = useRef(null);
 	const [error, setError] = useState(null);
+	const [showSubmitModal, setShowSubmitModal] = useState(false);
 
 	useEffect(() => {
 		if (testId) {
@@ -109,6 +110,10 @@ function TestContent() {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
+		setShowSubmitModal(true);
+	};
+
+	const confirmSubmit = () => {
 		const calculatedScore =
 			questionPaper.questions.filter((q, index) => answers[index] === q.answer)
 				.length || 0;
@@ -211,6 +216,10 @@ function TestContent() {
 	const q = questionPaper.questions?.[currentQuestionIndex];
 	const index = currentQuestionIndex;
 	const progress = ((index + 1) / questionPaper.questions.length) * 100;
+
+	const answeredCount = Object.keys(answers).length;
+	const totalCount = questionPaper.questions.length;
+	const remainingCount = totalCount - answeredCount;
 
 	return (
 		<div className='d-flex flex-column min-vh-100 pb-5'>
@@ -353,20 +362,14 @@ function TestContent() {
 					</div>
 
 					{/* Remaining unanswered questions */}
-					{(() => {
-						const remainingCount =
-							questionPaper.questions.length - Object.keys(answers).length;
-						return (
-							<div className='mb-4 text-center'>
-								<small className='text-muted fw-medium'>
-									{remainingCount > 0
-										? `${remainingCount} question${remainingCount !== 1 ? 's' : ''
-										} remaining`
-										: 'All questions answered!'}
-								</small>
-							</div>
-						);
-					})()}
+					<div className='mb-4 text-center'>
+						<small className='text-muted fw-medium'>
+							{remainingCount > 0
+								? `${remainingCount} question${remainingCount !== 1 ? 's' : ''
+								} remaining`
+								: 'All questions answered!'}
+						</small>
+					</div>
 
 					<Button
 						type='submit'
@@ -388,6 +391,55 @@ function TestContent() {
 					<Share paper={questionPaper} />
 					<Print questionPaper={questionPaper} />
 				</div>
+
+				<Modal
+					show={showSubmitModal}
+					onHide={() => setShowSubmitModal(false)}
+					centered
+					className='glass-modal'
+				>
+					<Modal.Header border='0' closeButton>
+						<Modal.Title className='fw-bold text-dark'>Submit Test?</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<div className='text-center mb-4'>
+							<div className='mb-3'>
+								<Icon name='checkCircle' className='text-success' size={48} />
+							</div>
+							<p className='fs-5 mb-2'>You are about to submit your test.</p>
+							<p className='text-muted'>
+								You have answered <span className='fw-bold text-dark'>{answeredCount}</span> out of <span className='fw-bold text-dark'>{totalCount}</span> questions.
+							</p>
+							{remainingCount > 0 && (
+								<Alert variant='warning' className='d-inline-flex align-items-center gap-2 mt-2'>
+									<Icon name='exclamationCircle' />
+									You have {remainingCount} unanswered question{remainingCount !== 1 ? 's' : ''}.
+								</Alert>
+							)}
+						</div>
+					</Modal.Body>
+					<Modal.Footer border='0' className='justify-content-center gap-3 pb-4'>
+						<Button
+							variant='light'
+							onClick={() => setShowSubmitModal(false)}
+							className='px-4 rounded-pill'
+						>
+							Back to Test
+						</Button>
+						<Button
+							variant='success'
+							onClick={confirmSubmit}
+							className='px-4 rounded-pill d-flex align-items-center gap-2'
+							style={{
+								background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+								border: 'none'
+							}}
+						>
+							<Icon name='checkCircle' />
+							Submit Now
+						</Button>
+					</Modal.Footer>
+				</Modal>
 			</Container>
 		</div>
 	);
