@@ -451,23 +451,29 @@ export default function Print({ questionPaper }) {
 	}
 
 	return (
-		<div className='print-dialog fixed-top vh-100 w-100 bg-light overflow-auto'>
-			<div className='container position-relative'>
-				<button
-					type='button'
-					className='close-button btn btn-outline-secondary position-fixed top-0 end-0 m-3 d-flex align-items-center gap-2'
-					onClick={() => setShowPreview(false)}
-				>
-					<Icon name='close' /> Close
-				</button>
-				<button
-					type='button'
-					className='btn btn-primary position-fixed top-0 start-0 m-3 d-flex align-items-center gap-2'
-					onClick={handlePrintContent}
-				>
-					<Icon name='print' /> Print
-				</button>
-				<PrintableContent questionPaper={questionPaper} />
+		<div className='print-dialog fixed-top vh-100 w-100 bg-white overflow-auto' style={{ zIndex: 2000 }}>
+			<div className='container position-relative py-5'>
+				<div className='position-fixed top-0 end-0 p-3' style={{ zIndex: 2010 }}>
+					<button
+						type='button'
+						className='btn btn-outline-secondary d-flex align-items-center gap-2 shadow-sm bg-white'
+						onClick={() => setShowPreview(false)}
+					>
+						<Icon name='close' /> Close
+					</button>
+				</div>
+				<div className='position-fixed top-0 start-0 p-3' style={{ zIndex: 2010 }}>
+					<button
+						type='button'
+						className='btn btn-primary d-flex align-items-center gap-2 shadow-sm'
+						onClick={handlePrintContent}
+					>
+						<Icon name='print' /> Print
+					</button>
+				</div>
+				<div className='mt-4'>
+					<PrintableContent questionPaper={questionPaper} />
+				</div>
 			</div>
 		</div>
 	);
