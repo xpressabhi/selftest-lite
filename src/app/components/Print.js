@@ -15,6 +15,16 @@ const PrintableContent = ({ questionPaper }) => {
 		<div className='print-content'>
 			<style jsx global>{`
 				@media print {
+					@page {
+						size: A4;
+						margin: 2cm;
+					}
+					body {
+						background: white !important;
+						color: black !important;
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
+					}
 					body * {
 						visibility: hidden;
 					}
@@ -26,17 +36,25 @@ const PrintableContent = ({ questionPaper }) => {
 						position: absolute;
 						left: 0;
 						top: 0;
+						width: 100%;
+						background: white !important;
+						color: black !important;
+						padding: 0 !important;
+						margin: 0 !important;
+					}
+					/* Remove glassmorphism and shadows for print */
+					.glass-card, .glass-input, .btn {
+						background: white !important;
+						backdrop-filter: none !important;
+						box-shadow: none !important;
+						border: 1px solid #ddd !important;
 					}
 					.watermark {
 						display: block !important;
 						position: fixed !important;
 						visibility: visible !important;
-						opacity: 0.2 !important;
-						z-index: 9999 !important;
-						-webkit-print-color-adjust: exact !important;
-						print-color-adjust: exact !important;
-						color-adjust: exact !important;
-						forced-color-adjust: none !important;
+						opacity: 0.1 !important;
+						z-index: -1 !important;
 						transform: rotate(-30deg) !important;
 						top: 40% !important;
 						left: 20% !important;
@@ -44,17 +62,9 @@ const PrintableContent = ({ questionPaper }) => {
 						font-size: 5rem !important;
 						text-align: center !important;
 						font-weight: bold !important;
-						color: rgba(200, 200, 200, 0.2) !important;
-					}
-					@page {
-						size: A4;
-						margin: 2cm;
+						color: #000 !important;
 					}
 					.print-dialog {
-						padding: 0 !important;
-						margin: 0 !important;
-					}
-					.close-button {
 						display: none !important;
 					}
 				}
@@ -70,16 +80,17 @@ const PrintableContent = ({ questionPaper }) => {
 					left: 20%;
 					width: 60%;
 					font-size: 5rem;
-					color: rgba(200, 200, 200, 0.2);
+					color: rgba(0, 0, 0, 0.05);
 					transform: rotate(-30deg);
 					pointer-events: none;
 					user-select: none;
-					z-index: 1;
+					z-index: 0;
 					text-align: center;
 					font-weight: bold;
 				}
 				.question {
 					margin: 1.5rem 0;
+					page-break-inside: avoid;
 				}
 				.question-number {
 					font-weight: bold;
@@ -96,6 +107,7 @@ const PrintableContent = ({ questionPaper }) => {
 				}
 				.option-letter {
 					flex-shrink: 0;
+					font-weight: bold;
 				}
 				.answers {
 					margin-top: 2rem;
@@ -376,9 +388,9 @@ export default function Print({ questionPaper }) {
 				// Add footer
 				slide.addText(
 					'selftest.in | Slide ' +
-						(i + 2) +
-						' of ' +
-						(questionPaper.questions.length + 1),
+					(i + 2) +
+					' of ' +
+					(questionPaper.questions.length + 1),
 					{
 						x: 0,
 						y: 6.7,

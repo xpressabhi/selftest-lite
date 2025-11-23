@@ -224,9 +224,10 @@ function TestContent() {
 
 	return (
 		<div className='d-flex flex-column min-vh-100 pb-5'>
-			<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
-				<div className='w-100 mb-4' style={{ maxWidth: 720 }}>
-					<div className='d-flex justify-content-between align-items-center mb-2'>
+			{/* Sticky Header with Progress Bar */}
+			<div className='sticky-top bg-white bg-opacity-90 backdrop-blur border-bottom shadow-sm py-2 px-3 mb-4' style={{ zIndex: 1020 }}>
+				<Container style={{ maxWidth: 720 }}>
+					<div className='d-flex justify-content-between align-items-center mb-1'>
 						<small className='text-muted fw-semibold'>
 							{t('question')} {index + 1} {t('of')} {questionPaper.questions.length}
 						</small>
@@ -240,21 +241,25 @@ function TestContent() {
 						style={{ height: '6px', borderRadius: '10px' }}
 						className='bg-secondary bg-opacity-10'
 					/>
-				</div>
+				</Container>
+			</div>
 
-				<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center'>
-					<Icon name='bookOpen' className='text-primary' />
-					<span className='fw-bold text-dark fs-4'>
-						<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
-					</span>
-				</h3>
+			<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2 pb-5 mb-5'>
+				<div className='w-100 mb-4' style={{ maxWidth: 720 }}>
+					<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center justify-content-center'>
+						<Icon name='bookOpen' className='text-primary' />
+						<span className='fw-bold text-dark fs-4'>
+							<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
+						</span>
+					</h3>
+				</div>
 
 				<form
 					onSubmit={handleSubmit}
 					className='w-100 position-relative'
 					style={{ maxWidth: 720 }}
 				>
-					{/* Navigation buttons for non-mobile screens */}
+					{/* Desktop Navigation Buttons */}
 					<div
 						className='d-none d-md-flex justify-content-between position-absolute w-100'
 						style={{
@@ -262,7 +267,7 @@ function TestContent() {
 							transform: 'translateY(-50%)',
 							left: 0,
 							zIndex: 1,
-							pointerEvents: 'none', // Allow clicking through the container
+							pointerEvents: 'none',
 						}}
 					>
 						<Button
@@ -272,7 +277,7 @@ function TestContent() {
 								width: '56px',
 								height: '56px',
 								marginLeft: '-80px',
-								pointerEvents: 'auto', // Re-enable clicks
+								pointerEvents: 'auto',
 								background: 'rgba(255, 255, 255, 0.8)',
 								backdropFilter: 'blur(10px)'
 							}}
@@ -288,7 +293,7 @@ function TestContent() {
 								width: '56px',
 								height: '56px',
 								marginRight: '-80px',
-								pointerEvents: 'auto', // Re-enable clicks
+								pointerEvents: 'auto',
 								background: 'rgba(255, 255, 255, 0.8)',
 								backdropFilter: 'blur(10px)'
 							}}
@@ -376,7 +381,7 @@ function TestContent() {
 						type='submit'
 						variant='success'
 						size='lg'
-						className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow-sm py-3 fw-bold'
+						className='w-100 d-none d-md-flex align-items-center justify-content-center gap-2 rounded-pill shadow-sm py-3 fw-bold'
 						style={{
 							background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
 							border: 'none'
@@ -391,6 +396,46 @@ function TestContent() {
 					<FloatingButtonWithCopy data={testId} label='Test Id' />
 					<Share paper={questionPaper} />
 					<Print questionPaper={questionPaper} />
+				</div>
+
+				{/* Mobile Sticky Footer Navigation */}
+				<div className='d-md-none fixed-bottom bg-white border-top shadow-lg p-3 d-flex gap-2 align-items-center justify-content-between' style={{ zIndex: 1030 }}>
+					<Button
+						variant='light'
+						className='rounded-circle d-flex align-items-center justify-content-center border'
+						style={{ width: '48px', height: '48px' }}
+						onClick={handlePrevClick}
+						disabled={currentQuestionIndex === 0 || fadeState === 'fade-out'}
+					>
+						<Icon name='chevronRight' style={{ transform: 'rotate(180deg)' }} />
+					</Button>
+
+					<Button
+						variant='success'
+						className='flex-grow-1 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2'
+						style={{
+							background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+							border: 'none',
+							height: '48px'
+						}}
+						onClick={handleSubmit}
+					>
+						<Icon name='checkCircle' size={18} />
+						{t('submitTest')}
+					</Button>
+
+					<Button
+						variant='light'
+						className='rounded-circle d-flex align-items-center justify-content-center border'
+						style={{ width: '48px', height: '48px' }}
+						onClick={handleNextClick}
+						disabled={
+							currentQuestionIndex === questionPaper.questions.length - 1 ||
+							fadeState === 'fade-out'
+						}
+					>
+						<Icon name='chevronRight' />
+					</Button>
 				</div>
 
 				<Modal
