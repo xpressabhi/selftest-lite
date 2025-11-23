@@ -98,6 +98,11 @@ function ResultsContent() {
 		);
 	}
 
+	if (!questionPaper.userAnswers) {
+		router.push('/test?id=' + questionPaper.id);
+		return <Loading />;
+	}
+
 	const { score, totalQuestions, userAnswers, questions } = questionPaper;
 	const percentage = Math.round((score / totalQuestions) * 100);
 
