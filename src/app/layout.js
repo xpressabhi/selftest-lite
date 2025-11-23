@@ -27,6 +27,12 @@ export default function RootLayout({ children }) {
 		<html lang='en'>
 			<body>
 				{/* Load bootstrap from CDN to avoid bundling the CSS into client JS */}
+				<link rel='preconnect' href='https://fonts.googleapis.com' />
+				<link rel='preconnect' href='https://fonts.gstatic.com' crossOrigin='anonymous' />
+				<link
+					href='https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap'
+					rel='stylesheet'
+				/>
 				<link rel='preconnect' href='https://cdn.jsdelivr.net' />
 				<link rel='dns-prefetch' href='https://cdn.jsdelivr.net' />
 				<link

@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import Share from '../components/Share';
 import Icon from '../components/Icon';
 import Print from '../components/Print';
-import { Container, Card, Button, Spinner, Alert } from 'react-bootstrap';
+import { Container, Card, Button, Spinner, Alert, Row, Col } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
@@ -148,148 +148,190 @@ function ResultsContent() {
 					className='d-inline-flex align-items-center gap-2'
 					onClick={() => router.push('/test?id=' + questionPaper.id)}
 				>
-					<Icon name='pencil' /> Attemp Test
+					<Icon name='pencil' /> Attempt Test
 				</Button>
 			</Container>
 		);
 	}
 
-	return (
-		<div className='typeform-bg d-flex flex-column min-vh-100'>
-			<div>
-				<div>
-					<h1 className='text-center mb-4 text-dark'>Test Results</h1>
-					<div className='d-flex justify-content-center mb-4'>
-						<div
-							className='bg-light rounded-3 shadow-sm p-4 text-center'
-							style={{
-								minWidth: 200,
-								background: 'linear-gradient(135deg, #f8d90f 0%, #f3f4f7 100%)',
-							}}
-						>
-							<h2 className='fs-1 fw-bold mb-1 text-dark'>
-								{score} / {totalQuestions}
-							</h2>
-							<p className='fs-5 mb-0 text-secondary'>Score</p>
-						</div>
-					</div>
+	const percentage = Math.round((score / totalQuestions) * 100);
+	let feedbackColor = '#10b981'; // green
+	let feedbackText = 'Excellent!';
+	if (percentage < 40) {
+		feedbackColor = '#ef4444'; // red
+		feedbackText = 'Keep Practicing!';
+	} else if (percentage < 70) {
+		feedbackColor = '#f59e0b'; // yellow
+		feedbackText = 'Good Job!';
+	}
 
-					<Container className='mt-4 mb-4'>
-						<h2 className='text-center mb-4 fs-4 fw-bold text-dark d-flex align-items-center justify-content-center gap-2'>
-							<Icon name='checkCircle' className='text-success fs-3' />
-							Review Your Answers
-						</h2>
-						<p className='lead text-center'>{topic || 'Test'}</p>
-						{questions.map((q, index) => {
-							const userAnswer = Array.isArray(userAnswers)
-								? userAnswers[index]
-								: userAnswers[index.toString()];
-							const isCorrect = userAnswer === q.answer;
-							const answered = !!userAnswer;
-							return (
-								<Card
-									key={index}
-									className={`mb-4 shadow-sm rounded-4 ${
-										isCorrect
-											? 'border-success'
-											: answered
-											? 'border-danger'
-											: 'border-secondary'
-									}`}
-									style={{
-										borderLeft: `8px solid ${
-											isCorrect ? '#28a745' : answered ? '#dc3545' : '#6c757d'
-										}`,
-									}}
+	return (
+		<div className='d-flex flex-column min-vh-100 pb-5'>
+			<Container style={{ maxWidth: 800 }}>
+				<div className='text-center mb-5'>
+					<h1 className='display-5 fw-bold mb-2'>Test Results</h1>
+					<p className='text-muted fs-5'>
+						Here&apos;s how you performed
+					</p>
+				</div>
+
+				{/* Score Card */}
+				<Card className='glass-card border-0 mb-5 overflow-hidden'>
+					<Card.Body className='p-5 text-center position-relative'>
+						<div
+							className='position-absolute top-0 start-0 w-100 h-100 opacity-10'
+							style={{
+								background: `radial-gradient(circle at center, ${feedbackColor}, transparent 70%)`,
+								pointerEvents: 'none'
+							}}
+						/>
+
+						<div className='position-relative'>
+							<div
+								className='d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm'
+								style={{
+									width: '120px',
+									height: '120px',
+									background: `linear-gradient(135deg, ${feedbackColor} 0%, ${feedbackColor}dd 100%)`,
+									color: 'white'
+								}}
+							>
+								<div>
+									<div className='display-4 fw-bold lh-1'>{score}</div>
+									<div className='small opacity-75'>out of {totalQuestions}</div>
+								</div>
+							</div>
+
+							<h2 className='fw-bold mb-1' style={{ color: feedbackColor }}>{feedbackText}</h2>
+							<p className='text-muted mb-4'>You scored {percentage}%</p>
+
+							<div className='d-flex justify-content-center gap-2 flex-wrap'>
+								<Button
+									variant='primary'
+									className='d-flex align-items-center gap-2 px-4 rounded-pill'
+									onClick={handleNewTest}
 								>
-									<Card.Body className='py-4 px-4'>
-										<Card.Title as='h3' className='fs-5 mb-3 text-dark'>
-											<span className='me-2 fw-bold'>Q{index + 1}.</span>
-										</Card.Title>
+									<Icon name='plusCircle' /> New Quiz
+								</Button>
+
+								{questionPaper?.requestParams?.topic && (
+									<Button
+										variant='outline-primary'
+										className='d-flex align-items-center gap-2 px-4 rounded-pill bg-white'
+										onClick={handleRegenerateQuiz}
+										disabled={isGenerating}
+									>
+										<Icon
+											name='repeat1'
+											className={`${isGenerating ? 'spinner' : ''}`}
+										/>
+										{isGenerating ? 'Generating...' : 'Similar Quiz'}
+									</Button>
+								)}
+							</div>
+
+							{generationError && (
+								<Alert variant='danger' className='mt-3 d-inline-block'>
+									<Icon name='exclamationCircle' className='me-1' />
+									{generationError}
+								</Alert>
+							)}
+						</div>
+					</Card.Body>
+				</Card>
+
+				<div className='d-flex align-items-center gap-2 mb-4 px-2'>
+					<Icon name='checkCircle' className='text-success fs-4' />
+					<h3 className='fw-bold m-0'>Review Answers</h3>
+				</div>
+
+				{/* Review List */}
+				<div className='d-flex flex-column gap-4'>
+					{questions.map((q, index) => {
+						const userAnswer = Array.isArray(userAnswers)
+							? userAnswers[index]
+							: userAnswers[index.toString()];
+						const isCorrect = userAnswer === q.answer;
+						const answered = !!userAnswer;
+
+						return (
+							<Card
+								key={index}
+								className='glass-card border-0 shadow-sm overflow-hidden'
+							>
+								<div
+									className='position-absolute start-0 top-0 bottom-0'
+									style={{
+										width: '6px',
+										background: isCorrect ? '#10b981' : answered ? '#ef4444' : '#9ca3af'
+									}}
+								/>
+								<Card.Body className='p-4 ps-5'>
+									<div className='d-flex justify-content-between align-items-start mb-3'>
+										<h5 className='fw-bold text-dark mb-0'>Question {index + 1}</h5>
+										{isCorrect ? (
+											<span className='badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill'>
+												Correct
+											</span>
+										) : answered ? (
+											<span className='badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill'>
+												Incorrect
+											</span>
+										) : (
+											<span className='badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill'>
+												Skipped
+											</span>
+										)}
+									</div>
+
+									<div className='fs-5 mb-4 text-dark'>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>
-										<div className='mb-3'>
-											<Card.Text as='div' className='mb-1 text-secondary'>
-												Your Answer:
-												<div className='ms-2 text-dark'>
+									</div>
+
+									<Row className='g-3'>
+										<Col md={6}>
+											<div className={`p-3 rounded-3 h-100 ${isCorrect ? 'bg-success bg-opacity-10 border border-success border-opacity-25' : 'bg-light border'}`}>
+												<small className='text-muted d-block mb-1 fw-semibold text-uppercase' style={{ fontSize: '0.7rem' }}>
+													Your Answer
+												</small>
+												<div className={isCorrect ? 'text-success fw-medium' : 'text-dark'}>
 													{answered ? (
 														<MarkdownRenderer>{userAnswer}</MarkdownRenderer>
 													) : (
-														'Not Answered'
+														<span className='text-muted fst-italic'>Not Answered</span>
 													)}
 												</div>
-												{isCorrect && answered && (
-													<Icon
-														name='checkCircle'
-														className='text-success ms-2'
-													/>
-												)}
-												{!isCorrect && answered && (
-													<Icon
-														name='timesCircle'
-														className='text-danger ms-2'
-													/>
-												)}
-											</Card.Text>
-											<Card.Text as='div' className='mb-0 text-secondary'>
-												Correct Answer:
-												<div className='ms-2 text-dark'>
+											</div>
+										</Col>
+										<Col md={6}>
+											<div className='p-3 rounded-3 h-100 bg-light border'>
+												<small className='text-muted d-block mb-1 fw-semibold text-uppercase' style={{ fontSize: '0.7rem' }}>
+													Correct Answer
+												</small>
+												<div className='text-dark fw-medium'>
 													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 												</div>
-											</Card.Text>
-										</div>
-										<Explanation
-											questionPaper={questionPaper}
-											index={index}
-											updateHistory={updateHistory}
-										/>
-									</Card.Body>
-								</Card>
-							);
-						})}
-					</Container>
-					<div className='d-flex flex-wrap justify-content-center gap-3 mt-5 mb-5'>
-						<FloatingButtonWithCopy data={testId} label='Test Id' />
-						<Button
-							variant='primary'
-							size='lg'
-							className='d-flex align-items-center gap-2'
-							onClick={handleNewTest}
-						>
-							<Icon name='plusCircle' /> Start New Quiz
-						</Button>
-						{questionPaper?.requestParams?.topic && (
-							<div className='d-flex flex-column align-items-center'>
-								<Button
-									variant='secondary'
-									size='lg'
-									className='d-flex align-items-center gap-2'
-									onClick={handleRegenerateQuiz}
-									disabled={isGenerating}
-									title={
-										!questionPaper?.requestParams?.topic
-											? "Can't regenerate this quiz"
-											: 'Generate a similar quiz'
-									}
-								>
-									<Icon
-										name='repeat1'
-										className={`${isGenerating ? 'spinner' : ''}`}
+											</div>
+										</Col>
+									</Row>
+
+									<Explanation
+										questionPaper={questionPaper}
+										index={index}
+										updateHistory={updateHistory}
 									/>
-									{isGenerating ? 'Generating Quiz...' : 'Similar Quiz'}
-								</Button>
-								{generationError && (
-									<Alert variant='danger' className='mt-2 small'>
-										<Icon name='exclamationCircle' className='me-1' />
-										{generationError}
-									</Alert>
-								)}
-							</div>
-						)}
-						<Print questionPaper={questionPaper} />
-						<Share paper={questionPaper} />
-					</div>
+								</Card.Body>
+							</Card>
+						);
+					})}
 				</div>
-			</div>
+
+				<div className='d-flex justify-content-center gap-3 mt-5 opacity-75'>
+					<FloatingButtonWithCopy data={testId} label='Test Id' />
+					<Share paper={questionPaper} />
+					<Print questionPaper={questionPaper} />
+				</div>
+			</Container>
 		</div>
 	);
 }
@@ -311,10 +353,9 @@ function Explanation({ questionPaper, index, updateHistory }) {
 	const [loadingExplanation, setLoadingExplanation] = useState(false);
 	const [error, setError] = useState(null);
 	const q = questionPaper.questions[index];
-	const searchParams = useSearchParams();
 	const [explanation, setExplanation] = useState(q.explanation || null);
 
-	const handleExplain = async (e, index) => {
+	const handleExplain = async (e) => {
 		e.preventDefault();
 		setLoadingExplanation(true);
 		setError(null);
@@ -350,7 +391,7 @@ function Explanation({ questionPaper, index, updateHistory }) {
 				} else {
 					setError(
 						errorData.error ||
-							'An error occurred while generating the explanation.',
+						'An error occurred while generating the explanation.',
 					);
 				}
 				return;
@@ -369,33 +410,45 @@ function Explanation({ questionPaper, index, updateHistory }) {
 
 	if (loadingExplanation) {
 		return (
-			<div className='mt-4 pt-4 border-top border-light'>
-				<h4 className='fs-6 mb-2 text-dark'>Loading explanation...</h4>
-				<Spinner animation='border' />
+			<div className='mt-3 pt-3 border-top border-light'>
+				<div className='d-flex align-items-center gap-2 text-muted'>
+					<Spinner animation='border' size='sm' />
+					<small>Generating explanation...</small>
+				</div>
 			</div>
 		);
 	}
 
 	if (explanation) {
 		return (
-			<div className='mt-4 pt-4 border-top border-light'>
-				<h4 className='fs-6 mb-2 text-dark'>Explanation:</h4>
-				<MarkdownRenderer>{explanation}</MarkdownRenderer>
+			<div className='mt-3 pt-3 border-top border-light'>
+				<div className='d-flex align-items-center gap-2 mb-2'>
+					<Icon name='lightbulb' className='text-warning' size={16} />
+					<h6 className='fw-bold m-0 text-dark'>Explanation</h6>
+				</div>
+				<div className='text-secondary small'>
+					<MarkdownRenderer>{explanation}</MarkdownRenderer>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<>
-			<Button variant='primary' onClick={(e) => handleExplain(e, index)}>
-				Explain Answer?
+		<div className='mt-3 pt-3 border-top border-light'>
+			<Button
+				variant='link'
+				className='p-0 text-decoration-none d-flex align-items-center gap-2 text-primary'
+				style={{ fontSize: '0.9rem' }}
+				onClick={handleExplain}
+			>
+				<Icon name='info' size={16} />
+				Explain Answer
 			</Button>
 			{error && (
-				<Alert variant='danger' className='mt-3'>
-					<Icon name='exclamationCircle' className='me-2' />
+				<Alert variant='danger' className='mt-2 py-2 px-3 small'>
 					{error}
 				</Alert>
 			)}
-		</>
+		</div>
 	);
 }

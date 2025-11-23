@@ -19,7 +19,7 @@ const MarkdownRenderer = dynamic(
 
 import Share from '../components/Share';
 import Print from '../components/Print';
-import { Container, Button, Spinner, Alert } from 'react-bootstrap';
+import { Container, Button, Spinner, Alert, Card, ProgressBar } from 'react-bootstrap';
 
 function TestContent() {
 	const searchParams = useSearchParams();
@@ -210,184 +210,186 @@ function TestContent() {
 
 	const q = questionPaper.questions?.[currentQuestionIndex];
 	const index = currentQuestionIndex;
+	const progress = ((index + 1) / questionPaper.questions.length) * 100;
 
 	return (
-		<>
-			<div className='typeform-bg d-flex flex-column'>
-				<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
-					<h3 className='d-flex align-items-center gap-2 mt-2'>
-						<Icon name='bookOpen' className='text-primary' />
+		<div className='d-flex flex-column min-vh-100 pb-5'>
+			<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'>
+				<div className='w-100 mb-4' style={{ maxWidth: 720 }}>
+					<div className='d-flex justify-content-between align-items-center mb-2'>
+						<small className='text-muted fw-semibold'>
+							Question {index + 1} of {questionPaper.questions.length}
+						</small>
+						<small className='text-muted fw-semibold'>
+							{Math.round(progress)}%
+						</small>
+					</div>
+					<ProgressBar
+						now={progress}
+						variant='primary'
+						style={{ height: '6px', borderRadius: '10px' }}
+						className='bg-secondary bg-opacity-10'
+					/>
+				</div>
+
+				<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center'>
+					<Icon name='bookOpen' className='text-primary' />
+					<span className='fw-bold text-dark fs-4'>
 						<MarkdownRenderer>{questionPaper.topic}</MarkdownRenderer>
-					</h3>
-					<form
-						onSubmit={handleSubmit}
-						className='w-100 position-relative'
-						style={{ maxWidth: 600 }}
+					</span>
+				</h3>
+
+				<form
+					onSubmit={handleSubmit}
+					className='w-100 position-relative'
+					style={{ maxWidth: 720 }}
+				>
+					{/* Navigation buttons for non-mobile screens */}
+					<div
+						className='d-none d-md-flex justify-content-between position-absolute w-100'
+						style={{
+							top: '50%',
+							transform: 'translateY(-50%)',
+							left: 0,
+							zIndex: 1,
+							pointerEvents: 'none', // Allow clicking through the container
+						}}
 					>
-						{/* Navigation buttons for non-mobile screens */}
-						<div
-							className='d-none d-md-flex justify-content-between position-absolute w-100'
+						<Button
+							variant='light'
+							className='rounded-circle shadow-sm d-flex align-items-center justify-content-center border-0'
 							style={{
-								top: '50%',
-								transform: 'translateY(-50%)',
-								left: 0,
-								zIndex: 1,
+								width: '56px',
+								height: '56px',
+								marginLeft: '-80px',
+								pointerEvents: 'auto', // Re-enable clicks
+								background: 'rgba(255, 255, 255, 0.8)',
+								backdropFilter: 'blur(10px)'
 							}}
+							onClick={handlePrevClick}
+							disabled={currentQuestionIndex === 0 || fadeState === 'fade-out'}
 						>
-							<Button
-								variant='light'
-								className='rounded-circle shadow-sm d-flex align-items-center justify-content-center'
-								style={{ width: '48px', height: '48px', marginLeft: '-60px' }}
-								onClick={handlePrevClick}
-								disabled={
-									currentQuestionIndex === 0 || fadeState === 'fade-out'
-								}
-							>
-								<svg
-									width='24'
-									height='24'
-									fill='none'
-									viewBox='0 0 24 24'
-									stroke='currentColor'
+							<Icon name='chevronRight' style={{ transform: 'rotate(180deg)' }} />
+						</Button>
+						<Button
+							variant='light'
+							className='rounded-circle shadow-sm d-flex align-items-center justify-content-center border-0'
+							style={{
+								width: '56px',
+								height: '56px',
+								marginRight: '-80px',
+								pointerEvents: 'auto', // Re-enable clicks
+								background: 'rgba(255, 255, 255, 0.8)',
+								backdropFilter: 'blur(10px)'
+							}}
+							onClick={handleNextClick}
+							disabled={
+								currentQuestionIndex === questionPaper.questions.length - 1 ||
+								fadeState === 'fade-out'
+							}
+						>
+							<Icon name='chevronRight' />
+						</Button>
+					</div>
+
+					<div
+						key={index}
+						className={`fade-slide ${fadeState} w-100`}
+						onTouchStart={onTouchStart}
+						onTouchEnd={onTouchEnd}
+						style={{
+							marginBottom: '2rem',
+							minHeight: '350px',
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'center',
+							justifyContent: 'center',
+						}}
+					>
+						{/* Question Card */}
+						<Card className='w-100 border-0 glass-card mb-4 shadow-sm'>
+							<Card.Body className='p-4 p-md-5 text-center'>
+								<div className='fs-4 fw-medium text-dark'>
+									<MarkdownRenderer>{q.question}</MarkdownRenderer>
+								</div>
+							</Card.Body>
+						</Card>
+
+						{/* Options */}
+						<div className='w-100 d-flex flex-column gap-3'>
+							{q.options.map((option, i) => (
+								<div
+									key={i}
+									className={`
+										d-flex align-items-center p-3 rounded-3 cursor-pointer transition-all
+										${answers[index] === option
+											? 'bg-primary bg-opacity-10 border border-primary'
+											: 'bg-white border border-light shadow-sm hover-shadow'
+										}
+									`}
+									style={{
+										transition: 'all 0.2s ease',
+										cursor: fadeState === 'fade-out' ? 'not-allowed' : 'pointer',
+										opacity: fadeState === 'fade-out' ? 0.7 : 1,
+									}}
+									onClick={() =>
+										fadeState !== 'fade-out' &&
+										handleAnswerChange(index, option)
+									}
 								>
-									<path
-										strokeLinecap='round'
-										strokeLinejoin='round'
-										strokeWidth={2}
-										d='M15 19l-7-7 7-7'
-									/>
-								</svg>
-							</Button>
-							<Button
-								variant='light'
-								className='rounded-circle shadow-sm d-flex align-items-center justify-content-center'
-								style={{ width: '48px', height: '48px', marginRight: '-60px' }}
-								onClick={handleNextClick}
-								disabled={
-									currentQuestionIndex === questionPaper.questions.length - 1 ||
-									fadeState === 'fade-out'
-								}
-							>
-								<svg
-									width='24'
-									height='24'
-									fill='none'
-									viewBox='0 0 24 24'
-									stroke='currentColor'
-								>
-									<path
-										strokeLinecap='round'
-										strokeLinejoin='round'
-										strokeWidth={2}
-										d='M9 5l7 7-7 7'
-									/>
-								</svg>
-							</Button>
+									<div className='me-3 d-flex align-items-center text-primary'>
+										{answers[index] === option ? (
+											<Icon name='checkCircle' size={24} />
+										) : (
+											<Icon name='circle' size={24} className='text-muted opacity-50' />
+										)}
+									</div>
+									<div className='flex-grow-1 fs-5 text-dark'>
+										<MarkdownRenderer>{option}</MarkdownRenderer>
+									</div>
+								</div>
+							))}
 						</div>
-						<div
-							key={index}
-							className={`fade-slide ${fadeState} w-100`}
-							onTouchStart={onTouchStart}
-							onTouchEnd={onTouchEnd}
-							style={{
-								marginBottom: '2rem',
-								minHeight: '350px',
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-						>
-							{/* Subtle question number above */}
-							<div className='w-100 text-center mb-2'>
-								<small
-									className='text-muted'
-									style={{ letterSpacing: '0.05em', fontWeight: 500 }}
-								>
-									Question {index + 1} of {questionPaper.questions.length}
+					</div>
+
+					{/* Remaining unanswered questions */}
+					{(() => {
+						const remainingCount =
+							questionPaper.questions.length - Object.keys(answers).length;
+						return (
+							<div className='mb-4 text-center'>
+								<small className='text-muted fw-medium'>
+									{remainingCount > 0
+										? `${remainingCount} question${remainingCount !== 1 ? 's' : ''
+										} remaining`
+										: 'All questions answered!'}
 								</small>
 							</div>
-							{/* Large, bold, centered question */}
-							<div className='w-100 text-center mb-4 card card-body shadow-sm border-0'>
-								<MarkdownRenderer>{q.question}</MarkdownRenderer>
-							</div>
-							{/* Typeform-style options */}
-							<div className='w-100'>
-								{q.options.map((option, i) => (
-									<Button
-										key={i}
-										variant='outline-primary'
-										className={
-											`w-100 mb-3 shadow-sm typeform-btn d-flex align-items-center gap-2` +
-											(answers[index] === option ? ' active' : '')
-										}
-										style={{
-											transition:
-												'background-color 0.12s, color 0.12s, box-shadow 0.2s',
-											cursor:
-												fadeState === 'fade-out' ? 'not-allowed' : 'pointer',
-											opacity: fadeState === 'fade-out' ? 0.7 : 1,
-										}}
-										onClick={() =>
-											fadeState !== 'fade-out' &&
-											handleAnswerChange(index, option)
-										}
-										disabled={fadeState === 'fade-out'}
-										tabIndex={fadeState === 'fade-out' ? -1 : 0}
-									>
-										<div className='me-2'>
-											{answers[index] === option ? (
-												<Icon name='checkCircle' />
-											) : (
-												<Icon name='circle' />
-											)}
-										</div>
-										<div
-											style={{
-												textAlign: 'left',
-												display: 'inline-block',
-												width: '85%',
-											}}
-										>
-											<MarkdownRenderer>{option}</MarkdownRenderer>
-										</div>
-									</Button>
-								))}
-							</div>
-						</div>
-						{/* Remaining unanswered questions */}
-						{(() => {
-							const remainingCount =
-								questionPaper.questions.length - Object.keys(answers).length;
-							return (
-								<div className='mb-3 text-center'>
-									<small className='text-muted'>
-										{remainingCount > 0
-											? `${remainingCount} question${
-													remainingCount !== 1 ? 's' : ''
-											  } unanswered`
-											: 'All questions answered'}
-									</small>
-								</div>
-							);
-						})()}
-						<Button
-							type='submit'
-							variant='success'
-							className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow mb-5 p-2 fw-bold'
-						>
-							<Icon name='checkCircle' />
-							Submit Answers
-						</Button>
-					</form>
-					<div className='d-flex gap-2 mb-3'>
-						<FloatingButtonWithCopy data={testId} label='Test Id' />
-						<Share paper={questionPaper} />
-						<Print questionPaper={questionPaper} />
-					</div>
-				</Container>
-			</div>
-		</>
+						);
+					})()}
+
+					<Button
+						type='submit'
+						variant='success'
+						size='lg'
+						className='w-100 d-flex align-items-center justify-content-center gap-2 rounded-pill shadow-sm py-3 fw-bold'
+						style={{
+							background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+							border: 'none'
+						}}
+					>
+						<Icon name='checkCircle' />
+						Submit Test
+					</Button>
+				</form>
+
+				<div className='d-flex gap-3 mt-5 opacity-75'>
+					<FloatingButtonWithCopy data={testId} label='Test Id' />
+					<Share paper={questionPaper} />
+					<Print questionPaper={questionPaper} />
+				</div>
+			</Container>
+		</div>
 	);
 }
 

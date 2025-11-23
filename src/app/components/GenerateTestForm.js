@@ -211,330 +211,259 @@ const GenerateTestForm = () => {
 
 	return (
 		<Container className='pb-3 d-flex flex-column align-items-center justify-content-center'>
-			<h1 className='text-center mb-4 display-5 display-md-4 text-dark'>
-				Create Personalized Quiz (अपना क्विज़ बनाएं)
-			</h1>
+			<div className='text-center mb-5'>
+				<h1 className='display-4 fw-bold mb-2' style={{ letterSpacing: '-1px' }}>
+					Create Personalized Quiz
+				</h1>
+				<p className='text-muted fs-5'>
+					अपना क्विज़ बनाएं और खुद को टेस्ट करें
+				</p>
+			</div>
 
-			<Card className='w-100 border-0' style={{ maxWidth: '720px' }}>
-				<Card.Body>
+			<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
+				<Card.Body className='p-4 p-md-5'>
 					{/* Test ID Input Form */}
 					<Form onSubmit={handleTestIdSubmit} className='mb-4'>
 						<Form.Group>
-							<InputGroup>
+							<InputGroup className='mb-1'>
 								<Form.Control
 									type='text'
-									placeholder='Test ID (टेस्ट आईडी डालें)'
+									placeholder='Enter Test ID (टेस्ट आईडी डालें)'
 									value={testId}
 									onChange={(e) => setTestId(e.target.value)}
+									className='glass-input border-end-0'
+									style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
 								/>
-								<Button variant='outline-primary' type='submit'>
-									Go to Test
+								<Button
+									variant='outline-primary'
+									type='submit'
+									className='border-start-0 px-4'
+									style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+								>
+									Go
 								</Button>
 							</InputGroup>
-							<Form.Text
-								className='text-muted small d-block mt-1'
-								style={{ fontSize: '0.8rem' }}
-							>
-								Have a Test ID? Enter here (अगर आपके पास टेस्ट आईडी है तो यहाँ
-								डालें)
+							<Form.Text className='text-muted small'>
+								Have a Test ID? Enter here (अगर आपके पास टेस्ट आईडी है तो यहाँ डालें)
 							</Form.Text>
 						</Form.Group>
 					</Form>
 
-					<hr className='my-4' />
+					<div className='d-flex align-items-center mb-4'>
+						<hr className='flex-grow-1 opacity-25' />
+						<span className='px-3 text-muted small text-uppercase fw-semibold'>OR</span>
+						<hr className='flex-grow-1 opacity-25' />
+					</div>
 
 					<Form onSubmit={handleSubmit}>
-						<Form.Group className='mb-3'>
+						<Form.Group className='mb-4'>
+							<Form.Label className='fw-medium'>What do you want to learn today?</Form.Label>
 							<Form.Control
 								as='textarea'
 								id='topic'
 								rows={4}
 								value={topic}
 								onChange={(e) => setTopic(e.target.value)}
-								placeholder='What do you want to test yourself on today? (आज आप किस टॉपिक पर टेस्ट देना चाहते हैं? जैसे "हिंदी व्याकरण", "भारत का इतिहास", या "गणित के सवाल")'
+								placeholder='e.g., &quot;Organic Chemistry Class 12&quot;, &quot;History of Ancient India&quot;, or &quot;Python Programming Basics&quot;'
+								className='glass-input'
+								style={{ resize: 'none' }}
 							/>
 						</Form.Group>
-						{error && <Alert variant='danger'>{error}</Alert>}
+						{error && <Alert variant='danger' className='border-0 shadow-sm'>{error}</Alert>}
 
-						<div className='d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 mb-4'>
-							<div className='d-flex flex-wrap gap-2 align-items-center order-1 order-sm-0'>
+						<div className='d-flex flex-column gap-3'>
+							<div className='d-flex justify-content-between align-items-center'>
 								<Button
-									variant='outline-secondary'
-									size='sm'
+									variant='link'
+									className='text-decoration-none p-0 text-muted d-flex align-items-center gap-2'
 									onClick={() => setShowAdvanced(!showAdvanced)}
-									style={{
-										width: 'auto',
-										whiteSpace: 'nowrap',
-									}}
 								>
-									{showAdvanced
-										? 'Hide advanced settings (कम विकल्प दिखाएं)'
-										: 'Show advanced settings (अधिक विकल्प दिखाएं)'}
+									<Icon name={showAdvanced ? 'chevronUp' : 'chevronDown'} size={14} />
+									{showAdvanced ? 'Hide options' : 'More options'}
 								</Button>
 
 								{!showAdvanced && (
-									<>
+									<div className='d-flex gap-2'>
 										<Form.Select
 											size='sm'
 											value={numQuestions}
 											onChange={(e) => setNumQuestions(Number(e.target.value))}
-											style={{ width: 'auto', minWidth: '120px' }}
+											className='glass-input'
+											style={{ width: 'auto' }}
 										>
 											{[5, 10, 15, 20].map((num) => (
-												<option key={num} value={num}>
-													{num} questions
-												</option>
+												<option key={num} value={num}>{num} Qs</option>
 											))}
-										</Form.Select>
-										<Form.Select
-											size='sm'
-											value={difficulty}
-											onChange={(e) => setDifficulty(e.target.value)}
-											style={{ width: 'auto', minWidth: '120px' }}
-										>
-											<option value='beginner'>Beginner (शुरुआती)</option>
-											<option value='intermediate'>
-												Intermediate (मध्यवर्ती)
-											</option>
-											<option value='advanced'>Advanced (विकसित)</option>
-											<option value='expert'>Expert (विशेषज्ञ)</option>
 										</Form.Select>
 										<Form.Select
 											size='sm'
 											value={language}
 											onChange={(e) => setLanguage(e.target.value)}
-											style={{ width: 'auto', minWidth: '120px' }}
+											className='glass-input'
+											style={{ width: 'auto' }}
 										>
 											<option value='english'>English</option>
 											<option value='hindi'>Hindi</option>
-											<option value='spanish'>Spanish</option>
 										</Form.Select>
-									</>
+									</div>
 								)}
 							</div>
+
+							{showAdvanced && (
+								<div className='p-4 rounded-3 bg-light bg-opacity-50 border border-light mb-2 fade-slide fade-in'>
+									<Row className='g-3'>
+										<Col xs={12} sm={6}>
+											<Form.Label className='small text-muted fw-semibold'>Format</Form.Label>
+											<Form.Select
+												size='sm'
+												value={testType}
+												onChange={(e) => setTestType(e.target.value)}
+												className='glass-input'
+											>
+												<option value='multiple-choice'>Multiple Choice</option>
+												<option value='true-false'>True/False</option>
+												<option value='coding'>Coding Problems</option>
+												<option value='mixed'>Mixed Format</option>
+											</Form.Select>
+										</Col>
+										<Col xs={6} sm={3}>
+											<Form.Label className='small text-muted fw-semibold'>Questions</Form.Label>
+											<Form.Select
+												size='sm'
+												value={numQuestions}
+												onChange={(e) => setNumQuestions(Number(e.target.value))}
+												className='glass-input'
+											>
+												{[5, 10, 15, 20, 25, 30].map((num) => (
+													<option key={num} value={num}>{num}</option>
+												))}
+											</Form.Select>
+										</Col>
+										<Col xs={6} sm={3}>
+											<Form.Label className='small text-muted fw-semibold'>Difficulty</Form.Label>
+											<Form.Select
+												size='sm'
+												value={difficulty}
+												onChange={(e) => setDifficulty(e.target.value)}
+												className='glass-input'
+											>
+												<option value='beginner'>Beginner</option>
+												<option value='intermediate'>Intermediate</option>
+												<option value='advanced'>Advanced</option>
+												<option value='expert'>Expert</option>
+											</Form.Select>
+										</Col>
+										<Col xs={12}>
+											<Form.Label className='small text-muted fw-semibold'>Language</Form.Label>
+											<Form.Select
+												size='sm'
+												value={language}
+												onChange={(e) => setLanguage(e.target.value)}
+												className='glass-input'
+											>
+												<option value='english'>English</option>
+												<option value='hindi'>Hindi</option>
+												<option value='spanish'>Spanish</option>
+											</Form.Select>
+										</Col>
+									</Row>
+
+									<hr className='my-3 opacity-25' />
+
+									<Form.Label className='small text-muted fw-semibold d-flex justify-content-between'>
+										<span>Category (Optional)</span>
+										{selectedCategory && (
+											<Button
+												variant='link'
+												size='sm'
+												className='p-0 text-muted text-decoration-none'
+												onClick={() => {
+													setSelectedCategory('');
+													setSelectedTopics([]);
+												}}
+											>
+												Clear
+											</Button>
+										)}
+									</Form.Label>
+									<div className='d-flex flex-wrap gap-2 mb-3'>
+										{Object.keys(TOPIC_CATEGORIES).map((category) => (
+											<Button
+												key={category}
+												variant={selectedCategory === category ? 'primary' : 'outline-secondary'}
+												size='sm'
+												className={`rounded-pill px-3 ${selectedCategory !== category ? 'border-0 bg-white' : ''}`}
+												onClick={() => setSelectedCategory(selectedCategory === category ? '' : category)}
+											>
+												{category}
+											</Button>
+										))}
+									</div>
+
+									{selectedCategory && (
+										<div className='fade-slide fade-in'>
+											<Form.Label className='small text-muted fw-semibold'>Suggested Topics</Form.Label>
+											<div className='d-flex flex-wrap gap-2'>
+												{TOPIC_CATEGORIES[selectedCategory]?.map((topic) => (
+													<Button
+														key={topic}
+														variant={selectedTopics.includes(topic) ? 'primary' : 'light'}
+														size='sm'
+														className='rounded-pill'
+														onClick={() => {
+															setSelectedTopics((prev) =>
+																prev.includes(topic)
+																	? prev.filter((t) => t !== topic)
+																	: [...prev, topic],
+															);
+														}}
+													>
+														{topic}
+													</Button>
+												))}
+											</div>
+										</div>
+									)}
+								</div>
+							)}
 
 							<Button
 								variant='primary'
 								type='submit'
 								disabled={loading || !topic.trim()}
+								className='w-100 py-3 fw-semibold fs-5 mt-2'
 							>
-								<div className='d-flex align-items-center gap-1'>
+								<div className='d-flex align-items-center justify-content-center gap-2'>
 									{!loading && <Icon name='sparkles' />}
 									{loading ? (
-										<div className='d-flex align-items-center justify-content-center gap-2'>
+										<>
 											<Spinner as='span' animation='border' size='sm' />
 											<span>
-												Generating... (बनाया जा रहा है...){' '}
-												<span style={{ width: '24px' }}>
+												Generating...
+												<span className='ms-2 opacity-75 fs-6'>
 													{Math.max(0, (elapsed / 1000).toFixed(1))}s
 												</span>
 											</span>
-										</div>
+										</>
 									) : (
-										'Generate Quiz (क्विज़ बनाएं)'
+										'Generate Quiz'
 									)}
 								</div>
 							</Button>
 						</div>
-
-						{showAdvanced && (
-							<div className='advanced-options bg-light p-3 rounded shadow-sm mb-4'>
-								<Row className='g-3'>
-									<Col xs={12}>
-										<div className='d-flex flex-column flex-sm-row gap-2'>
-											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
-													Question Format (प्रश्न का प्रकार)
-												</Form.Label>
-												<Form.Select
-													size='sm'
-													value={testType}
-													onChange={(e) => setTestType(e.target.value)}
-												>
-													<option value='multiple-choice'>
-														Multiple Choice
-													</option>
-													<option value='true-false'>True/False</option>
-													<option value='coding'>Coding Problems</option>
-													<option value='mixed'>Mixed Format</option>
-												</Form.Select>
-											</div>
-											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
-													How many questions? (कितने प्रश्न चाहिए?)
-												</Form.Label>
-												<Form.Select
-													size='sm'
-													value={numQuestions}
-													onChange={(e) =>
-														setNumQuestions(Number(e.target.value))
-													}
-												>
-													{[5, 10, 15, 20, 25, 30].map((num) => (
-														<option key={num} value={num}>
-															{num} questions
-														</option>
-													))}
-												</Form.Select>
-											</div>
-											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
-													Select Difficulty (कठिनाई स्तर चुनें)
-												</Form.Label>
-												<Form.Select
-													size='sm'
-													value={difficulty}
-													onChange={(e) => setDifficulty(e.target.value)}
-												>
-													<option value='beginner'>Beginner (शुरुआती)</option>
-													<option value='intermediate'>
-														Intermediate (मध्यवर्ती)
-													</option>
-													<option value='advanced'>Advanced (विकसित)</option>
-													<option value='expert'>Expert (विशेषज्ञ)</option>
-												</Form.Select>
-											</div>
-											<div className='flex-grow-1'>
-												<Form.Label className='small text-muted'>
-													Select Language (भाषा चुनें)
-												</Form.Label>
-												<Form.Select
-													size='sm'
-													value={language}
-													onChange={(e) => setLanguage(e.target.value)}
-												>
-													<option value='english'>English</option>
-													<option value='hindi'>Hindi</option>
-													<option value='spanish'>Spanish</option>
-												</Form.Select>
-											</div>
-										</div>
-									</Col>
-
-									<Col xs={12}>
-										<Form.Label className='small text-muted d-flex justify-content-between align-items-center mb-2'>
-											<span>Pick a Category (श्रेणी चुनें - वैकल्पिक)</span>
-											{selectedCategory && (
-												<Button
-													variant='link'
-													size='sm'
-													className='p-0 text-muted'
-													style={{
-														fontSize: '0.8rem',
-														textDecoration: 'none',
-													}}
-													onClick={() => {
-														setSelectedCategory('');
-														setSelectedTopics([]);
-													}}
-												>
-													Reset
-												</Button>
-											)}
-										</Form.Label>
-										<Row xs={2} sm={3} md={4} className='g-3'>
-											{Object.keys(TOPIC_CATEGORIES).map((category) => (
-												<Col key={category}>
-													<Button
-														variant={
-															selectedCategory === category
-																? 'primary'
-																: 'outline-secondary'
-														}
-														size='sm'
-														className='w-100 text-truncate'
-														style={{
-															whiteSpace: 'normal',
-															height: '100%',
-															minHeight: '44px',
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															textAlign: 'center',
-															padding: '0.5rem',
-														}}
-														onClick={() =>
-															setSelectedCategory(
-																selectedCategory === category ? '' : category,
-															)
-														}
-													>
-														{category}
-													</Button>
-												</Col>
-											))}
-										</Row>
-
-										{selectedCategory && (
-											<div className='selected-topics mt-3'>
-												<Form.Label className='small text-muted d-flex justify-content-between align-items-center'>
-													<span>
-														Suggested {selectedCategory} Topics (सुझाए गए टॉपिक)
-													</span>
-													<Button
-														variant='link'
-														size='sm'
-														className='p-0 text-muted'
-														style={{
-															fontSize: '0.8rem',
-															textDecoration: 'none',
-														}}
-														onClick={() => {
-															setSelectedCategory('');
-															setSelectedTopics([]);
-														}}
-													>
-														Change Category
-													</Button>
-												</Form.Label>
-												<div className='d-flex flex-wrap gap-2'>
-													{TOPIC_CATEGORIES[selectedCategory]?.map((topic) => (
-														<Button
-															key={topic}
-															variant={
-																selectedTopics.includes(topic)
-																	? 'primary'
-																	: 'outline-secondary'
-															}
-															size='sm'
-															onClick={() => {
-																setSelectedTopics((prev) =>
-																	prev.includes(topic)
-																		? prev.filter((t) => t !== topic)
-																		: [...prev, topic],
-																);
-															}}
-														>
-															{topic}
-														</Button>
-													))}
-												</div>
-											</div>
-										)}
-									</Col>
-								</Row>
-							</div>
-						)}
 					</Form>
 				</Card.Body>
 			</Card>
 
-			<Card className='mt-4 shadow-sm border-0 bg-light'>
+			<Card className='border-0 bg-transparent'>
 				<Card.Body className='text-center p-3'>
-					<div className='d-flex flex-column align-items-center'>
-						<Icon name='lightbulb' className='mb-2 text-warning' />
-						<h6 className='fw-bold mb-3'>💡 सलाह (Tip)</h6>
-						<p className='text-muted mb-2'>
-							जब आप टेस्ट का टॉपिक लिखें तो साफ-साफ लिखें कि आप किस चीज़ पर
-							क्विज़ बनाना चाहते हैं।
-						</p>
-						<ul className='list-unstyled text-muted small mb-2'>
-							<li>👉 कक्षा 10 गणित अध्याय 2</li>
-							<li>👉 CUET Chemistry Resonance</li>
-							<li>👉 इतिहास मौर्य वंश</li>
-						</ul>
-						<p className='fw-semibold text-secondary mb-0'>
-							जितना साफ़ टॉपिक बताएँगे, उतना सही और आसान क्विज़ बनेगा।
+					<div className='d-flex flex-column align-items-center opacity-75'>
+						<div className='d-flex align-items-center gap-2 mb-2'>
+							<Icon name='lightbulb' className='text-warning' />
+							<span className='fw-semibold'>Pro Tip</span>
+						</div>
+						<p className='text-muted small mb-0' style={{ maxWidth: '400px' }}>
+							Be specific for better results. Try &quot;Class 10 Math Quadratic Equations&quot; instead of just &quot;Math&quot;.
 						</p>
 					</div>
 				</Card.Body>
