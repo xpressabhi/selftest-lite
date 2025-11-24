@@ -451,28 +451,31 @@ export default function Print({ questionPaper }) {
 	}
 
 	return (
-		<div className='print-dialog fixed-top vh-100 w-100 bg-white overflow-auto' style={{ zIndex: 2000 }}>
-			<div className='container position-relative py-5'>
-				<div className='position-fixed top-0 end-0 p-3' style={{ zIndex: 2010 }}>
-					<button
-						type='button'
-						className='btn btn-outline-secondary d-flex align-items-center gap-2 shadow-sm bg-white'
-						onClick={() => setShowPreview(false)}
-					>
-						<Icon name='close' /> Close
-					</button>
-				</div>
-				<div className='position-fixed top-0 start-0 p-3' style={{ zIndex: 2010 }}>
-					<button
-						type='button'
-						className='btn btn-primary d-flex align-items-center gap-2 shadow-sm'
-						onClick={handlePrintContent}
-					>
-						<Icon name='print' /> Print
-					</button>
-				</div>
-				<div className='mt-4'>
-					<PrintableContent questionPaper={questionPaper} />
+		<div className='print-dialog fixed-top vh-100 w-100 bg-white d-flex flex-column' style={{ zIndex: 2000 }}>
+			{/* Fixed Header */}
+			<div className='d-flex justify-content-between align-items-center p-3 border-bottom bg-white shadow-sm' style={{ zIndex: 2010 }}>
+				<button
+					type='button'
+					className='btn btn-primary d-flex align-items-center gap-2 shadow-sm'
+					onClick={handlePrintContent}
+				>
+					<Icon name='print' /> Print
+				</button>
+				<button
+					type='button'
+					className='btn btn-outline-secondary d-flex align-items-center gap-2 shadow-sm bg-white'
+					onClick={() => setShowPreview(false)}
+				>
+					<Icon name='close' /> Close
+				</button>
+			</div>
+
+			{/* Scrollable Content */}
+			<div className='flex-grow-1 overflow-auto bg-light'>
+				<div className='container py-4'>
+					<div className='bg-white shadow-sm p-4 rounded-3' style={{ maxWidth: '800px', margin: '0 auto' }}>
+						<PrintableContent questionPaper={questionPaper} />
+					</div>
 				</div>
 			</div>
 		</div>
