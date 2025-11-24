@@ -283,7 +283,7 @@ const GenerateTestForm = () => {
 						{error && <Alert variant='danger' className='border-0 shadow-sm'>{error}</Alert>}
 
 						<div className='d-flex flex-column gap-3'>
-							<div className='d-flex justify-content-between align-items-center'>
+							<div className='d-flex flex-wrap justify-content-between align-items-center gap-2'>
 								<Button
 									variant='link'
 									className='text-decoration-none p-0 text-muted d-flex align-items-center gap-2'
@@ -294,7 +294,7 @@ const GenerateTestForm = () => {
 								</Button>
 
 								{!showAdvanced && (
-									<div className='d-flex gap-2'>
+									<div className='d-flex flex-wrap gap-2'>
 										<Form.Select
 											size='sm'
 											value={numQuestions}
