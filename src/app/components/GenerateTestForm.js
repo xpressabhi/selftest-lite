@@ -308,6 +308,18 @@ const GenerateTestForm = () => {
 										</Form.Select>
 										<Form.Select
 											size='sm'
+											value={difficulty}
+											onChange={(e) => setDifficulty(e.target.value)}
+											className='glass-input'
+											style={{ width: 'auto', textTransform: 'capitalize' }}
+										>
+											<option value='beginner'>Beginner</option>
+											<option value='intermediate'>Intermediate</option>
+											<option value='advanced'>Advanced</option>
+											<option value='expert'>Expert</option>
+										</Form.Select>
+										<Form.Select
+											size='sm'
 											value={language}
 											onChange={(e) => setLanguage(e.target.value)}
 											className='glass-input'
