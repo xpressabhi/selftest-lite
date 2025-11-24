@@ -392,7 +392,7 @@ function TestContent() {
 					</Button>
 				</form>
 
-				<div className='d-flex gap-3 mt-5 opacity-75'>
+				<div className='d-flex gap-3 mt-5'>
 					<FloatingButtonWithCopy data={testId} label='Test Id' />
 					<Share paper={questionPaper} />
 					<Print questionPaper={questionPaper} />

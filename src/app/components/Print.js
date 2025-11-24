@@ -450,7 +450,13 @@ export default function Print({ questionPaper }) {
 		);
 	}
 
-	return (
+	// Use React Portal to render modal at document body level
+	// This escapes any parent stacking contexts (opacity, transform, etc.)
+	if (typeof document === 'undefined') return null;
+
+	const { createPortal } = require('react-dom');
+
+	return createPortal(
 		<div
 			className='print-dialog'
 			style={{
@@ -516,6 +522,7 @@ export default function Print({ questionPaper }) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</div>,
+		document.body
 	);
 }
