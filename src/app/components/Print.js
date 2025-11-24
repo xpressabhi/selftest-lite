@@ -451,29 +451,67 @@ export default function Print({ questionPaper }) {
 	}
 
 	return (
-		<div className='print-dialog fixed-top vh-100 w-100 bg-white d-flex flex-column' style={{ zIndex: 2000 }}>
+		<div
+			className='print-dialog'
+			style={{
+				position: 'fixed',
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				backgroundColor: '#ffffff',
+				zIndex: 10000,
+				display: 'flex',
+				flexDirection: 'column',
+			}}
+		>
 			{/* Fixed Header */}
-			<div className='d-flex justify-content-between align-items-center p-3 border-bottom bg-white shadow-sm' style={{ zIndex: 2010 }}>
+			<div
+				className='d-flex justify-content-between align-items-center shadow-sm'
+				style={{
+					padding: '1rem',
+					backgroundColor: '#ffffff',
+					borderBottom: '1px solid #dee2e6',
+					zIndex: 10010,
+					flexShrink: 0,
+				}}
+			>
 				<button
 					type='button'
-					className='btn btn-primary d-flex align-items-center gap-2 shadow-sm'
+					className='btn btn-primary d-flex align-items-center gap-2'
 					onClick={handlePrintContent}
+					style={{ opacity: 1, visibility: 'visible' }}
 				>
 					<Icon name='print' /> Print
 				</button>
 				<button
 					type='button'
-					className='btn btn-outline-secondary d-flex align-items-center gap-2 shadow-sm bg-white'
+					className='btn btn-outline-secondary d-flex align-items-center gap-2 bg-white'
 					onClick={() => setShowPreview(false)}
+					style={{ opacity: 1, visibility: 'visible' }}
 				>
 					<Icon name='close' /> Close
 				</button>
 			</div>
 
 			{/* Scrollable Content */}
-			<div className='flex-grow-1 overflow-auto bg-light'>
+			<div
+				style={{
+					flexGrow: 1,
+					overflowY: 'auto',
+					WebkitOverflowScrolling: 'touch',
+					backgroundColor: '#f8f9fa',
+				}}
+			>
 				<div className='container py-4'>
-					<div className='bg-white shadow-sm p-4 rounded-3' style={{ maxWidth: '800px', margin: '0 auto' }}>
+					<div
+						className='bg-white shadow-sm p-4 rounded-3'
+						style={{
+							maxWidth: '800px',
+							margin: '0 auto',
+							backgroundColor: '#ffffff',
+						}}
+					>
 						<PrintableContent questionPaper={questionPaper} />
 					</div>
 				</div>
