@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export const metadata = {
 	title: 'About — selftest.in',
@@ -101,9 +102,9 @@ export default function AboutPage() {
 				<p className='mb-4 text-muted'>
 					Create your first quiz in seconds. No sign-up required.
 				</p>
-				<a href='/' className='btn btn-primary btn-lg px-5 rounded-pill'>
+				<Link href='/' className='btn btn-primary btn-lg px-5 rounded-pill'>
 					Generate a Test
-				</a>
+				</Link>
 			</section>
 		</main>
 	);
