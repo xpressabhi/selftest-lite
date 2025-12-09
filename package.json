@@ -16,7 +16,7 @@
 		"@vercel/speed-insights": "^1.2.0",
 		"bootstrap": "^5.3.8",
 		"katex": "^0.16.25",
-		"next": "15.5.6",
+		"next": "15.5.7",
 		"next-pwa": "^5.6.0",
 		"react": "19.2.0",
 		"react-bootstrap": "^2.10.10",
@@ -31,8 +31,8 @@
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3",
-		"@next/bundle-analyzer": "^15.5.6",
+		"@next/bundle-analyzer": "^15.5.7",
 		"eslint": "^9",
-		"eslint-config-next": "15.5.6"
+		"eslint-config-next": "15.5.7"
 	}
 }
