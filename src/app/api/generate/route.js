@@ -146,6 +146,9 @@ export async function POST(request) {
 			config: {
 				responseMimeType: 'application/json',
 				responseJsonSchema: z.toJSONSchema(paperSchema),
+				thinkingConfig: {
+					thinkingLevel: 'minimal',
+				}
 			},
 		});
 
