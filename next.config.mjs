@@ -4,6 +4,8 @@ import withBundleAnalyzer from '@next/bundle-analyzer';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	// Your existing Next.js config
+	turbopack: {
+	},
 	experimental: {
 		optimizePackageImports: ['react-bootstrap'],
 	},
