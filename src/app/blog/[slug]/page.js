@@ -9,56 +9,78 @@ const BLOG_POSTS = {
         title: 'How to study effectively with Active Recall',
         date: 'Nov 24, 2024',
         category: 'Study Tips',
-        readTime: '5 min read',
+        readTime: '8 min read',
         content: (
             <>
                 <p className='lead'>
-                    Research shows active recall and spaced repetition are among the most
-                    effective study techniques. Using practice tests and low-stakes quizzes
-                    helps strengthen memory retrieval and identify gaps in knowledge.
+                    Most students study by re-reading their notes or highlighting textbooks.
+                    Psychologists call this "passive review," and unfortunately, it's one of the least effective ways to learn.
+                    In this guide, we'll explore Active Recall—the most robust, evidence-backed study technique known to science—and how you can use it to cut your study time in half while remembering more.
                 </p>
 
-                <h2 className='mt-5 mb-3'>Active Recall</h2>
+                <h2 className='mt-5 mb-3'>The Illusion of Competence</h2>
                 <p>
-                    Active recall is the practice of retrieving information from memory, for
-                    example by answering quiz questions without looking at notes.
-                    selftest.in is built around this principle. Instead of passively reading,
-                    you force your brain to work to retrieve the answer.
+                    When you read a textbook chapter for the third time, it feels fluent. You recognize the words, so you think you know the material.
+                    This is the "illusion of competence." Recognition is not the same as retrieval.
+                    Just because you can recognize the information doesn't mean you can recall it when faced with a blank sheet of paper in an exam hall.
                 </p>
+
+                <h2 className='mt-5 mb-3'>What is Active Recall?</h2>
+                <p>
+                    Active Recall (also known as "retrieval practice") involves deliberately trying to retrieve information from your brain without looking at the source material.
+                    Every time you force your brain to find a memory, you strengthen the neural pathway to that information.
+                </p>
+                <p>
+                    Think of your memory like a forest. Passive review is like walking on an existing path; it's easy but doesn't change much.
+                    Active recall is like hacking a new path through the undergrowth. It's hard work, but once the path is made, it's there to stay.
+                </p>
+
                 <div className='alert alert-light border rounded-4 my-4'>
                     <div className='d-flex'>
                         <div className='me-3 text-primary'>
                             <Icon name='lightbulb' size={24} />
                         </div>
                         <div>
-                            <strong>Try this:</strong> After reading a page of a textbook, close the book
-                            and write down everything you remember. Then open the book and check what you missed.
+                            <strong>The Core Principle:</strong> If it feels easy, you probably aren't learning much.
+                            Effective learning should feel mentally taxing. That "strain" you feel is your brain building new connections.
                         </div>
                     </div>
                 </div>
 
-                <h2 className='mt-5 mb-3'>Spaced Repetition</h2>
+                <h2 className='mt-5 mb-3'>How to Implement Active Recall</h2>
+                <p>Here are three practical ways to use this technique today:</p>
+
+                <h3 className='h5 fw-bold mt-4'>1. The "Closed Book" Method</h3>
                 <p>
-                    <p>
-                        Spacing study sessions over time improves long-term retention. Combine
-                        generated quizzes with a schedule to get better results. This combats the
-                        &quot;Forgetting Curve&quot; — the natural tendency of the brain to forget information over time.
-                    </p>
+                    After reading a section of your textbook, close the book. Take a blank sheet of paper and write down everything you can remember.
+                    Draw diagrams, make mind maps, or just list bullet points. Only when you literally cannot remember anything else should you open the book to check what you missed.
                 </p>
 
-                <h2 className='mt-5 mb-3'>Practical Tips</h2>
+                <h3 className='h5 fw-bold mt-4'>2. The Feynman Technique</h3>
+                <p>
+                    Try to explain the concept you just learned in simple terms, as if you were teaching it to a 5-year-old.
+                    If you stumble or use jargon to cover up gaps in your understanding, that's a signal you need to review that specific part.
+                </p>
+
+                <h3 className='h5 fw-bold mt-4'>3. Practice Testing</h3>
+                <p>
+                    This is where <strong>selftest.in</strong> shines. Generating quizzes forces you to interact with the material actively.
+                    Taking the quiz is the ultimate form of active recall because it simulates the pressure and format of the real exam.
+                </p>
+
+                <h2 className='mt-5 mb-3'>Summary</h2>
                 <ul className='list-unstyled'>
                     <li className='mb-3 d-flex align-items-start'>
                         <Icon name='checkCircle' className='text-success me-2 mt-1' size={20} />
-                        <span>Generate short quizzes on selftest.in and take them regularly.</span>
+                        <span>Stop passive re-reading and highlighting.</span>
                     </li>
                     <li className='mb-3 d-flex align-items-start'>
                         <Icon name='checkCircle' className='text-success me-2 mt-1' size={20} />
-                        <span>Review explanations for questions you missed to understand the &quot;why&quot;.</span>
+                        <span>Test yourself constantly using the "Closed Book" method.</span>
                     </li>
                     <li className='mb-3 d-flex align-items-start'>
                         <Icon name='checkCircle' className='text-success me-2 mt-1' size={20} />
-                        <span>Keep sessions focused (25-30 mins) and limit duration to avoid fatigue.</span>
+                        <span>Embrace the difficulty—mental struggle is a sign of learning.</span>
                     </li>
                 </ul>
             </>
@@ -68,35 +90,69 @@ const BLOG_POSTS = {
         title: 'Overcoming Exam Anxiety: A Practical Guide',
         date: 'Nov 20, 2024',
         category: 'Wellness',
-        readTime: '4 min read',
+        readTime: '6 min read',
         content: (
             <>
                 <p className='lead'>
-                    Exam anxiety is a common experience that can negatively impact performance.
-                    However, with the right strategies, you can manage stress and perform your best.
+                    Your palms are sweaty, your heart is racing, and your mind goes blank. We've all been there.
+                    Exam anxiety is a physiological response to stress that can sabotage your performance regardless of how well you prepared.
+                    The good news? It's manageable with the right toolkit.
                 </p>
 
-                <h2 className='mt-5 mb-3'>Preparation is Key</h2>
+                <h2 className='mt-5 mb-3'>The Physiology of Panic</h2>
                 <p>
-                    The most effective way to reduce anxiety is to be well-prepared.
-                    Using tools like selftest.in to simulate exam conditions can help desensitize
-                    you to the pressure of the actual test.
+                    When you're anxious, your body enters "flight or fight" mode. It diverts blood away from your prefrontal cortex (the logical, thinking part of your brain) to your muscles throughout your body.
+                    This is great for running away from a lion, but terrible for solving calculus problems.
                 </p>
 
-                <h2 className='mt-5 mb-3'>Breathing Techniques</h2>
+                <h2 className='mt-5 mb-3'>Strategy 1: Cognitive Reframing</h2>
                 <p>
-                    When you feel panic rising, try the 4-7-8 breathing technique:
+                    Psychologically, anxiety and excitement are very similar states of high arousal.
+                    Instead of telling yourself "I am anxious," try telling yourself "I am excited."
+                    This simple reframe can trick your brain into viewing the upcoming test as a challenge rather than a threat.
                 </p>
-                <ol>
-                    <li>Inhale quietly through the nose for 4 seconds.</li>
-                    <li>Hold the breath for 7 seconds.</li>
-                    <li>Exhale forcefully through the mouth for 8 seconds.</li>
-                </ol>
 
-                <h2 className='mt-5 mb-3'>Positive Visualization</h2>
+                <h2 className='mt-5 mb-3'>Strategy 2: The Physical Reset</h2>
                 <p>
-                    Visualize yourself walking into the exam room calmly and answering questions with confidence.
-                    Athletes use this technique to improve performance, and it works for students too.
+                    You can hack your nervous system to calm down using your breath. The most effective method is <strong>Box Breathing</strong>, used by Navy SEALs to stay calm under pressure:
+                </p>
+                <div className='row my-4'>
+                    <div className='col-md-6 mb-3'>
+                        <div className='p-4 bg-light rounded-4 h-100'>
+                            <h4 className='h6 fw-bold mb-3'>The 4-4-4-4 Method</h4>
+                            <ol className='mb-0 ps-3'>
+                                <li className='mb-2'>Inhale deeply for 4 seconds</li>
+                                <li className='mb-2'>Hold your lungs full for 4 seconds</li>
+                                <li className='mb-2'>Exhale slowly for 4 seconds</li>
+                                <li>Hold your lungs empty for 4 seconds</li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div className='col-md-6 mb-3'>
+                        <div className='p-4 bg-primary-subtle text-primary-emphasis rounded-4 h-100'>
+                            <div className='d-flex align-items-center mb-3'>
+                                <Icon name='activity' size={20} className='me-2' />
+                                <h4 className='h6 fw-bold mb-0'>Why it works</h4>
+                            </div>
+                            <p className='small mb-0'>
+                                Rhythmic breathing stimulates the Vagus nerve, which activates your parasympathetic nervous system—your body's "rest and digest" mode—counteracting the stress response immediately.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 className='mt-5 mb-3'>Strategy 3: Descriptive Visualization</h2>
+                <p>
+                    Don't just visualize getting an 'A'. Visualize the process.
+                    Imagine yourself walking into the room, feeling calm. Imagine sitting down, turning over the paper, and knowing the first answer.
+                    Imagine getting stuck on a question, taking a deep breath, and moving on to the next one without panicking.
+                </p>
+
+                <h2 className='mt-5 mb-3'>Exposure Therapy with Simulations</h2>
+                <p>
+                    The best way to reduce fear is exposure. The more you put yourself in exam-like conditions, the less scary they become.
+                    Use <strong>selftest.in</strong> to create timed quizzes. Sit at a clear desk. Put your phone away.
+                    Treat every practice quiz like the real thing. When the actual exam day comes, it will just feel like another practice session.
                 </p>
             </>
         ),
@@ -105,33 +161,67 @@ const BLOG_POSTS = {
         title: 'Spaced Repetition: The Secret to Long-Term Memory',
         date: 'Nov 15, 2024',
         category: 'Science',
-        readTime: '6 min read',
+        readTime: '7 min read',
         content: (
             <>
                 <p className='lead'>
-                    Why do we forget what we learned just a few days ago? And how can we stop it?
-                    The answer lies in a technique called Spaced Repetition.
+                    Have you ever spent all night cramming for a test, aced it, and then realized two weeks later you'd forgotten almost everything?
+                    This is the "binge and purge" cycle of learning. It gets you through the test, but it doesn't build knowledge.
+                    Enter Spaced Repetition: the algorithm for wisdom.
                 </p>
 
                 <h2 className='mt-5 mb-3'>The Forgetting Curve</h2>
                 <p>
-                    Hermann Ebbinghaus discovered that memory follows an exponential decay curve.
-                    Without review, we forget about 50% of new information within a day.
+                    In the late 19th century, German psychologist Hermann Ebbinghaus memorized thousands of nonsense syllables to map how memory fades over time.
+                    He discovered that memory decay is exponential. Without review, we forget about <strong>50% of new information within 24 hours</strong>.
                 </p>
-
-                <h2 className='mt-5 mb-3'>How Spaced Repetition Works</h2>
-                <p>
-                    By reviewing information at increasing intervals (e.g., 1 day, 3 days, 1 week, 1 month),
-                    you can reset the forgetting curve and strengthen the memory trace.
-                </p>
-
-                <div className='p-4 bg-light rounded-4 my-4'>
-                    <h3 className='h5 fw-bold'>How to use it with selftest.in</h3>
-                    <p className='mb-0'>
-                        Generate a quiz on a topic today. If you score well, wait 3 days before taking another quiz on the same topic.
-                        If you struggle, review the material and take another quiz tomorrow.
-                    </p>
+                <div className='p-5 bg-light rounded-4 my-4 text-center'>
+                    <p className='fst-italic text-muted mb-0'>"Spaced repetition turns the forgetting curve into a retention curve."</p>
                 </div>
+
+                <h2 className='mt-5 mb-3'>How it Works</h2>
+                <p>
+                    The principle is simple: <strong>review information at the moment you are about to forget it.</strong>
+                </p>
+                <p>
+                    If you review too soon (e.g., 5 minutes later), it's too easy and doesn't strengthen the memory.
+                    If you review too late, you've already forgotten it and have to relearn from scratch.
+                    But if you review it <em>just right</em>—when it's a struggle to recall—your brain reinforces the memory significantly.
+                </p>
+
+                <h2 className='mt-5 mb-3'>The Schedule</h2>
+                <p>A typical manual spaced repetition schedule might look like this:</p>
+                <ul className='list-group list-group-flush rounded-4 overflow-hidden border mb-4'>
+                    <li className='list-group-item d-flex justify-content-between align-items-center p-3'>
+                        <span>1st Review</span>
+                        <span className='badge bg-light text-dark border'>1 day later</span>
+                    </li>
+                    <li className='list-group-item d-flex justify-content-between align-items-center p-3'>
+                        <span>2nd Review</span>
+                        <span className='badge bg-light text-dark border'>3 days later</span>
+                    </li>
+                    <li className='list-group-item d-flex justify-content-between align-items-center p-3'>
+                        <span>3rd Review</span>
+                        <span className='badge bg-light text-dark border'>1 week later</span>
+                    </li>
+                    <li className='list-group-item d-flex justify-content-between align-items-center p-3'>
+                        <span>4th Review</span>
+                        <span className='badge bg-light text-dark border'>1 month later</span>
+                    </li>
+                </ul>
+
+                <h2 className='mt-5 mb-3'>Automating Spaced Repetition</h2>
+                <p>
+                    Keeping track of what to review and when in a spreadsheet is tedious. That's why software is essential.
+                    Tools like Anki and <strong>selftest.in</strong> handle the scheduling for you.
+                    When you take a quiz on selftest.in, identify the topics you struggled with. The platform helps you generate new questions on those specific weak points in your next session.
+                </p>
+
+                <h2 className='mt-5 mb-3'>The "Interleaving" Bonus</h2>
+                <p>
+                    Don't just space out your practice—mix it up. Instead of studying only History for 3 hours, study History, Math, and Biology in interleaved blocks.
+                    This "context switching" forces your brain to constantly reload different schemas, which, like active recall, strengthens long-term retention.
+                </p>
             </>
         ),
     },
@@ -139,30 +229,67 @@ const BLOG_POSTS = {
         title: 'Best AI Prompts for Generating Study Quizzes',
         date: 'Nov 10, 2024',
         category: 'Guide',
-        readTime: '3 min read',
+        readTime: '5 min read',
         content: (
             <>
                 <p className='lead'>
-                    Getting the best results from AI requires good prompting. Here are some tips
-                    for generating high-quality study quizzes on selftest.in.
+                    Artificial Intelligence is the ultimate study buddy—if you know how to talk to it.
+                    At selftest.in, we use advanced AI to generate quizzes, but understanding how to craft a good prompt can help you in all aspects of your learning journey.
+                    Here is the art of "Prompt Engineering" for students.
                 </p>
 
-                <h2 className='mt-5 mb-3'>Be Specific</h2>
+                <h2 className='mt-5 mb-3'>The Anatomy of a Perfect Prompt</h2>
                 <p>
-                    Instead of &quot;History&quot;, try &quot;Causes of World War I&quot; or &quot;The French Revolution key events&quot;.
-                    The more specific your topic, the more targeted the questions will be.
+                    A vague prompt like "Help me study biology" will get you a vague response. To get high-quality study materials, your prompt needs four components:
                 </p>
+                <div className='row g-3 mb-4'>
+                    <div className='col-md-6'>
+                        <div className='p-3 border rounded-3 h-100'>
+                            <strong className='d-block mb-2 text-primary'>1. Persona</strong>
+                            Who should the AI act as? (e.g., "Act as a strict university professor...")
+                        </div>
+                    </div>
+                    <div className='col-md-6'>
+                        <div className='p-3 border rounded-3 h-100'>
+                            <strong className='d-block mb-2 text-primary'>2. Task</strong>
+                            What exactly do you want? (e.g., "Create 10 multiple-choice questions...")
+                        </div>
+                    </div>
+                    <div className='col-md-6'>
+                        <div className='p-3 border rounded-3 h-100'>
+                            <strong className='d-block mb-2 text-primary'>3. Context</strong>
+                            What is the level/topic? (e.g., "For a final year undergraduate exam on Molecular Biology...")
+                        </div>
+                    </div>
+                    <div className='col-md-6'>
+                        <div className='p-3 border rounded-3 h-100'>
+                            <strong className='d-block mb-2 text-primary'>4. Constraints</strong>
+                            Format limits? (e.g., "Focus on 'application' questions, not definitions. Provide explanations.")
+                        </div>
+                    </div>
+                </div>
 
-                <h2 className='mt-5 mb-3'>Focus on Concepts</h2>
-                <p>
-                    Ask for questions that test understanding of concepts rather than just rote memorization of dates.
-                    For example: &quot;Newton&apos;s Laws of Motion application&quot; instead of just &quot;Physics formulas&quot;.
-                </p>
+                <h2 className='mt-5 mb-3'>Killer Prompts to Try</h2>
 
-                <h2 className='mt-5 mb-3'>Challenge Yourself</h2>
+                <h3 className='h5 fw-bold mt-4'>The "Examiner" Prompt</h3>
+                <div className='bg-light p-3 rounded-3 font-monospace small mb-3 text-wrap'>
+                    "Act as an expert examiner in European History. Generate 5 difficult multiple-choice questions about the causes of WWI. Focus on geopolitical alliances rather than just dates. For each question, provide the correct answer and a detailed explanation of why the distractors are wrong."
+                </div>
+
+                <h3 className='h5 fw-bold mt-4'>The "Feynman" Prompt</h3>
+                <div className='bg-light p-3 rounded-3 font-monospace small mb-3 text-wrap'>
+                    "I am studying Quantum Entanglement. Explain this concept to me in three levels of complexity: 1. Like I'm 5 years old. 2. Like I'm a high school student. 3. Like I'm an undergraduate physics major. Use analogies."
+                </div>
+
+                <h3 className='h5 fw-bold mt-4'>The "Gap Filler" Prompt</h3>
+                <div className='bg-light p-3 rounded-3 font-monospace small mb-3 text-wrap'>
+                    "Here are my notes on Photosynthesis: [Paste Notes]. Identify 3 key concepts I have missed or under-explained, and generate a quiz question for each of those missing concepts."
+                </div>
+
+                <h2 className='mt-5 mb-3'>Using selftest.in</h2>
                 <p>
-                    Don&apos;t just stick to what you know. Use the tool to find your weak spots.
-                    If you consistently get questions wrong in a certain area, that&apos;s where you need to focus your study time.
+                    We've built these best practices directly into our platform. When you enter a topic on selftest.in, our backend constructs a complex prompt chain that ensures coverage, relevance, and difficulty.
+                    However, you can guide it! Being specific in your topic input (e.g., typing "Organic Chemistry: Alkenes and Alkynes" instead of just "Chemistry") uses the same principle of <strong>Context</strong> to give you a better quiz.
                 </p>
             </>
         ),
