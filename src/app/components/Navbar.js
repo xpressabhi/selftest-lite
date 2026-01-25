@@ -50,10 +50,10 @@ const CustomNavbar = () => {
 				fixed='top'
 				expand='xl'
 				className={`transition-all ${isTop
-						? 'bg-light'
-						: isScrolling
-							? 'bg-light/60 backdrop-blur'
-							: 'bg-light'
+					? 'bg-light'
+					: isScrolling
+						? 'bg-light/60 backdrop-blur'
+						: 'bg-light'
 					}`}
 			>
 				<Container fluid className='px-0'>
@@ -69,7 +69,7 @@ const CustomNavbar = () => {
 							</Navbar.Brand>
 						</div>
 						{/* Main navbar content */}
-						<div className='px-3 ms-auto d-flex align-items-center'>
+						<div className='px-2 px-md-3 ms-auto d-flex align-items-center'>
 							{/* Desktop navigation with text */}
 							<nav className='d-none d-xl-flex align-items-center gap-3'>
 								<Button
@@ -113,39 +113,39 @@ const CustomNavbar = () => {
 							</nav>
 
 							{/* Mobile navigation with icons only */}
-							<nav className='d-flex d-xl-none align-items-center gap-2'>
+							<nav className='d-flex d-xl-none align-items-center gap-1'>
 								<Button
 									variant='outline-primary'
 									size='sm'
-									className='rounded-pill px-2 fw-bold'
+									className='rounded-pill px-2 fw-bold me-1'
 									onClick={toggleLanguage}
-									style={{ fontSize: '0.8rem' }}
+									style={{ fontSize: '0.75rem', paddingBlock: '0.2rem' }}
 								>
 									{language === 'english' ? 'हिंदी' : 'EN'}
 								</Button>
 								<Link href='/about' className='nav-link p-2' aria-label='About'>
-									<Icon name='info' />
+									<Icon name='info' size={20} />
 								</Link>
 								<Link href='/blog' className='nav-link p-2' aria-label='Blog'>
-									<Icon name='book' />
+									<Icon name='book' size={20} />
 								</Link>
 								<Link href='/faq' className='nav-link p-2' aria-label='FAQ'>
-									<Icon name='question' />
+									<Icon name='question' size={20} />
 								</Link>
 								<Link
 									href='/contact'
 									className='nav-link p-2'
 									aria-label='Contact'
 								>
-									<Icon name='envelope' />
+									<Icon name='envelope' size={20} />
 								</Link>
 								<Button
 									variant='link'
-									className='p-2'
+									className='p-2 text-dark'
 									onClick={handleShow}
 									aria-label='Toggle history'
 								>
-									<Icon name='history' />
+									<Icon name='history' size={20} />
 								</Button>
 							</nav>
 						</div>

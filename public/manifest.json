@@ -1,21 +1,46 @@
 {
-	"name": "Selftest.in",
+	"name": "Selftest.in - AI Quiz Generator",
 	"short_name": "Selftest",
-	"description": "A web application that allows you to generate and take multiple-choice quizzes on any topic you can imagine.",
+	"description": "Generate and take AI-powered quizzes on any topic. Works offline with previously loaded quizzes.",
 	"start_url": "/",
 	"display": "standalone",
-	"background_color": "#ffffff",
-	"theme_color": "#000000",
+	"orientation": "portrait-primary",
+	"background_color": "#f8f9fa",
+	"theme_color": "#6366f1",
+	"prefer_related_applications": false,
+	"categories": ["education", "productivity"],
 	"icons": [
+		{
+			"src": "/icons/152.png",
+			"sizes": "152x152",
+			"type": "image/png",
+			"purpose": "any"
+		},
 		{
 			"src": "/icons/192.png",
 			"sizes": "192x192",
-			"type": "image/png"
+			"type": "image/png",
+			"purpose": "any maskable"
 		},
 		{
 			"src": "/icons/512.png",
 			"sizes": "512x512",
-			"type": "image/png"
+			"type": "image/png",
+			"purpose": "any maskable"
 		}
-	]
+	],
+	"shortcuts": [
+		{
+			"name": "Create New Quiz",
+			"short_name": "New Quiz",
+			"description": "Generate a new AI-powered quiz",
+			"url": "/",
+			"icons": [{ "src": "/icons/192.png", "sizes": "192x192" }]
+		}
+	],
+	"screenshots": [],
+	"related_applications": [],
+	"scope": "/",
+	"lang": "en",
+	"dir": "ltr"
 }

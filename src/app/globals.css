@@ -267,3 +267,214 @@ a {
 			-70px 90px 0 rgba(0, 0, 0, 0.1), -70px 90px 0 rgba(0, 0, 0, 0);
 	}
 }
+
+/* ===========================================
+   MOBILE-FRIENDLY & LOW-END DEVICE OPTIMIZATIONS
+   =========================================== */
+
+/* Skeleton shimmer animation for loading states */
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+.skeleton-shimmer {
+	background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite linear;
+}
+
+/* Reduce motion for users who prefer it (low-end devices, accessibility) */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.fade-slide {
+		transition: none;
+	}
+
+	.skeleton-shimmer {
+		animation: none;
+		background: #e8e8e8;
+	}
+
+	body::before {
+		animation: none;
+	}
+
+	.btn-primary:hover {
+		transform: none;
+	}
+
+	.prompt-card:hover {
+		transform: none;
+	}
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 768px) {
+	/* Larger tap targets (minimum 44x44px as per Apple HIG) */
+	.btn,
+	button,
+	[role="button"],
+	input[type="submit"],
+	input[type="button"] {
+		min-height: 48px;
+		min-width: 48px;
+	}
+
+	/* Better touch feedback */
+	.btn:active,
+	button:active,
+	.list-group-item:active {
+		transform: scale(0.98);
+		opacity: 0.9;
+	}
+
+	/* Larger form inputs for easier touch */
+	.form-control,
+	.form-select {
+		font-size: 16px !important; /* Prevents iOS zoom on focus */
+		min-height: 48px;
+		padding: 12px 16px;
+	}
+
+	/* Improve list item touch targets */
+	.list-group-item {
+		padding: 16px;
+		min-height: 64px;
+	}
+
+	/* Full-width buttons on mobile */
+	.btn-primary,
+	.btn-outline-primary {
+		width: 100%;
+	}
+
+	/* Reduce padding for smaller screens */
+	.container {
+		padding-left: 12px;
+		padding-right: 12px;
+	}
+
+	/* Hide non-essential decorative elements on mobile */
+	body::before {
+		opacity: 0.5;
+	}
+	
+	/* Reduce shadow complexity for better performance */
+	.glass-card {
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	}
+
+	/* Simpler button shadows */
+	.btn-primary {
+		box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+	}
+}
+
+/* Ultra mobile (small phones) */
+@media (max-width: 375px) {
+	body {
+		padding-top: 56px;
+	}
+
+	.display-4 {
+		font-size: 1.75rem;
+	}
+
+	.fs-5 {
+		font-size: 1rem !important;
+	}
+
+	.card-body {
+		padding: 16px !important;
+	}
+}
+
+/* Data saver / slow connection mode styles */
+.data-saver-mode body::before {
+	display: none;
+}
+
+.data-saver-mode .glass-card {
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	background: rgba(255, 255, 255, 0.95);
+}
+
+.data-saver-mode .btn-primary {
+	background: #6366f1;
+	box-shadow: none;
+}
+
+/* Offline indicator spacing */
+body.has-offline-banner {
+	padding-bottom: 48px;
+}
+
+/* Pull-to-refresh visual cue */
+.pull-indicator {
+	position: fixed;
+	top: 60px;
+	left: 50%;
+	transform: translateX(-50%) translateY(-100%);
+	background: white;
+	padding: 8px 16px;
+	border-radius: 20px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	z-index: 1000;
+	transition: transform 0.2s ease;
+	font-size: 14px;
+	color: #6366f1;
+}
+
+.pull-indicator.visible {
+	transform: translateX(-50%) translateY(10px);
+}
+
+/* Improve scrolling performance */
+.container,
+.card,
+.list-group {
+	-webkit-overflow-scrolling: touch;
+	will-change: auto;
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+	body {
+		padding-left: max(12px, env(safe-area-inset-left));
+		padding-right: max(12px, env(safe-area-inset-right));
+		padding-bottom: max(0px, env(safe-area-inset-bottom));
+	}
+}
+
+/* High contrast mode for better visibility */
+@media (prefers-contrast: high) {
+	.glass-card {
+		background: white;
+		border: 2px solid #000;
+	}
+
+	.btn-primary {
+		background: #4f46e5;
+		border: 2px solid #000;
+	}
+
+	.form-control,
+	.form-select {
+		border: 2px solid #000;
+	}
+}
+

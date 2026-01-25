@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import useLocalStorage from '../hooks/useLocalStorage';
+import useNetworkStatus from '../hooks/useNetworkStatus';
 import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,6 +19,7 @@ import {
 	Col,
 	Spinner,
 	InputGroup,
+	Badge,
 } from 'react-bootstrap';
 
 /**
@@ -48,8 +50,16 @@ const GenerateTestForm = () => {
 	const [retryCount, setRetryCount] = useState(0);
 	const MAX_RETRIES = 3;
 	const { t, language: uiLanguage } = useLanguage();
+	const { isSlowConnection, isOffline, shouldSaveData } = useNetworkStatus();
 
 	const [selectedCategory, setSelectedCategory] = useState('');
+
+	// Auto-reduce questions on slow connection
+	useEffect(() => {
+		if (shouldSaveData && numQuestions > 5) {
+			setNumQuestions(5);
+		}
+	}, [shouldSaveData]);
 
 	// Sync test language with UI language
 	useEffect(() => {
@@ -282,6 +292,25 @@ const GenerateTestForm = () => {
 						</Form.Group>
 						{error && <Alert variant='danger' className='border-0 shadow-sm'>{error}</Alert>}
 
+						{/* Network status warning */}
+						{shouldSaveData && !isOffline && (
+							<Alert variant='info' className='border-0 py-2 px-3 d-flex align-items-center gap-2 small mb-0'>
+								<Icon name='signal' size={16} />
+								<span>
+									Slow connection detected. Reduced to {numQuestions} questions for faster loading.
+								</span>
+							</Alert>
+						)}
+
+						{isOffline && (
+							<Alert variant='warning' className='border-0 py-2 px-3 d-flex align-items-center gap-2 small mb-0'>
+								<Icon name='wifiOff' size={16} />
+								<span>
+									You're offline. You can still access previously generated quizzes from history.
+								</span>
+							</Alert>
+						)}
+
 						<div className='d-flex flex-column gap-3'>
 							<div className='d-flex flex-wrap justify-content-between align-items-center gap-2'>
 								<Button
@@ -294,13 +323,13 @@ const GenerateTestForm = () => {
 								</Button>
 
 								{!showAdvanced && (
-									<div className='d-flex flex-wrap gap-2'>
+									<div className='d-flex flex-wrap gap-2 w-100 w-sm-auto mt-2 mt-sm-0'>
 										<Form.Select
 											size='sm'
 											value={numQuestions}
 											onChange={(e) => setNumQuestions(Number(e.target.value))}
-											className='glass-input'
-											style={{ width: 'auto' }}
+											className='glass-input flex-grow-1 flex-sm-grow-0'
+											style={{ minWidth: '80px' }}
 										>
 											{[5, 10, 15, 20].map((num) => (
 												<option key={num} value={num}>{num} Qs</option>
@@ -310,8 +339,8 @@ const GenerateTestForm = () => {
 											size='sm'
 											value={difficulty}
 											onChange={(e) => setDifficulty(e.target.value)}
-											className='glass-input'
-											style={{ width: 'auto', textTransform: 'capitalize' }}
+											className='glass-input flex-grow-1 flex-sm-grow-0'
+											style={{ textTransform: 'capitalize', minWidth: '110px' }}
 										>
 											<option value='beginner'>Beginner</option>
 											<option value='intermediate'>Intermediate</option>
@@ -322,8 +351,8 @@ const GenerateTestForm = () => {
 											size='sm'
 											value={language}
 											onChange={(e) => setLanguage(e.target.value)}
-											className='glass-input'
-											style={{ width: 'auto' }}
+											className='glass-input flex-grow-1 flex-sm-grow-0'
+											style={{ minWidth: '90px' }}
 										>
 											<option value='english'>English</option>
 											<option value='hindi'>Hindi</option>

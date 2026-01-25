@@ -1,5 +1,6 @@
 import './globals.css';
 import ClientNavbarWrapper from './components/ClientNavbarWrapper';
+import OfflineIndicator from './components/OfflineIndicator';
 import { Container, Row, Col } from 'react-bootstrap';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -43,8 +44,11 @@ export default function RootLayout({ children }) {
 					/>
 					<link rel='manifest' href='/manifest.json' />
 					<link rel='icon' href='/icons/192.png' />
-					<meta name='viewport' content='width=device-width, initial-scale=1' />
-					<meta name='theme-color' content='#000000' />
+					<meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5' />
+					<meta name='theme-color' content='#6366f1' />
+					<meta name='apple-mobile-web-app-capable' content='yes' />
+					<meta name='apple-mobile-web-app-status-bar-style' content='default' />
+					<meta name='mobile-web-app-capable' content='yes' />
 					<meta name='keywords' content={metadata.keywords.join(', ')} />
 					<link rel='canonical' href='https://selftest.in' />
 					<meta
@@ -71,6 +75,7 @@ export default function RootLayout({ children }) {
 					</Container>
 					<Analytics />
 					<SpeedInsights />
+					<OfflineIndicator />
 				</LanguageProvider>
 			</body>
 		</html>
