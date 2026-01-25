@@ -40,8 +40,8 @@ export default function TestHistory({ onTestClick }) {
 
 	if (testHistory.length === 0) {
 		return (
-			<div className='mt-5 w-100' style={{ maxWidth: '800px' }}>
-				<div className='d-flex justify-content-between align-items-center mb-3 mx-3'>
+			<div className='w-100' style={{ maxWidth: '800px' }}>
+				<div className='d-flex justify-content-between align-items-center mb-3 mx-3 py-3'>
 					<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
 						<Icon name='history' className='text-primary' /> Previous Tests
 					</h2>
@@ -55,8 +55,8 @@ export default function TestHistory({ onTestClick }) {
 	}
 
 	return (
-		<div className='mt-5 w-100' style={{ maxWidth: '800px' }}>
-			<div className='d-flex justify-content-between align-items-center mb-3 mx-3 gap-2 flex-wrap'>
+		<div className='w-100' style={{ maxWidth: '800px' }}>
+			<div className='d-flex justify-content-between align-items-center mb-3 mx-3 gap-2 flex-wrap py-3'>
 				<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
 					<Icon name='history' className='text-primary' /> Previous Tests
 				</h2>
