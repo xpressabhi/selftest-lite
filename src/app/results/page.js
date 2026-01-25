@@ -35,6 +35,7 @@ function ResultsContent() {
 	const router = useRouter();
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isRetrying, setIsRetrying] = useState(false);
+	const [loadingExplanation, setLoadingExplanation] = useState({});
 	const [generationError, setGenerationError] = useState(null);
 	const { t } = useLanguage();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
@@ -131,6 +132,45 @@ function ResultsContent() {
 		} catch (err) {
 			setGenerationError("Failed to prepare retry test: " + err.message);
 			setIsRetrying(false);
+		}
+	};
+
+	const fetchExplanation = async (index, question) => {
+		if (loadingExplanation[index]) return;
+
+		setLoadingExplanation((prev) => ({ ...prev, [index]: true }));
+		try {
+			const res = await fetch('/api/explain', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					topic: questionPaper.topic,
+					question: question.question,
+					answer: question.answer,
+					language: questionPaper.requestParams?.language || 'english',
+				}),
+			});
+			const data = await res.json();
+
+			if (data.error) throw new Error(data.error);
+
+			if (data.explanation) {
+				// Update local state and history to persist the explanation
+				const updatedQuestions = [...questionPaper.questions];
+				updatedQuestions[index] = {
+					...updatedQuestions[index],
+					explanation: data.explanation,
+				};
+
+				const updatedPaper = { ...questionPaper, questions: updatedQuestions };
+				setQuestionPaper(updatedPaper);
+				updateHistory(updatedPaper);
+			}
+		} catch (e) {
+			console.error(e);
+			// Optionally show a toast or alert, but console is fine for now
+		} finally {
+			setLoadingExplanation((prev) => ({ ...prev, [index]: false }));
 		}
 	};
 
@@ -356,13 +396,41 @@ function ResultsContent() {
 												</span>
 											</Accordion.Header>
 											<Accordion.Body className='text-muted bg-light bg-opacity-50 rounded-3 mt-2'>
-												<div className='d-flex gap-2'>
-													<div className='fw-bold text-dark'>{t('explanation')}:</div>
-													<div>
-														<MarkdownRenderer>
-															{q.explanation || `${t('correctAnswerIs')} **${q.answer}**.`}
-														</MarkdownRenderer>
+												<div className='d-flex flex-column gap-2'>
+													<div className='d-flex gap-2 flex-column'>
+														<div className='text-dark small'>
+															<MarkdownRenderer>
+																{`${t('correctAnswerIs')} **${q.answer}**.`}
+															</MarkdownRenderer>
+														</div>
+														{q.explanation && (
+															<div className='mt-2 pt-2 border-top border-secondary border-opacity-10'>
+																<Badge bg='primary' className='mb-2 bg-opacity-75 text-white fw-medium' style={{ fontSize: '0.65rem' }}>
+																	AI Explanation
+																</Badge>
+																<div className='text-dark'>
+																	<MarkdownRenderer>{q.explanation}</MarkdownRenderer>
+																</div>
+															</div>
+														)}
 													</div>
+													{!q.explanation && (
+														<Button
+															variant='link'
+															className='p-0 text-decoration-none d-flex align-items-center gap-2 align-self-start mt-1'
+															onClick={() => fetchExplanation(index, q)}
+															disabled={loadingExplanation[index]}
+														>
+															<Icon
+																name='sparkles'
+																size={16}
+																className={loadingExplanation[index] ? 'spinner' : 'text-primary'}
+															/>
+															<span className='small fw-bold'>
+																{loadingExplanation[index] ? 'Generating explanation...' : 'Explain with AI'}
+															</span>
+														</Button>
+													)}
 												</div>
 											</Accordion.Body>
 										</Accordion.Item>
