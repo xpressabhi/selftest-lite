@@ -42,7 +42,7 @@ const GenerateTestForm = () => {
 	const [numQuestions, setNumQuestions] = useState(10);
 	const [selectedTopics, setSelectedTopics] = useState([]);
 	const [difficulty, setDifficulty] = useState('intermediate');
-	const [language, setLanguage] = useState('english');
+	const [language, setLanguage] = useState('hindi');
 	const router = useRouter();
 	const [startTime, setStartTime] = useState(null);
 	const [elapsed, setElapsed] = useState(0);
@@ -65,8 +65,6 @@ const GenerateTestForm = () => {
 	useEffect(() => {
 		if (uiLanguage === 'hindi') {
 			setLanguage('hindi');
-		} else {
-			setLanguage('english');
 		}
 	}, [uiLanguage]);
 

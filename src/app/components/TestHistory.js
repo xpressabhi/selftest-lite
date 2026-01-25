@@ -13,6 +13,15 @@ export default function TestHistory({ onTestClick }) {
 		[],
 	);
 	const router = useRouter();
+	const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+	const toggleFavorite = (e, testId) => {
+		e.stopPropagation();
+		const updatedHistory = testHistory.map((t) =>
+			t.id === testId ? { ...t, isFavorite: !t.isFavorite } : t,
+		);
+		setTestHistory(updatedHistory);
+	};
 
 	const clearHistory = () => {
 		if (window.confirm('Are you sure you want to clear all test history?')) {
@@ -47,21 +56,40 @@ export default function TestHistory({ onTestClick }) {
 
 	return (
 		<div className='mt-5 w-100' style={{ maxWidth: '800px' }}>
-			<div className='d-flex justify-content-between align-items-center mb-3 mx-3'>
+			<div className='d-flex justify-content-between align-items-center mb-3 mx-3 gap-2 flex-wrap'>
 				<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
 					<Icon name='history' className='text-primary' /> Previous Tests
 				</h2>
-				<Button
-					variant='outline-danger'
-					size='sm'
-					className='d-flex align-items-center gap-2 fw-bold'
-					onClick={clearHistory}
-				>
-					<Icon name='trash' /> Clear History
-				</Button>
+				<div className='d-flex gap-2 ms-auto'>
+					<Button
+						variant={showFavoritesOnly ? 'warning' : 'outline-warning'}
+						size='sm'
+						className='d-flex align-items-center gap-2 fw-bold text-nowrap'
+						onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+					>
+						<Icon name={showFavoritesOnly ? 'starFill' : 'star'} />{' '}
+						{showFavoritesOnly ? 'Favorites' : 'Favorites'}
+					</Button>
+					<Button
+						variant='outline-danger'
+						size='sm'
+						className='d-flex align-items-center gap-2 fw-bold text-nowrap'
+						onClick={clearHistory}
+					>
+						<Icon name='trash' /> Clear
+					</Button>
+				</div>
 			</div>
+			{showFavoritesOnly &&
+				testHistory.filter((t) => t.isFavorite).length === 0 && (
+					<div className='p-4 text-center text-muted'>
+						<Icon name='star' size={48} className='mb-3 opacity-25' />
+						<p className='mb-0'>No favorite tests yet.</p>
+					</div>
+				)}
 			<ListGroup className='rounded-3 overflow-hidden'>
 				{testHistory
+					.filter((t) => !showFavoritesOnly || t.isFavorite)
 					.sort((a, b) => b.timestamp - a.timestamp)
 					.map((test, index) => (
 						<ListGroup.Item
@@ -77,15 +105,25 @@ export default function TestHistory({ onTestClick }) {
 							}}
 							className='d-flex justify-content-between align-items-center py-3 mb-2 border-0 shadow-sm'
 						>
-							<div>
-								<h6 className='mb-1 text-primary'>
-									{test.topic || 'Untitled Test'}
-								</h6>
-								{test.timestamp && (
-									<small className='text-muted d-flex align-items-center gap-1'>
-										<Icon name='clock' /> {formatDateTime(test.timestamp)}
-									</small>
-								)}
+							<div className='d-flex align-items-center gap-3 flex-grow-1 overflow-hidden'>
+								<Button
+									variant='link'
+									className={`p-0 border-0 ${test.isFavorite ? 'text-warning' : 'text-muted opacity-25'
+										}`}
+									onClick={(e) => toggleFavorite(e, test.id)}
+								>
+									<Icon name={test.isFavorite ? 'starFill' : 'star'} size={20} />
+								</Button>
+								<div className='text-truncate'>
+									<h6 className='mb-1 text-primary text-truncate'>
+										{test.topic || 'Untitled Test'}
+									</h6>
+									{test.timestamp && (
+										<small className='text-muted d-flex align-items-center gap-1'>
+											<Icon name='clock' /> {formatDateTime(test.timestamp)}
+										</small>
+									)}
+								</div>
 							</div>
 							{test.userAnswers ? (
 								<div className='d-flex align-items-center gap-2'>
@@ -95,8 +133,8 @@ export default function TestHistory({ onTestClick }) {
 											test.score / test.totalQuestions >= 0.7
 												? 'success'
 												: test.score / test.totalQuestions >= 0.4
-												? 'warning'
-												: 'danger'
+													? 'warning'
+													: 'danger'
 										}
 										className='fs-6 px-3 py-2 d-flex align-items-center gap-1'
 									>

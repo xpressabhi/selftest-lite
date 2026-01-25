@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Navbar, Container, Offcanvas, Button } from 'react-bootstrap';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 const TestHistory = dynamic(() => import('./TestHistory'), {
 	ssr: false,
@@ -17,6 +18,7 @@ const CustomNavbar = () => {
 	const [showOffcanvas, setShowOffcanvas] = useState(false);
 	const scrollTimer = useRef(null);
 	const { language, toggleLanguage } = useLanguage();
+	const { theme, toggleTheme } = useTheme();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -110,42 +112,54 @@ const CustomNavbar = () => {
 								>
 									<Icon name='envelope' className='me-1' /> Contact
 								</Link>
+								<Link
+									href='/bookmarks'
+									className='nav-link d-flex align-items-center'
+								>
+									<Icon name='bookmark' className='me-1' /> Bookmarks
+								</Link>
+								<Button
+									variant='link'
+									className='nav-link p-0 border-0'
+									onClick={toggleTheme}
+									aria-label='Toggle theme'
+								>
+									<Icon name={theme === 'light' ? 'moon' : 'sun'} />
+								</Button>
 							</nav>
 
 							{/* Mobile navigation with icons only */}
 							<nav className='d-flex d-xl-none align-items-center gap-1'>
-								<Button
-									variant='outline-primary'
-									size='sm'
-									className='rounded-pill px-2 fw-bold me-1'
-									onClick={toggleLanguage}
-									style={{ fontSize: '0.75rem', paddingBlock: '0.2rem' }}
-								>
-									{language === 'english' ? 'हिंदी' : 'EN'}
-								</Button>
-								<Link href='/about' className='nav-link p-2' aria-label='About'>
-									<Icon name='info' size={20} />
-								</Link>
-								<Link href='/blog' className='nav-link p-2' aria-label='Blog'>
-									<Icon name='book' size={20} />
-								</Link>
-								<Link href='/faq' className='nav-link p-2' aria-label='FAQ'>
-									<Icon name='question' size={20} />
-								</Link>
 								<Link
-									href='/contact'
+									href='/bookmarks'
 									className='nav-link p-2'
-									aria-label='Contact'
+									aria-label='Bookmarks'
 								>
-									<Icon name='envelope' size={20} />
+									<Icon name='bookmark' size={20} />
 								</Link>
 								<Button
 									variant='link'
 									className='p-2 text-dark'
 									onClick={handleShow}
-									aria-label='Toggle history'
+									aria-label='History'
 								>
 									<Icon name='history' size={20} />
+								</Button>
+								<Button
+									variant='link'
+									className='p-2 text-dark'
+									onClick={handleShow}
+									aria-label='Menu'
+								>
+									<Icon name='list' size={24} />
+								</Button>
+								<Button
+									variant='link'
+									className='p-2 text-dark'
+									onClick={toggleTheme}
+									aria-label='Toggle theme'
+								>
+									<Icon name={theme === 'light' ? 'moon' : 'sun'} size={20} />
 								</Button>
 							</nav>
 						</div>
@@ -171,10 +185,59 @@ const CustomNavbar = () => {
 			{/* Mobile Offcanvas */}
 			<Offcanvas show={showOffcanvas} onHide={handleClose} placement='start'>
 				<Offcanvas.Header closeButton>
-					<Offcanvas.Title>Test History</Offcanvas.Title>
+					<Offcanvas.Title>Menu</Offcanvas.Title>
 				</Offcanvas.Header>
-				<Offcanvas.Body>
-					<TestHistory onTestClick={handleClose} />
+				<Offcanvas.Body className='d-flex flex-column'>
+					{/* Navigation Links in Offcanvas */}
+					<div className='d-flex flex-column gap-2 mb-4 border-bottom pb-4'>
+						<Button
+							variant='outline-primary'
+							className='w-100 fw-bold mb-2'
+							onClick={toggleLanguage}
+						>
+							Change Language ({language === 'english' ? 'English' : 'हिंदी'})
+						</Button>
+						<Link
+							href='/about'
+							className='nav-link py-2 d-flex align-items-center'
+							onClick={handleClose}
+						>
+							<Icon name='info' className='me-3 text-primary' /> About
+						</Link>
+						<Link
+							href='/blog'
+							className='nav-link py-2 d-flex align-items-center'
+							onClick={handleClose}
+						>
+							<Icon name='book' className='me-3 text-primary' /> Blog
+						</Link>
+						<Link
+							href='/faq'
+							className='nav-link py-2 d-flex align-items-center'
+							onClick={handleClose}
+						>
+							<Icon name='question' className='me-3 text-primary' /> FAQ
+						</Link>
+						<Link
+							href='/privacy'
+							className='nav-link py-2 d-flex align-items-center'
+							onClick={handleClose}
+						>
+							<Icon name='file' className='me-3 text-primary' /> Privacy
+						</Link>
+						<Link
+							href='/contact'
+							className='nav-link py-2 d-flex align-items-center'
+							onClick={handleClose}
+						>
+							<Icon name='envelope' className='me-3 text-primary' /> Contact
+						</Link>
+					</div>
+
+					{/* Test History */}
+					<div className='flex-grow-1 overflow-auto'>
+						<TestHistory onTestClick={handleClose} />
+					</div>
 				</Offcanvas.Body>
 			</Offcanvas>
 		</>

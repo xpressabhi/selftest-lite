@@ -9,6 +9,7 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 import { useLanguage } from '../context/LanguageContext';
+import useBookmarks from '../hooks/useBookmarks';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -43,7 +44,10 @@ function TestContent() {
 	const touchStartXRef = useRef(null);
 	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
+	const [elapsedTime, setElapsedTime] = useState(0); // in seconds
+	const timerRef = useRef(null);
 	const { t } = useLanguage();
+	const { isBookmarked, toggleBookmark } = useBookmarks();
 
 	useEffect(() => {
 		if (testId) {
@@ -89,6 +93,23 @@ function TestContent() {
 		};
 	}, [questionPaper?.topic]);
 
+	// Timer logic
+	useEffect(() => {
+		if (loading || !questionPaper) return;
+
+		timerRef.current = setInterval(() => {
+			setElapsedTime((prev) => prev + 1);
+		}, 1000);
+
+		return () => clearInterval(timerRef.current);
+	}, [loading, questionPaper]);
+
+	const formatTime = (seconds) => {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	};
+
 	const handleAnswerChange = (questionIndex, answer) => {
 		const updatedAnswers = {
 			...answers,
@@ -125,6 +146,7 @@ function TestContent() {
 			timestamp: Date.now(),
 			totalQuestions: questionPaper.questions.length,
 			score: calculatedScore,
+			timeTaken: elapsedTime, // Store total time taken in seconds
 		};
 		updateHistory(updatedPaper);
 		cleanUpAnswers();
@@ -235,6 +257,14 @@ function TestContent() {
 							{Math.round(progress)}%
 						</small>
 					</div>
+					<div className='d-flex justify-content-center align-items-center mb-2'>
+						<div className='bg-light rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm'>
+							<Icon name='clock' size={14} className='text-primary' />
+							<span className='fw-bold text-dark font-monospace small'>
+								{formatTime(elapsedTime)}
+							</span>
+						</div>
+					</div>
 					<ProgressBar
 						now={progress}
 						variant='primary'
@@ -322,9 +352,18 @@ function TestContent() {
 						}}
 					>
 						{/* Question Card */}
-						<Card className='w-100 border-0 glass-card mb-4 shadow-sm'>
+						<Card className='w-100 border-0 glass-card mb-4 shadow-sm position-relative'>
 							<Card.Body className='p-4 p-md-5 text-center'>
-								<div className='fs-4 fw-medium text-dark'>
+								<Button
+									variant='link'
+									className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
+										}`}
+									onClick={() => toggleBookmark(q)}
+									style={{ zIndex: 10 }}
+								>
+									<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={28} />
+								</Button>
+								<div className='fs-4 fw-medium text-dark pt-3'>
 									<MarkdownRenderer>{q.question}</MarkdownRenderer>
 								</div>
 							</Card.Body>

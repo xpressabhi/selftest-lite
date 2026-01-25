@@ -8,6 +8,7 @@ import Icon from '../components/Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
 import { useLanguage } from '../context/LanguageContext';
+import useBookmarks from '../hooks/useBookmarks';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -33,8 +34,10 @@ function ResultsContent() {
 	const [error, setError] = useState(null);
 	const router = useRouter();
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [isRetrying, setIsRetrying] = useState(false);
 	const [generationError, setGenerationError] = useState(null);
 	const { t } = useLanguage();
+	const { isBookmarked, toggleBookmark } = useBookmarks();
 
 	useEffect(() => {
 		if (id) {
@@ -85,6 +88,52 @@ function ResultsContent() {
 		}
 	};
 
+	const handleRetryMistakes = async () => {
+		if (!questionPaper) return;
+
+		setIsRetrying(true);
+		setGenerationError(null);
+
+		try {
+			// Filter only incorrect questions
+			const incorrectQuestions = questionPaper.questions.filter((q, index) => {
+				const userAnswer = questionPaper.userAnswers[index];
+				return userAnswer !== q.answer;
+			});
+
+			if (incorrectQuestions.length === 0) {
+				setIsRetrying(false);
+				return;
+			}
+
+			// Create new test object directly without API call since we have the questions
+			const newTest = {
+				id: crypto.randomUUID(), // Generate client-side ID for immediate use
+				topic: `Retry: ${questionPaper.topic}`,
+				timestamp: null, // Indicates unsubmitted
+				questions: incorrectQuestions,
+				requestParams: questionPaper.requestParams, // Keep original params
+				createdAt: Date.now(),
+				isRetry: true,
+				originalTestId: questionPaper.id,
+			};
+
+			// Save to local storage history
+			// Note: We need to register this ID in the database if we want shareable links, 
+			// but for local retry, client-side is faster and cheaper.
+			// However, to reuse existing Test component logic which fetches from API if not found,
+			// we should probably stick to local storage for now and maybe sync later.
+			// The current Test component prioritizes local history, so this works!
+
+			updateHistory(newTest);
+			router.push('/test?id=' + newTest.id);
+
+		} catch (err) {
+			setGenerationError("Failed to prepare retry test: " + err.message);
+			setIsRetrying(false);
+		}
+	};
+
 	if (loading) return <Loading />;
 
 	if (error || !questionPaper) {
@@ -103,8 +152,15 @@ function ResultsContent() {
 		return <Loading />;
 	}
 
-	const { score, totalQuestions, userAnswers, questions } = questionPaper;
+	const { score, totalQuestions, userAnswers, questions, timeTaken } = questionPaper;
 	const percentage = Math.round((score / totalQuestions) * 100);
+
+	const formatTime = (seconds) => {
+		if (!seconds) return 'N/A';
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}m ${secs}s`;
+	};
 
 	let feedbackColor = '#3b82f6'; // blue-500
 	let feedbackText = t('goodJob');
@@ -155,7 +211,15 @@ function ResultsContent() {
 							</div>
 
 							<h2 className='fw-bold mb-1' style={{ color: feedbackColor }}>{feedbackText}</h2>
-							<p className='text-muted mb-4'>{t('score')} {percentage}%</p>
+							<p className='text-muted mb-4'>
+								{t('score')} {percentage}%
+								{timeTaken && (
+									<span className='ms-3 ps-3 border-start d-inline-flex align-items-center gap-1'>
+										<Icon name='clock' size={14} />
+										{formatTime(timeTaken)}
+									</span>
+								)}
+							</p>
 
 							<div className='d-flex justify-content-center gap-2 flex-wrap'>
 								<Button
@@ -178,6 +242,22 @@ function ResultsContent() {
 											className={`${isGenerating ? 'spinner' : ''}`}
 										/>
 										{isGenerating ? t('generating') : t('similarQuiz')}
+									</Button>
+								)}
+
+								{/* Retry Mistakes Button */}
+								{percentage < 100 && (
+									<Button
+										variant='warning'
+										className='d-flex align-items-center gap-2 px-4 rounded-pill text-dark fw-bold'
+										onClick={handleRetryMistakes}
+										disabled={isRetrying}
+									>
+										<Icon
+											name='repeat1'
+											className={`${isRetrying ? 'spinner' : ''}`}
+										/>
+										{isRetrying ? 'Preparing...' : 'Retry Wrong Qs'}
 									</Button>
 								)}
 							</div>
@@ -229,7 +309,16 @@ function ResultsContent() {
 										<span className='text-muted fw-bold opacity-50'>#{index + 1}</span>
 									</div>
 
-									<div className='mb-4 fs-5 fw-medium text-dark'>
+									<Button
+										variant='link'
+										className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
+											}`}
+										onClick={() => toggleBookmark(q)}
+									>
+										<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={24} />
+									</Button>
+
+									<div className='mb-4 fs-5 fw-medium text-dark pe-4'>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>
 									</div>
 
