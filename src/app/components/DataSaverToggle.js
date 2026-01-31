@@ -1,0 +1,228 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Icon from './Icon';
+import useNetworkStatus from '../hooks/useNetworkStatus';
+
+/**
+ * Data Saver Toggle Component
+ * Allows users to enable/disable data saving mode
+ * - Reduces animations
+ * - Simplifies UI elements
+ * - Shows data usage info
+ *
+ * @param {Object} props
+ * @param {boolean} props.showLabel - Show descriptive label
+ * @param {string} props.variant - 'button' | 'switch' | 'banner'
+ */
+export default function DataSaverToggle({ showLabel = true, variant = 'button' }) {
+	const [isEnabled, setIsEnabled] = useState(false);
+	const [isAutoEnabled, setIsAutoEnabled] = useState(false);
+	const { isSlowConnection, isOffline } = useNetworkStatus();
+
+	useEffect(() => {
+		// Check saved preference
+		const saved = localStorage.getItem('dataSaverMode');
+		if (saved !== null) {
+			const enabled = saved === 'true';
+			setIsEnabled(enabled);
+			document.documentElement.classList.toggle('data-saver', enabled);
+		} else {
+			// Auto-enable on slow connections
+			if (isSlowConnection) {
+				setIsAutoEnabled(true);
+				setIsEnabled(true);
+				document.documentElement.classList.add('data-saver');
+			}
+		}
+	}, [isSlowConnection]);
+
+	const toggle = () => {
+		const newState = !isEnabled;
+		setIsEnabled(newState);
+		setIsAutoEnabled(false);
+		localStorage.setItem('dataSaverMode', newState.toString());
+		document.documentElement.classList.toggle('data-saver', newState);
+	};
+
+	if (variant === 'banner' && (isEnabled || isSlowConnection)) {
+		return (
+			<div className="data-saver-banner" role="alert">
+				<Icon name="wifiOff" size={16} />
+				<span>
+					{isAutoEnabled
+						? 'Data saver mode enabled automatically (slow connection)'
+							: 'Data saver mode enabled'}
+				</span>
+				<button
+					className="disable-btn"
+					onClick={toggle}
+					type="button"
+				>
+					Disable
+				</button>
+				<style jsx>{`
+					.data-saver-banner {
+						display: flex;
+						align-items: center;
+						gap: 8px;
+						padding: 12px 16px;
+						background: var(--bg-tertiary);
+						border: 1px solid var(--border-color);
+						border-radius: var(--radius-md);
+						margin-bottom: 16px;
+						font-size: 0.875rem;
+						color: var(--text-secondary);
+					}
+
+					.disable-btn {
+						margin-left: auto;
+						padding: 4px 12px;
+						background: transparent;
+						border: 1px solid var(--border-color);
+						border-radius: var(--radius-sm);
+						font-size: 0.75rem;
+						color: var(--text-primary);
+						cursor: pointer;
+					}
+
+					.disable-btn:active {
+						background: var(--bg-secondary);
+					}
+				`}</style>
+			</div>
+		);
+	}
+
+	if (variant === 'switch') {
+		return (
+			<div className="data-saver-switch">
+				<div className="switch-info">
+					<span className="switch-label">Data Saver</span>
+					{showLabel && (
+						<span className="switch-description">Reduce animations and data usage</span>
+					)}
+				</div>
+				<button
+					className={`switch ${isEnabled ? 'on' : 'off'}`}
+					onClick={toggle}
+					aria-pressed={isEnabled}
+					aria-label="Toggle data saver mode"
+					type="button"
+				>
+					<span className="switch-thumb" />
+				</button>
+				<style jsx>{`
+					.data-saver-switch {
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						gap: 16px;
+						padding: 16px;
+						background: var(--bg-primary);
+						border: 1px solid var(--border-color);
+						border-radius: var(--radius-md);
+					}
+
+					.switch-info {
+						display: flex;
+						flex-direction: column;
+						gap: 4px;
+					}
+
+					.switch-label {
+						font-weight: 600;
+						color: var(--text-primary);
+					}
+
+					.switch-description {
+						font-size: 0.75rem;
+						color: var(--text-muted);
+					}
+
+					.switch {
+						width: 48px;
+						height: 28px;
+						background: var(--bg-tertiary);
+						border: none;
+						border-radius: 14px;
+						position: relative;
+						cursor: pointer;
+						padding: 0;
+						transition: background 0.2s ease;
+					}
+
+					.switch.on {
+						background: var(--accent-primary);
+					}
+
+					.switch-thumb {
+						position: absolute;
+						top: 2px;
+						left: 2px;
+						width: 24px;
+						height: 24px;
+						background: white;
+						border-radius: 50%;
+						transition: transform 0.2s ease;
+						box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+					}
+
+					.switch.on .switch-thumb {
+						transform: translateX(20px);
+					}
+
+					/* Reduced motion */
+					@media (prefers-reduced-motion: reduce) {
+						.switch,
+						.switch-thumb {
+							transition: none;
+						}
+					}
+				`}</style>
+			</div>
+		);
+	}
+
+	// Default button variant
+	return (
+		<button
+			className={`data-saver-btn ${isEnabled ? 'active' : ''}`}
+			onClick={toggle}
+			aria-pressed={isEnabled}
+			aria-label="Toggle data saver mode"
+			type="button"
+		>
+			<Icon name={isEnabled ? 'wifiOff' : 'wifi'} size={18} />
+			{showLabel && (
+				<span>Data Saver {isEnabled ? 'On' : 'Off'}</span>
+			)}
+			<style jsx>{`
+				.data-saver-btn {
+					display: inline-flex;
+					align-items: center;
+					gap: 8px;
+					padding: 8px 16px;
+					background: var(--bg-tertiary);
+					border: 1px solid var(--border-color);
+					border-radius: var(--radius-md);
+					font-size: 0.875rem;
+					font-weight: 500;
+					color: var(--text-secondary);
+					cursor: pointer;
+					transition: all 0.15s ease;
+				}
+
+				.data-saver-btn.active {
+					background: var(--accent-primary);
+					color: white;
+					border-color: var(--accent-primary);
+				}
+
+				.data-saver-btn:active {
+					transform: scale(0.98);
+				}
+			`}</style>
+		</button>
+	);
+}

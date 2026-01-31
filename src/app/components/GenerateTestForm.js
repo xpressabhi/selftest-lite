@@ -288,11 +288,16 @@ const GenerateTestForm = () => {
 								style={{ resize: 'none' }}
 							/>
 						</Form.Group>
-						{error && <Alert variant='danger' className='border-0 shadow-sm'>{error}</Alert>}
+						{/* Error message */}
+						{error && (
+							<Alert variant='danger' className='border-0 shadow-sm'>
+								{error}
+							</Alert>
+						)}
 
 						{/* Network status warning */}
 						{shouldSaveData && !isOffline && (
-							<Alert variant='info' className='border-0 py-2 px-3 d-flex align-items-center gap-2 small mb-0'>
+							<Alert variant='info' className='border-0 py-2 px-3 d-flex align-items-center gap-2 small'>
 								<Icon name='signal' size={16} />
 								<span>
 									Slow connection detected. Reduced to {numQuestions} questions for faster loading.
@@ -301,7 +306,7 @@ const GenerateTestForm = () => {
 						)}
 
 						{isOffline && (
-							<Alert variant='warning' className='border-0 py-2 px-3 d-flex align-items-center gap-2 small mb-0'>
+							<Alert variant='warning' className='border-0 py-2 px-3 d-flex align-items-center gap-2 small'>
 								<Icon name='wifiOff' size={16} />
 								<span>
 									You're offline. You can still access previously generated quizzes from history.
@@ -309,7 +314,7 @@ const GenerateTestForm = () => {
 							</Alert>
 						)}
 
-						<div className='d-flex flex-column gap-3'>
+						<div className='d-flex flex-column gap-3 mt-3'>
 							<div className='d-flex flex-wrap justify-content-between align-items-center gap-2'>
 								<Button
 									variant='link'

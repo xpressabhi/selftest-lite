@@ -212,9 +212,37 @@ const ICONS = {
 			<path d='M2 2v13.5a.5.5 0 0 0 .74.439L8 13.069l5.26 2.87A.5.5 0 0 0 14 15.5V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z' />
 		</svg>
 	),
+	exclamationTriangle: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm-1.043-.45L1.172 13.34a.5.5 0 0 0 .429.659h12.798a.5.5 0 0 0 .429-.659l-6.723-11.773a.5.5 0 0 0-.858 0z' />
+			<path d='M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.001 5.5a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7 5.5z' />
+		</svg>
+	),
+	minusCircle: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16' />
+			<path d='M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8' />
+		</svg>
+	),
+	xCircle: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16' />
+			<path d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708' />
+		</svg>
+	),
+	wifi: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M11.46 8.57A4.6 4.6 0 0 1 14.6 9a.47.47 0 0 1-.053.748.532.532 0 0 1-.657-.05 3.56 3.56 0 0 0-2.8-1.065 3.56 3.56 0 0 0-2.8 1.065.532.532 0 0 1-.657.05.48.48 0 0 1-.053-.748 4.6 4.6 0 0 1 3.141-.944 4.6 4.6 0 0 1 1.838.47zM15.6 6.5a8.3 8.3 0 0 0-3.3-.669 8.3 8.3 0 0 0-5.9 2.435.53.53 0 0 1-.747-.047.47.47 0 0 1 .047-.668 9.4 9.4 0 0 1 6.6-2.75 9.4 9.4 0 0 1 3.727.752c.264.105.39.401.285.665a.53.53 0 0 1-.712.282zm-14.1.1c-.264-.106-.39-.401-.285-.666.106-.264.402-.39.666-.285a9.3 9.3 0 0 1 2.1-.5A9.4 9.4 0 0 1 8 2.5a9.4 9.4 0 0 1 6.9 2.96.53.53 0 0 1-.747.748 8.3 8.3 0 0 0-6.153-2.596 8.3 8.3 0 0 0-3.3.669.53.53 0 0 1-.2.259zM8 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4' />
+		</svg>
+	),
+	x: (props) => (
+		<svg aria-hidden {...props} fill='currentColor' viewBox='0 0 16 16'>
+			<path d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708' />
+		</svg>
+	),
 };
 
-export default function Icon({ name, className, style, size, ...rest }) {
+export default function Icon({ name, className, style, size, color, ...rest }) {
 	const iconFactory = ICONS[name];
 	if (!iconFactory) return null;
 
@@ -237,12 +265,22 @@ export default function Icon({ name, className, style, size, ...rest }) {
 		svgProps.height = svgSize;
 	}
 
+	// Color support via inline style
+	const iconStyle = {
+		display: 'inline-flex',
+		lineHeight: '1',
+		...style,
+	};
+	if (color) {
+		iconStyle.color = color;
+	}
+
 	// Icons use `fill="currentColor"` (and `stroke="currentColor"` where needed)
 	// so they inherit color from the parent by default.
 	return (
 		<span
 			className={className}
-			style={{ display: 'inline-flex', lineHeight: '1', ...style }}
+			style={iconStyle}
 			{...rest}
 		>
 			{iconFactory(svgProps)}

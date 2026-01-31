@@ -1,10 +1,11 @@
-import React from 'react';
-import { Container } from 'react-bootstrap';
+'use client';
 
-export default function Loading() {
-	return (
-		<Container className='text-center mt-5'>
-			<div className='loader pt-5'></div>
-		</Container>
-	);
+import OptimizedLoading from './OptimizedLoading';
+
+/**
+ * Loading Component
+ * Wrapper around OptimizedLoading for backward compatibility
+ */
+export default function Loading(props) {
+	return <OptimizedLoading {...props} />;
 }

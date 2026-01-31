@@ -5,7 +5,11 @@ import Icon from './Icon'
 
 /**
  * Pull-to-refresh wrapper for mobile devices
- * Wraps content and handles the pull gesture
+ * - Touch gesture detection with proper resistance
+ * - Visual feedback with rotation indicator
+ * - Data saver mode support
+ * - Reduced motion support
+ * - Performance optimized with will-change
  */
 export default function PullToRefresh({
     onRefresh,
@@ -82,52 +86,165 @@ export default function PullToRefresh({
     }, [handleTouchStart, handleTouchMove, handleTouchEnd])
 
     const showIndicator = pullDistance > 10 || refreshing
+    const progress = Math.min(pullDistance / threshold, 1)
 
     return (
-        <div ref={containerRef} style={{ minHeight: '100%' }}>
+        <div ref={containerRef} className="ptr-container" style={{ minHeight: '100%' }}>
             {/* Pull indicator */}
             <div
-                className={`pull-indicator ${showIndicator ? 'visible' : ''}`}
+                className={`pull-indicator ${showIndicator ? 'visible' : ''} ${pullDistance >= threshold ? 'ready' : ''}`}
                 style={{
-                    opacity: Math.min(pullDistance / threshold, 1),
+                    opacity: progress,
+                    transform: `scale(${0.5 + progress * 0.5})`,
                 }}
+                aria-live="polite"
             >
                 {refreshing ? (
-                    <div className="d-flex align-items-center gap-2">
-                        <div className="spinner-border spinner-border-sm" role="status">
-                            <span className="visually-hidden">Loading...</span>
+                    <div className="ptr-content">
+                        <div className="ptr-spinner" role="status">
+                            <span className="sr-only">Loading...</span>
                         </div>
-                        <span>Refreshing...</span>
+                        <span className="ptr-text">Refreshing...</span>
                     </div>
                 ) : pullDistance >= threshold ? (
-                    <div className="d-flex align-items-center gap-2">
-                        <Icon name="checkCircle" size={16} />
-                        <span>Release to refresh</span>
+                    <div className="ptr-content">
+                        <Icon name="checkCircle" size={20} color="var(--accent-primary)" />
+                        <span className="ptr-text ready">Release to refresh</span>
                     </div>
                 ) : (
-                    <div className="d-flex align-items-center gap-2">
+                    <div className="ptr-content">
                         <Icon
                             name="chevronDown"
-                            size={16}
+                            size={20}
                             style={{
-                                transform: `rotate(${Math.min(pullDistance / threshold * 180, 180)}deg)`,
+                                transform: `rotate(${progress * 180}deg)`,
                                 transition: 'transform 0.1s ease'
                             }}
                         />
-                        <span>Pull to refresh</span>
+                        <span className="ptr-text">Pull to refresh</span>
                     </div>
                 )}
             </div>
 
             {/* Content with pull offset */}
             <div
+                className="ptr-content-wrapper"
                 style={{
                     transform: `translateY(${pullDistance > 0 ? pullDistance * 0.3 : 0}px)`,
-                    transition: pulling ? 'none' : 'transform 0.3s ease',
+                    transition: pulling ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
             >
                 {children}
             </div>
+
+            <style jsx>{`
+                .ptr-container {
+                    position: relative;
+                    touch-action: pan-y;
+                }
+
+                .pull-indicator {
+                    position: fixed;
+                    top: 56px;
+                    left: 50%;
+                    transform: translateX(-50%) translateY(-100%);
+                    padding: 12px 20px;
+                    background: var(--bg-primary);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-md);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    opacity: 0;
+                    transition: opacity 0.2s ease, transform 0.2s ease;
+                    z-index: 999;
+                    border: 1px solid var(--border-color);
+                }
+
+                .pull-indicator.visible {
+                    transform: translateX(-50%) translateY(10px);
+                }
+
+                .ptr-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    color: var(--text-muted);
+                }
+
+                .ptr-text {
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                }
+
+                .ptr-text.ready {
+                    color: var(--accent-primary);
+                }
+
+                .ptr-spinner {
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid var(--bg-tertiary);
+                    border-top-color: var(--accent-primary);
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+
+                .ptr-content-wrapper {
+                    will-change: transform;
+                }
+
+                /* Screen reader only */
+                .sr-only {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
+                }
+
+                /* Data saver mode */
+                :global(.data-saver) .pull-indicator {
+                    display: none;
+                }
+
+                :global(.data-saver) .ptr-spinner {
+                    animation: none;
+                    border-top-color: var(--bg-tertiary);
+                    background: conic-gradient(var(--accent-primary) 25%, var(--bg-tertiary) 0);
+                    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+                }
+
+                /* Reduced motion */
+                @media (prefers-reduced-motion: reduce) {
+                    .ptr-spinner {
+                        animation: none;
+                        border-top-color: var(--bg-tertiary);
+                        background: conic-gradient(var(--accent-primary) 25%, var(--bg-tertiary) 0);
+                        mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+                    }
+
+                    .ptr-content-wrapper {
+                        transition: none;
+                    }
+                }
+
+                /* Hide on desktop */
+                @media (min-width: 1024px) {
+                    .pull-indicator {
+                        display: none;
+                    }
+                }
+            `}</style>
         </div>
     )
 }
