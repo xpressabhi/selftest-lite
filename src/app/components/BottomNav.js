@@ -37,7 +37,7 @@ export default function BottomNav() {
 				>
 					{item.isCenter ? (
 						<span className="center-icon">
-							<Icon name={item.icon} size={24} />
+							<Icon name={item.icon} size={28} />
 						</span>
 					) : (
 						<>
@@ -53,14 +53,16 @@ export default function BottomNav() {
 					bottom: 0;
 					left: 0;
 					right: 0;
-					height: 64px;
-					padding-bottom: env(safe-area-inset-bottom, 0px);
+					min-height: 72px; /* Minimum height for touch */
+					padding-top: 12px;
+					padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); /* Safe area + breathing room */
 					background: var(--bg-primary);
 					border-top: 1px solid var(--border-color);
 					display: flex;
 					justify-content: space-around;
-					align-items: center;
+					align-items: flex-start; /* Align items to top to avoid variable stretching */
 					z-index: 1000;
+					box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
 				}
 
 				.bottom-nav-item {
@@ -68,53 +70,69 @@ export default function BottomNav() {
 					flex-direction: column;
 					align-items: center;
 					justify-content: center;
-					gap: 4px;
-					padding: 8px 12px;
+					gap: 6px;
+					padding: 6px 4px;
 					color: var(--text-muted);
 					text-decoration: none;
 					font-size: 11px;
-					min-width: 56px;
-					transition: color 0.15s ease;
+					min-width: 60px;
+					transition: all 0.2s ease;
 					position: relative;
+					flex: 1; /* Distribute space evenly */
 				}
 
 				.bottom-nav-item:active {
 					opacity: 0.7;
+					transform: scale(0.95);
 				}
 
 				.bottom-nav-item.active {
 					color: var(--accent-primary);
 				}
 
+				.bottom-nav-item.active .nav-label {
+					font-weight: 700;
+				}
+
 				.nav-label {
-					font-size: 10px;
+					font-size: 11px;
 					font-weight: 500;
 					white-space: nowrap;
+					letter-spacing: 0.2px;
 				}
 
 				.center-btn {
 					position: relative;
+					overflow: visible; /* Ensure shadow isn't clipped */
 				}
 
 				.center-icon {
 					position: absolute;
-					top: -24px;
+					top: -32px; /* Lifted slightly more */
 					left: 50%;
 					transform: translateX(-50%);
-					width: 56px;
-					height: 56px;
+					width: 60px;
+					height: 60px;
 					background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
 					border-radius: 50%;
 					display: flex;
 					align-items: center;
 					justify-content: center;
-					box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+					box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); /* Enhanced glow */
 					color: white;
-					border: 4px solid var(--bg-primary);
+					border: 4px solid var(--bg-primary); /* Cutout effect */
+					z-index: 10;
+					transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+				}
+
+				.center-btn:active .center-icon {
+					transform: translateX(-50%) scale(0.95);
+					box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 				}
 
 				.center-btn .nav-label {
-					margin-top: 32px;
+					margin-top: 34px; /* Adjust for larger icon */
+					font-weight: 600;
 				}
 
 				/* Data saver mode */
@@ -122,10 +140,14 @@ export default function BottomNav() {
 					background: var(--accent-primary);
 					box-shadow: none;
 				}
+				
+				:global(.data-saver) .bottom-nav {
+					height: 64px;
+				}
 
 				/* Reduced motion */
 				@media (prefers-reduced-motion: reduce) {
-					.bottom-nav-item {
+					.bottom-nav-item, .center-icon {
 						transition: none;
 					}
 				}
