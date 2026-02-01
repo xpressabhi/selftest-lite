@@ -133,7 +133,7 @@ export async function POST(request) {
 				),
 			explanation: z
 				.string()
-				.describe('The explanation for the answer in brief'),
+				.describe('The explanation for the answer in details with examples if needed.'),
 		});
 
 		const paperSchema = z.object({
