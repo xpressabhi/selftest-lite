@@ -131,6 +131,9 @@ export async function POST(request) {
 				.describe(
 					'The correct answer to the question, Must match exactly one of the options',
 				),
+			explanation: z
+				.string()
+				.describe('The explanation for the answer in brief'),
 		});
 
 		const paperSchema = z.object({
