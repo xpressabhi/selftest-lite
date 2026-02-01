@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Container, Card, Badge, Button, Accordion } from 'react-bootstrap';
+import { Container, Card, Badge, Button, Accordion, ListGroup } from 'react-bootstrap';
 import Icon from '../components/Icon';
 import useBookmarks from '../hooks/useBookmarks';
 import { useLanguage } from '../context/LanguageContext';
@@ -102,14 +102,14 @@ export default function BookmarksPage() {
                                             <Accordion.Body className='px-0 pt-3 pb-0'>
                                                 <div className='mb-3'>
                                                     <strong>Options:</strong>
-                                                    <ul className='list-unstyled mt-2 ms-2 border-start ps-3'>
+                                                    <ListGroup as="ol">
                                                         {q.options.map((opt, i) => (
-                                                            <li key={i} className={`mb-1 ${opt === q.answer ? 'text-success fw-bold' : 'text-muted'}`}>
+                                                            <ListGroup.Item as="li" key={i} className={`mb-1 ${opt === q.answer ? 'text-success fw-bold' : 'text-muted'}`}>
                                                                 {opt === q.answer && <Icon name='checkCircle' size={14} className='me-2' />}
-                                                                {opt}
-                                                            </li>
+                                                                <MarkdownRenderer>{opt}</MarkdownRenderer>
+                                                            </ListGroup.Item>
                                                         ))}
-                                                    </ul>
+                                                    </ListGroup>
                                                 </div>
                                                 {q.explanation && (
                                                     <div className='bg-light rounded-3 p-3 text-muted'>
