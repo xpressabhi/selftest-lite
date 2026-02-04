@@ -12,11 +12,11 @@
 
 | Category | Technology |
 |----------|------------|
-| Framework | Next.js 16.1.4 (App Router) |
-| Frontend | React 19.2.3 |
+| Framework | Next.js 16.1.6 (App Router) |
+| Frontend | React 19.2.4 |
 | UI Library | React Bootstrap 2.10.10 |
 | Styling | Bootstrap 5.3.8 (CDN) + Custom CSS |
-| AI/ML | Google Gemini API (`@google/genai` 1.38.0) |
+| AI/ML | Google Gemini API (`@google/genai` 1.39.0) |
 | Database | Neon PostgreSQL (`@neondatabase/serverless`) |
 | State Management | React Context + Local Storage |
 | Validation | Zod 4.3.6 |
@@ -38,6 +38,7 @@ src/app/
 ├── globals.css            # Global styles
 ├── test/page.js           # Quiz taking interface
 ├── results/page.js        # Results & review page
+├── history/page.js        # Test history listing
 ├── bookmarks/page.js      # Bookmarked questions
 ├── blog/page.js           # Blog listing
 ├── blog/[slug]/page.js    # Blog post detail
@@ -66,19 +67,20 @@ src/app/api/
 
 ### 1. Quiz Generation (`/api/generate`)
 - Accepts topic, difficulty, question count, and language
-- Uses Google Gemini 2.5 Flash model with structured JSON output
+- Uses Google Gemini 3 Flash model (preview) with structured JSON output
+- Utilizes `thinkingConfig` (minimal level) for improved question quality
 - Zod schema validation for response structure
 - Rate limiting (10 requests per window)
 - Automatic retry logic (up to 3 attempts)
-- Stores tests in Neon PostgreSQL database
+- Stores tests in Neon PostgreSQL database (`ai_test` table)
 
 ### 2. Test Taking (`/test`)
 - Question-by-question navigation with swipe gestures
 - Progress bar and timer
 - Answer selection with visual feedback
 - Bookmark questions for later review
-- Responsive mobile-first design with sticky footer
-- Unsubmitted test preservation
+- Responsive mobile-first design with sticky footer and bottom navigation
+- Unsubmitted test preservation and alerts
 
 ### 3. Results & Review (`/results`)
 - Score display with performance feedback
@@ -99,11 +101,14 @@ src/app/api/
 - UI language switching via LanguageContext
 - Quiz generation in selected language
 
-### 6. PWA Capabilities
+### 6. PWA & UX Enhancements
 - Service worker for offline functionality
 - Web app manifest
 - Icons for iOS/Android home screen
-- Offline indicator component
+- Pull-to-refresh on mobile devices
+- Toast notification system for feedback
+- Data saver mode for slow connections
+- Offline and slow connection indicators
 
 ---
 
@@ -116,11 +121,16 @@ src/app/api/
 | `GenerateTestForm` | Quiz creation form with advanced options |
 | `TestHistory` | Previous tests listing with favorites |
 | `StatsDashboard` | User statistics display |
-| `Navbar` | Navigation with mobile menu |
+| `TopNav` | Desktop-friendly top navigation |
+| `BottomNav` | Mobile-optimized bottom navigation |
+| `MobileOptimizedLayout` | Layout wrapper with PWA/mobile features |
 | `MarkdownRenderer` | Renders questions with math/code support |
+| `TouchOption` | Mobile-friendly quiz option buttons |
+| `PullToRefresh` | Mobile pull-to-refresh interaction |
+| `Toast` | Global notification system |
 | `Share` | Social sharing functionality |
 | `Print` | Print-friendly test export |
-| `Loading` | Loading states |
+| `UnsubmittedTestAlert` | Prompt for unfinished quizzes |
 | `OfflineIndicator` | Network status indicator |
 
 ### Context Providers
@@ -138,6 +148,7 @@ src/app/api/
 | `useLocalStorage` | Persist state to localStorage |
 | `useBookmarks` | Manage bookmarked questions |
 | `useNetworkStatus` | Monitor connection speed/status |
+| `useRequestCache` | Cache API requests |
 
 ---
 
@@ -146,7 +157,7 @@ src/app/api/
 Tests are stored in Neon PostgreSQL with the following structure:
 
 ```sql
-CREATE TABLE tests (
+CREATE TABLE ai_test (
   id SERIAL PRIMARY KEY,
   test JSONB NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
@@ -196,6 +207,7 @@ selftest-lite/
 │       ├── bookmarks/     # Bookmarks page
 │       ├── contact/       # Contact page
 │       ├── faq/           # FAQ page
+│       ├── history/       # History page
 │       ├── privacy/       # Privacy page
 │       ├── terms/         # Terms page
 │       ├── test/          # Test taking page
