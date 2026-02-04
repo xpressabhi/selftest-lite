@@ -133,7 +133,7 @@ export default function TopNav() {
 						))}
 					</nav>
 
-					<div className="menu-footer">
+					<div className="menu-footer mb-5 pb-5">
 						<DataSaverToggle variant="switch" />
 					</div>
 				</div>
