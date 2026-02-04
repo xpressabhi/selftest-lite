@@ -1,85 +1,114 @@
-# AGENTS.md
+# AGENTS.md - Agent Onboarding & Technical Guide
 
-This repo is a Next.js app using the App Router. This document gives onboarding/setup steps, code-style and architectural notes, and recommendations for agents working on the project.
+Welcome, Agent! This guide is designed to help you quickly understand the **Selftest-lite** codebase and contribute effectively.
 
-## Quick setup
-- Install dependencies
+## 🚀 Project Overview
+**Selftest-lite** is an AI-powered quiz generation platform built with Next.js (App Router), leveraging the Google Gemini API for content generation and Neon PostgreSQL for persistence.
 
-	```bash
-	npm install
-	```
-
-- Start dev server
-
-	```bash
-	npm run dev
-	```
-
-- Run tests (if present)
-
-	```bash
-	npm test
-	```
-
-## Recommended environment
-- Node.js: 18.x or 20.x (match project's engines if set)
-- NPM (or pnpm/yarn if you prefer, but update scripts accordingly)
-
-## Project scripts (common)
-- `npm run dev` – start Next.js dev server
-- `npm run build` – production build
-- `npm run start` – start built app
-- `npm run lint` – run ESLint
-
-Check `package.json` for exact script names.
-
-## Code style and conventions
-- JavaScript (ES2020+) and React functional components
-- Use single quotes and no semicolons (project lint enforces this)
-- Keep components small and stateless where possible; prefer hooks for state
-- Add JSDoc or inline comments for non-obvious logic
-
-## Next.js / App Router guidance
-- The app uses the App Router (`src/app`). Prefer server components by default and mark components with `"use client"` only when they need browser APIs, state, or event handlers.
-- Server components must not pass event handler props to client components. If you need to attach DOM event handlers (for example, onload handlers for a link element), either:
-	- use a small client component that handles the DOM interaction, or
-	- use a safe inline script in the `<head>` (carefully) to setup client-only behavior
-
-- Layouts and pages should export metadata where possible (see `src/app/layout.js`). Avoid heavy client-only libraries in server components.
-
-## CSS & third-party CSS (Bootstrap)
-- To avoid shipping large CSS inside client bundles, the project loads Bootstrap from a CDN.
-- To prevent Lighthouse render-blocking warnings, use a non-blocking pattern:
-	- Preferred: create the preload+onload link from client-side JS (or a tiny Client Component) so you don't pass event handler props from a Server Component.
-	- Fallback: include a `<noscript>` stylesheet link so users without JS still get styles.
-
-Example (pattern used in this project):
-- Inline script that creates a `link[rel=preload][as=style]`, sets `onload` to swap `rel` to `stylesheet`, and appends it to `document.head`.
-- Keep a `<noscript><link rel="stylesheet" href="..."></noscript>` fallback.
-
-## Service worker / PWA notes
-- Service worker registration is done from the client (see `src/app/layout.js`). Keep registration in client code or inside a `useEffect` in a client component so it's only executed in the browser.
-
-## Accessibility & performance
-- Ensure interactive controls have accessible labels and keyboard support.
-- Lazy-load non-critical components (e.g., analytics, heavy charts) using dynamic imports
-- Use Next.js image optimizations where possible (or `<img loading="lazy">` for static images)
-
-## Testing & validation
-- Run `npm run lint` regularly
-- Add unit tests for critical utilities and components
-- Consider adding a lightweight Lighthouse audit in CI to catch performance regressions
-
-## Troubleshooting
-- "Event handlers cannot be passed to Client Component props" — this occurs when trying to pass an inline handler (like `onLoad`) from a server component to an element that expects a client-side handler. Fix by moving that logic into a Client Component or an inline client-side script.
-- If Bootstrap/CSS shows FOUC or delayed styles: verify the preload script is correct and the `<noscript>` fallback exists
-
-## Local development tips
-- Use `next dev` to run the local server. If you make changes to server components or the routing, the dev server will hot-reload but sometimes full restart helps.
-- When testing PWA or service worker behavior, use an Incognito window to avoid cached SW registrations.
-
-## Deployment
-- Build with `npm run build` and deploy the `.next` output on Vercel, Netlify, or your preferred host. For Vercel, default settings for Next.js App Router work out-of-the-box.
+### Tech Stack Highlights:
+- **Framework**: Next.js 16 (App Router)
+- **AI**: Google Gemini 3 Flash (via `@google/genai`)
+- **Database**: Neon PostgreSQL (via `@neondatabase/serverless`)
+- **UI**: React Bootstrap + Custom CSS (Mobile-first)
+- **PWA**: `next-pwa` with custom service worker logic
 
 ---
-If you'd like, I can also add a short CONTRIBUTING.md with contributor guidelines, or add a tiny Client Component to centralize the Bootstrap preload logic for clarity. Tell me which you'd prefer and I'll implement it.
+
+## 🏗 Architecture & Key Patterns
+
+### 1. The "Mobile-First" Layout
+The entire app is wrapped in `src/app/components/MobileOptimizedLayout.js`.
+- **TopNav**: Static desktop-style nav.
+- **BottomNav**: Mobile bottom-tab navigation.
+- **PWA Features**: Service worker registration, offline/slow-connection banners, and pull-to-refresh are handled here.
+- **Toasts**: A global toast system is managed via `MobileOptimizedLayout`.
+
+### 2. AI Quiz Generation (`/api/generate`)
+Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
+- **Pattern**: The prompt uses structured output (JSON mode) with Zod validation.
+- **Thinking**: We use Gemini's `thinkingConfig` (minimal level) to ensure high-quality, non-repetitive questions.
+- **Deduplication**: We pass `previousQuestions` to the prompt to avoid duplicate questions for a user.
+
+### 3. Data Persistence
+- **Remote**: Every generated test is stored in the `ai_test` table in Neon PostgreSQL.
+- **Local**: Test history and user answers are cached in `localStorage` using the `useLocalStorage` hook.
+
+### 4. Styling System
+- **Bootstrap**: Loaded via CDN in `layout.js` for performance.
+- **Custom CSS**: Unified variables in `src/app/globals.css`. Use CSS variables for colors to support light/dark modes.
+- **Animations**: Prefer subtle transforms and transitions for a "premium" feel. Use `shouldReduceAnimations` from `useDataSaver` for low-end devices.
+
+---
+
+## 📱 Performance & Device Support Principles
+
+### 1. Mobile-First, Desktop-Ready
+- **Always** design for mobile screens (320px+) first.
+- Use `src/app/components/BottomNav.js` for mobile navigation and `TopNav.js` for desktop.
+- Ensure all interactive elements have a minimum tap target of **44x44px**. 
+
+### 2. High-End vs. Low-End Devices
+- **High-End (iPhone/Pixel)**: Utilize `TouchOption.js` for fluid selections and ensure iOS safe-area-insets are respected in CSS.
+- **Low-End (Budget Android)**: 
+  - Minimize heavy JS execution.
+  - Use `OptimizedSkeleton.js` instead of complex spinners.
+  - Respect the `.data-saver-mode` class on `document.documentElement` to disable heavy animations.
+
+### 3. Network Resilience (Slow Internet)
+- Use `useDataSaver()` hook to detect slow connections (`isSlowConnection`).
+- **Optimization Strategy**:
+  - Reduce the default number of questions in `GenerateTestForm.js` if data saver is active.
+  - Use `HeavyMarkdownRenderer.js` only when necessary; prioritize the lighter `MarkdownRenderer.js`.
+  - Display `OfflineIndicator.js` or `slow-banner` from `MobileOptimizedLayout.js` when connectivity drops.
+- **Image Handling**: Always use `loading="lazy"` for non-critical images.
+
+
+## 🛠 Coding Standards for Agents
+
+- **File Naming**: PascalCase for components (`MyComponent.js`), camelCase for everything else.
+- **Semicolons**: **Required**. Use `eslint` to verify (Next.js 16 defaults).
+- **Single Quotes**: Preferred.
+- **Client/Server Boundary**: 
+  - Default to Server Components.
+  - Use `"use client"` for components using hooks (`useState`, `useEffect`, `useContext`) or browser APIs.
+- **CSS-in-JS**: Use `styled-jsx` within components for component-specific styles when `globals.css` isn't enough.
+
+---
+
+## 📝 Common Tasks
+
+### Adding a New Page:
+1. Create a folder in `src/app/[pagename]/page.js`.
+2. Ensure it uses `Container` from `react-bootstrap` for consistent padding.
+3. Update `PROJECT_SUMMARY.md` after adding the route.
+
+### Modifying the Prompt:
+1. Edit `src/app/api/utils/prompt.js`.
+2. Ensure any schema changes are also reflected in the Zod schema in `src/app/api/generate/route.js`.
+
+### Adding a Component:
+1. Place it in `src/app/components/`.
+2. Use the `Icon.js` component for all SVG icons.
+3. If it needs state, mark it as `"use client"`.
+
+---
+
+## 🔐 Environment Variables
+Required for local development:
+- `GEMINI_API_KEY`: For quiz generation.
+- `DATABASE_URL`: Neon PostgreSQL connection string.
+
+---
+
+## 🚦 Verification Checklist
+Before submitting a change:
+1. [ ] Run `npm run lint`.
+2. [ ] Verify mobile responsiveness (check Safari/Chrome mobile view).
+3. [ ] Test with "Slow 3G" throttling in DevTools to ensure `DataSaver` triggers.
+4. [ ] Verify safe areas on iOS (no content hidden behind notches or home indicators).
+5. [ ] If adding an API, check rate limiting in `src/app/api/utils/rateLimiter.js`.
+6. [ ] Ensure Google Adsense (`ADSENSE.md`) or PWA features aren't broken.
+
+---
+
+*Generated by Antigravity - Last Updated: Feb 2026*
