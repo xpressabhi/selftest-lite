@@ -10,6 +10,7 @@ import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 import { useLanguage } from '../context/LanguageContext';
 import useBookmarks from '../hooks/useBookmarks';
+import useSoundEffects from '../hooks/useSoundEffects';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -48,6 +49,9 @@ function TestContent() {
 	const timerRef = useRef(null);
 	const { t } = useLanguage();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
+
+	// UX Enhancement: Sound effects
+	const { playSelect, playTick } = useSoundEffects();
 
 	useEffect(() => {
 		if (testId) {
@@ -111,6 +115,9 @@ function TestContent() {
 	};
 
 	const handleAnswerChange = (questionIndex, answer) => {
+		// Play selection sound for tactile feedback
+		playSelect();
+
 		const updatedAnswers = {
 			...answers,
 			[questionIndex]: answer,

@@ -9,6 +9,8 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
 import { useLanguage } from '../context/LanguageContext';
 import useBookmarks from '../hooks/useBookmarks';
+import useSoundEffects from '../hooks/useSoundEffects';
+import Confetti, { TrophyBurst } from '../components/Confetti';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -40,6 +42,12 @@ function ResultsContent() {
 	const { t } = useLanguage();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
 
+	// UX Enhancement: Celebration effects
+	const [showConfetti, setShowConfetti] = useState(false);
+	const [showTrophy, setShowTrophy] = useState(false);
+	const [celebrationTriggered, setCelebrationTriggered] = useState(false);
+	const { playCelebration, playCorrect, initAudio } = useSoundEffects();
+
 	useEffect(() => {
 		if (id) {
 			const paper = testHistory.find((t) => t.id == id);
@@ -51,6 +59,36 @@ function ResultsContent() {
 			setLoading(false);
 		}
 	}, [id, testHistory]);
+
+	// Trigger celebration effects for high scores
+	useEffect(() => {
+		if (questionPaper && questionPaper.userAnswers && !celebrationTriggered) {
+			const { score, totalQuestions } = questionPaper;
+			const percentage = Math.round((score / totalQuestions) * 100);
+
+			// Initialize audio context on first interaction
+			initAudio();
+
+			// Delay celebration slightly for dramatic effect
+			const timer = setTimeout(() => {
+				if (percentage >= 80) {
+					setShowConfetti(true);
+					playCelebration();
+
+					// Perfect score gets trophy burst
+					if (percentage === 100) {
+						setShowTrophy(true);
+					}
+				} else if (percentage >= 50) {
+					// Good effort sound
+					playCorrect();
+				}
+				setCelebrationTriggered(true);
+			}, 500);
+
+			return () => clearTimeout(timer);
+		}
+	}, [questionPaper, celebrationTriggered, playCelebration, playCorrect, initAudio]);
 
 	const handleNewTest = () => {
 		router.push('/');
@@ -215,6 +253,15 @@ function ResultsContent() {
 
 	return (
 		<div className='min-vh-100 pb-5'>
+			{/* Celebration effects */}
+			<Confetti
+				show={showConfetti}
+				duration={4000}
+				particleCount={percentage === 100 ? 150 : 100}
+				onComplete={() => setShowConfetti(false)}
+			/>
+			<TrophyBurst show={showTrophy} />
+
 			<Container style={{ maxWidth: '800px' }}>
 				<div className='text-center mb-5'>
 					<h1 className='display-5 fw-bold mb-2'>{t('testResults')}</h1>
