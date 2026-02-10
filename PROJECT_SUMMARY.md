@@ -110,6 +110,13 @@ src/app/api/
 - Data saver mode for slow connections
 - Offline and slow connection indicators
 
+### 7. Gamification & Engagement (New)
+- **Daily Streak System**: Tracks consecutive days of activity with freeze protection
+- **Achievement Badges**: 16 unlockable milestones (First Quiz, Speed Demon, etc.)
+- **Performance Analytics**: SVG-based score trend charts and topic breakdown
+- **Speed Challenge Mode**: Time-attack mode with countdown timer
+- **Celebration Effects**: Confetti, trophy bursts, and sound effects for high scores
+
 ---
 
 ## Component Architecture
@@ -121,6 +128,9 @@ src/app/api/
 | `GenerateTestForm` | Quiz creation form with advanced options |
 | `TestHistory` | Previous tests listing with favorites |
 | `StatsDashboard` | User statistics display |
+| `StreakBanner` | Daily streak and activity tracking |
+| `AchievementShowcase` | Badges and milestones display |
+| `PerformanceChart` | Score trends and analysis |
 | `TopNav` | Desktop-friendly top navigation |
 | `BottomNav` | Mobile-optimized bottom navigation |
 | `MobileOptimizedLayout` | Layout wrapper with PWA/mobile features |
@@ -132,6 +142,7 @@ src/app/api/
 | `Print` | Print-friendly test export |
 | `UnsubmittedTestAlert` | Prompt for unfinished quizzes |
 | `OfflineIndicator` | Network status indicator |
+| `Confetti` | Celebration animations |
 
 ### Context Providers
 
@@ -149,6 +160,9 @@ src/app/api/
 | `useBookmarks` | Manage bookmarked questions |
 | `useNetworkStatus` | Monitor connection speed/status |
 | `useRequestCache` | Cache API requests |
+| `useStreak` | Manage daily streaks and freezes |
+| `useAchievements` | Track and unlock badges |
+| `useSoundEffects` | Play audio feedback |
 
 ---
 

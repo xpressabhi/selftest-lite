@@ -379,6 +379,7 @@ const GenerateTestForm = () => {
 												<option value='true-false'>True/False</option>
 												<option value='coding'>Coding Problems</option>
 												<option value='mixed'>Mixed Format</option>
+												<option value='speed-challenge'>⚡ Speed Challenge</option>
 											</Form.Select>
 										</Col>
 										<Col xs={6} sm={3}>

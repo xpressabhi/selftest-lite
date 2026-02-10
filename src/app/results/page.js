@@ -10,7 +10,10 @@ import Loading from '../components/Loading';
 import { useLanguage } from '../context/LanguageContext';
 import useBookmarks from '../hooks/useBookmarks';
 import useSoundEffects from '../hooks/useSoundEffects';
+import useStreak from '../hooks/useStreak';
+import useAchievements from '../hooks/useAchievements';
 import Confetti, { TrophyBurst } from '../components/Confetti';
+import SoundToggle from '../components/SoundToggle';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -46,7 +49,12 @@ function ResultsContent() {
 	const [showConfetti, setShowConfetti] = useState(false);
 	const [showTrophy, setShowTrophy] = useState(false);
 	const [celebrationTriggered, setCelebrationTriggered] = useState(false);
+	const [achievementToasts, setAchievementToasts] = useState([]);
 	const { playCelebration, playCorrect, initAudio } = useSoundEffects();
+
+	// Streak & Achievements
+	const { recordActivity, currentStreak, longestStreak } = useStreak();
+	const { checkAchievements, newlyUnlocked, clearNewlyUnlocked } = useAchievements({ longestStreak });
 
 	useEffect(() => {
 		if (id) {
@@ -60,11 +68,14 @@ function ResultsContent() {
 		}
 	}, [id, testHistory]);
 
-	// Trigger celebration effects for high scores
+	// Trigger celebration effects, streak recording, and achievement checking
 	useEffect(() => {
 		if (questionPaper && questionPaper.userAnswers && !celebrationTriggered) {
 			const { score, totalQuestions } = questionPaper;
 			const percentage = Math.round((score / totalQuestions) * 100);
+
+			// Record streak activity
+			recordActivity();
 
 			// Initialize audio context on first interaction
 			initAudio();
@@ -83,12 +94,21 @@ function ResultsContent() {
 					// Good effort sound
 					playCorrect();
 				}
+
+				// Check for new achievements
+				const newUnlocks = checkAchievements();
+				if (newUnlocks.length > 0) {
+					setAchievementToasts(newUnlocks);
+					// Auto-clear after 5 seconds
+					setTimeout(() => setAchievementToasts([]), 5000);
+				}
+
 				setCelebrationTriggered(true);
 			}, 500);
 
 			return () => clearTimeout(timer);
 		}
-	}, [questionPaper, celebrationTriggered, playCelebration, playCorrect, initAudio]);
+	}, [questionPaper, celebrationTriggered, playCelebration, playCorrect, initAudio, recordActivity, checkAchievements]);
 
 	const handleNewTest = () => {
 		router.push('/');
@@ -262,7 +282,45 @@ function ResultsContent() {
 			/>
 			<TrophyBurst show={showTrophy} />
 
+			{/* Achievement Toast Notifications */}
+			{achievementToasts.length > 0 && (
+				<div
+					style={{
+						position: 'fixed',
+						bottom: '100px',
+						right: '20px',
+						zIndex: 9999,
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '8px',
+					}}
+				>
+					{achievementToasts.map((a) => (
+						<div
+							key={a.id}
+							className='glass-card shadow-lg d-flex align-items-center gap-3 px-4 py-3 rounded-pill'
+							style={{
+								animation: 'slideInRight 0.4s ease-out',
+								border: '1px solid rgba(99, 102, 241, 0.3)',
+								minWidth: '250px',
+							}}
+						>
+							<span style={{ fontSize: '1.6rem' }}>{a.icon}</span>
+							<div>
+								<div className='fw-bold small' style={{ color: 'var(--accent-primary)' }}>
+									Achievement Unlocked!
+								</div>
+								<div className='fw-semibold small'>{a.title}</div>
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
 			<Container style={{ maxWidth: '800px' }}>
+				<div className='d-flex justify-content-end mb-2'>
+					<SoundToggle />
+				</div>
 				<div className='text-center mb-5'>
 					<h1 className='display-5 fw-bold mb-2'>{t('testResults')}</h1>
 					<p className='text-muted fs-5'>
@@ -273,6 +331,14 @@ function ResultsContent() {
 				{/* Score Card */}
 				<Card className='glass-card border-0 mb-5 overflow-hidden'>
 					<Card.Body className='p-5 text-center position-relative'>
+						{/* Speed Challenge Badge */}
+						{questionPaper.requestParams?.testType === 'speed-challenge' && (
+							<div className='position-absolute top-0 end-0 m-3'>
+								<Badge bg='danger' className='d-flex align-items-center gap-1 shadow-sm px-3 py-2 rounded-pill'>
+									<Icon name='zap' size={14} /> Ref: Speed Challenge
+								</Badge>
+							</div>
+						)}
 						<div
 							className='position-absolute top-0 start-0 w-100 h-100 opacity-10'
 							style={{
@@ -298,7 +364,7 @@ function ResultsContent() {
 							</div>
 
 							<h2 className='fw-bold mb-1' style={{ color: feedbackColor }}>{feedbackText}</h2>
-							<p className='text-muted mb-4'>
+							<p className='text-muted mb-3'>
 								{t('score')} {percentage}%
 								{timeTaken && (
 									<span className='ms-3 ps-3 border-start d-inline-flex align-items-center gap-1'>
@@ -307,6 +373,20 @@ function ResultsContent() {
 									</span>
 								)}
 							</p>
+
+							{/* Streak display */}
+							{currentStreak > 0 && (
+								<div className='mb-4'>
+									<Badge
+										bg='warning'
+										text='dark'
+										className='px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2 fw-bold'
+										style={{ fontSize: '0.85rem' }}
+									>
+										🔥 {currentStreak} Day Streak
+									</Badge>
+								</div>
+							)}
 
 							<div className='d-flex justify-content-center gap-2 flex-wrap'>
 								<Button

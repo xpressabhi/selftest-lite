@@ -11,6 +11,7 @@ import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 import { useLanguage } from '../context/LanguageContext';
 import useBookmarks from '../hooks/useBookmarks';
 import useSoundEffects from '../hooks/useSoundEffects';
+import SoundToggle from '../components/SoundToggle';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -53,6 +54,9 @@ function TestContent() {
 	// UX Enhancement: Sound effects
 	const { playSelect, playTick } = useSoundEffects();
 
+	const [timeLeft, setTimeLeft] = useState(null); // For speed challenge
+	const [isSubmitted, setIsSubmitted] = useState(false);
+
 	useEffect(() => {
 		if (testId) {
 			const existingTest = testHistory.find((t) => t.id == testId); // use loose equality to handle string vs number
@@ -85,6 +89,15 @@ function TestContent() {
 		}
 	}, [router, testHistory, testId, updateHistory]);
 
+	// Initialize Speed Challenge timer
+	useEffect(() => {
+		if (questionPaper && questionPaper.requestParams?.testType === 'speed-challenge' && timeLeft === null) {
+			// 20 seconds per question for speed challenge
+			const totalTime = questionPaper.questions.length * 20;
+			setTimeLeft(totalTime);
+		}
+	}, [questionPaper, timeLeft]);
+
 	// Set document title based on current questionPaper topic
 	useEffect(() => {
 		if (typeof document === 'undefined') return;
@@ -97,16 +110,42 @@ function TestContent() {
 		};
 	}, [questionPaper?.topic]);
 
-	// Timer logic
+	// Timer logic (Elapsed time & Speed Challenge Countdown)
 	useEffect(() => {
-		if (loading || !questionPaper) return;
+		if (loading || !questionPaper || isSubmitted) return;
 
 		timerRef.current = setInterval(() => {
 			setElapsedTime((prev) => prev + 1);
+
+			// Speed Challenge Countdown
+			if (timeLeft !== null) {
+				setTimeLeft((prev) => {
+					if (prev <= 1) {
+						// Time's up!
+						clearInterval(timerRef.current);
+						// Need to use a ref or function to access latest state if needed, 
+						// but confirmSubmit uses questionPaper and answers which are stable or refs might be needed.
+						// However, we can just trigger submit here.
+						// We need to call confirmSubmit, but it depends on state.
+						// Let's use a flag to trigger it in another effect or just call it if deps are fine.
+						// Since confirmSubmit is closed over render scope, we might have stale state issues inside setInterval.
+						// Better to set a flag 'timeExpired'.
+						return 0;
+					}
+					return prev - 1;
+				});
+			}
 		}, 1000);
 
 		return () => clearInterval(timerRef.current);
-	}, [loading, questionPaper]);
+	}, [loading, questionPaper, isSubmitted, timeLeft]);
+
+	// Auto-submit when time runs out
+	useEffect(() => {
+		if (timeLeft === 0 && !isSubmitted) {
+			confirmSubmit();
+		}
+	}, [timeLeft, isSubmitted]);
 
 	const formatTime = (seconds) => {
 		const mins = Math.floor(seconds / 60);
@@ -144,6 +183,9 @@ function TestContent() {
 	};
 
 	const confirmSubmit = () => {
+		if (isSubmitted) return;
+		setIsSubmitted(true);
+
 		const calculatedScore =
 			questionPaper.questions.filter((q, index) => answers[index] === q.answer)
 				.length || 0;
@@ -154,6 +196,7 @@ function TestContent() {
 			totalQuestions: questionPaper.questions.length,
 			score: calculatedScore,
 			timeTaken: elapsedTime, // Store total time taken in seconds
+			isSpeedChallenge: questionPaper.requestParams?.testType === 'speed-challenge',
 		};
 		updateHistory(updatedPaper);
 		cleanUpAnswers();
@@ -264,18 +307,39 @@ function TestContent() {
 							{Math.round(progress)}%
 						</small>
 					</div>
-					<div className='d-flex justify-content-center align-items-center mb-2'>
-						<div className='bg-light rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm'>
-							<Icon name='clock' size={14} className='text-primary' />
-							<span className='fw-bold text-dark font-monospace small'>
-								{formatTime(elapsedTime)}
-							</span>
+					<div className='d-flex justify-content-center align-items-center mb-2 gap-3'>
+						{timeLeft !== null ? (
+							<div
+								className={`rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm ${timeLeft <= 10 ? 'bg-danger text-white' : 'bg-light text-dark'}`}
+								style={{
+									transition: 'all 0.3s ease',
+									animation: timeLeft <= 10 ? 'pulse 1s infinite' : 'none'
+								}}
+							>
+								<Icon name='clock' size={14} className={timeLeft <= 10 ? 'text-white' : 'text-danger'} />
+								<span className='fw-bold font-monospace small'>
+									{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+								</span>
+								<span className='small opacity-75'>left</span>
+							</div>
+						) : (
+							<div className='bg-light rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm'>
+								<Icon name='clock' size={14} className='text-primary' />
+								<span className='fw-bold text-dark font-monospace small'>
+									{formatTime(elapsedTime)}
+								</span>
+							</div>
+						)}
+
+						{/* Sound Toggle */}
+						<div className='d-flex align-items-center'>
+							<SoundToggle variant="light" size="sm" className="rounded-circle border-0 text-muted" />
 						</div>
 					</div>
 					<ProgressBar
 						now={progress}
-						variant='primary'
-						style={{ height: '6px', borderRadius: '10px' }}
+						variant={timeLeft !== null && timeLeft <= 10 ? 'danger' : 'primary'}
+						style={{ height: '6px', borderRadius: '10px', transition: 'all 0.3s ease' }}
 						className='bg-secondary bg-opacity-10'
 					/>
 				</Container>
