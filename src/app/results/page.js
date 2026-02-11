@@ -12,8 +12,13 @@ import useBookmarks from '../hooks/useBookmarks';
 import useSoundEffects from '../hooks/useSoundEffects';
 import useStreak from '../hooks/useStreak';
 import useAchievements from '../hooks/useAchievements';
-import Confetti, { TrophyBurst } from '../components/Confetti';
 import SoundToggle from '../components/SoundToggle';
+
+// Lazy load heavy interactive/visual components
+const Confetti = dynamic(() => import('../components/Confetti'), { ssr: false });
+const TrophyBurst = dynamic(() => import('../components/Confetti').then(mod => mod.TrophyBurst), { ssr: false });
+const Share = dynamic(() => import('../components/Share'), { loading: () => <Button variant="outline-primary" disabled>...</Button>, ssr: false });
+const Print = dynamic(() => import('../components/Print'), { loading: () => <Button variant="outline-primary" disabled>...</Button>, ssr: false });
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -23,8 +28,6 @@ const MarkdownRenderer = dynamic(
 	},
 );
 
-import Share from '../components/Share';
-import Print from '../components/Print';
 import { Container, Button, Card, Badge, Alert, Accordion } from 'react-bootstrap';
 
 function ResultsContent() {

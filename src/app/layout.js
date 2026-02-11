@@ -4,6 +4,14 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { Outfit } from 'next/font/google';
+
+const outfit = Outfit({
+	subsets: ['latin'],
+	display: 'swap',
+	variable: '--font-outfit',
+	weight: ['300', '400', '500', '600', '700']
+});
 
 export const metadata = {
 	title: 'selftest.in',
@@ -21,15 +29,9 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
 	return (
-		<html lang='en' suppressHydrationWarning>
+		<html lang='en' suppressHydrationWarning className={outfit.variable}>
 			<head>
 				{/* Preconnect to external domains for faster loading */}
-				<link rel='preconnect' href='https://fonts.googleapis.com' />
-				<link rel='preconnect' href='https://fonts.gstatic.com' crossOrigin='anonymous' />
-				<link
-					href='https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap'
-					rel='stylesheet'
-				/>
 				<link rel='preconnect' href='https://cdn.jsdelivr.net' />
 				<link rel='dns-prefetch' href='https://cdn.jsdelivr.net' />
 

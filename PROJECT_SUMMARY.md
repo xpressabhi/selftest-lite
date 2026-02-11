@@ -256,6 +256,7 @@ The `prompt.js` utility creates sophisticated prompts for Gemini that include:
 - Lazy loading for MarkdownRenderer
 - Data saver mode for slow connections
 - Reduced question counts on mobile/slow networks
+- Font Optimization with `next/font` (self-hosted, zero layout shift)
 
 ### Mobile-First Design
 - Touch gesture support (swipe between questions)
