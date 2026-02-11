@@ -260,10 +260,13 @@ The `prompt.js` utility creates sophisticated prompts for Gemini that include:
 
 ### Mobile-First Design
 - Touch gesture support (swipe between questions)
-- Sticky navigation elements
-- Responsive layouts with Bootstrap grid
-- Bottom sheet navigation on mobile
+- Sticky navigation elements (`TopNav`, `BottomNav`)
+- Responsive layouts with Bootstrap grid and `clamp()` typography
+- Bottom sheet navigation with safe area support
+- Enhanced touch targets (min 44px)
+- Visual data representation (Icon-based stats, SVG charts)
 - Viewport-optimized scaling
+- Fluid container spacing
 
 ### Security Measures
 - Rate limiting on API routes

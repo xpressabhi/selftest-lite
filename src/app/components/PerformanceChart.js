@@ -170,7 +170,7 @@ export default function PerformanceChart() {
                                             x={PAD_X - 4}
                                             y={y + 4}
                                             textAnchor='end'
-                                            fontSize='9'
+                                            fontSize='12'
                                             fill='var(--text-muted)'
                                         >
                                             {val}
@@ -224,27 +224,27 @@ export default function PerformanceChart() {
                             {/* Hover tooltip */}
                             {hoveredIndex !== null && points[hoveredIndex] && (() => {
                                 const p = points[hoveredIndex];
-                                const tooltipW = 100;
+                                const tooltipW = 120; // Increased width for larger text
                                 const tooltipX = Math.min(Math.max(p.x - tooltipW / 2, 5), W - tooltipW - 5);
-                                const tooltipY = p.y < 60 ? p.y + 15 : p.y - 55;
+                                const tooltipY = p.y < 60 ? p.y + 15 : p.y - 65; // Adjusted offset
                                 return (
                                     <g>
                                         <rect
                                             x={tooltipX}
                                             y={tooltipY}
                                             width={tooltipW}
-                                            height='44'
-                                            rx='6'
+                                            height='50' // Increased height
+                                            rx='8'
                                             fill='var(--bg-primary)'
                                             stroke='var(--border-color)'
                                             strokeWidth='1'
-                                            filter='drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                                            filter='drop-shadow(0 4px 6px rgba(0,0,0,0.15))'
                                         />
-                                        <text x={tooltipX + 8} y={tooltipY + 16} fontSize='11' fontWeight='700' fill={getScoreColor(p.score)}>
+                                        <text x={tooltipX + 10} y={tooltipY + 20} fontSize='14' fontWeight='700' fill={getScoreColor(p.score)}>
                                             {p.score}% ({p.raw})
                                         </text>
-                                        <text x={tooltipX + 8} y={tooltipY + 32} fontSize='9' fill='var(--text-muted)'>
-                                            {p.topic.length > 15 ? p.topic.slice(0, 15) + '…' : p.topic}
+                                        <text x={tooltipX + 10} y={tooltipY + 38} fontSize='11' fill='var(--text-muted)'>
+                                            {p.topic.length > 18 ? p.topic.slice(0, 18) + '…' : p.topic}
                                         </text>
                                     </g>
                                 );

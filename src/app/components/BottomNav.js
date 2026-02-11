@@ -55,7 +55,7 @@ export default function BottomNav() {
 					right: 0;
 					min-height: 72px; /* Minimum height for touch */
 					padding-top: 12px;
-					padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); /* Safe area + breathing room */
+					padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); /* Safe area + breathing room */
 					background: var(--bg-primary);
 					border-top: 1px solid var(--border-color);
 					display: flex;
@@ -123,11 +123,19 @@ export default function BottomNav() {
 					border: 4px solid var(--bg-primary); /* Cutout effect */
 					z-index: 10;
 					transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+					animation: subtle-pulse 2s infinite ease-in-out;
+				}
+
+				@keyframes subtle-pulse {
+					0% { transform: translateX(-50%) scale(1); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); }
+					50% { transform: translateX(-50%) scale(1.05); box-shadow: 0 12px 24px rgba(99, 102, 241, 0.5); }
+					100% { transform: translateX(-50%) scale(1); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); }
 				}
 
 				.center-btn:active .center-icon {
 					transform: translateX(-50%) scale(0.95);
 					box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+					animation: none;
 				}
 
 				.center-btn .nav-label {
@@ -139,6 +147,7 @@ export default function BottomNav() {
 				:global(.data-saver) .center-icon {
 					background: var(--accent-primary);
 					box-shadow: none;
+					animation: none;
 				}
 				
 				:global(.data-saver) .bottom-nav {

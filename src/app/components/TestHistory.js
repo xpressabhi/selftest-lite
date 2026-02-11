@@ -106,14 +106,17 @@ export default function TestHistory({ onTestClick }) {
 							className='d-flex justify-content-between align-items-center py-3 mb-2 border-0 shadow-sm'
 						>
 							<div className='d-flex align-items-center gap-3 flex-grow-1 overflow-hidden'>
-								<Button
-									variant='link'
-									className={`p-0 border-0 ${test.isFavorite ? 'text-warning' : 'text-muted opacity-25'
-										}`}
+								<div
+									className='d-flex align-items-center justify-content-center'
+									style={{ width: '44px', height: '44px', cursor: 'pointer', marginLeft: '-12px' }}
 									onClick={(e) => toggleFavorite(e, test.id)}
 								>
-									<Icon name={test.isFavorite ? 'starFill' : 'star'} size={20} />
-								</Button>
+									<Icon
+										name={test.isFavorite ? 'starFill' : 'star'}
+										size={20}
+										className={test.isFavorite ? 'text-warning' : 'text-muted opacity-25'}
+									/>
+								</div>
 								<div className='text-truncate'>
 									<h6 className='mb-1 text-primary text-truncate'>
 										{test.topic || 'Untitled Test'}

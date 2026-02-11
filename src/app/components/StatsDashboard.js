@@ -57,37 +57,49 @@ export default function StatsDashboard() {
                     </h5>
                     <Row className='g-3 text-center'>
                         <Col xs={6} md={3}>
-                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100'>
-                                <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                    Quizzes
-                                </div>
-                                <div className='h3 fw-bold mb-0 text-dark'>{stats.totalTests}</div>
-                            </div>
-                        </Col>
-                        <Col xs={6} md={3}>
-                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100'>
-                                <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                    Avg Score
-                                </div>
-                                <div className={`h3 fw-bold mb-0 ${stats.averageScore >= 80 ? 'text-success' : stats.averageScore >= 50 ? 'text-warning' : 'text-danger'}`}>
-                                    {stats.averageScore}%
+                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
+                                <Icon name='clipboard' className='text-primary opacity-75' size={24} />
+                                <div>
+                                    <div className='text-muted small text-uppercase fw-bold mb-1'>
+                                        Quizzes
+                                    </div>
+                                    <div className='h3 fw-bold mb-0 text-dark'>{stats.totalTests}</div>
                                 </div>
                             </div>
                         </Col>
                         <Col xs={6} md={3}>
-                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100'>
-                                <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                    Questions
+                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
+                                <Icon name='chart' className='text-info opacity-75' size={24} />
+                                <div>
+                                    <div className='text-muted small text-uppercase fw-bold mb-1'>
+                                        Avg Score
+                                    </div>
+                                    <div className={`h3 fw-bold mb-0 ${stats.averageScore >= 80 ? 'text-success' : stats.averageScore >= 50 ? 'text-warning' : 'text-danger'}`}>
+                                        {stats.averageScore}%
+                                    </div>
                                 </div>
-                                <div className='h3 fw-bold mb-0 text-dark'>{stats.questionsAnswered}</div>
                             </div>
                         </Col>
                         <Col xs={6} md={3}>
-                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100'>
-                                <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                    Time Spent
+                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
+                                <Icon name='checkCircle' className='text-success opacity-75' size={24} />
+                                <div>
+                                    <div className='text-muted small text-uppercase fw-bold mb-1'>
+                                        Questions
+                                    </div>
+                                    <div className='h3 fw-bold mb-0 text-dark'>{stats.questionsAnswered}</div>
                                 </div>
-                                <div className='h3 fw-bold mb-0 text-dark'>{stats.timeSpent}</div>
+                            </div>
+                        </Col>
+                        <Col xs={6} md={3}>
+                            <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
+                                <Icon name='clock' className='text-warning opacity-75' size={24} />
+                                <div>
+                                    <div className='text-muted small text-uppercase fw-bold mb-1'>
+                                        Time Spent
+                                    </div>
+                                    <div className='h3 fw-bold mb-0 text-dark'>{stats.timeSpent}</div>
+                                </div>
                             </div>
                         </Col>
                     </Row>

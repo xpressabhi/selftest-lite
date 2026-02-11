@@ -145,6 +145,33 @@ body {
 	text-rendering: optimizeLegibility;
 }
 
+h1, h2, h3, h4, h5, h6 {
+	font-weight: 700;
+	line-height: 1.2;
+	margin-bottom: 0.75rem;
+	color: var(--text-primary);
+}
+
+/* Fluid typography scaling */
+h1 { font-size: clamp(2rem, 5vw, 2.5rem); }
+h2 { font-size: clamp(1.75rem, 4vw, 2rem); }
+h3 { font-size: clamp(1.5rem, 3vw, 1.75rem); }
+h4 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+h5 { font-size: clamp(1.1rem, 1.5vw, 1.25rem); }
+h6 { font-size: 1rem; }
+
+/* Responsive Container adjustments */
+.container {
+	padding-left: clamp(1rem, 5vw, 2rem);
+	padding-right: clamp(1rem, 5vw, 2rem);
+	max-width: 100%;
+}
+
+@media (min-width: 640px) { .container { max-width: 640px; } }
+@media (min-width: 768px) { .container { max-width: 768px; } }
+@media (min-width: 1024px) { .container { max-width: 1024px; } }
+@media (min-width: 1280px) { .container { max-width: 1280px; } }
+
 /* Safe area insets for notched devices */
 @supports (padding: max(0px)) {
 	body {
@@ -953,16 +980,14 @@ select.form-control {
 	min-height: 100dvh;
 }
 
+/* Remove redundant padding as MobileOptimizedLayout handles it */
 .typeform-bg.container {
-	padding-top: calc(var(--navbar-height) + 16px);
-	padding-bottom: calc(var(--bottom-nav-height) + 16px);
+	padding-top: 0;
+	padding-bottom: 0;
+	max-width: 800px; /* Limit width for better readability on desktop */
 }
 
-@supports (padding: max(0px)) {
-	.typeform-bg.container {
-		padding-bottom: max(calc(var(--bottom-nav-height) + 16px), var(--safe-bottom));
-	}
-}
+/* Reduced motion support */
 
 /* ===========================================
    FADE ANIMATIONS
