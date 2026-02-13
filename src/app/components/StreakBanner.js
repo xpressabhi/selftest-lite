@@ -23,8 +23,11 @@ export default function StreakBanner() {
 
     const [showPulse, setShowPulse] = useState(false);
 
+    const [mounted, setMounted] = useState(false);
+
     // Animate on streak extension
     useEffect(() => {
+        setMounted(true);
         if (justExtended) {
             setShowPulse(true);
             const timer = setTimeout(() => {
@@ -34,6 +37,9 @@ export default function StreakBanner() {
             return () => clearTimeout(timer);
         }
     }, [justExtended, clearJustExtended]);
+
+    // Don't render until mounted on client to avoid hydration mismatch
+    if (!mounted) return null;
 
     // Don't show if no streak data at all
     if (currentStreak === 0 && longestStreak === 0 && !weekActivity.some((d) => d.active)) {

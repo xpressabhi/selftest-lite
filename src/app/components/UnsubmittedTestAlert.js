@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
 import { Alert, Button } from 'react-bootstrap';
@@ -9,9 +10,13 @@ import Icon from './Icon';
 export default function UnsubmittedTestAlert() {
 	const [testHistory] = useLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
 	const router = useRouter();
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => setMounted(true), []);
+
 	const unsubmittedTest = testHistory.find((test) => !test.userAnswers);
 
-	if (!unsubmittedTest) return null;
+	if (!mounted || !unsubmittedTest) return null;
 
 	return (
 		<Alert
