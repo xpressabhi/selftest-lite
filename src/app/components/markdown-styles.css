@@ -50,6 +50,17 @@
 	padding: 0;
 }
 
+/* Mermaid diagrams */
+.markdown-content .mermaid-diagram {
+	overflow-x: auto;
+	padding: 0.75rem 0;
+}
+
+.markdown-content .mermaid-diagram svg {
+	max-width: 100%;
+	height: auto;
+}
+
 /* Blockquotes */
 .markdown-content blockquote {
 	border-left: 4px solid #dee2e6;

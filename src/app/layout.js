@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { DataSaverProvider } from './context/DataSaverContext';
 import { Outfit } from 'next/font/google';
 
 const outfit = Outfit({
@@ -67,13 +68,15 @@ export default function RootLayout({ children }) {
 			</head>
 			<body>
 				<ThemeProvider>
-					<LanguageProvider>
-						<MobileOptimizedLayout>
-							{children}
-						</MobileOptimizedLayout>
-						<Analytics />
-						<SpeedInsights />
-					</LanguageProvider>
+					<DataSaverProvider>
+						<LanguageProvider>
+							<MobileOptimizedLayout>
+								{children}
+							</MobileOptimizedLayout>
+							<Analytics />
+							<SpeedInsights />
+						</LanguageProvider>
+					</DataSaverProvider>
 				</ThemeProvider>
 			</body>
 		</html>

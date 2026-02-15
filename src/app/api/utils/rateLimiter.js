@@ -1,46 +1,80 @@
-// Rate limiter configuration
-const RATE_LIMIT = 10; // requests per minute
-const WINDOW_MS = 60 * 1000; // 1 minute in milliseconds
+import {
+	cleanupOldRateLimitEvents,
+	ensureStorageSchema,
+	getClientKey,
+	query,
+} from './storage';
 
-// Store client request timestamps
-const requestLog = new Map();
+const DEFAULT_RATE_LIMIT = 10; // requests
+const DEFAULT_WINDOW_MS = 60 * 1000; // 1 minute
 
-// Clean up old entries every minute
-setInterval(() => {
-	const now = Date.now();
-	for (const [ip, timestamps] of requestLog.entries()) {
-		const validTimestamps = timestamps.filter((time) => now - time < WINDOW_MS);
-		if (validTimestamps.length === 0) {
-			requestLog.delete(ip);
-		} else {
-			requestLog.set(ip, validTimestamps);
+export async function rateLimiter(request, options = {}) {
+	const {
+		limit = DEFAULT_RATE_LIMIT,
+		windowMs = DEFAULT_WINDOW_MS,
+		bucket = request.nextUrl?.pathname || 'global',
+	} = options;
+
+	try {
+		await ensureStorageSchema();
+
+		const clientKey = getClientKey(request);
+
+		await query(
+			`INSERT INTO api_rate_limit_events (client_key, route)
+			 VALUES ($1, $2)`,
+			[clientKey, bucket],
+		);
+
+		const result = await query(
+			`WITH window_hits AS (
+				SELECT created_at
+				FROM api_rate_limit_events
+				WHERE client_key = $1
+					AND route = $2
+					AND created_at >= NOW() - ($3::text || ' milliseconds')::interval
+				ORDER BY created_at ASC
+			)
+			SELECT
+				COUNT(*)::INTEGER AS hit_count,
+				COALESCE(
+					(EXTRACT(EPOCH FROM (MIN(created_at) + ($3::text || ' milliseconds')::interval)) * 1000)::BIGINT,
+					(EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+				) AS reset_time_ms
+			FROM window_hits`,
+			[clientKey, bucket, windowMs],
+		);
+
+		const hitCount = result.rows[0]?.hit_count ?? 0;
+		const resetTime = Number(result.rows[0]?.reset_time_ms ?? Date.now() + windowMs);
+
+		// Opportunistic cleanup to keep rate-limit table small without a separate cron.
+		if (Math.random() < 0.02) {
+			cleanupOldRateLimitEvents().catch((error) => {
+				console.error('Rate limit cleanup failed:', error);
+			});
 		}
-	}
-}, WINDOW_MS);
 
-export async function rateLimiter(request) {
-	const ip = request.headers.get('x-forwarded-for') || 'unknown';
-	const now = Date.now();
-	const timestamps = requestLog.get(ip) || [];
+		if (hitCount > limit) {
+			return {
+				limited: true,
+				remaining: 0,
+				resetTime,
+			};
+		}
 
-	// Remove timestamps older than the window
-	const validTimestamps = timestamps.filter((time) => now - time < WINDOW_MS);
-
-	if (validTimestamps.length >= RATE_LIMIT) {
 		return {
-			limited: true,
-			remaining: 0,
-			resetTime: validTimestamps[0] + WINDOW_MS,
+			limited: false,
+			remaining: Math.max(0, limit - hitCount),
+			resetTime,
+		};
+	} catch (error) {
+		// Fail-open keeps core functionality alive if rate-limit storage has an issue.
+		console.error('Rate limiter fallback (fail-open):', error);
+		return {
+			limited: false,
+			remaining: limit,
+			resetTime: Date.now() + windowMs,
 		};
 	}
-
-	// Add current timestamp
-	validTimestamps.push(now);
-	requestLog.set(ip, validTimestamps);
-
-	return {
-		limited: false,
-		remaining: RATE_LIMIT - validTimestamps.length,
-		resetTime: now + WINDOW_MS,
-	};
 }

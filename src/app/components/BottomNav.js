@@ -31,20 +31,12 @@ export default function BottomNav() {
 				<Link
 					key={item.label}
 					href={item.href}
-					className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''} ${item.isCenter ? 'center-btn' : ''}`}
+					className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
 					aria-label={item.label}
 					aria-current={isActive(item.href) ? 'page' : undefined}
 				>
-					{item.isCenter ? (
-						<span className="center-icon">
-							<Icon name={item.icon} size={28} />
-						</span>
-					) : (
-						<>
-							<Icon name={item.icon} size={24} />
-							<span className="nav-label">{item.label}</span>
-						</>
-					)}
+					<Icon name={item.icon} size={24} />
+					<span className="nav-label">{item.label}</span>
 				</Link>
 			))}
 			<style jsx>{`
@@ -101,62 +93,13 @@ export default function BottomNav() {
 					letter-spacing: 0.2px;
 				}
 
-				.center-btn {
-					position: relative;
-					overflow: visible; /* Ensure shadow isn't clipped */
-				}
-
-				.center-icon {
-					position: absolute;
-					top: -32px; /* Lifted slightly more */
-					left: 50%;
-					transform: translateX(-50%);
-					width: 60px;
-					height: 60px;
-					background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-					border-radius: 50%;
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); /* Enhanced glow */
-					color: white;
-					border: 4px solid var(--bg-primary); /* Cutout effect */
-					z-index: 10;
-					transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-					animation: subtle-pulse 2s infinite ease-in-out;
-				}
-
-				@keyframes subtle-pulse {
-					0% { transform: translateX(-50%) scale(1); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); }
-					50% { transform: translateX(-50%) scale(1.05); box-shadow: 0 12px 24px rgba(99, 102, 241, 0.5); }
-					100% { transform: translateX(-50%) scale(1); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); }
-				}
-
-				.center-btn:active .center-icon {
-					transform: translateX(-50%) scale(0.95);
-					box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-					animation: none;
-				}
-
-				.center-btn .nav-label {
-					margin-top: 34px; /* Adjust for larger icon */
-					font-weight: 600;
-				}
-
-				/* Data saver mode */
-				:global(.data-saver) .center-icon {
-					background: var(--accent-primary);
-					box-shadow: none;
-					animation: none;
-				}
-				
 				:global(.data-saver) .bottom-nav {
 					height: 64px;
 				}
 
 				/* Reduced motion */
 				@media (prefers-reduced-motion: reduce) {
-					.bottom-nav-item, .center-icon {
+					.bottom-nav-item {
 						transition: none;
 					}
 				}

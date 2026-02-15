@@ -52,7 +52,8 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
 - **Low-End (Budget Android)**: 
   - Minimize heavy JS execution.
   - Use `OptimizedSkeleton.js` instead of complex spinners.
-  - Respect the `.data-saver-mode` class on `document.documentElement` to disable heavy animations.
+  - Respect the `.data-saver` class on `document.documentElement` to disable heavy animations.
+  - **Default optimization target**: Assume low-end Android is the baseline device for all new features and refactors.
 
 ### 3. Network Resilience (Slow Internet)
 - Use `useDataSaver()` hook to detect slow connections (`isSlowConnection`).
@@ -60,7 +61,18 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
   - Reduce the default number of questions in `GenerateTestForm.js` if data saver is active.
   - Use `HeavyMarkdownRenderer.js` only when necessary; prioritize the lighter `MarkdownRenderer.js`.
   - Display `OfflineIndicator.js` or `slow-banner` from `MobileOptimizedLayout.js` when connectivity drops.
+  - Avoid unnecessary client fetches and duplicate API calls; prefer cached/local-first UX when safe.
 - **Image Handling**: Always use `loading="lazy"` for non-critical images.
+
+### 4. Output Rendering Fidelity (Generate/Explain APIs)
+- **Always** render the full range of output returned by `/api/generate` and `/api/explain` without breaking low-end performance.
+- Required support includes:
+  - Markdown (lists, emphasis, code blocks)
+  - Math/science notation via KaTeX/MathML (`remark-math` + `rehype-katex`)
+  - Physics/chemistry symbols and unicode characters (Ω, μ, θ, CO₂, H₂SO₄)
+  - Diagrams when present (use a safe renderer and lazy-load heavy diagram libraries)
+- Security rule: do not render unsanitized raw HTML from model output.
+- Performance rule: diagram/math rendering must degrade gracefully in data-saver mode and on slow devices.
 
 
 ## 🛠 Coding Standards for Agents
@@ -108,6 +120,8 @@ Before submitting a change:
 4. [ ] Verify safe areas on iOS (no content hidden behind notches or home indicators).
 5. [ ] If adding an API, check rate limiting in `src/app/api/utils/rateLimiter.js`.
 6. [ ] Ensure Google Adsense (`ADSENSE.md`) or PWA features aren't broken.
+7. [ ] Validate quiz/explanation rendering for markdown + math/symbol-heavy content.
+8. [ ] Validate behavior on low-end Android profile + slow internet (no blocking jank).
 
 ---
 

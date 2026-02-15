@@ -28,7 +28,7 @@ export function generatePrompt({
     1. Response must be ONLY the JSON object - no other text
     2. Use double quotes for all strings
     3. Multiple choice questions must have exactly 4 options
-    4. True/False questions use exactly ["True", "False"] as options
+    4. True/False questions must have exactly 2 options using localized equivalents of true/false
     5. Each answer must match exactly one of the options
     6. Questions must match the specified difficulty level
     7. Do not repeat previous questions
@@ -67,6 +67,7 @@ export function generatePrompt({
 							: testType === 'true-false'
 							? `
           - Create nuanced true/false statements that test deep understanding
+          - Use exactly 2 options with localized true/false wording in the selected language
           - Include some slightly tricky but fair statements
           - Focus on common misconceptions and important concepts
           - For code, present statements about code behavior or best practices`
@@ -80,6 +81,12 @@ export function generatePrompt({
             * Fix security or performance issues
           - Focus on real-world programming scenarios
           - Show expected inputs/outputs for clarity`
+							: testType === 'speed-challenge'
+							? `
+          - Create fast-response multiple-choice questions with exactly 4 options
+          - Keep question stems concise and direct while preserving difficulty
+          - Favor practical recall and quick reasoning over long derivations
+          - Ensure wrong options are plausible but clearly distinguishable`
 							: `
           - Mix different question types for comprehensive assessment
           - Include properly formatted code examples where relevant

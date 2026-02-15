@@ -51,6 +51,7 @@ const GenerateTestForm = () => {
 	const MAX_RETRIES = 3;
 	const { t, language: uiLanguage } = useLanguage();
 	const { isSlowConnection, isOffline, shouldSaveData } = useNetworkStatus();
+	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 	const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -86,120 +87,88 @@ const GenerateTestForm = () => {
 	 * @param {Event} e - Form submit event (optional during retries)
 	 */
 	const handleSubmit = async (e) => {
-		// Only prevent default and reset retry count on initial submission
 		if (e) {
 			e.preventDefault();
-			setRetryCount(0);
 		}
 
 		setLoading(true);
 		setError(null);
+		setRetryCount(0);
 
-		if (!topic) {
+		if (!topic.trim()) {
 			setError('Please provide a description for the test.');
 			setLoading(false);
 			return;
 		}
 
+		setStartTime(Date.now());
+
+		const requestParams = {
+			topic,
+			category: selectedCategory,
+			selectedTopics,
+			testType,
+			numQuestions,
+			difficulty,
+			language,
+		};
+
 		try {
-			// Get previous tests from history
-			setStartTime(Date.now());
+			for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+				if (attempt > 1) {
+					setRetryCount(attempt - 1);
+					setError(`Retrying... (Attempt ${attempt} of ${MAX_RETRIES})`);
+				}
 
-			const requestParams = {
-				topic,
-				category: selectedCategory,
-				selectedTopics,
-				testType,
-				numQuestions,
-				difficulty,
-				language,
-			};
+				try {
+					const response = await fetch('/api/generate', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							...requestParams,
+							previousTests: testHistory.slice(0, 10),
+						}),
+					});
 
-			// Show retry attempt message if this is a retry
-			if (retryCount > 0) {
-				setError(`Retrying... (Attempt ${retryCount} of ${MAX_RETRIES})`);
-			}
+					if (!response.ok) {
+						const errorData = await response.json().catch(() => ({}));
+						if (response.status === 429) {
+							setError(errorData.error || 'Rate limit exceeded');
+							return;
+						}
 
-			const response = await fetch('/api/generate', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					...requestParams,
-					previousTests: testHistory.slice(0, 10),
-				}),
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json();
-
-				if (response.status === 429) {
-					// Rate limit error - don't retry
-					setError(errorData.error || 'Rate limit exceeded');
-					setLoading(false);
-					setRetryCount(0);
-				} else {
-					// Other API errors - attempt retry
-					if (retryCount < MAX_RETRIES - 1) {
-						// Increment retry count
-						const nextRetryCount = retryCount + 1;
-						setRetryCount(nextRetryCount);
-
-						// Wait before retrying
-						setTimeout(() => {
-							handleSubmit(); // No event parameter for retries
-						}, 1500);
+						if (attempt === MAX_RETRIES) {
+							setError(
+								errorData.error ||
+									'Failed to generate test after multiple attempts. Please try again later.',
+							);
+							return;
+						}
 					} else {
-						// Max retries reached
+						const questionPaper = await response.json();
+						questionPaper.requestParams = requestParams;
+						updateHistory(questionPaper);
+						setError(null);
+						router.push('/test?id=' + questionPaper.id);
+						return;
+					}
+				} catch (err) {
+					if (attempt === MAX_RETRIES) {
 						setError(
-							'Failed to generate test after multiple attempts. Please try again later.',
+							`Failed after ${MAX_RETRIES} attempts: ${err.message}. Please try again later.`,
 						);
-						setRetryCount(0);
-						setLoading(false);
+						return;
 					}
 				}
-				return;
-			}
 
-			// Success! Process response
-			const questionPaper = await response.json();
-			questionPaper.requestParams = requestParams;
-			updateHistory(questionPaper);
-
-			// Reset retry count on success
-			setRetryCount(0);
-			setLoading(false);
-
-			// Navigate to test page
-			router.push('/test?id=' + questionPaper.id);
-		} catch (err) {
-			// Handle unexpected errors
-			if (retryCount < MAX_RETRIES - 1) {
-				// Increment retry count
-				const nextRetryCount = retryCount + 1;
-				setRetryCount(nextRetryCount);
-				setError(
-					`Error: ${err.message}. Retrying... (Attempt ${nextRetryCount} of ${MAX_RETRIES})`,
-				);
-
-				// Wait before retrying
-				setTimeout(() => {
-					handleSubmit(); // No event parameter for retries
-				}, 1500);
-			} else {
-				// Max retries reached
-				setError(
-					`Failed after ${MAX_RETRIES} attempts: ${err.message}. Please try again later.`,
-				);
-				setRetryCount(0);
-				setLoading(false);
+				await wait(1500);
 			}
 		} finally {
-			// Only clear timer if we're done (success or max retries reached)
-			if (retryCount === 0) {
-				setStartTime(null);
-			}
+			setLoading(false);
+			setRetryCount(0);
+			setStartTime(null);
 		}
 	};
 

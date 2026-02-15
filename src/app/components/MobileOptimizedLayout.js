@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import TopNav from './TopNav';
 import BottomNav from './BottomNav';
 import PullToRefresh from './PullToRefresh';
@@ -26,7 +25,6 @@ import useNetworkStatus from '../hooks/useNetworkStatus';
 export default function MobileOptimizedLayout({ children, onRefresh }) {
 	const { isOffline, isSlowConnection } = useNetworkStatus();
 	const [toasts, setToasts] = useState([]);
-	const pathname = usePathname();
 
 	// Add toast helper
 	const addToast = (type, message, duration = 5000) => {

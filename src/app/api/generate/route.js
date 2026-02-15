@@ -3,8 +3,12 @@ import { GoogleGenAI } from '@google/genai';
 import { rateLimiter } from '../utils/rateLimiter';
 import { generatePrompt } from '../utils/prompt';
 import * as z from 'zod';
+import { createTestRecord, getClientKey, logApiEvent } from '../utils/storage';
 
 export async function POST(request) {
+	const startedAt = Date.now();
+	const clientKey = getClientKey(request);
+
 	try {
 		const {
 			topic,
@@ -35,8 +39,23 @@ export async function POST(request) {
 
 		// Check rate limit
 
-		const rateLimit = await rateLimiter(request);
+		const rateLimit = await rateLimiter(request, { bucket: '/api/generate' });
 		if (rateLimit.limited) {
+			await logApiEvent({
+				route: '/api/generate',
+				action: 'generate_quiz',
+				clientKey,
+				statusCode: 429,
+				durationMs: Date.now() - startedAt,
+				metadata: {
+					topic: topic || null,
+					testType,
+					numQuestions,
+					difficulty,
+					language,
+				},
+			});
+
 			return NextResponse.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
@@ -55,7 +74,13 @@ export async function POST(request) {
 		}
 
 		// Validate test type
-		const validTestTypes = ['multiple-choice', 'true-false', 'coding', 'mixed'];
+		const validTestTypes = [
+			'multiple-choice',
+			'true-false',
+			'coding',
+			'mixed',
+			'speed-challenge',
+		];
 		if (!validTestTypes.includes(testType)) {
 			return NextResponse.json({ error: 'Invalid test type' }, { status: 400 });
 		}
@@ -173,15 +198,20 @@ export async function POST(request) {
 				}
 
 				// Validate options and answer
-				if (testType === 'multiple-choice' && q.options.length !== 4) {
+				if (
+					(testType === 'multiple-choice' || testType === 'speed-challenge') &&
+					q.options.length !== 4
+				) {
 					throw new Error(`Question ${index + 1} must have exactly 4 options`);
 				}
 
 				if (
 					testType === 'true-false' &&
-					(!q.options.includes('True') || !q.options.includes('False'))
+					(!Array.isArray(q.options) || q.options.length !== 2)
 				) {
-					throw new Error(`Question ${index + 1} must have True/False options`);
+					throw new Error(
+						`Question ${index + 1} must have exactly 2 options for true/false format`,
+					);
 				}
 
 				if (!q.options.includes(q.answer)) {
@@ -197,32 +227,68 @@ export async function POST(request) {
 					`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
 				);
 			}
-			// Store the test in the database
-			const storeResponse = await fetch(
-				`${request.headers.get('origin')}/api/test`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ test: questionPaper }),
+			const storedPaper = {
+				...questionPaper,
+				requestParams: {
+					category: category || null,
+					selectedTopics,
+					testType,
+					numQuestions,
+					difficulty,
+					language,
 				},
-			);
+			};
 
-			if (!storeResponse.ok) {
-				throw new Error('Failed to store test in database');
-			}
+			const testId = await createTestRecord(storedPaper, {
+				topic,
+				testType,
+				numQuestions,
+				difficulty,
+				language,
+			});
 
-			const { id: testId } = await storeResponse.json();
+			await logApiEvent({
+				route: '/api/generate',
+				action: 'generate_quiz',
+				clientKey,
+				statusCode: 200,
+				durationMs: Date.now() - startedAt,
+				metadata: {
+					topic: questionPaper.topic,
+					testType,
+					numQuestions,
+					difficulty,
+					language,
+					questionCount: questionPaper.questions.length,
+					testId,
+				},
+			});
 
 			// Return the question paper with the database ID
 			return NextResponse.json({
-				...questionPaper,
+				...storedPaper,
 				id: testId,
 			});
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
 			console.error('Raw response:', response.text);
+
+			await logApiEvent({
+				route: '/api/generate',
+				action: 'generate_quiz',
+				clientKey,
+				statusCode: 500,
+				durationMs: Date.now() - startedAt,
+				errorMessage: parseError.message,
+				metadata: {
+					topic: topic || null,
+					testType,
+					numQuestions,
+					difficulty,
+					language,
+				},
+			});
+
 			return NextResponse.json(
 				{
 					error: 'Failed to generate valid quiz questions. Please try again.',
@@ -233,6 +299,16 @@ export async function POST(request) {
 		}
 	} catch (error) {
 		console.error(error);
+
+		await logApiEvent({
+			route: '/api/generate',
+			action: 'generate_quiz',
+			clientKey,
+			statusCode: 500,
+			durationMs: Date.now() - startedAt,
+			errorMessage: error.message,
+		});
+
 		return NextResponse.json(
 			{ error: 'An unexpected error occurred' },
 			{ status: 500 },

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Icon from './Icon';
 import DataSaverToggle from './DataSaverToggle';
+import { useDataSaver } from '../context/DataSaverContext';
 
 /**
  * Top Navigation Component
@@ -17,8 +18,17 @@ import DataSaverToggle from './DataSaverToggle';
 export default function TopNav() {
 	const [isScrolled, setIsScrolled] = useState(false);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [isSearchOpen, setIsSearchOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [searchResults, setSearchResults] = useState([]);
+	const [searchLoading, setSearchLoading] = useState(false);
+	const [searchError, setSearchError] = useState('');
 	const menuRef = useRef(null);
+	const searchModalRef = useRef(null);
+	const searchAbortRef = useRef(null);
 	const pathname = usePathname();
+	const router = useRouter();
+	const { isDataSaverActive } = useDataSaver();
 
 	// Handle scroll
 	useEffect(() => {
@@ -48,6 +58,100 @@ export default function TopNav() {
 	useEffect(() => {
 		setIsMenuOpen(false);
 	}, [pathname]);
+
+	const fetchTests = useCallback(
+		async (query = '') => {
+			if (searchAbortRef.current) {
+				searchAbortRef.current.abort();
+			}
+
+			const controller = new AbortController();
+			searchAbortRef.current = controller;
+
+			const trimmed = query.trim();
+			const limit = trimmed
+				? isDataSaverActive
+					? 5
+					: 10
+				: isDataSaverActive
+					? 4
+					: 5;
+
+			try {
+				setSearchLoading(true);
+				setSearchError('');
+
+				const params = new URLSearchParams({
+					limit: String(limit),
+				});
+				if (trimmed) {
+					params.set('q', trimmed);
+				}
+
+				const response = await fetch(`/api/test?${params.toString()}`, {
+					signal: controller.signal,
+				});
+				if (!response.ok) {
+					throw new Error('Failed to fetch tests');
+				}
+
+				const data = await response.json();
+				setSearchResults(Array.isArray(data.tests) ? data.tests : []);
+			} catch (error) {
+				if (error.name !== 'AbortError') {
+					setSearchError('Unable to load tests right now.');
+					setSearchResults([]);
+				}
+			} finally {
+				if (!controller.signal.aborted) {
+					setSearchLoading(false);
+				}
+			}
+		},
+		[isDataSaverActive],
+	);
+
+	useEffect(() => {
+		if (!isSearchOpen) return;
+
+		const delay = searchQuery.trim() ? 250 : 0;
+		const timer = setTimeout(() => {
+			fetchTests(searchQuery);
+		}, delay);
+
+		return () => clearTimeout(timer);
+	}, [isSearchOpen, searchQuery, fetchTests]);
+
+	useEffect(() => {
+		if (!isSearchOpen) return;
+		const onEscape = (event) => {
+			if (event.key === 'Escape') {
+				setIsSearchOpen(false);
+			}
+		};
+		document.addEventListener('keydown', onEscape);
+		return () => document.removeEventListener('keydown', onEscape);
+	}, [isSearchOpen]);
+
+	useEffect(() => {
+		return () => {
+			if (searchAbortRef.current) {
+				searchAbortRef.current.abort();
+			}
+		};
+	}, []);
+
+	const openSearch = () => {
+		setIsSearchOpen(true);
+		setSearchQuery('');
+		setSearchError('');
+	};
+
+	const openTestFromSearch = (id) => {
+		setIsSearchOpen(false);
+		setSearchQuery('');
+		router.push(`/test?id=${id}`);
+	};
 
 	const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -88,6 +192,15 @@ export default function TopNav() {
 				<div className="data-saver-desktop">
 					<DataSaverToggle showLabel={false} />
 				</div>
+
+				<button
+					className="nav-btn"
+					onClick={openSearch}
+					aria-label="Search tests"
+					type="button"
+				>
+					<Icon name="search" size={20} />
+				</button>
 
 				<Link href="/history" className="nav-btn" aria-label="History">
 					<Icon name="history" size={24} />
@@ -146,6 +259,81 @@ export default function TopNav() {
 					onClick={() => setIsMenuOpen(false)}
 					aria-hidden="true"
 				/>
+			)}
+
+			{/* Search Modal */}
+			{isSearchOpen && (
+				<div
+					className="search-backdrop"
+					onClick={() => setIsSearchOpen(false)}
+					aria-hidden="true"
+				>
+					<div
+						className="search-modal"
+						ref={searchModalRef}
+						role="dialog"
+						aria-modal="true"
+						aria-label="Search past tests"
+						onClick={(event) => event.stopPropagation()}
+					>
+						<div className="search-header">
+							<h2>Search Tests</h2>
+							<button
+								className="menu-close"
+								onClick={() => setIsSearchOpen(false)}
+								aria-label="Close search"
+								type="button"
+							>
+								<Icon name="x" size={22} />
+							</button>
+						</div>
+
+						<div className="search-input-wrap">
+							<Icon name="search" className="search-input-icon" size={16} />
+							<input
+								autoFocus
+								type="text"
+								className="search-input"
+								placeholder="Search by topic..."
+								value={searchQuery}
+								onChange={(event) => setSearchQuery(event.target.value)}
+							/>
+						</div>
+
+						<div className="search-subtitle">
+							{searchQuery.trim() ? 'Matching tests' : 'Recent tests'}
+						</div>
+
+						<div className="results-list">
+							{searchLoading ? (
+								<div className="results-state">Loading...</div>
+							) : searchError ? (
+								<div className="results-state">{searchError}</div>
+							) : searchResults.length === 0 ? (
+								<div className="results-state">No tests found.</div>
+							) : (
+								searchResults.map((test) => (
+									<button
+										key={test.id}
+										type="button"
+										className="result-item"
+										onClick={() => openTestFromSearch(test.id)}
+									>
+										<div className="result-title">
+											{test.topic || `Test #${test.id}`}
+										</div>
+										<div className="result-meta">
+											<span>#{test.id}</span>
+											<span>
+												{new Date(test.created_at).toLocaleDateString()}
+											</span>
+										</div>
+									</button>
+								))
+							)}
+						</div>
+					</div>
+				</div>
 			)}
 
 			<style jsx>{`
@@ -391,6 +579,142 @@ export default function TopNav() {
 				:global(.data-saver) .menu-backdrop {
 					animation: none;
 					backdrop-filter: none;
+				}
+
+				.search-backdrop {
+					position: fixed;
+					inset: 0;
+					z-index: 1200;
+					background: rgba(0, 0, 0, 0.4);
+					backdrop-filter: blur(3px);
+					display: flex;
+					align-items: flex-start;
+					justify-content: center;
+					padding: calc(56px + 12px) 12px 12px;
+				}
+
+				.search-modal {
+					width: 100%;
+					max-width: 560px;
+					max-height: min(72vh, 520px);
+					background: var(--bg-primary);
+					border: 1px solid var(--border-color);
+					border-radius: var(--radius-lg);
+					box-shadow: var(--shadow-lg);
+					display: flex;
+					flex-direction: column;
+					overflow: hidden;
+				}
+
+				.search-header {
+					padding: 12px 12px 8px;
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					border-bottom: 1px solid var(--border-color);
+				}
+
+				.search-header h2 {
+					margin: 0;
+					font-size: 1rem;
+					font-weight: 700;
+					color: var(--text-primary);
+				}
+
+				.search-input-wrap {
+					margin: 12px;
+					position: relative;
+				}
+
+				.search-input-icon {
+					position: absolute;
+					top: 50%;
+					left: 12px;
+					transform: translateY(-50%);
+					color: var(--text-muted);
+				}
+
+				.search-input {
+					width: 100%;
+					border: 1px solid var(--border-color);
+					border-radius: var(--radius-md);
+					background: var(--bg-secondary);
+					color: var(--text-primary);
+					padding: 10px 12px 10px 34px;
+					font-size: 0.95rem;
+					outline: none;
+				}
+
+				.search-input:focus {
+					border-color: var(--accent-primary);
+				}
+
+				.search-subtitle {
+					padding: 0 12px 8px;
+					color: var(--text-muted);
+					font-size: 0.8rem;
+					font-weight: 600;
+					text-transform: uppercase;
+					letter-spacing: 0.04em;
+				}
+
+				.results-list {
+					padding: 0 8px 8px;
+					overflow-y: auto;
+					max-height: min(56vh, 420px);
+					-ms-overflow-style: none;
+					scrollbar-width: none;
+				}
+
+				.results-list::-webkit-scrollbar {
+					display: none;
+				}
+
+				.result-item {
+					width: 100%;
+					text-align: left;
+					border: 1px solid transparent;
+					background: transparent;
+					padding: 10px;
+					border-radius: var(--radius-md);
+					cursor: pointer;
+				}
+
+				.result-item:active,
+				.result-item:hover {
+					background: var(--bg-secondary);
+					border-color: var(--border-color);
+				}
+
+				.result-title {
+					color: var(--text-primary);
+					font-size: 0.92rem;
+					font-weight: 600;
+					line-height: 1.3;
+				}
+
+				.result-meta {
+					margin-top: 4px;
+					display: flex;
+					gap: 10px;
+					color: var(--text-muted);
+					font-size: 0.78rem;
+				}
+
+				.results-state {
+					padding: 14px 10px;
+					color: var(--text-muted);
+					font-size: 0.88rem;
+				}
+
+				@media (max-width: 767px) {
+					.search-backdrop {
+						padding: calc(56px + 8px) 8px 8px;
+					}
+
+					.search-modal {
+						max-height: min(75vh, 560px);
+					}
 				}
 			`}</style>
 		</header>

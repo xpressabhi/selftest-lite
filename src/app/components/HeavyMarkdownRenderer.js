@@ -5,16 +5,17 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import './markdown-styles.css';
 
 // We'll lazy-load the syntax highlighter only if a fenced code block with a
 // language is encountered. This prevents bundling the heavy library on
 // initial loads for users who don't need it.
-function useLazySyntaxHighlighter() {
+function useLazySyntaxHighlighter(enabled) {
 	const [Highlighter, setHighlighter] = useState(null);
 
 	useEffect(() => {
+		if (!enabled) return;
+
 		let mounted = true;
 		const maybeLoad = async () => {
 			try {
@@ -30,7 +31,7 @@ function useLazySyntaxHighlighter() {
 		return () => {
 			mounted = false;
 		};
-	}, []);
+	}, [enabled]);
 
 	return Highlighter;
 }
@@ -58,36 +59,91 @@ function normalizeMarkdown(input) {
 	return out;
 }
 
+function MermaidBlock({ chart }) {
+	const [svg, setSvg] = useState('');
+
+	useEffect(() => {
+		let mounted = true;
+
+		const renderMermaid = async () => {
+			if (typeof document === 'undefined') return;
+			if (document.documentElement.classList.contains('data-saver')) return;
+
+			try {
+				const mermaidModule = await import('mermaid');
+				const mermaid = mermaidModule.default;
+				mermaid.initialize({
+					startOnLoad: false,
+					securityLevel: 'strict',
+					theme: 'default',
+				});
+
+				const id = `mmd-${Math.random().toString(36).slice(2)}`;
+				const result = await mermaid.render(id, chart);
+				if (mounted) {
+					setSvg(result.svg);
+				}
+			} catch (_error) {
+				// Fallback to plain code block on parse/runtime errors.
+			}
+		};
+
+		renderMermaid();
+
+		return () => {
+			mounted = false;
+		};
+	}, [chart]);
+
+	if (svg) {
+		return (
+			<div
+				className='mermaid-diagram'
+				aria-label='Rendered diagram'
+				dangerouslySetInnerHTML={{ __html: svg }}
+			/>
+		);
+	}
+
+	return (
+		<pre style={{ whiteSpace: 'pre-wrap' }}>
+			<code className='language-mermaid'>{chart}</code>
+		</pre>
+	);
+}
+
 const HeavyMarkdownRenderer = ({ children }) => {
 	const normalized = useMemo(() => normalizeMarkdown(children), [children]);
-	const Highlighter = useLazySyntaxHighlighter();
-
-	// If the incoming markdown already contains KaTeX-generated HTML, skip
-	// running rehype-katex to avoid producing duplicate KaTeX output.
-	const containsKaTeXHtml = /<span\s+class=("|')katex\1/.test(normalized);
+	const hasLanguageCodeFence = useMemo(
+		() => /```[\t ]*[a-zA-Z][\w-]*/.test(normalized),
+		[normalized],
+	);
+	const Highlighter = useLazySyntaxHighlighter(hasLanguageCodeFence);
 	const katexPlugin = [rehypeKatex, { output: 'mathml' }];
-	const rehypePlugins = containsKaTeXHtml
-		? [rehypeRaw]
-		: [katexPlugin, rehypeRaw];
 
 	return (
 		<div className={`markdown-content`}>
 			<ReactMarkdown
 				remarkPlugins={[remarkMath, remarkGfm]}
-				rehypePlugins={rehypePlugins}
-				skipHtml={false}
+				rehypePlugins={[katexPlugin]}
+				skipHtml={true}
 				components={{
-					code({ node, inline, className, children, ...props }) {
+					code({ inline, className, children, ...props }) {
 						const match = /language-(\w+)/.exec(className || '');
 						const codeString = React.Children.toArray(children).join('');
+						const language = match?.[1]?.toLowerCase();
+
+						if (!inline && language === 'mermaid') {
+							return <MermaidBlock chart={codeString} />;
+						}
 
 						// If we have the highlighter loaded and it's a block with a language,
 						// render the highlighter. Otherwise fallback to a lightweight pre/code.
-						if (!inline && match && Highlighter) {
+						if (!inline && language && Highlighter) {
 							const SyntaxHighlighter = Highlighter.Prism || Highlighter;
 							return (
 								<SyntaxHighlighter
-									language={match[1]}
+									language={language}
 									PreTag='div'
 									wrapLongLines={true}
 									{...props}

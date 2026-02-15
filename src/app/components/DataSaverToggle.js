@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Icon from './Icon';
-import useNetworkStatus from '../hooks/useNetworkStatus';
+import { useDataSaver } from '../context/DataSaverContext';
 
 /**
  * Data Saver Toggle Component
@@ -16,41 +15,23 @@ import useNetworkStatus from '../hooks/useNetworkStatus';
  * @param {string} props.variant - 'button' | 'switch' | 'banner'
  */
 export default function DataSaverToggle({ showLabel = true, variant = 'button' }) {
-	const [isEnabled, setIsEnabled] = useState(false);
-	const [isAutoEnabled, setIsAutoEnabled] = useState(false);
-	const { isSlowConnection, isOffline } = useNetworkStatus();
-
-	useEffect(() => {
-		// Check saved preference
-		const saved = localStorage.getItem('dataSaverMode');
-		if (saved !== null) {
-			const enabled = saved === 'true';
-			setIsEnabled(enabled);
-			document.documentElement.classList.toggle('data-saver', enabled);
-		} else {
-			// Auto-enable on slow connections
-			if (isSlowConnection) {
-				setIsAutoEnabled(true);
-				setIsEnabled(true);
-				document.documentElement.classList.add('data-saver');
-			}
-		}
-	}, [isSlowConnection]);
+	const {
+		isDataSaverActive: isEnabled,
+		isAutoMode,
+		isSlowConnection,
+		toggleDataSaver,
+	} = useDataSaver();
 
 	const toggle = () => {
-		const newState = !isEnabled;
-		setIsEnabled(newState);
-		setIsAutoEnabled(false);
-		localStorage.setItem('dataSaverMode', newState.toString());
-		document.documentElement.classList.toggle('data-saver', newState);
+		toggleDataSaver();
 	};
 
-	if (variant === 'banner' && (isEnabled || isSlowConnection)) {
+	if (variant === 'banner' && isEnabled) {
 		return (
 			<div className="data-saver-banner" role="alert">
 				<Icon name="wifiOff" size={16} />
 				<span>
-					{isAutoEnabled
+					{isAutoMode && isSlowConnection
 						? 'Data saver mode enabled automatically (slow connection)'
 							: 'Data saver mode enabled'}
 				</span>

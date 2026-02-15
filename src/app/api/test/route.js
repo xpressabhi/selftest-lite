@@ -1,36 +1,32 @@
 import { NextResponse } from 'next/server';
-import { Pool } from '@neondatabase/serverless';
-
-// Initialize database pool
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+import {
+	createTestRecord,
+	getTestRecordById,
+	listTestRecords,
+} from '../utils/storage';
 
 export async function GET(request) {
 	try {
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get('id');
+		const search = searchParams.get('q') || '';
+		const limit = searchParams.get('limit') || '10';
 
 		if (!id) {
-			return NextResponse.json(
-				{ error: 'ID parameter is required' },
-				{ status: 400 },
-			);
+			const tests = await listTestRecords({
+				search,
+				limit: Number(limit),
+			});
+
+			return NextResponse.json({ tests });
 		}
 
-		const client = await pool.connect();
-		try {
-			// Query the database for the test with the given ID
-			const result = await client.query('SELECT * FROM ai_test WHERE id = $1', [
-				id,
-			]);
-
-			if (result.rows.length === 0) {
-				return NextResponse.json({ error: 'Test not found' }, { status: 404 });
-			}
-
-			return NextResponse.json(result.rows[0]);
-		} finally {
-			client.release();
+		const testRecord = await getTestRecordById(id);
+		if (!testRecord) {
+			return NextResponse.json({ error: 'Test not found' }, { status: 404 });
 		}
+
+		return NextResponse.json(testRecord);
 	} catch (error) {
 		console.error('Database error:', error);
 		return NextResponse.json(
@@ -42,7 +38,7 @@ export async function GET(request) {
 
 export async function POST(request) {
 	try {
-		const { test } = await request.json();
+		const { test, requestParams = {} } = await request.json();
 
 		if (!test) {
 			return NextResponse.json(
@@ -51,22 +47,12 @@ export async function POST(request) {
 			);
 		}
 
-		const client = await pool.connect();
-		try {
-			// Insert the test into the database
-			const result = await client.query(
-				'INSERT INTO ai_test (test) VALUES ($1) RETURNING id',
-				[JSON.stringify(test)],
-			);
+		const testId = await createTestRecord(test, requestParams);
 
-			// Return the newly created test ID
-			return NextResponse.json({
-				message: 'Test created successfully',
-				id: result.rows[0].id,
-			});
-		} finally {
-			client.release();
-		}
+		return NextResponse.json({
+			message: 'Test created successfully',
+			id: testId,
+		});
 	} catch (error) {
 		console.error('Database error:', error);
 		return NextResponse.json(

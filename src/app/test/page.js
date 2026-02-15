@@ -43,6 +43,7 @@ function TestContent() {
 	const [fadeState, setFadeState] = useState('fade-in'); // 'fade-in' or 'fade-out'
 	const router = useRouter();
 	const timeoutRef = useRef(null);
+	const questionFormRef = useRef(null);
 	const touchStartXRef = useRef(null);
 	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -56,6 +57,19 @@ function TestContent() {
 
 	const [timeLeft, setTimeLeft] = useState(null); // For speed challenge
 	const [isSubmitted, setIsSubmitted] = useState(false);
+
+	const scrollToQuestionTop = () => {
+		if (!questionFormRef.current || typeof window === 'undefined') return;
+		const stickyHeaderOffset = 84;
+		const targetTop =
+			questionFormRef.current.getBoundingClientRect().top +
+			window.scrollY -
+			stickyHeaderOffset;
+		window.scrollTo({
+			top: Math.max(0, targetTop),
+			behavior: 'smooth',
+		});
+	};
 
 	useEffect(() => {
 		if (testId) {
@@ -173,6 +187,7 @@ function TestContent() {
 			timeoutRef.current = setTimeout(() => {
 				setCurrentQuestionIndex((prev) => prev + 1);
 				setFadeState('fade-in');
+				scrollToQuestionTop();
 			}, 300);
 		}
 	};
@@ -345,7 +360,13 @@ function TestContent() {
 				</Container>
 			</div>
 
-			<Container className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2 pb-5 mb-5'>
+			<Container
+				className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'
+				style={{
+					paddingBottom:
+						'calc(var(--bottom-nav-height) + 120px + env(safe-area-inset-bottom, 0px))',
+				}}
+			>
 				<div className='w-100 mb-4' style={{ maxWidth: 720 }}>
 					<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center justify-content-center'>
 						<Icon name='bookOpen' className='text-primary' />
@@ -359,6 +380,7 @@ function TestContent() {
 					onSubmit={handleSubmit}
 					className='w-100 position-relative'
 					style={{ maxWidth: 720 }}
+					ref={questionFormRef}
 				>
 					{/* Desktop Navigation Buttons */}
 					<div
@@ -509,7 +531,14 @@ function TestContent() {
 				</div>
 
 				{/* Mobile Sticky Footer Navigation */}
-				<div className='d-md-none fixed-bottom bg-white border-top shadow-lg p-3 d-flex gap-2 align-items-center justify-content-between' style={{ zIndex: 1030 }}>
+				<div
+					className='d-md-none fixed-bottom bg-white border-top shadow-lg p-3 d-flex gap-2 align-items-center justify-content-between'
+					style={{
+						zIndex: 1030,
+						bottom:
+							'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px)',
+					}}
+				>
 					<Button
 						variant='light'
 						className='rounded-circle d-flex align-items-center justify-content-center border'

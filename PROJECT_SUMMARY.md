@@ -168,23 +168,45 @@ src/app/api/
 
 ## Database Schema
 
-Tests are stored in Neon PostgreSQL with the following structure:
+Primary storage uses Neon PostgreSQL with three operational tables:
 
 ```sql
 CREATE TABLE ai_test (
-  id SERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   test JSONB NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
+  topic TEXT,
+  test_type TEXT,
+  difficulty TEXT,
+  language TEXT,
+  num_questions INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE api_rate_limit_events (
+  id BIGSERIAL PRIMARY KEY,
+  client_key TEXT NOT NULL,
+  route TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE api_request_events (
+  id BIGSERIAL PRIMARY KEY,
+  route TEXT NOT NULL,
+  action TEXT,
+  client_key TEXT,
+  status_code INTEGER,
+  duration_ms INTEGER,
+  error_message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
-The `test` JSONB column contains:
-- `topic`: Test topic name
-- `questions[]`: Array of question objects
-  - `question`: Question text (markdown supported)
-  - `options[]`: Answer choices
-  - `answer`: Correct answer
-  - `explanation`: Optional AI explanation
+Notes:
+- `ai_test.test` keeps full generated quiz payload (topic/questions/options/answer/explanation).
+- `ai_test` metadata columns make filtering and analytics cheaper than JSON scans.
+- `api_rate_limit_events` powers DB-backed sliding-window rate limiting across instances.
+- `api_request_events` stores API latency/error telemetry for production debugging.
 
 ---
 

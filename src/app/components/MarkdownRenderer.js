@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the heavy renderer
@@ -32,12 +32,6 @@ function needsMarkdown(text) {
 }
 
 const MarkdownRenderer = ({ children }) => {
-	const [isClient, setIsClient] = useState(false);
-
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
-
 	// If children is not a string (e.g. array or object), treat it as complex
 	// and use the heavy renderer to be safe, or join it if it's an array of strings.
 	let textContent = '';
