@@ -34,6 +34,13 @@ export default function TopNav() {
 		closeSearch,
 	} = useTestSearch({ isDataSaverActive });
 
+	const triggerHaptic = () => {
+		if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
+			return;
+		}
+		navigator.vibrate(8);
+	};
+
 	// Handle scroll
 	useEffect(() => {
 		const handleScroll = () => {
@@ -77,6 +84,7 @@ export default function TopNav() {
 	const openTestFromSearch = (id) => {
 		closeSearch();
 		setSearchQuery('');
+		triggerHaptic();
 		router.push(`/test?id=${id}`);
 	};
 
@@ -114,62 +122,77 @@ export default function TopNav() {
 			</nav>
 
 			{/* Right Actions */}
-			<div className="nav-actions">
-				{/* Data Saver Toggle (mobile) */}
-				<div className="data-saver-desktop">
-					<DataSaverToggle showLabel={false} />
-				</div>
+				<div className="nav-actions">
+					{/* Data Saver Toggle (mobile) */}
+					<div className="data-saver-desktop">
+						<DataSaverToggle showLabel={false} />
+					</div>
 
-				<button
-					className="nav-btn"
-					onClick={openSearch}
-					aria-label="Search tests"
-					type="button"
-				>
-					<Icon name="search" size={20} />
-				</button>
+					<button
+						className="nav-btn"
+						onClick={() => {
+							triggerHaptic();
+							openSearch();
+						}}
+						aria-label="Search tests"
+						type="button"
+					>
+						<Icon name="search" size={20} />
+					</button>
 
-				<Link href="/history" className="nav-btn" aria-label="History">
-					<Icon name="history" size={24} />
-				</Link>
+					<Link
+						href="/history"
+						className="nav-btn"
+						aria-label="History"
+						onClick={triggerHaptic}
+					>
+						<Icon name="history" size={24} />
+					</Link>
 
-				{/* Menu Button (mobile) */}
-				<button
-					className="nav-btn d-md-none"
-					onClick={toggleMenu}
-					aria-expanded={isMenuOpen}
-					aria-label="Toggle menu"
-					type="button"
+					{/* Menu Button (mobile) */}
+					<button
+						className="nav-btn d-md-none"
+						onClick={() => {
+							triggerHaptic();
+							toggleMenu();
+						}}
+						aria-expanded={isMenuOpen}
+						aria-label="Toggle menu"
+						type="button"
 				>
 					<Icon name={isMenuOpen ? 'x' : 'list'} size={24} />
 				</button>
 			</div>
 
 			{/* Mobile Menu Dropdown */}
-			{isMenuOpen && (
-				<div className="mobile-menu" ref={menuRef} role="dialog" aria-label="Navigation menu">
-					<div className="menu-header">
-						<span className="menu-title">Menu</span>
-						<button
-							className="menu-close"
-							onClick={() => setIsMenuOpen(false)}
-							aria-label="Close menu"
-							type="button"
-						>
-							<Icon name="x" size={24} />
-						</button>
-					</div>
-
-					<nav className="mobile-nav" aria-label="Mobile navigation">
-						{navLinks.map((link) => (
-							<Link
-								key={link.href}
-								href={link.href}
-								className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
+				{isMenuOpen && (
+					<div className="mobile-menu" ref={menuRef} role="dialog" aria-label="Navigation menu">
+						<div className="menu-header">
+							<span className="menu-title">Menu</span>
+							<button
+								className="menu-close"
+								onClick={() => {
+									triggerHaptic();
+									setIsMenuOpen(false);
+								}}
+								aria-label="Close menu"
+								type="button"
 							>
-								<Icon name={link.icon} size={20} />
-								<span>{link.label}</span>
-							</Link>
+								<Icon name="x" size={24} />
+							</button>
+						</div>
+
+						<nav className="mobile-nav" aria-label="Mobile navigation">
+							{navLinks.map((link) => (
+								<Link
+									key={link.href}
+									href={link.href}
+									className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
+									onClick={triggerHaptic}
+								>
+									<Icon name={link.icon} size={20} />
+									<span>{link.label}</span>
+								</Link>
 						))}
 					</nav>
 
@@ -179,14 +202,17 @@ export default function TopNav() {
 				</div>
 			)}
 
-			{/* Backdrop */}
-			{isMenuOpen && (
-				<div
-					className="menu-backdrop"
-					onClick={() => setIsMenuOpen(false)}
-					aria-hidden="true"
-				/>
-			)}
+				{/* Backdrop */}
+				{isMenuOpen && (
+					<div
+						className="menu-backdrop"
+						onClick={() => {
+							triggerHaptic();
+							setIsMenuOpen(false);
+						}}
+						aria-hidden="true"
+					/>
+				)}
 
 			{/* Search Modal */}
 			{isSearchOpen && (
@@ -204,12 +230,15 @@ export default function TopNav() {
 					>
 						<div className="search-header">
 							<h2>Search Tests</h2>
-							<button
-								className="menu-close"
-								onClick={closeSearch}
-								aria-label="Close search"
-								type="button"
-							>
+								<button
+									className="menu-close"
+									onClick={() => {
+										triggerHaptic();
+										closeSearch();
+									}}
+									aria-label="Close search"
+									type="button"
+								>
 								<Icon name="x" size={22} />
 							</button>
 						</div>
@@ -263,21 +292,21 @@ export default function TopNav() {
 			)}
 
 			<style jsx>{`
-				.top-nav {
-					position: fixed;
-					top: 0;
-					left: 0;
-					right: 0;
-					height: 56px;
-					background: var(--bg-primary);
-					border-bottom: 1px solid var(--border-color);
-					display: flex;
-					align-items: center;
-					justify-content: space-between;
-					padding: 0 16px;
-					z-index: 1000;
-					transition: box-shadow 0.2s ease;
-				}
+					.top-nav {
+						position: fixed;
+						top: 0;
+						left: 0;
+						right: 0;
+						height: var(--navbar-height);
+						background: var(--bg-primary);
+						border-bottom: 1px solid var(--border-color);
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						padding: var(--safe-top) 16px 0;
+						z-index: 1000;
+						transition: box-shadow 0.2s ease;
+					}
 
 				.top-nav.scrolled {
 					box-shadow: var(--shadow-md);
@@ -398,13 +427,13 @@ export default function TopNav() {
 					}
 				}
 
-				.menu-header {
-					display: flex;
-					align-items: center;
-					justify-content: space-between;
-					padding: 20px 24px;
-					border-bottom: 1px solid var(--border-color);
-				}
+					.menu-header {
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						padding: calc(20px + var(--safe-top)) 24px 20px;
+						border-bottom: 1px solid var(--border-color);
+					}
 
 				.menu-title {
 					font-size: 1.25rem;
@@ -507,17 +536,17 @@ export default function TopNav() {
 					backdrop-filter: none;
 				}
 
-				.search-backdrop {
-					position: fixed;
-					inset: 0;
+					.search-backdrop {
+						position: fixed;
+						inset: 0;
 					z-index: 1200;
 					background: rgba(0, 0, 0, 0.4);
 					backdrop-filter: blur(3px);
-					display: flex;
-					align-items: flex-start;
-					justify-content: center;
-					padding: calc(56px + 12px) 12px 12px;
-				}
+						display: flex;
+						align-items: flex-start;
+						justify-content: center;
+						padding: calc(var(--navbar-height) + 12px) 12px 12px;
+					}
 
 				.search-modal {
 					width: 100%;
@@ -633,10 +662,10 @@ export default function TopNav() {
 					font-size: 0.88rem;
 				}
 
-				@media (max-width: 767px) {
-					.search-backdrop {
-						padding: calc(56px + 8px) 8px 8px;
-					}
+					@media (max-width: 767px) {
+						.search-backdrop {
+							padding: calc(var(--navbar-height) + 8px) 8px 8px;
+						}
 
 					.search-modal {
 						max-height: min(75vh, 560px);

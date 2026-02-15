@@ -1,9 +1,11 @@
 {
 	"name": "Selftest.in - AI Quiz Generator",
 	"short_name": "Selftest",
+	"id": "/",
 	"description": "Generate and take AI-powered quizzes on any topic. Works offline with previously loaded quizzes.",
-	"start_url": "/",
+	"start_url": "/?source=pwa",
 	"display": "standalone",
+	"display_override": ["standalone", "minimal-ui", "browser"],
 	"orientation": "portrait-primary",
 	"background_color": "#f8f9fa",
 	"theme_color": "#6366f1",
@@ -35,6 +37,13 @@
 			"short_name": "New Quiz",
 			"description": "Generate a new AI-powered quiz",
 			"url": "/",
+			"icons": [{ "src": "/icons/192.png", "sizes": "192x192" }]
+		},
+		{
+			"name": "Test History",
+			"short_name": "History",
+			"description": "Open previously attempted tests",
+			"url": "/history",
 			"icons": [{ "src": "/icons/192.png", "sizes": "192x192" }]
 		}
 	],

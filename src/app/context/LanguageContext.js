@@ -3,6 +3,26 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const LanguageContext = createContext();
+const LANGUAGE_KEY = 'selftest_language';
+const SUPPORTED_LANGUAGES = ['english', 'hindi'];
+
+const getSystemLanguage = () => {
+	if (typeof navigator === 'undefined') return 'english';
+	const locales = navigator.languages && navigator.languages.length > 0
+		? navigator.languages
+		: [navigator.language || 'en'];
+	const locale = locales[0]?.toLowerCase() || 'en';
+	return locale.startsWith('hi') ? 'hindi' : 'english';
+};
+
+const getInitialLanguage = () => {
+	if (typeof window === 'undefined') return 'english';
+	const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
+	if (SUPPORTED_LANGUAGES.includes(savedLanguage)) {
+		return savedLanguage;
+	}
+	return getSystemLanguage();
+};
 
 const translations = {
     english: {
@@ -112,23 +132,33 @@ const translations = {
 };
 
 export function LanguageProvider({ children }) {
-    const [language, setLanguage] = useState('english');
+	const [language, setLanguage] = useState(getInitialLanguage);
 
-    const t = (key) => {
-        return translations[language][key] || key;
-    };
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		localStorage.setItem(LANGUAGE_KEY, language);
+	}, [language]);
 
-    const toggleLanguage = () => {
-        setLanguage((prev) => (prev === 'english' ? 'hindi' : 'english'));
-    };
+	useEffect(() => {
+		if (typeof document === 'undefined') return;
+		document.documentElement.setAttribute('lang', language === 'hindi' ? 'hi' : 'en');
+	}, [language]);
 
-    return (
-        <LanguageContext.Provider value={{ language, setLanguage, t, toggleLanguage }}>
-            {children}
-        </LanguageContext.Provider>
-    );
+	const t = (key) => {
+		return translations[language][key] || key;
+	};
+
+	const toggleLanguage = () => {
+		setLanguage((prev) => (prev === 'english' ? 'hindi' : 'english'));
+	};
+
+	return (
+		<LanguageContext.Provider value={{ language, setLanguage, t, toggleLanguage }}>
+			{children}
+		</LanguageContext.Provider>
+	);
 }
 
 export function useLanguage() {
-    return useContext(LanguageContext);
+	return useContext(LanguageContext);
 }

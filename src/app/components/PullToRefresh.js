@@ -143,10 +143,10 @@ export default function PullToRefresh({
                     touch-action: pan-y;
                 }
 
-                .pull-indicator {
-                    position: fixed;
-                    top: 56px;
-                    left: 50%;
+	                .pull-indicator {
+	                    position: fixed;
+	                    top: var(--navbar-height);
+	                    left: 50%;
                     transform: translateX(-50%) translateY(-100%);
                     padding: 12px 20px;
                     background: var(--bg-primary);

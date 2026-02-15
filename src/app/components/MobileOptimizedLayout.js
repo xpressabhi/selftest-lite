@@ -25,6 +25,7 @@ import useNetworkStatus from '../hooks/useNetworkStatus';
 export default function MobileOptimizedLayout({ children, onRefresh }) {
 	const { isOffline, isSlowConnection } = useNetworkStatus();
 	const [toasts, setToasts] = useState([]);
+	const [isStandalone, setIsStandalone] = useState(false);
 
 	// Add toast helper
 	const addToast = (type, message, duration = 5000) => {
@@ -44,6 +45,44 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 		}
 	}, [isOffline]);
 
+	useEffect(() => {
+		if (typeof window === 'undefined') return undefined;
+		const root = document.documentElement;
+		const ua = (navigator.userAgent || '').toLowerCase();
+		const isAndroid = ua.includes('android');
+		const isIos = /iphone|ipad|ipod/.test(ua);
+
+		root.classList.toggle('device-android', isAndroid);
+		root.classList.toggle('device-ios', isIos);
+
+		const displayModeQuery = window.matchMedia('(display-mode: standalone)');
+		const updateStandaloneState = () => {
+			const nextStandalone =
+				displayModeQuery.matches || window.navigator.standalone === true;
+			setIsStandalone(nextStandalone);
+			root.classList.toggle('app-standalone', nextStandalone);
+		};
+
+		updateStandaloneState();
+		if (displayModeQuery.addEventListener) {
+			displayModeQuery.addEventListener('change', updateStandaloneState);
+		} else {
+			displayModeQuery.addListener(updateStandaloneState);
+		}
+		window.addEventListener('appinstalled', updateStandaloneState);
+		document.addEventListener('visibilitychange', updateStandaloneState);
+
+		return () => {
+			if (displayModeQuery.removeEventListener) {
+				displayModeQuery.removeEventListener('change', updateStandaloneState);
+			} else {
+				displayModeQuery.removeListener(updateStandaloneState);
+			}
+			window.removeEventListener('appinstalled', updateStandaloneState);
+			document.removeEventListener('visibilitychange', updateStandaloneState);
+		};
+	}, []);
+
 	// Handle pull-to-refresh
 	const handleRefresh = async () => {
 		if (onRefresh) {
@@ -55,7 +94,7 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 	};
 
 	return (
-		<div className="app-layout">
+		<div className={`app-layout ${isStandalone ? 'standalone' : ''}`}>
 			{/* Skip link for accessibility */}
 			<a href="#main-content" className="skip-link">
 				Skip to main content
@@ -140,47 +179,48 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 					top: 0;
 				}
 
-				/* Main content area */
-				.main-content {
-					flex: 1;
-					padding: 16px;
-					padding-top: calc(56px + 16px);
-					padding-bottom: calc(64px + 16px);
-					max-width: 100%;
-					outline: none;
-				}
-
-				@media (min-width: 768px) {
+					/* Main content area */
 					.main-content {
-						padding: 24px;
-						padding-top: calc(56px + 24px);
-						padding-bottom: 24px;
+						flex: 1;
+						padding: 16px;
+						padding-top: calc(var(--navbar-height) + 16px);
+						padding-bottom: calc(64px + 16px);
+						max-width: 100%;
+						outline: none;
+						-webkit-overflow-scrolling: touch;
 					}
-				}
 
-				@media (min-width: 1024px) {
-					.main-content {
-						padding: 32px;
-						padding-top: calc(56px + 32px);
-						max-width: 900px;
-						margin: 0 auto;
+					@media (min-width: 768px) {
+						.main-content {
+							padding: 24px;
+							padding-top: calc(var(--navbar-height) + 24px);
+							padding-bottom: 24px;
+						}
 					}
-				}
+
+					@media (min-width: 1024px) {
+						.main-content {
+							padding: 32px;
+							padding-top: calc(var(--navbar-height) + 32px);
+							max-width: 900px;
+							margin: 0 auto;
+						}
+					}
 
 				/* Content wrapper for pull-to-refresh */
 				.content-wrapper {
 					min-height: 100%;
 				}
 
-				/* Offline banner */
-				.offline-banner {
-					position: fixed;
-					top: 56px;
-					left: 0;
-					right: 0;
-					padding: 8px 16px;
-					background: var(--accent-warning);
-					color: #1a1a2e;
+					/* Offline banner */
+					.offline-banner {
+						position: fixed;
+						top: var(--navbar-height);
+						left: 0;
+						right: 0;
+						padding: 8px 16px;
+						background: var(--accent-warning);
+						color: #1a1a2e;
 					display: flex;
 					align-items: center;
 					justify-content: center;
@@ -201,14 +241,14 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 				}
 
 				/* Slow connection banner */
-				.slow-banner {
-					position: fixed;
-					top: 56px;
-					left: 0;
-					right: 0;
-					padding: 8px 16px;
-					background: var(--bg-tertiary);
-					color: var(--text-primary);
+					.slow-banner {
+						position: fixed;
+						top: var(--navbar-height);
+						left: 0;
+						right: 0;
+						padding: 8px 16px;
+						background: var(--bg-tertiary);
+						color: var(--text-primary);
 					display: flex;
 					align-items: center;
 					justify-content: center;
@@ -230,12 +270,16 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 					}
 				}
 
-				/* Data saver mode */
-				:global(.data-saver) .offline-banner,
-				:global(.data-saver) .slow-banner {
-					animation: none;
-				}
-			`}</style>
-		</div>
-	);
+					/* Data saver mode */
+					:global(.data-saver) .offline-banner,
+					:global(.data-saver) .slow-banner {
+						animation: none;
+					}
+
+					.app-layout.standalone {
+						background: var(--bg-secondary);
+					}
+				`}</style>
+			</div>
+		);
 }

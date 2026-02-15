@@ -64,9 +64,7 @@ const GenerateTestForm = () => {
 
 	// Sync test language with UI language
 	useEffect(() => {
-		if (uiLanguage === 'hindi') {
-			setLanguage('hindi');
-		}
+		setLanguage(uiLanguage);
 	}, [uiLanguage]);
 
 	/**

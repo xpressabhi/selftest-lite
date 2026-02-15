@@ -24,33 +24,40 @@ export default function BottomNav() {
 	const pathname = usePathname();
 
 	const isActive = (href) => pathname === href;
+	const triggerHaptic = () => {
+		if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
+			return;
+		}
+		navigator.vibrate(8);
+	};
 
 	return (
 		<nav className="bottom-nav d-xl-none" aria-label="Main navigation">
-			{navItems.map((item) => (
-				<Link
-					key={item.label}
-					href={item.href}
-					className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
-					aria-label={item.label}
-					aria-current={isActive(item.href) ? 'page' : undefined}
-				>
-					<Icon name={item.icon} size={24} />
-					<span className="nav-label">{item.label}</span>
-				</Link>
-			))}
-			<style jsx>{`
-				.bottom-nav {
-					position: fixed;
-					bottom: 0;
-					left: 0;
-					right: 0;
-					min-height: 72px; /* Minimum height for touch */
-					padding-top: 12px;
-					padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); /* Safe area + breathing room */
-					background: var(--bg-primary);
-					border-top: 1px solid var(--border-color);
-					display: flex;
+				{navItems.map((item) => (
+					<Link
+						key={item.label}
+						href={item.href}
+						className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
+						aria-label={item.label}
+						aria-current={isActive(item.href) ? 'page' : undefined}
+						onClick={triggerHaptic}
+					>
+						<Icon name={item.icon} size={24} />
+						<span className="nav-label">{item.label}</span>
+					</Link>
+				))}
+				<style jsx>{`
+					.bottom-nav {
+						position: fixed;
+						bottom: 0;
+						left: 0;
+						right: 0;
+						min-height: var(--bottom-nav-height);
+						padding-top: 12px;
+						padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); /* Safe area + breathing room */
+						background: var(--bg-primary);
+						border-top: 1px solid var(--border-color);
+						display: flex;
 					justify-content: space-around;
 					align-items: flex-start; /* Align items to top to avoid variable stretching */
 					z-index: 1000;

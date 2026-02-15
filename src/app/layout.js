@@ -8,6 +8,7 @@ import { DataSaverProvider } from './context/DataSaverContext';
 
 export const metadata = {
 	title: 'selftest.in',
+	applicationName: 'selftest.in',
 	description:
 		'A web application that allows you to generate and take multiple-choice quizzes on any topic you can imagine.',
 	keywords: [
@@ -39,17 +40,19 @@ export default function RootLayout({ children }) {
 				<link rel='icon' href='/icons/192.png' />
 				<link rel='apple-touch-icon' href='/icons/192.png' />
 
-				{/* Viewport and mobile settings */}
-				<meta
-					name='viewport'
-					content='width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes'
-				/>
-				<meta name='theme-color' content='#6366f1' media='(prefers-color-scheme: light)' />
-				<meta name='theme-color' content='#0f0f1a' media='(prefers-color-scheme: dark)' />
-				<meta name='apple-mobile-web-app-capable' content='yes' />
-				<meta name='apple-mobile-web-app-status-bar-style' content='default' />
-				<meta name='mobile-web-app-capable' content='yes' />
-				<meta name='format-detection' content='telephone=no' />
+					{/* Viewport and mobile settings */}
+					<meta
+						name='viewport'
+						content='width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content, maximum-scale=5, user-scalable=yes'
+					/>
+					<meta name='theme-color' content='#6366f1' media='(prefers-color-scheme: light)' />
+					<meta name='theme-color' content='#0f0f1a' media='(prefers-color-scheme: dark)' />
+					<meta name='color-scheme' content='light dark' />
+					<meta name='apple-mobile-web-app-capable' content='yes' />
+					<meta name='apple-mobile-web-app-title' content='selftest.in' />
+					<meta name='apple-mobile-web-app-status-bar-style' content='default' />
+					<meta name='mobile-web-app-capable' content='yes' />
+					<meta name='format-detection' content='telephone=no' />
 
 				{/* SEO metadata */}
 				<meta name='keywords' content={metadata.keywords.join(', ')} />
