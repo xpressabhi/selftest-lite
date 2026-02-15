@@ -23,6 +23,7 @@ const MarkdownRenderer = dynamic(
 
 import Share from '../components/Share';
 import Print from '../components/Print';
+import QuestionNavigatorModal from './components/QuestionNavigatorModal';
 import { Container, Button, Spinner, Alert, Card, ProgressBar, Modal } from 'react-bootstrap';
 
 function TestContent() {
@@ -48,8 +49,13 @@ function TestContent() {
 	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
 	const [showNavigatorModal, setShowNavigatorModal] = useState(false);
+	const [showMoreModal, setShowMoreModal] = useState(false);
+	const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 	const [elapsedTime, setElapsedTime] = useState(0); // in seconds
 	const timerRef = useRef(null);
+	const lastScrollYRef = useRef(0);
+	const headerVisibleRef = useRef(true);
+	const scrollRafRef = useRef(null);
 	const { t } = useLanguage();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
 
@@ -125,6 +131,67 @@ function TestContent() {
 			document.title = prev;
 		};
 	}, [questionPaper?.topic]);
+
+	// Mobile-only: hide header while scrolling down, show while scrolling up.
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+
+		const mobileBreakpoint = 768;
+		const threshold = 10;
+		const topRevealOffset = 120;
+
+		const setHeaderVisibility = (nextVisible) => {
+			if (headerVisibleRef.current === nextVisible) return;
+			headerVisibleRef.current = nextVisible;
+			setIsHeaderVisible(nextVisible);
+		};
+
+		const evaluateHeaderVisibility = () => {
+			const currentY = window.scrollY;
+			if (window.innerWidth >= mobileBreakpoint) {
+				setHeaderVisibility(true);
+				lastScrollYRef.current = currentY;
+				scrollRafRef.current = null;
+				return;
+			}
+
+			const delta = currentY - lastScrollYRef.current;
+			if (currentY <= topRevealOffset) {
+				setHeaderVisibility(true);
+			} else if (delta > threshold) {
+				setHeaderVisibility(false);
+			} else if (delta < -threshold) {
+				setHeaderVisibility(true);
+			}
+
+			lastScrollYRef.current = currentY;
+			scrollRafRef.current = null;
+		};
+
+		const onScroll = () => {
+			if (scrollRafRef.current !== null) return;
+			scrollRafRef.current = window.requestAnimationFrame(evaluateHeaderVisibility);
+		};
+
+		const onResize = () => {
+			if (window.innerWidth >= mobileBreakpoint) {
+				setHeaderVisibility(true);
+			}
+		};
+
+		lastScrollYRef.current = window.scrollY;
+		evaluateHeaderVisibility();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onResize);
+		return () => {
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onResize);
+			if (scrollRafRef.current !== null) {
+				window.cancelAnimationFrame(scrollRafRef.current);
+				scrollRafRef.current = null;
+			}
+		};
+	}, []);
 
 	// Timer logic (Elapsed time & Speed Challenge Countdown)
 	useEffect(() => {
@@ -317,23 +384,25 @@ function TestContent() {
 	const remainingCount = totalCount - answeredCount;
 	const isCurrentAnswered = answers[index] !== undefined;
 
-	return (
+		return (
 		<div className='d-flex flex-column min-vh-100 pb-5'>
 			{/* Sticky Header with Progress Bar */}
-			<div className='sticky-top bg-white bg-opacity-90 backdrop-blur border-bottom shadow-sm py-2 px-3 mb-4' style={{ zIndex: 1020 }}>
-				<Container style={{ maxWidth: 720 }}>
-					<div className='d-flex justify-content-between align-items-center mb-1'>
-						<small className='text-muted fw-semibold'>
+			<div
+				className={`sticky-top bg-white bg-opacity-90 border-bottom shadow-sm mb-2 compact-test-header ${
+					isHeaderVisible ? 'header-visible' : 'header-hidden'
+				}`}
+				style={{ zIndex: 1020 }}
+			>
+				<Container style={{ maxWidth: 720 }} className='compact-test-header-inner py-1 px-0'>
+					<div className='d-flex justify-content-between align-items-center mobile-header-row'>
+						<small className='text-muted fw-semibold d-flex align-items-center gap-2'>
 							{t('question')} {index + 1} {t('of')} {questionPaper.questions.length}
+							<span className='opacity-50 mobile-progress-sep'>•</span>
+							<span className='mobile-progress-pct'>{Math.round(progress)}%</span>
 						</small>
-						<small className='text-muted fw-semibold'>
-							{Math.round(progress)}%
-						</small>
-					</div>
-					<div className='d-flex justify-content-center align-items-center mb-2 gap-3'>
 						{timeLeft !== null ? (
 							<div
-								className={`rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm ${timeLeft <= 10 ? 'bg-danger text-white' : 'bg-light text-dark'}`}
+								className={`rounded-pill px-2 py-1 d-flex align-items-center gap-2 border shadow-sm ${timeLeft <= 10 ? 'bg-danger text-white' : 'bg-light text-dark'}`}
 								style={{
 									transition: 'all 0.3s ease',
 									animation: timeLeft <= 10 ? 'pulse 1s infinite' : 'none'
@@ -343,7 +412,7 @@ function TestContent() {
 								<span className='fw-bold font-monospace small'>
 									{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
 								</span>
-								<span className='small opacity-75'>left</span>
+								<span className='small opacity-75 timer-label'>left</span>
 							</div>
 						) : (
 							<div className='bg-light rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm'>
@@ -354,39 +423,45 @@ function TestContent() {
 							</div>
 						)}
 
-						{/* Sound Toggle */}
-						<div className='d-flex align-items-center'>
+						<div className='d-none d-md-flex align-items-center gap-2'>
 							<SoundToggle variant="light" size="sm" className="rounded-circle border-0 text-muted" />
+							<Button
+								variant='outline-secondary'
+								size='sm'
+								className='rounded-pill d-flex align-items-center gap-2'
+								onClick={() => setShowNavigatorModal(true)}
+							>
+								<Icon name='list' size={14} />
+								Jump
+							</Button>
 						</div>
+						<Button
+							variant='outline-secondary'
+							size='sm'
+							className='rounded-pill d-md-none p-1 d-flex align-items-center justify-content-center mobile-more-btn'
+							style={{ width: '32px', height: '32px' }}
+							onClick={() => setShowMoreModal(true)}
+						>
+							<Icon name='list' size={14} />
+						</Button>
 					</div>
 					<ProgressBar
 						now={progress}
 						variant={timeLeft !== null && timeLeft <= 10 ? 'danger' : 'primary'}
-						style={{ height: '6px', borderRadius: '10px', transition: 'all 0.3s ease' }}
+						style={{ height: '4px', borderRadius: '10px', transition: 'all 0.3s ease' }}
 						className='bg-secondary bg-opacity-10'
 					/>
-					<div className='d-flex justify-content-end mt-2'>
-						<Button
-							variant='outline-secondary'
-							size='sm'
-							className='rounded-pill d-flex align-items-center gap-2'
-							onClick={() => setShowNavigatorModal(true)}
-						>
-							<Icon name='list' size={14} />
-							Jump to question
-						</Button>
-					</div>
 				</Container>
 			</div>
 
 			<Container
-				className='d-flex flex-column flex-grow-1 justify-content-center align-items-center px-2'
+				className='d-flex flex-column flex-grow-1 justify-content-start justify-content-md-center align-items-center px-2'
 				style={{
 					paddingBottom:
-						'calc(var(--bottom-nav-height) + 120px + env(safe-area-inset-bottom, 0px))',
+						'calc(var(--bottom-nav-height) + 96px + env(safe-area-inset-bottom, 0px))',
 				}}
 			>
-				<div className='w-100 mb-4' style={{ maxWidth: 720 }}>
+				<div className='w-100 mb-3 d-none d-md-block' style={{ maxWidth: 720 }}>
 					<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center justify-content-center'>
 						<Icon name='bookOpen' className='text-primary' />
 						<span className='fw-bold text-dark fs-4'>
@@ -449,27 +524,19 @@ function TestContent() {
 						</Button>
 					</div>
 
-					<div
-						key={index}
-						className={`fade-slide ${fadeState} w-100`}
+						<div
+							key={index}
+							className={`fade-slide ${fadeState} w-100 question-stage`}
 						onTouchStart={onTouchStart}
 						onTouchEnd={onTouchEnd}
-						style={{
-							marginBottom: '2rem',
-							minHeight: '350px',
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							justifyContent: 'center',
-						}}
 					>
 						{/* Question Card */}
 						<Card
-							className={`w-100 border-0 glass-card mb-4 shadow-sm position-relative question-card ${
+							className={`w-100 border-0 glass-card mb-3 shadow-sm position-relative question-card ${
 								isQuestionFocused ? 'question-card-focus' : ''
 							}`}
 						>
-							<Card.Body className='p-4 p-md-5 text-center'>
+							<Card.Body className='p-3 p-md-5 text-center'>
 								<Button
 									variant='link'
 									className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
@@ -479,19 +546,19 @@ function TestContent() {
 								>
 									<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={28} />
 								</Button>
-								<div className='fs-4 fw-medium text-dark pt-3'>
+								<div className='fw-medium text-dark pt-2 question-text'>
 									<MarkdownRenderer>{q.question}</MarkdownRenderer>
 								</div>
 							</Card.Body>
 						</Card>
 
 						{/* Options */}
-						<div className='w-100 d-flex flex-column gap-3'>
+						<div className='w-100 d-flex flex-column gap-2'>
 							{q.options.map((option, i) => (
 								<div
 									key={i}
 									className={`
-										d-flex align-items-center p-3 rounded-3 cursor-pointer transition-all option-tile
+										d-flex align-items-center p-2 p-md-3 rounded-3 cursor-pointer transition-all option-tile
 										${answers[index] === option
 											? 'bg-primary bg-opacity-10 border border-primary option-active'
 											: 'bg-white border border-light shadow-sm'
@@ -507,14 +574,14 @@ function TestContent() {
 										handleAnswerChange(index, option)
 									}
 								>
-									<div className='me-3 d-flex align-items-center text-primary'>
+									<div className='me-2 me-md-3 d-flex align-items-center text-primary'>
 										{answers[index] === option ? (
 											<Icon name='checkCircle' size={24} />
 										) : (
 											<Icon name='circle' size={24} className='text-muted opacity-50' />
 										)}
 									</div>
-									<div className='flex-grow-1 fs-5 text-dark'>
+									<div className='flex-grow-1 text-dark option-text'>
 										<MarkdownRenderer>{option}</MarkdownRenderer>
 									</div>
 								</div>
@@ -531,7 +598,7 @@ function TestContent() {
 								: 'All questions answered!'}
 						</small>
 					</div>
-					<div className='d-flex justify-content-center gap-2 mb-4'>
+					<div className='d-none d-md-flex justify-content-center gap-2 mb-4'>
 						<Button
 							type='button'
 							variant='outline-secondary'
@@ -570,7 +637,7 @@ function TestContent() {
 					</Button>
 				</form>
 
-				<div className='d-flex gap-3 mt-5'>
+				<div className='d-none d-md-flex gap-3 mt-4'>
 					<FloatingButtonWithCopy data={testId} label='Test Id' />
 					<Share paper={questionPaper} />
 					<Print questionPaper={questionPaper} />
@@ -578,7 +645,7 @@ function TestContent() {
 
 				{/* Mobile Sticky Footer Navigation */}
 				<div
-					className='d-md-none fixed-bottom border-top shadow-lg p-3 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
+					className='d-md-none fixed-bottom border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
 					style={{
 						zIndex: 1030,
 						bottom:
@@ -601,7 +668,7 @@ function TestContent() {
 						style={{
 							background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
 							border: 'none',
-							height: '48px'
+							height: '44px'
 						}}
 						onClick={handleSubmit}
 					>
@@ -612,7 +679,7 @@ function TestContent() {
 					<Button
 						variant={isCurrentAnswered ? 'success' : 'outline-primary'}
 						className='rounded-pill d-flex align-items-center justify-content-center border px-3'
-						style={{ height: '48px', minWidth: '84px' }}
+						style={{ height: '44px', minWidth: '74px' }}
 						onClick={handleNextClick}
 						disabled={
 							currentQuestionIndex === questionPaper.questions.length - 1 ||
@@ -622,6 +689,35 @@ function TestContent() {
 						{isCurrentAnswered ? 'Next' : 'Skip'}
 					</Button>
 				</div>
+
+				<Modal show={showMoreModal} onHide={() => setShowMoreModal(false)} centered>
+					<Modal.Header closeButton>
+						<Modal.Title>More actions</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<div className='d-flex flex-column gap-2'>
+							<Button
+								variant='outline-secondary'
+								className='rounded-pill d-flex align-items-center justify-content-center gap-2'
+								onClick={() => {
+									setShowMoreModal(false);
+									setShowNavigatorModal(true);
+								}}
+							>
+								<Icon name='list' size={14} />
+								Jump to question
+							</Button>
+							<div className='d-flex justify-content-center'>
+								<SoundToggle variant="light" size="sm" className="rounded-pill border px-3 py-2 text-muted" />
+							</div>
+							<div className='mobile-tools-actions'>
+								<FloatingButtonWithCopy data={testId} label='Test Id' />
+								<Share paper={questionPaper} />
+								<Print questionPaper={questionPaper} />
+							</div>
+						</div>
+					</Modal.Body>
+				</Modal>
 
 				<Modal
 					show={showSubmitModal}
@@ -672,42 +768,17 @@ function TestContent() {
 					</Modal.Footer>
 				</Modal>
 
-				<Modal
+				<QuestionNavigatorModal
 					show={showNavigatorModal}
 					onHide={() => setShowNavigatorModal(false)}
-					centered
-				>
-					<Modal.Header closeButton>
-						<Modal.Title>Jump to question</Modal.Title>
-					</Modal.Header>
-					<Modal.Body>
-						<div className='navigator-grid'>
-							{questionPaper.questions.map((_, qIndex) => {
-								const isCurrent = qIndex === currentQuestionIndex;
-								const isAnswered = answers[qIndex] !== undefined;
-								return (
-									<Button
-										key={qIndex}
-										variant={
-											isCurrent
-												? 'primary'
-												: isAnswered
-												? 'outline-success'
-												: 'outline-secondary'
-										}
-										className='rounded-pill navigator-btn'
-										onClick={() => {
-											setShowNavigatorModal(false);
-											navigateToQuestion(qIndex);
-										}}
-									>
-										{qIndex + 1}
-									</Button>
-								);
-							})}
-						</div>
-					</Modal.Body>
-				</Modal>
+					questionsCount={questionPaper.questions.length}
+					currentQuestionIndex={currentQuestionIndex}
+					answers={answers}
+					onJump={(qIndex) => {
+						setShowNavigatorModal(false);
+						navigateToQuestion(qIndex);
+					}}
+				/>
 
 				<style jsx>{`
 					.question-card {
@@ -747,14 +818,54 @@ function TestContent() {
 						margin: 0 8px;
 					}
 
-					.navigator-grid {
+					.mobile-tools-actions {
+						margin-top: 6px;
 						display: grid;
-						grid-template-columns: repeat(5, minmax(0, 1fr));
+						grid-template-columns: 1fr;
 						gap: 8px;
 					}
 
-					.navigator-btn {
-						min-width: 0;
+					.compact-test-header {
+						backdrop-filter: blur(8px);
+						transition: box-shadow 0.2s ease, border-color 0.2s ease;
+					}
+
+					.compact-test-header-inner {
+						overflow: hidden;
+						max-height: 120px;
+						opacity: 1;
+						transform: translateY(0);
+						transition: max-height 0.22s ease, opacity 0.18s ease,
+							transform 0.22s ease;
+					}
+
+					.compact-test-header.header-hidden {
+						box-shadow: none !important;
+						border-bottom-color: transparent !important;
+					}
+
+					.compact-test-header.header-hidden .compact-test-header-inner {
+						max-height: 0;
+						opacity: 0;
+						transform: translateY(-8px);
+					}
+
+					.question-stage {
+						margin-bottom: 1rem;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: flex-start;
+					}
+
+					.question-text {
+						font-size: 1.1rem;
+						line-height: 1.35;
+					}
+
+					.option-text {
+						font-size: 1rem;
+						line-height: 1.35;
 					}
 
 					:global(.data-saver) .question-card,
@@ -764,18 +875,78 @@ function TestContent() {
 						backdrop-filter: none;
 					}
 
+					:global(.data-saver) .compact-test-header,
+					:global(.data-saver) .compact-test-header-inner {
+						transition: none !important;
+					}
+
 					@media (prefers-reduced-motion: reduce) {
 						.question-card,
 						.option-tile {
 							transition: none !important;
 						}
-					}
 
-					@media (max-width: 480px) {
-						.navigator-grid {
-							grid-template-columns: repeat(4, minmax(0, 1fr));
+						.compact-test-header,
+						.compact-test-header-inner {
+							transition: none !important;
 						}
 					}
+
+					@media (max-width: 576px) {
+						.compact-test-header {
+							padding-top: 0.35rem !important;
+							padding-bottom: 0.35rem !important;
+						}
+
+						.mobile-header-row {
+							gap: 6px;
+						}
+
+						.mobile-progress-sep,
+						.mobile-progress-pct,
+						.timer-label {
+							display: none;
+						}
+
+						.mobile-more-btn {
+							min-width: 30px;
+							width: 30px !important;
+							height: 30px !important;
+						}
+
+						.question-text {
+							font-size: 1.02rem;
+						}
+
+						.option-text {
+							font-size: 0.95rem;
+						}
+
+						.option-tile {
+							min-height: 52px;
+							padding-top: 0.55rem !important;
+							padding-bottom: 0.55rem !important;
+						}
+					}
+
+					@media (min-width: 768px) {
+						.compact-test-header .compact-test-header-inner {
+							max-height: none !important;
+							opacity: 1 !important;
+							transform: none !important;
+						}
+
+						.question-stage {
+							min-height: 350px;
+							justify-content: center;
+							margin-bottom: 2rem;
+						}
+
+						.question-text {
+							font-size: 1.35rem;
+						}
+					}
+
 				`}</style>
 			</Container>
 		</div>

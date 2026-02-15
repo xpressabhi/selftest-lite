@@ -4,6 +4,11 @@ import { rateLimiter } from '../utils/rateLimiter';
 import { generatePrompt } from '../utils/prompt';
 import * as z from 'zod';
 import { createTestRecord, getClientKey, logApiEvent } from '../utils/storage';
+import { paperSchema } from '../utils/quizSchema';
+import {
+	validateGenerateRequest,
+	validateGeneratedPaper,
+} from '../utils/quizValidation';
 
 export async function POST(request) {
 	const startedAt = Date.now();
@@ -21,20 +26,16 @@ export async function POST(request) {
 			language = 'english',
 		} = await request.json();
 
-		if (!topic && selectedTopics.length === 0) {
-			return NextResponse.json(
-				{ error: 'Topic or selected topics are required' },
-				{ status: 400 },
-			);
-		}
-
-		// Validate language
-		const validLanguages = ['english', 'hindi', 'spanish'];
-		if (!validLanguages.includes(language.toLowerCase())) {
-			return NextResponse.json(
-				{ error: 'Invalid language selection' },
-				{ status: 400 },
-			);
+		const validationError = validateGenerateRequest({
+			topic,
+			selectedTopics,
+			language,
+			testType,
+			numQuestions,
+			difficulty,
+		});
+		if (validationError) {
+			return NextResponse.json({ error: validationError }, { status: 400 });
 		}
 
 		// Check rate limit
@@ -70,40 +71,6 @@ export async function POST(request) {
 						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
 					},
 				},
-			);
-		}
-
-		// Validate test type
-		const validTestTypes = [
-			'multiple-choice',
-			'true-false',
-			'coding',
-			'mixed',
-			'speed-challenge',
-		];
-		if (!validTestTypes.includes(testType)) {
-			return NextResponse.json({ error: 'Invalid test type' }, { status: 400 });
-		}
-
-		// Validate number of questions
-		if (numQuestions < 1 || numQuestions > 30) {
-			return NextResponse.json(
-				{ error: 'Number of questions must be between 1 and 30' },
-				{ status: 400 },
-			);
-		}
-
-		// Validate difficulty
-		const validDifficulties = [
-			'beginner',
-			'intermediate',
-			'advanced',
-			'expert',
-		];
-		if (!validDifficulties.includes(difficulty)) {
-			return NextResponse.json(
-				{ error: 'Invalid difficulty level' },
-				{ status: 400 },
 			);
 		}
 
@@ -146,28 +113,6 @@ export async function POST(request) {
 			language,
 		});
 
-		const questionSchema = z.object({
-			question: z.string().describe('The question text with formatting'),
-			options: z
-				.array(z.string())
-				.describe('The answer options for the question'),
-			answer: z
-				.string()
-				.describe(
-					'The correct answer to the question, Must match exactly one of the options',
-				),
-			explanation: z
-				.string()
-				.describe('The explanation for the answer in details with examples if needed.'),
-		});
-
-		const paperSchema = z.object({
-			topic: z.string().describe('The topic of the test'),
-			questions: z
-				.array(questionSchema)
-				.describe('An array of questions in the test'),
-		});
-
 		const response = await ai.models.generateContent({
 			model: 'gemini-3-flash-preview',
 			contents: prompt,
@@ -186,47 +131,7 @@ export async function POST(request) {
 			const cleanedText = response.text.trim();
 			questionPaper = JSON.parse(cleanedText);
 
-			// Validate the structure
-			if (!questionPaper.topic || !Array.isArray(questionPaper.questions)) {
-				throw new Error('Invalid response structure');
-			}
-
-			// Validate each question
-			questionPaper.questions.forEach((q, index) => {
-				if (!q.question || !Array.isArray(q.options) || !q.answer) {
-					throw new Error(`Invalid question structure at index ${index}`);
-				}
-
-				// Validate options and answer
-				if (
-					(testType === 'multiple-choice' || testType === 'speed-challenge') &&
-					q.options.length !== 4
-				) {
-					throw new Error(`Question ${index + 1} must have exactly 4 options`);
-				}
-
-				if (
-					testType === 'true-false' &&
-					(!Array.isArray(q.options) || q.options.length !== 2)
-				) {
-					throw new Error(
-						`Question ${index + 1} must have exactly 2 options for true/false format`,
-					);
-				}
-
-				if (!q.options.includes(q.answer)) {
-					throw new Error(
-						`Question ${index + 1} answer must match one of the options`,
-					);
-				}
-			});
-
-			// Validate number of questions
-			if (questionPaper.questions.length !== numQuestions) {
-				throw new Error(
-					`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
-				);
-			}
+			validateGeneratedPaper({ questionPaper, testType, numQuestions });
 			const storedPaper = {
 				...questionPaper,
 				requestParams: {

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from './Icon';
 import DataSaverToggle from './DataSaverToggle';
 import { useDataSaver } from '../context/DataSaverContext';
+import useTestSearch from '../hooks/useTestSearch';
 
 /**
  * Top Navigation Component
@@ -18,17 +19,20 @@ import { useDataSaver } from '../context/DataSaverContext';
 export default function TopNav() {
 	const [isScrolled, setIsScrolled] = useState(false);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const [isSearchOpen, setIsSearchOpen] = useState(false);
-	const [searchQuery, setSearchQuery] = useState('');
-	const [searchResults, setSearchResults] = useState([]);
-	const [searchLoading, setSearchLoading] = useState(false);
-	const [searchError, setSearchError] = useState('');
 	const menuRef = useRef(null);
-	const searchModalRef = useRef(null);
-	const searchAbortRef = useRef(null);
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isDataSaverActive } = useDataSaver();
+	const {
+		isSearchOpen,
+		searchQuery,
+		searchResults,
+		searchLoading,
+		searchError,
+		setSearchQuery,
+		openSearch,
+		closeSearch,
+	} = useTestSearch({ isDataSaverActive });
 
 	// Handle scroll
 	useEffect(() => {
@@ -59,96 +63,19 @@ export default function TopNav() {
 		setIsMenuOpen(false);
 	}, [pathname]);
 
-	const fetchTests = useCallback(
-		async (query = '') => {
-			if (searchAbortRef.current) {
-				searchAbortRef.current.abort();
-			}
-
-			const controller = new AbortController();
-			searchAbortRef.current = controller;
-
-			const trimmed = query.trim();
-			const limit = trimmed
-				? isDataSaverActive
-					? 5
-					: 10
-				: isDataSaverActive
-					? 4
-					: 5;
-
-			try {
-				setSearchLoading(true);
-				setSearchError('');
-
-				const params = new URLSearchParams({
-					limit: String(limit),
-				});
-				if (trimmed) {
-					params.set('q', trimmed);
-				}
-
-				const response = await fetch(`/api/test?${params.toString()}`, {
-					signal: controller.signal,
-				});
-				if (!response.ok) {
-					throw new Error('Failed to fetch tests');
-				}
-
-				const data = await response.json();
-				setSearchResults(Array.isArray(data.tests) ? data.tests : []);
-			} catch (error) {
-				if (error.name !== 'AbortError') {
-					setSearchError('Unable to load tests right now.');
-					setSearchResults([]);
-				}
-			} finally {
-				if (!controller.signal.aborted) {
-					setSearchLoading(false);
-				}
-			}
-		},
-		[isDataSaverActive],
-	);
-
-	useEffect(() => {
-		if (!isSearchOpen) return;
-
-		const delay = searchQuery.trim() ? 250 : 0;
-		const timer = setTimeout(() => {
-			fetchTests(searchQuery);
-		}, delay);
-
-		return () => clearTimeout(timer);
-	}, [isSearchOpen, searchQuery, fetchTests]);
-
 	useEffect(() => {
 		if (!isSearchOpen) return;
 		const onEscape = (event) => {
 			if (event.key === 'Escape') {
-				setIsSearchOpen(false);
+				closeSearch();
 			}
 		};
 		document.addEventListener('keydown', onEscape);
 		return () => document.removeEventListener('keydown', onEscape);
-	}, [isSearchOpen]);
-
-	useEffect(() => {
-		return () => {
-			if (searchAbortRef.current) {
-				searchAbortRef.current.abort();
-			}
-		};
-	}, []);
-
-	const openSearch = () => {
-		setIsSearchOpen(true);
-		setSearchQuery('');
-		setSearchError('');
-	};
+	}, [isSearchOpen, closeSearch]);
 
 	const openTestFromSearch = (id) => {
-		setIsSearchOpen(false);
+		closeSearch();
 		setSearchQuery('');
 		router.push(`/test?id=${id}`);
 	};
@@ -265,12 +192,11 @@ export default function TopNav() {
 			{isSearchOpen && (
 				<div
 					className="search-backdrop"
-					onClick={() => setIsSearchOpen(false)}
+					onClick={closeSearch}
 					aria-hidden="true"
 				>
 					<div
 						className="search-modal"
-						ref={searchModalRef}
 						role="dialog"
 						aria-modal="true"
 						aria-label="Search past tests"
@@ -280,7 +206,7 @@ export default function TopNav() {
 							<h2>Search Tests</h2>
 							<button
 								className="menu-close"
-								onClick={() => setIsSearchOpen(false)}
+								onClick={closeSearch}
 								aria-label="Close search"
 								type="button"
 							>

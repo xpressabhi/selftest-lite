@@ -71,6 +71,11 @@ function ResultsContent() {
 		}
 	}, [id, testHistory]);
 
+	useEffect(() => {
+		if (!questionPaper || questionPaper.userAnswers) return;
+		router.replace('/test?id=' + questionPaper.id);
+	}, [questionPaper, router]);
+
 	// Trigger celebration effects, streak recording, and achievement checking
 	useEffect(() => {
 		if (questionPaper && questionPaper.userAnswers && !celebrationTriggered) {
@@ -249,7 +254,6 @@ function ResultsContent() {
 	}
 
 	if (!questionPaper.userAnswers) {
-		router.push('/test?id=' + questionPaper.id);
 		return <Loading />;
 	}
 
