@@ -5,14 +5,6 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { DataSaverProvider } from './context/DataSaverContext';
-import { Outfit } from 'next/font/google';
-
-const outfit = Outfit({
-	subsets: ['latin'],
-	display: 'swap',
-	variable: '--font-outfit',
-	weight: ['300', '400', '500', '600', '700']
-});
 
 export const metadata = {
 	title: 'selftest.in',
@@ -30,7 +22,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
 	return (
-		<html lang='en' suppressHydrationWarning className={outfit.variable}>
+		<html lang='en' suppressHydrationWarning>
 			<head>
 				{/* Preconnect to external domains for faster loading */}
 				<link rel='preconnect' href='https://cdn.jsdelivr.net' />
