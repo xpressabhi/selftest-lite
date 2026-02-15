@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Icon from './Icon';
@@ -22,6 +23,7 @@ const navItems = [
 
 export default function BottomNav() {
 	const pathname = usePathname();
+	const navRef = useRef(null);
 
 	const isActive = (href) => pathname === href;
 	const triggerHaptic = () => {
@@ -31,8 +33,62 @@ export default function BottomNav() {
 		navigator.vibrate(8);
 	};
 
+	useEffect(() => {
+		if (typeof window === 'undefined') return undefined;
+		const root = document.documentElement;
+		const desktopQuery = window.matchMedia('(min-width: 1024px)');
+
+		const updateNavHeight = () => {
+			if (!navRef.current) return;
+			if (desktopQuery.matches) {
+				root.style.setProperty('--bottom-nav-height', '0px');
+				return;
+			}
+			const measuredHeight = Math.round(
+				navRef.current.getBoundingClientRect().height,
+			);
+			if (measuredHeight > 0) {
+				root.style.setProperty('--bottom-nav-height', `${measuredHeight}px`);
+			}
+		};
+
+		updateNavHeight();
+		window.addEventListener('resize', updateNavHeight);
+		window.addEventListener('orientationchange', updateNavHeight);
+		if (desktopQuery.addEventListener) {
+			desktopQuery.addEventListener('change', updateNavHeight);
+		} else {
+			desktopQuery.addListener(updateNavHeight);
+		}
+		if (document.fonts?.ready) {
+			document.fonts.ready
+				.then(() => requestAnimationFrame(updateNavHeight))
+				.catch(() => {});
+		}
+
+		let resizeObserver;
+		if (typeof ResizeObserver !== 'undefined' && navRef.current) {
+			resizeObserver = new ResizeObserver(updateNavHeight);
+			resizeObserver.observe(navRef.current);
+		}
+
+		return () => {
+			window.removeEventListener('resize', updateNavHeight);
+			window.removeEventListener('orientationchange', updateNavHeight);
+			if (desktopQuery.removeEventListener) {
+				desktopQuery.removeEventListener('change', updateNavHeight);
+			} else {
+				desktopQuery.removeListener(updateNavHeight);
+			}
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+			root.style.removeProperty('--bottom-nav-height');
+		};
+	}, []);
+
 	return (
-		<nav className="bottom-nav d-xl-none" aria-label="Main navigation">
+		<nav ref={navRef} className="bottom-nav d-xl-none" aria-label="Main navigation">
 			{navItems.map((item) => (
 				<Link
 					key={item.label}
@@ -49,11 +105,14 @@ export default function BottomNav() {
 			<style jsx>{`
 				.bottom-nav {
 					position: fixed;
-					bottom: 0;
+					bottom: var(--bottom-nav-keyboard-offset);
 					left: 0;
 					right: 0;
-					height: var(--bottom-nav-height);
-					padding: 8px 8px max(8px, env(safe-area-inset-bottom, 0px));
+					min-height: var(--bottom-nav-base-height);
+					padding-top: 8px;
+					padding-right: max(8px, var(--safe-right));
+					padding-bottom: calc(8px + var(--bottom-nav-safe-padding));
+					padding-left: max(8px, var(--safe-left));
 					background: var(--bg-primary);
 					border-top: 1px solid var(--border-color);
 					display: flex;
@@ -75,7 +134,7 @@ export default function BottomNav() {
 					color: var(--text-muted);
 					text-decoration: none;
 					font-size: 11px;
-					min-width: 60px;
+					min-width: 56px;
 					min-height: 44px;
 					transition: all 0.2s ease;
 					position: relative;

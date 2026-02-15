@@ -20,6 +20,7 @@ export default function TopNav() {
 	const [isScrolled, setIsScrolled] = useState(false);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const menuRef = useRef(null);
+	const navRef = useRef(null);
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isDataSaverActive } = useDataSaver();
@@ -81,6 +82,45 @@ export default function TopNav() {
 		return () => document.removeEventListener('keydown', onEscape);
 	}, [isSearchOpen, closeSearch]);
 
+	useEffect(() => {
+		if (typeof window === 'undefined') return undefined;
+		const root = document.documentElement;
+
+		const updateNavHeight = () => {
+			if (!navRef.current) return;
+			const measuredHeight = Math.round(
+				navRef.current.getBoundingClientRect().height,
+			);
+			if (measuredHeight > 0) {
+				root.style.setProperty('--navbar-height', `${measuredHeight}px`);
+			}
+		};
+
+		updateNavHeight();
+		window.addEventListener('resize', updateNavHeight);
+		window.addEventListener('orientationchange', updateNavHeight);
+		if (document.fonts?.ready) {
+			document.fonts.ready
+				.then(() => requestAnimationFrame(updateNavHeight))
+				.catch(() => {});
+		}
+
+		let resizeObserver;
+		if (typeof ResizeObserver !== 'undefined' && navRef.current) {
+			resizeObserver = new ResizeObserver(updateNavHeight);
+			resizeObserver.observe(navRef.current);
+		}
+
+		return () => {
+			window.removeEventListener('resize', updateNavHeight);
+			window.removeEventListener('orientationchange', updateNavHeight);
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+			root.style.removeProperty('--navbar-height');
+		};
+	}, []);
+
 	const openTestFromSearch = (id) => {
 		closeSearch();
 		setSearchQuery('');
@@ -99,6 +139,7 @@ export default function TopNav() {
 
 	return (
 		<header
+			ref={navRef}
 			className={`top-nav ${isScrolled ? 'scrolled' : ''}`}
 			role="banner"
 		>
@@ -196,9 +237,9 @@ export default function TopNav() {
 						))}
 					</nav>
 
-					<div className="menu-footer mb-5 pb-5">
-						<DataSaverToggle variant="switch" />
-					</div>
+						<div className="menu-footer">
+							<DataSaverToggle variant="switch" />
+						</div>
 				</div>
 			)}
 
@@ -297,13 +338,17 @@ export default function TopNav() {
 						top: 0;
 						left: 0;
 						right: 0;
-						height: var(--navbar-height);
+						min-height: calc(var(--navbar-base-height) + var(--safe-top));
 						background: var(--bg-primary);
 						border-bottom: 1px solid var(--border-color);
 						display: flex;
 						align-items: center;
 						justify-content: space-between;
-						padding: var(--safe-top) 16px 0;
+						padding-top: var(--safe-top);
+						padding-right: max(12px, var(--safe-right));
+						padding-bottom: 0;
+						padding-left: max(12px, var(--safe-left));
+						box-sizing: border-box;
 						z-index: 1000;
 						transition: box-shadow 0.2s ease;
 					}
@@ -536,23 +581,27 @@ export default function TopNav() {
 					backdrop-filter: none;
 				}
 
-					.search-backdrop {
-						position: fixed;
-						inset: 0;
-					z-index: 1200;
-					background: rgba(0, 0, 0, 0.4);
-					backdrop-filter: blur(3px);
-						display: flex;
-						align-items: flex-start;
-						justify-content: center;
-						padding: calc(var(--navbar-height) + 12px) 12px 12px;
-					}
+						.search-backdrop {
+							position: fixed;
+							inset: 0;
+						z-index: 1200;
+						background: rgba(0, 0, 0, 0.4);
+						backdrop-filter: blur(3px);
+							display: flex;
+							align-items: flex-start;
+							justify-content: center;
+							padding-top: calc(var(--navbar-height) + 12px);
+							padding-right: max(12px, var(--safe-right));
+							padding-bottom: calc(var(--bottom-nav-offset) + 12px);
+							padding-left: max(12px, var(--safe-left));
+						}
 
-				.search-modal {
-					width: 100%;
-					max-width: 560px;
-					max-height: min(72vh, 520px);
-					background: var(--bg-primary);
+					.search-modal {
+						width: 100%;
+						max-width: 560px;
+						max-height: min(72vh, 520px);
+						max-height: min(72dvh, 520px);
+						background: var(--bg-primary);
 					border: 1px solid var(--border-color);
 					border-radius: var(--radius-lg);
 					box-shadow: var(--shadow-lg);
@@ -613,12 +662,13 @@ export default function TopNav() {
 					letter-spacing: 0.04em;
 				}
 
-				.results-list {
-					padding: 0 8px 8px;
-					overflow-y: auto;
-					max-height: min(56vh, 420px);
-					-ms-overflow-style: none;
-					scrollbar-width: none;
+					.results-list {
+						padding: 0 8px 8px;
+						overflow-y: auto;
+						max-height: min(56vh, 420px);
+						max-height: min(56dvh, 420px);
+						-ms-overflow-style: none;
+						scrollbar-width: none;
 				}
 
 				.results-list::-webkit-scrollbar {
@@ -662,15 +712,19 @@ export default function TopNav() {
 					font-size: 0.88rem;
 				}
 
-					@media (max-width: 767px) {
-						.search-backdrop {
-							padding: calc(var(--navbar-height) + 8px) 8px 8px;
-						}
+						@media (max-width: 767px) {
+							.search-backdrop {
+								padding-top: calc(var(--navbar-height) + 8px);
+								padding-right: max(8px, var(--safe-right));
+								padding-bottom: calc(var(--bottom-nav-offset) + 8px);
+								padding-left: max(8px, var(--safe-left));
+							}
 
-					.search-modal {
-						max-height: min(75vh, 560px);
+						.search-modal {
+							max-height: min(75vh, 560px);
+							max-height: min(75dvh, 560px);
+						}
 					}
-				}
 			`}</style>
 		</header>
 	);

@@ -68,7 +68,12 @@ function TestContent() {
 
 	const scrollToQuestionTop = () => {
 		if (!questionFormRef.current || typeof window === 'undefined') return;
-		const stickyHeaderOffset = 84;
+		const navbarHeight = parseFloat(
+			window
+				.getComputedStyle(document.documentElement)
+				.getPropertyValue('--navbar-height'),
+		) || 56;
+		const stickyHeaderOffset = navbarHeight + 12;
 		const targetTop =
 			questionFormRef.current.getBoundingClientRect().top +
 			window.scrollY -
@@ -384,15 +389,21 @@ function TestContent() {
 	const remainingCount = totalCount - answeredCount;
 	const isCurrentAnswered = answers[index] !== undefined;
 
-		return (
-		<div className='d-flex flex-column min-vh-100 pb-5'>
-			{/* Sticky Header with Progress Bar */}
-			<div
-				className={`sticky-top bg-white bg-opacity-90 border-bottom shadow-sm mb-2 compact-test-header ${
-					isHeaderVisible ? 'header-visible' : 'header-hidden'
-				}`}
-				style={{ zIndex: 1020 }}
-			>
+			return (
+				<div
+					className='d-flex flex-column'
+					style={{ minHeight: 'var(--app-viewport-height, 100dvh)' }}
+				>
+				{/* Sticky Header with Progress Bar */}
+				<div
+					className={`sticky-top bg-white bg-opacity-90 border-bottom shadow-sm mb-2 compact-test-header ${
+						isHeaderVisible ? 'header-visible' : 'header-hidden'
+					}`}
+					style={{
+						top: 'var(--navbar-height)',
+						zIndex: 990,
+					}}
+				>
 				<Container style={{ maxWidth: 720 }} className='compact-test-header-inner py-1 px-0'>
 					<div className='d-flex justify-content-between align-items-center mobile-header-row'>
 						<small className='text-muted fw-semibold d-flex align-items-center gap-2'>
@@ -458,7 +469,7 @@ function TestContent() {
 					className='d-flex flex-column flex-grow-1 justify-content-start justify-content-md-center align-items-center px-2'
 					style={{
 						paddingBottom:
-							'calc(var(--bottom-nav-height) + 96px)',
+							'calc(var(--bottom-nav-offset) + 96px)',
 					}}
 				>
 				<div className='w-100 mb-3 d-none d-md-block' style={{ maxWidth: 720 }}>
@@ -649,7 +660,7 @@ function TestContent() {
 						style={{
 							zIndex: 1030,
 							bottom:
-								'calc(var(--bottom-nav-height) + 8px)',
+								'calc(var(--bottom-nav-offset) + 8px)',
 						}}
 					>
 					<Button

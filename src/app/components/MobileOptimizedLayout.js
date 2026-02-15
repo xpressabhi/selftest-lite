@@ -80,6 +80,56 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 			}
 			window.removeEventListener('appinstalled', updateStandaloneState);
 			document.removeEventListener('visibilitychange', updateStandaloneState);
+			};
+	}, []);
+
+	// Keep a robust bottom offset across iOS Safari toolbar/keyboard changes.
+	useEffect(() => {
+		if (typeof window === 'undefined') return undefined;
+		const root = document.documentElement;
+		const viewport = window.visualViewport;
+
+		const updateViewportBottomOffset = () => {
+			if (!window.visualViewport) {
+				root.style.setProperty('--viewport-bottom-offset', '0px');
+				root.style.setProperty(
+					'--app-viewport-height',
+					`${Math.round(window.innerHeight)}px`,
+				);
+				return;
+			}
+			const offset = Math.max(
+				0,
+				Math.round(
+					window.innerHeight -
+					window.visualViewport.height -
+					window.visualViewport.offsetTop,
+				),
+			);
+			root.style.setProperty('--viewport-bottom-offset', `${offset}px`);
+			root.style.setProperty(
+				'--app-viewport-height',
+				`${Math.round(window.visualViewport.height)}px`,
+			);
+		};
+
+		updateViewportBottomOffset();
+		window.addEventListener('resize', updateViewportBottomOffset);
+		window.addEventListener('orientationchange', updateViewportBottomOffset);
+		if (viewport) {
+			viewport.addEventListener('resize', updateViewportBottomOffset);
+			viewport.addEventListener('scroll', updateViewportBottomOffset);
+		}
+
+		return () => {
+			window.removeEventListener('resize', updateViewportBottomOffset);
+			window.removeEventListener('orientationchange', updateViewportBottomOffset);
+			if (viewport) {
+				viewport.removeEventListener('resize', updateViewportBottomOffset);
+				viewport.removeEventListener('scroll', updateViewportBottomOffset);
+			}
+			root.style.setProperty('--viewport-bottom-offset', '0px');
+			root.style.setProperty('--app-viewport-height', '100dvh');
 		};
 	}, []);
 
@@ -152,13 +202,14 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 
 			{/* CSS-in-JS for this component */}
 			<style jsx>{`
-				.app-layout {
-					min-height: 100vh;
-					min-height: 100dvh;
-					display: flex;
-					flex-direction: column;
-					background: var(--bg-secondary);
-				}
+					.app-layout {
+						min-height: 100vh;
+						min-height: 100dvh;
+						min-height: var(--app-viewport-height, 100dvh);
+						display: flex;
+						flex-direction: column;
+						background: var(--bg-secondary);
+					}
 
 				/* Skip link for accessibility */
 				.skip-link {
@@ -184,19 +235,19 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 						flex: 1;
 						padding: 16px;
 						padding-top: calc(var(--navbar-height) + 16px);
-						padding-bottom: calc(var(--bottom-nav-height) + 16px);
+						padding-bottom: calc(var(--bottom-nav-offset) + 16px);
 						max-width: 100%;
 						outline: none;
 						-webkit-overflow-scrolling: touch;
 					}
 
-					@media (min-width: 768px) {
-						.main-content {
-							padding: 24px;
-							padding-top: calc(var(--navbar-height) + 24px);
-							padding-bottom: 24px;
+						@media (min-width: 768px) {
+							.main-content {
+								padding: 24px;
+								padding-top: calc(var(--navbar-height) + 24px);
+								padding-bottom: calc(var(--bottom-nav-offset) + 24px);
+							}
 						}
-					}
 
 					@media (min-width: 1024px) {
 						.main-content {

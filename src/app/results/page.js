@@ -279,7 +279,7 @@ function ResultsContent() {
 	}
 
 	return (
-		<div className='min-vh-100 pb-5'>
+		<div style={{ minHeight: 'var(--app-viewport-height, 100dvh)' }}>
 			{/* Celebration effects */}
 			<Confetti
 				show={showConfetti}
@@ -290,15 +290,15 @@ function ResultsContent() {
 			<TrophyBurst show={showTrophy} />
 
 			{/* Achievement Toast Notifications */}
-			{achievementToasts.length > 0 && (
-				<div
-					style={{
-						position: 'fixed',
-						bottom: '100px',
-						right: '20px',
-						zIndex: 9999,
-						display: 'flex',
-						flexDirection: 'column',
+				{achievementToasts.length > 0 && (
+					<div
+						style={{
+							position: 'fixed',
+							bottom: 'calc(var(--bottom-nav-offset, 96px) + 12px)',
+							right: 'max(12px, var(--safe-right, 0px))',
+							zIndex: 9999,
+							display: 'flex',
+							flexDirection: 'column',
 						gap: '8px',
 					}}
 				>

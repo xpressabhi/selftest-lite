@@ -80,10 +80,11 @@ export default class ErrorBoundary extends React.Component {
 						)}
 					</div>
 					<style jsx>{`
-						.error-boundary {
-							min-height: 100vh;
-							min-height: 100dvh;
-							display: flex;
+							.error-boundary {
+								min-height: 100vh;
+								min-height: 100dvh;
+								min-height: var(--app-viewport-height, 100dvh);
+								display: flex;
 							align-items: center;
 							justify-content: center;
 							padding: 24px;

@@ -203,11 +203,11 @@ export function ToastContainer({ toasts = [], removeToast }) {
 				/>
 			))}
 			<style jsx>{`
-				.toast-container {
-					position: fixed;
-					bottom: calc(var(--bottom-nav-height, 64px) + 16px);
-					left: 16px;
-					right: 16px;
+					.toast-container {
+						position: fixed;
+						bottom: calc(var(--bottom-nav-offset, 96px) + 16px);
+						left: 16px;
+						right: 16px;
 					z-index: 1100;
 					display: flex;
 					flex-direction: column;
@@ -219,15 +219,21 @@ export function ToastContainer({ toasts = [], removeToast }) {
 					pointer-events: auto;
 				}
 
-				@media (min-width: 640px) {
-					.toast-container {
-						left: auto;
-						right: 16px;
-						width: 360px;
-						bottom: 16px;
+					@media (min-width: 640px) {
+						.toast-container {
+							left: auto;
+							right: 16px;
+							width: 360px;
+							bottom: calc(var(--bottom-nav-offset, 96px) + 16px);
+						}
 					}
-				}
-			`}</style>
-		</div>
+
+					@media (min-width: 1024px) {
+						.toast-container {
+							bottom: 16px;
+						}
+					}
+				`}</style>
+			</div>
 	);
 }

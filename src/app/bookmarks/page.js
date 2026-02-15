@@ -28,7 +28,7 @@ export default function BookmarksPage() {
     };
 
     return (
-        <Container style={{ maxWidth: '800px' }} className='pb-5'>
+        <Container style={{ maxWidth: '800px' }}>
             <div className='d-flex align-items-center gap-3 mb-4 mt-4'>
                 <Icon name='bookmarkFill' className='text-primary display-6' />
                 <div>

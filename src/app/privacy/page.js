@@ -21,8 +21,11 @@ export default function PrivacyPage() {
 
 					<div className='row'>
 						{/* Sidebar Navigation (Desktop) */}
-						<div className='col-lg-3 d-none d-lg-block'>
-							<div className='sticky-top' style={{ top: '100px' }}>
+							<div className='col-lg-3 d-none d-lg-block'>
+								<div
+									className='sticky-top'
+									style={{ top: 'calc(var(--navbar-height) + 16px)' }}
+								>
 								<nav id='privacy-nav' className='nav flex-column'>
 									<a className='nav-link text-muted active fw-bold' href='#collection'>Data Collection</a>
 									<a className='nav-link text-muted' href='#usage'>Data Usage</a>
