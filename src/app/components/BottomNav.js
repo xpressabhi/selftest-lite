@@ -33,35 +33,36 @@ export default function BottomNav() {
 
 	return (
 		<nav className="bottom-nav d-xl-none" aria-label="Main navigation">
-				{navItems.map((item) => (
-					<Link
-						key={item.label}
-						href={item.href}
-						className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
-						aria-label={item.label}
-						aria-current={isActive(item.href) ? 'page' : undefined}
-						onClick={triggerHaptic}
-					>
-						<Icon name={item.icon} size={24} />
-						<span className="nav-label">{item.label}</span>
-					</Link>
-				))}
-				<style jsx>{`
-					.bottom-nav {
-						position: fixed;
-						bottom: 0;
-						left: 0;
-						right: 0;
-						min-height: var(--bottom-nav-height);
-						padding-top: 12px;
-						padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); /* Safe area + breathing room */
-						background: var(--bg-primary);
-						border-top: 1px solid var(--border-color);
-						display: flex;
+			{navItems.map((item) => (
+				<Link
+					key={item.label}
+					href={item.href}
+					className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
+					aria-label={item.label}
+					aria-current={isActive(item.href) ? 'page' : undefined}
+					onClick={triggerHaptic}
+				>
+					<Icon name={item.icon} size={24} />
+					<span className="nav-label">{item.label}</span>
+				</Link>
+			))}
+			<style jsx>{`
+				.bottom-nav {
+					position: fixed;
+					bottom: 0;
+					left: 0;
+					right: 0;
+					height: var(--bottom-nav-height);
+					padding: 8px 8px max(8px, env(safe-area-inset-bottom, 0px));
+					background: var(--bg-primary);
+					border-top: 1px solid var(--border-color);
+					display: flex;
 					justify-content: space-around;
-					align-items: flex-start; /* Align items to top to avoid variable stretching */
+					align-items: center;
+					box-sizing: border-box;
 					z-index: 1000;
 					box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
+					-webkit-transform: translateZ(0);
 				}
 
 				.bottom-nav-item {
@@ -69,20 +70,21 @@ export default function BottomNav() {
 					flex-direction: column;
 					align-items: center;
 					justify-content: center;
-					gap: 6px;
-					padding: 6px 4px;
+					gap: 4px;
+					padding: 4px;
 					color: var(--text-muted);
 					text-decoration: none;
 					font-size: 11px;
 					min-width: 60px;
+					min-height: 44px;
 					transition: all 0.2s ease;
 					position: relative;
-					flex: 1; /* Distribute space evenly */
+					flex: 1;
 				}
 
 				.bottom-nav-item:active {
-					opacity: 0.7;
-					transform: scale(0.95);
+					opacity: 0.75;
+					transform: scale(0.96);
 				}
 
 				.bottom-nav-item.active {
@@ -96,12 +98,9 @@ export default function BottomNav() {
 				.nav-label {
 					font-size: 11px;
 					font-weight: 500;
+					line-height: 1.1;
 					white-space: nowrap;
 					letter-spacing: 0.2px;
-				}
-
-				:global(.data-saver) .bottom-nav {
-					height: 64px;
 				}
 
 				/* Reduced motion */

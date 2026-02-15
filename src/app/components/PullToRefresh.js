@@ -23,6 +23,9 @@ export default function PullToRefresh({
     const containerRef = useRef(null)
     const startY = useRef(0)
     const currentY = useRef(0)
+    const isIOS =
+        typeof navigator !== 'undefined' &&
+        /iphone|ipad|ipod/i.test(navigator.userAgent)
 
     const handleTouchStart = useCallback((e) => {
         if (disabled || refreshing) return
@@ -87,6 +90,9 @@ export default function PullToRefresh({
 
     const showIndicator = pullDistance > 10 || refreshing
     const progress = Math.min(pullDistance / threshold, 1)
+    // iOS Safari can hide fixed elements if any ancestor has transform.
+    // Keep transform off on iOS so fixed bottom bars remain stable.
+    const contentOffset = !isIOS && pullDistance > 0 ? pullDistance * 0.3 : 0
 
     return (
         <div ref={containerRef} className="ptr-container" style={{ minHeight: '100%' }}>
@@ -130,8 +136,9 @@ export default function PullToRefresh({
             <div
                 className="ptr-content-wrapper"
                 style={{
-                    transform: `translateY(${pullDistance > 0 ? pullDistance * 0.3 : 0}px)`,
+                    transform: contentOffset > 0 ? `translate3d(0, ${contentOffset}px, 0)` : 'none',
                     transition: pulling ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    willChange: contentOffset > 0 ? 'transform' : 'auto',
                 }}
             >
                 {children}
@@ -193,10 +200,6 @@ export default function PullToRefresh({
 
                 @keyframes spin {
                     to { transform: rotate(360deg); }
-                }
-
-                .ptr-content-wrapper {
-                    will-change: transform;
                 }
 
                 /* Screen reader only */

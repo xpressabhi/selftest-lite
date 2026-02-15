@@ -184,7 +184,7 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 						flex: 1;
 						padding: 16px;
 						padding-top: calc(var(--navbar-height) + 16px);
-						padding-bottom: calc(64px + 16px);
+						padding-bottom: calc(var(--bottom-nav-height) + 16px);
 						max-width: 100%;
 						outline: none;
 						-webkit-overflow-scrolling: touch;

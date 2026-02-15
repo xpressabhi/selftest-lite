@@ -31,7 +31,7 @@
 	--navbar-base-height: 56px;
 	--navbar-height: calc(var(--navbar-base-height) + var(--safe-top));
 	--bottom-nav-base-height: 72px;
-	--bottom-nav-height: calc(var(--bottom-nav-base-height) + var(--safe-bottom) + 12px);
+	--bottom-nav-height: calc(var(--bottom-nav-base-height) + var(--safe-bottom));
 	color-scheme: light dark;
 }
 

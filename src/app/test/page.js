@@ -454,13 +454,13 @@ function TestContent() {
 				</Container>
 			</div>
 
-			<Container
-				className='d-flex flex-column flex-grow-1 justify-content-start justify-content-md-center align-items-center px-2'
-				style={{
-					paddingBottom:
-						'calc(var(--bottom-nav-height) + 96px + env(safe-area-inset-bottom, 0px))',
-				}}
-			>
+				<Container
+					className='d-flex flex-column flex-grow-1 justify-content-start justify-content-md-center align-items-center px-2'
+					style={{
+						paddingBottom:
+							'calc(var(--bottom-nav-height) + 96px)',
+					}}
+				>
 				<div className='w-100 mb-3 d-none d-md-block' style={{ maxWidth: 720 }}>
 					<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center justify-content-center'>
 						<Icon name='bookOpen' className='text-primary' />
@@ -644,14 +644,14 @@ function TestContent() {
 				</div>
 
 				{/* Mobile Sticky Footer Navigation */}
-				<div
-					className='d-md-none fixed-bottom border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
-					style={{
-						zIndex: 1030,
-						bottom:
-							'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px)',
-					}}
-				>
+					<div
+						className='d-md-none fixed-bottom border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
+						style={{
+							zIndex: 1030,
+							bottom:
+								'calc(var(--bottom-nav-height) + 8px)',
+						}}
+					>
 					<Button
 						variant='light'
 						className='rounded-circle d-flex align-items-center justify-content-center border'
