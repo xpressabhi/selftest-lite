@@ -45,6 +45,7 @@ function TestContent() {
 	const router = useRouter();
 	const timeoutRef = useRef(null);
 	const questionFormRef = useRef(null);
+	const stickyHeaderRef = useRef(null);
 	const touchStartXRef = useRef(null);
 	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -68,12 +69,12 @@ function TestContent() {
 
 	const scrollToQuestionTop = () => {
 		if (!questionFormRef.current || typeof window === 'undefined') return;
-		const navbarHeight = parseFloat(
-			window
-				.getComputedStyle(document.documentElement)
-				.getPropertyValue('--navbar-height'),
-		) || 56;
-		const stickyHeaderOffset = navbarHeight + 12;
+		const rootStyles = window.getComputedStyle(document.documentElement);
+		const navbarHeight =
+			parseFloat(rootStyles.getPropertyValue('--navbar-height')) || 56;
+		const stickyHeaderHeight =
+			stickyHeaderRef.current?.getBoundingClientRect().height || 0;
+		const stickyHeaderOffset = navbarHeight + stickyHeaderHeight + 8;
 		const targetTop =
 			questionFormRef.current.getBoundingClientRect().top +
 			window.scrollY -
@@ -306,14 +307,16 @@ function TestContent() {
 
 			setFadeState('fade-out');
 			if (timeoutRef.current) clearTimeout(timeoutRef.current);
-			timeoutRef.current = setTimeout(() => {
-				playTick();
-				setCurrentQuestionIndex(nextIndex);
-				setFadeState('fade-in');
-				scrollToQuestionTop();
-			}, 220);
-		},
-		[questionPaper, currentQuestionIndex, playTick],
+				timeoutRef.current = setTimeout(() => {
+					playTick();
+					setCurrentQuestionIndex(nextIndex);
+					setFadeState('fade-in');
+					window.requestAnimationFrame(() => {
+						scrollToQuestionTop();
+					});
+				}, 220);
+			},
+			[questionPaper, currentQuestionIndex, playTick],
 	);
 
 	const handlePrevClick = useCallback(() => {
@@ -384,10 +387,12 @@ function TestContent() {
 	const index = currentQuestionIndex;
 	const progress = ((index + 1) / questionPaper.questions.length) * 100;
 
-	const answeredCount = Object.keys(answers).length;
-	const totalCount = questionPaper.questions.length;
-	const remainingCount = totalCount - answeredCount;
-	const isCurrentAnswered = answers[index] !== undefined;
+		const answeredCount = Object.keys(answers).length;
+		const totalCount = questionPaper.questions.length;
+		const remainingCount = totalCount - answeredCount;
+		const isCurrentAnswered = answers[index] !== undefined;
+		const isLastQuestion =
+			currentQuestionIndex === questionPaper.questions.length - 1;
 
 			return (
 				<div
@@ -395,10 +400,11 @@ function TestContent() {
 					style={{ minHeight: 'var(--app-viewport-height, 100dvh)' }}
 				>
 				{/* Sticky Header with Progress Bar */}
-				<div
-					className={`sticky-top bg-white bg-opacity-90 border-bottom shadow-sm mb-2 compact-test-header ${
-						isHeaderVisible ? 'header-visible' : 'header-hidden'
-					}`}
+					<div
+						ref={stickyHeaderRef}
+						className={`sticky-top bg-white bg-opacity-90 border-bottom shadow-sm mb-2 compact-test-header ${
+							isHeaderVisible ? 'header-visible' : 'header-hidden'
+						}`}
 					style={{
 						top: 'var(--navbar-height)',
 						zIndex: 990,
@@ -465,13 +471,9 @@ function TestContent() {
 				</Container>
 			</div>
 
-				<Container
-					className='d-flex flex-column flex-grow-1 justify-content-start justify-content-md-center align-items-center px-2'
-					style={{
-						paddingBottom:
-							'calc(var(--bottom-nav-offset) + 96px)',
-					}}
-				>
+					<Container
+						className='d-flex flex-column justify-content-start align-items-center px-2 test-content-shell'
+					>
 				<div className='w-100 mb-3 d-none d-md-block' style={{ maxWidth: 720 }}>
 					<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center justify-content-center'>
 						<Icon name='bookOpen' className='text-primary' />
@@ -654,52 +656,67 @@ function TestContent() {
 					<Print questionPaper={questionPaper} />
 				</div>
 
-				{/* Mobile Sticky Footer Navigation */}
-					<div
-						className='d-md-none fixed-bottom border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
-						style={{
+					{/* Mobile Sticky Footer Navigation */}
+						<div
+							className='d-md-none fixed-bottom border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
+							style={{
 							zIndex: 1030,
 							bottom:
 								'calc(var(--bottom-nav-offset) + 8px)',
 						}}
 					>
-					<Button
-						variant='light'
-						className='rounded-circle d-flex align-items-center justify-content-center border'
-						style={{ width: '48px', height: '48px' }}
-						onClick={handlePrevClick}
-						disabled={currentQuestionIndex === 0 || fadeState === 'fade-out'}
-					>
-						<Icon name='chevronRight' style={{ transform: 'rotate(180deg)' }} />
-					</Button>
+						<Button
+							variant='light'
+							className='rounded-circle d-flex align-items-center justify-content-center border'
+							style={{ width: '48px', height: '48px' }}
+							onClick={handlePrevClick}
+							disabled={currentQuestionIndex === 0 || fadeState === 'fade-out'}
+						>
+							<Icon name='chevronRight' style={{ transform: 'rotate(180deg)' }} />
+						</Button>
 
-					<Button
-						variant='success'
-						className='flex-grow-1 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2'
-						style={{
-							background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-							border: 'none',
-							height: '44px'
-						}}
-						onClick={handleSubmit}
-					>
-						<Icon name='checkCircle' size={18} />
-						{t('submitTest')}
-					</Button>
-
-					<Button
-						variant={isCurrentAnswered ? 'success' : 'outline-primary'}
-						className='rounded-pill d-flex align-items-center justify-content-center border px-3'
-						style={{ height: '44px', minWidth: '74px' }}
-						onClick={handleNextClick}
-						disabled={
-							currentQuestionIndex === questionPaper.questions.length - 1 ||
-							fadeState === 'fade-out'
-						}
-					>
-						{isCurrentAnswered ? 'Next' : 'Skip'}
-					</Button>
-				</div>
+						{isLastQuestion ? (
+							<Button
+								variant='success'
+								type='button'
+								className='flex-grow-1 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2'
+								style={{
+									background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+									border: 'none',
+									height: '44px',
+								}}
+								onClick={handleSubmit}
+							>
+								<Icon name='checkCircle' size={18} />
+								{t('submitTest')}
+							</Button>
+						) : (
+							<>
+								<Button
+									variant={isCurrentAnswered ? 'primary' : 'outline-primary'}
+									type='button'
+									className='flex-grow-1 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2 mobile-next-cta'
+									style={{ height: '44px' }}
+									onClick={handleNextClick}
+									disabled={fadeState === 'fade-out'}
+								>
+									<Icon name='chevronRight' size={16} />
+									{isCurrentAnswered ? 'Next' : 'Skip'}
+								</Button>
+								<Button
+									variant='outline-success'
+									type='button'
+									className='rounded-pill d-flex align-items-center justify-content-center border px-2 mobile-side-submit'
+									style={{ height: '44px', minWidth: '48px' }}
+									onClick={handleSubmit}
+									aria-label={t('submitTest')}
+									title={t('submitTest')}
+								>
+									<Icon name='checkCircle' size={18} />
+								</Button>
+							</>
+						)}
+					</div>
 
 				<Modal show={showMoreModal} onHide={() => setShowMoreModal(false)} centered>
 					<Modal.Header closeButton>
@@ -818,16 +835,30 @@ function TestContent() {
 						box-shadow: 0 10px 20px rgba(37, 99, 235, 0.15) !important;
 					}
 
-					.mobile-submit-bar {
-						background: linear-gradient(
-							to top,
-							rgba(255, 255, 255, 0.98),
+						.mobile-submit-bar {
+							background: linear-gradient(
+								to top,
+								rgba(255, 255, 255, 0.98),
 							rgba(255, 255, 255, 0.94)
 						);
 						backdrop-filter: blur(10px);
 						border-radius: 14px;
-						margin: 0 8px;
-					}
+							margin: 0 8px;
+						}
+
+						.test-content-shell {
+							padding-bottom: calc(var(--bottom-nav-offset) + 68px);
+						}
+
+						.mobile-next-cta {
+							background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+							border: none;
+							color: #fff;
+						}
+
+						.mobile-side-submit {
+							flex-shrink: 0;
+						}
 
 					.mobile-tools-actions {
 						margin-top: 6px;
@@ -940,10 +971,14 @@ function TestContent() {
 						}
 					}
 
-					@media (min-width: 768px) {
-						.compact-test-header .compact-test-header-inner {
-							max-height: none !important;
-							opacity: 1 !important;
+						@media (min-width: 768px) {
+							.test-content-shell {
+								padding-bottom: 32px;
+							}
+
+							.compact-test-header .compact-test-header-inner {
+								max-height: none !important;
+								opacity: 1 !important;
 							transform: none !important;
 						}
 
