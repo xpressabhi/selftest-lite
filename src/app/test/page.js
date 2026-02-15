@@ -47,6 +47,7 @@ function TestContent() {
 	const touchStartXRef = useRef(null);
 	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
+	const [showNavigatorModal, setShowNavigatorModal] = useState(false);
 	const [elapsedTime, setElapsedTime] = useState(0); // in seconds
 	const timerRef = useRef(null);
 	const { t } = useLanguage();
@@ -57,6 +58,7 @@ function TestContent() {
 
 	const [timeLeft, setTimeLeft] = useState(null); // For speed challenge
 	const [isSubmitted, setIsSubmitted] = useState(false);
+	const [isQuestionFocused, setIsQuestionFocused] = useState(false);
 
 	const scrollToQuestionTop = () => {
 		if (!questionFormRef.current || typeof window === 'undefined') return;
@@ -176,20 +178,6 @@ function TestContent() {
 			[questionIndex]: answer,
 		};
 		setAnswers(updatedAnswers);
-
-		// Only advance if not last question
-		if (
-			questionPaper &&
-			currentQuestionIndex < questionPaper.questions.length - 1
-		) {
-			setFadeState('fade-out');
-			if (timeoutRef.current) clearTimeout(timeoutRef.current);
-			timeoutRef.current = setTimeout(() => {
-				setCurrentQuestionIndex((prev) => prev + 1);
-				setFadeState('fade-in');
-				scrollToQuestionTop();
-			}, 300);
-		}
 	};
 
 	const handleSubmit = (e) => {
@@ -231,30 +219,49 @@ function TestContent() {
 		setFadeState('fade-in');
 	}, [currentQuestionIndex]);
 
-	const handlePrevClick = useCallback(() => {
-		if (currentQuestionIndex > 0) {
+	// Brief visual emphasis when a new question becomes active.
+	useEffect(() => {
+		setIsQuestionFocused(true);
+		const timer = setTimeout(() => setIsQuestionFocused(false), 600);
+		return () => clearTimeout(timer);
+	}, [currentQuestionIndex]);
+
+	const navigateToQuestion = useCallback(
+		(nextIndex) => {
+			if (!questionPaper) return;
+			if (nextIndex < 0 || nextIndex >= questionPaper.questions.length) return;
+			if (nextIndex === currentQuestionIndex) return;
+
 			setFadeState('fade-out');
 			if (timeoutRef.current) clearTimeout(timeoutRef.current);
 			timeoutRef.current = setTimeout(() => {
-				setCurrentQuestionIndex((prev) => prev - 1);
+				playTick();
+				setCurrentQuestionIndex(nextIndex);
 				setFadeState('fade-in');
-			}, 300);
+				scrollToQuestionTop();
+			}, 220);
+		},
+		[questionPaper, currentQuestionIndex, playTick],
+	);
+
+	const handlePrevClick = useCallback(() => {
+		if (currentQuestionIndex > 0) {
+			navigateToQuestion(currentQuestionIndex - 1);
 		}
-	}, [currentQuestionIndex]);
+	}, [currentQuestionIndex, navigateToQuestion]);
 
 	const handleNextClick = useCallback(() => {
 		if (
 			questionPaper &&
 			currentQuestionIndex < questionPaper.questions.length - 1
 		) {
-			setFadeState('fade-out');
-			if (timeoutRef.current) clearTimeout(timeoutRef.current);
-			timeoutRef.current = setTimeout(() => {
-				setCurrentQuestionIndex((prev) => prev + 1);
-				setFadeState('fade-in');
-			}, 300);
+			navigateToQuestion(currentQuestionIndex + 1);
 		}
-	}, [currentQuestionIndex, questionPaper]);
+	}, [currentQuestionIndex, questionPaper, navigateToQuestion]);
+
+	const handleSkipQuestion = () => {
+		handleNextClick();
+	};
 
 	const onTouchStart = (e) => {
 		touchStartXRef.current = e.touches[0].clientX;
@@ -308,6 +315,7 @@ function TestContent() {
 	const answeredCount = Object.keys(answers).length;
 	const totalCount = questionPaper.questions.length;
 	const remainingCount = totalCount - answeredCount;
+	const isCurrentAnswered = answers[index] !== undefined;
 
 	return (
 		<div className='d-flex flex-column min-vh-100 pb-5'>
@@ -357,6 +365,17 @@ function TestContent() {
 						style={{ height: '6px', borderRadius: '10px', transition: 'all 0.3s ease' }}
 						className='bg-secondary bg-opacity-10'
 					/>
+					<div className='d-flex justify-content-end mt-2'>
+						<Button
+							variant='outline-secondary'
+							size='sm'
+							className='rounded-pill d-flex align-items-center gap-2'
+							onClick={() => setShowNavigatorModal(true)}
+						>
+							<Icon name='list' size={14} />
+							Jump to question
+						</Button>
+					</div>
 				</Container>
 			</div>
 
@@ -445,7 +464,11 @@ function TestContent() {
 						}}
 					>
 						{/* Question Card */}
-						<Card className='w-100 border-0 glass-card mb-4 shadow-sm position-relative'>
+						<Card
+							className={`w-100 border-0 glass-card mb-4 shadow-sm position-relative question-card ${
+								isQuestionFocused ? 'question-card-focus' : ''
+							}`}
+						>
 							<Card.Body className='p-4 p-md-5 text-center'>
 								<Button
 									variant='link'
@@ -468,10 +491,10 @@ function TestContent() {
 								<div
 									key={i}
 									className={`
-										d-flex align-items-center p-3 rounded-3 cursor-pointer transition-all
+										d-flex align-items-center p-3 rounded-3 cursor-pointer transition-all option-tile
 										${answers[index] === option
-											? 'bg-primary bg-opacity-10 border border-primary'
-											: 'bg-white border border-light shadow-sm hover-shadow'
+											? 'bg-primary bg-opacity-10 border border-primary option-active'
+											: 'bg-white border border-light shadow-sm'
 										}
 									`}
 									style={{
@@ -508,6 +531,29 @@ function TestContent() {
 								: 'All questions answered!'}
 						</small>
 					</div>
+					<div className='d-flex justify-content-center gap-2 mb-4'>
+						<Button
+							type='button'
+							variant='outline-secondary'
+							size='sm'
+							className='rounded-pill px-3 d-flex align-items-center gap-2'
+							onClick={() => setShowNavigatorModal(true)}
+						>
+							<Icon name='list' size={14} />
+							Jump
+						</Button>
+						<Button
+							type='button'
+							variant={isCurrentAnswered ? 'primary' : 'outline-primary'}
+							size='sm'
+							className='rounded-pill px-3 d-flex align-items-center gap-2'
+							onClick={handleNextClick}
+							disabled={currentQuestionIndex === questionPaper.questions.length - 1}
+						>
+							<Icon name='chevronRight' size={14} />
+							{isCurrentAnswered ? 'Next' : 'Skip'}
+						</Button>
+					</div>
 
 					<Button
 						type='submit'
@@ -532,7 +578,7 @@ function TestContent() {
 
 				{/* Mobile Sticky Footer Navigation */}
 				<div
-					className='d-md-none fixed-bottom bg-white border-top shadow-lg p-3 d-flex gap-2 align-items-center justify-content-between'
+					className='d-md-none fixed-bottom border-top shadow-lg p-3 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
 					style={{
 						zIndex: 1030,
 						bottom:
@@ -564,16 +610,16 @@ function TestContent() {
 					</Button>
 
 					<Button
-						variant='light'
-						className='rounded-circle d-flex align-items-center justify-content-center border'
-						style={{ width: '48px', height: '48px' }}
+						variant={isCurrentAnswered ? 'success' : 'outline-primary'}
+						className='rounded-pill d-flex align-items-center justify-content-center border px-3'
+						style={{ height: '48px', minWidth: '84px' }}
 						onClick={handleNextClick}
 						disabled={
 							currentQuestionIndex === questionPaper.questions.length - 1 ||
 							fadeState === 'fade-out'
 						}
 					>
-						<Icon name='chevronRight' />
+						{isCurrentAnswered ? 'Next' : 'Skip'}
 					</Button>
 				</div>
 
@@ -625,6 +671,112 @@ function TestContent() {
 						</Button>
 					</Modal.Footer>
 				</Modal>
+
+				<Modal
+					show={showNavigatorModal}
+					onHide={() => setShowNavigatorModal(false)}
+					centered
+				>
+					<Modal.Header closeButton>
+						<Modal.Title>Jump to question</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<div className='navigator-grid'>
+							{questionPaper.questions.map((_, qIndex) => {
+								const isCurrent = qIndex === currentQuestionIndex;
+								const isAnswered = answers[qIndex] !== undefined;
+								return (
+									<Button
+										key={qIndex}
+										variant={
+											isCurrent
+												? 'primary'
+												: isAnswered
+												? 'outline-success'
+												: 'outline-secondary'
+										}
+										className='rounded-pill navigator-btn'
+										onClick={() => {
+											setShowNavigatorModal(false);
+											navigateToQuestion(qIndex);
+										}}
+									>
+										{qIndex + 1}
+									</Button>
+								);
+							})}
+						</div>
+					</Modal.Body>
+				</Modal>
+
+				<style jsx>{`
+					.question-card {
+						transition: transform 0.28s ease, box-shadow 0.28s ease;
+						will-change: transform;
+					}
+
+					.question-card-focus {
+						transform: translateY(-2px);
+						box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12) !important;
+					}
+
+					.option-tile {
+						backdrop-filter: blur(6px);
+						transition: transform 0.2s ease, box-shadow 0.2s ease,
+							border-color 0.2s ease, background-color 0.2s ease;
+					}
+
+					.option-tile:hover {
+						transform: translateY(-1px);
+						box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+						border-color: rgba(59, 130, 246, 0.25) !important;
+					}
+
+					.option-active {
+						box-shadow: 0 10px 20px rgba(37, 99, 235, 0.15) !important;
+					}
+
+					.mobile-submit-bar {
+						background: linear-gradient(
+							to top,
+							rgba(255, 255, 255, 0.98),
+							rgba(255, 255, 255, 0.94)
+						);
+						backdrop-filter: blur(10px);
+						border-radius: 14px;
+						margin: 0 8px;
+					}
+
+					.navigator-grid {
+						display: grid;
+						grid-template-columns: repeat(5, minmax(0, 1fr));
+						gap: 8px;
+					}
+
+					.navigator-btn {
+						min-width: 0;
+					}
+
+					:global(.data-saver) .question-card,
+					:global(.data-saver) .option-tile,
+					:global(.data-saver) .mobile-submit-bar {
+						transition: none !important;
+						backdrop-filter: none;
+					}
+
+					@media (prefers-reduced-motion: reduce) {
+						.question-card,
+						.option-tile {
+							transition: none !important;
+						}
+					}
+
+					@media (max-width: 480px) {
+						.navigator-grid {
+							grid-template-columns: repeat(4, minmax(0, 1fr));
+						}
+					}
+				`}</style>
 			</Container>
 		</div>
 	);
