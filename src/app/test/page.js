@@ -29,7 +29,7 @@ import { Container, Button, Spinner, Alert, Card, ProgressBar, Modal } from 'rea
 function TestContent() {
 	const searchParams = useSearchParams();
 	const testId = searchParams.get('id');
-	const [testHistory, _, updateHistory] = useLocalStorage(
+	const [testHistory, _, updateHistory, ___, isHistoryHydrated] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
 		[],
 	);
@@ -86,36 +86,39 @@ function TestContent() {
 	};
 
 	useEffect(() => {
-		if (testId) {
-			const existingTest = testHistory.find((t) => t.id == testId); // use loose equality to handle string vs number
-			if (existingTest) {
-				if (existingTest.userAnswers) {
-					router.push('/results?id=' + existingTest.id);
-				} else {
-					setQuestionPaper(existingTest);
-					setLoading(false);
-				}
+		if (!testId || !isHistoryHydrated) return;
+
+		const existingTest = testHistory.find((t) => t.id == testId); // use loose equality to handle string vs number
+		if (existingTest) {
+			if (existingTest.userAnswers) {
+				router.push('/results?id=' + existingTest.id);
 			} else {
-				fetch(`/api/test?id=${testId}`)
-					.then((res) => res.json())
-					.then((data) => {
-						if (data.error) {
-							setError(data.error);
-							setLoading(false);
-							return;
-						}
-						const paper = { ...data.test, id: data.id };
-						updateHistory(paper);
-						setQuestionPaper(paper);
-						setLoading(false);
-					})
-					.catch((err) => {
-						setLoading(false);
-						setError(`${t('failedToLoadTest')} ${err.message}`);
-					});
+				setQuestionPaper(existingTest);
+				setError(null);
+				setLoading(false);
 			}
+			return;
 		}
-	}, [router, testHistory, testId, updateHistory, t]);
+
+		fetch(`/api/test?id=${testId}`)
+			.then((res) => res.json())
+			.then((data) => {
+				if (data.error) {
+					setError(data.error);
+					setLoading(false);
+					return;
+				}
+				const paper = { ...data.test, id: data.id };
+				updateHistory(paper);
+				setQuestionPaper(paper);
+				setError(null);
+				setLoading(false);
+			})
+			.catch((err) => {
+				setLoading(false);
+				setError(`${t('failedToLoadTest')} ${err.message}`);
+			});
+	}, [isHistoryHydrated, router, testHistory, testId, updateHistory, t]);
 
 	// Initialize Speed Challenge timer
 	useEffect(() => {

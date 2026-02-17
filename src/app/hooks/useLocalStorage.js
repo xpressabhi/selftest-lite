@@ -20,6 +20,7 @@ function useLocalStorage(key, initialValue) {
 	// Keep first render deterministic between SSR and hydration.
 	const [storedValue, setStoredValue] = useState(() => getInitialValue());
 	const [hydratedKey, setHydratedKey] = useState(null);
+	const isHydrated = hydratedKey === key;
 
 	// Read storage after mount/key change.
 	useEffect(() => {
@@ -68,14 +69,17 @@ function useLocalStorage(key, initialValue) {
 	}, [key, getInitialValue]);
 
 	const updateHistory = (updatedPaper) => {
-		const updatedHistory = storedValue.filter((t) => t.id !== updatedPaper.id);
-		updatedHistory.unshift({
-			...updatedPaper,
-			timestamp: Date.now(),
+		setStoredValue((prevStoredValue) => {
+			const safeHistory = Array.isArray(prevStoredValue) ? prevStoredValue : [];
+			const updatedHistory = safeHistory.filter((t) => t.id !== updatedPaper.id);
+			updatedHistory.unshift({
+				...updatedPaper,
+				timestamp: Date.now(),
+			});
+			return updatedHistory
+				.sort((a, b) => b.timestamp - a.timestamp)
+				.slice(0, 100);
 		});
-		setStoredValue(
-			updatedHistory.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100),
-		); // keep only latest 20 entries
 	};
 	const cleanUpKey = () => {
 		if (typeof window === 'undefined') return;
@@ -86,7 +90,7 @@ function useLocalStorage(key, initialValue) {
 		}
 	};
 
-	return [storedValue, setStoredValue, updateHistory, cleanUpKey];
+	return [storedValue, setStoredValue, updateHistory, cleanUpKey, isHydrated];
 }
 
 export default useLocalStorage;

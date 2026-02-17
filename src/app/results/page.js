@@ -39,7 +39,7 @@ function ResultsContent() {
 	const REGENERATE_TIMEOUT_MS = 180000;
 	const searchParams = useSearchParams();
 	const id = searchParams.get('id');
-	const [testHistory, _, updateHistory] = useLocalStorage(
+	const [testHistory, _, updateHistory, __, isHistoryHydrated] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
 		[],
 	);
@@ -66,16 +66,18 @@ function ResultsContent() {
 	const { checkAchievements, newlyUnlocked, clearNewlyUnlocked } = useAchievements({ longestStreak });
 
 	useEffect(() => {
-		if (id) {
-			const paper = testHistory.find((t) => t.id == id);
-			if (paper) {
-				setQuestionPaper(paper);
-			} else {
-				setError(t('testResultNotFound'));
-			}
-			setLoading(false);
+		if (!id || !isHistoryHydrated) return;
+
+		const paper = testHistory.find((t) => t.id == id);
+		if (paper) {
+			setQuestionPaper(paper);
+			setError(null);
+		} else {
+			setQuestionPaper(null);
+			setError(t('testResultNotFound'));
 		}
-	}, [id, testHistory, t]);
+		setLoading(false);
+	}, [id, isHistoryHydrated, testHistory, t]);
 
 	useEffect(() => {
 		if (!questionPaper || questionPaper.userAnswers) return;
