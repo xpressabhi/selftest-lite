@@ -7,7 +7,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 
 ### Tech Stack Highlights:
 - **Framework**: Next.js 16 (App Router)
-- **AI**: Google Gemini 3 Flash (via `@google/genai`)
+- **AI**: Google Gemini 3 Flash for paper generation (`/api/generate`) + Gemini 2.5 Flash Lite for explanations (`/api/explain`)
 - **Database**: Neon PostgreSQL (via `@neondatabase/serverless`)
 - **UI**: React Bootstrap + Custom CSS (Mobile-first)
 - **PWA**: `next-pwa` with custom service worker logic

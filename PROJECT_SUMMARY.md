@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Selftest-lite** is a Next.js web application that generates AI-powered multiple-choice quizzes on any topic using the Google Gemini API. Users can describe the topic they want to learn about, and the app generates a customized test with instant feedback, answer review, and AI-generated explanations.
+**Selftest-lite** is a Next.js web application that generates AI-powered objective test papers and quizzes using the Google Gemini API. Users can create full exam-style objective papers or quiz-practice tests, attempt them, and review results with on-demand AI explanations.
 
 **Live URL:** https://selftest.in
 
@@ -16,7 +16,7 @@
 | Frontend | React 19.2.4 |
 | UI Library | React Bootstrap 2.10.10 |
 | Styling | Bootstrap 5.3.8 (CDN) + Custom CSS |
-| AI/ML | Google Gemini API (`@google/genai` 1.39.0) |
+| AI/ML | Google Gemini API (`@google/genai` 1.41.0) |
 | Database | Neon PostgreSQL (`@neondatabase/serverless`) |
 | State Management | React Context + Local Storage |
 | Validation | Zod 4.3.6 |
@@ -66,12 +66,15 @@ src/app/api/
 ## Key Features
 
 ### 1. Quiz Generation (`/api/generate`)
-- Accepts topic, difficulty, question count, and language
-- Uses Google Gemini 3 Flash model (preview) with structured JSON output
+- Accepts topic, difficulty, question count, test mode, and language
+- Supports full exam mode (objective-only papers) and quiz-practice mode
+- Uses Google Gemini 3 Flash model (`gemini-3-flash`) with structured JSON output
 - Utilizes `thinkingConfig` (minimal level) for improved question quality
 - Zod schema validation for response structure
 - Rate limiting (10 requests per window)
-- Automatic retry logic (up to 3 attempts)
+- Automatic retry logic (up to 3 attempts) for transient failures
+- No auto-retry when API limits are exceeded
+- End-to-end hard timeout at 180 seconds (client + server)
 - Stores tests in Neon PostgreSQL database (`ai_test` table)
 
 ### 2. Test Taking (`/test`)
@@ -85,7 +88,7 @@ src/app/api/
 ### 3. Results & Review (`/results`)
 - Score display with performance feedback
 - Correct/incorrect answer breakdown
-- AI-powered explanations for each question
+- On-demand AI explanations (`/api/explain`, `gemini-2.5-flash-lite`)
 - Retry wrong answers feature
 - Generate similar quiz feature
 - Social sharing and printing options
@@ -95,11 +98,12 @@ src/app/api/
 - Favorites/bookmarks system
 - Test ID-based sharing
 - Offline support indicator
+- Hydration-safe localStorage sync to avoid SSR/CSR mismatch issues
 
 ### 5. Multi-language Support
-- English, Hindi, Spanish language options
+- English and Hindi UI language options
 - UI language switching via LanguageContext
-- Quiz generation in selected language
+- Paper language selection (English/Hindi) for test generation
 
 ### 6. PWA & UX Enhancements
 - Service worker for offline functionality
@@ -278,7 +282,6 @@ The `prompt.js` utility creates sophisticated prompts for Gemini that include:
 - Lazy loading for MarkdownRenderer
 - Data saver mode for slow connections
 - Reduced question counts on mobile/slow networks
-- Font Optimization with `next/font` (self-hosted, zero layout shift)
 
 ### Mobile-First Design
 - Touch gesture support (swipe between questions)
