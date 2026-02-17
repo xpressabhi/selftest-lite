@@ -10,6 +10,7 @@
   "moreOptions": "More options",
   "hideOptions": "Hide options",
   "generateQuiz": "Generate Quiz",
+  "generateExamPaper": "Generate Exam Paper",
   "generating": "Generating...",
   "proTip": "Pro Tip",
   "proTipContent": "Be specific for better results. Try \"Class 10 Math Quadratic Equations\" instead of just \"Math\".",
