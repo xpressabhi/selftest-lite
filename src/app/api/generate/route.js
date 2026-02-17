@@ -16,7 +16,7 @@ import {
 	isApiTimeoutError,
 } from '../../utils/apiLimitError';
 
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-3-flash-preview';
 const BATCH_SIZE = 25;
 const GENERATION_TIMEOUT_MS = 180000;
 
