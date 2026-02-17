@@ -24,22 +24,25 @@ const getSystemLanguage = () => {
 	return locale.startsWith('hi') ? 'hindi' : 'english';
 };
 
-const getInitialLanguage = () => {
-	if (typeof window === 'undefined') return 'english';
-	const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
-	if (SUPPORTED_LANGUAGES.includes(savedLanguage)) {
-		return savedLanguage;
-	}
-	return getSystemLanguage();
-};
-
 export function LanguageProvider({ children }) {
-	const [language, setLanguage] = useState(getInitialLanguage);
+	// Keep first render deterministic for SSR/CSR hydration.
+	const [language, setLanguage] = useState('english');
+	const [isLanguageReady, setIsLanguageReady] = useState(false);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
+		const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
+		const preferredLanguage = SUPPORTED_LANGUAGES.includes(savedLanguage)
+			? savedLanguage
+			: getSystemLanguage();
+		setLanguage(preferredLanguage);
+		setIsLanguageReady(true);
+	}, []);
+
+	useEffect(() => {
+		if (typeof window === 'undefined' || !isLanguageReady) return;
 		localStorage.setItem(LANGUAGE_KEY, language);
-	}, [language]);
+	}, [language, isLanguageReady]);
 
 	useEffect(() => {
 		if (typeof document === 'undefined') return;

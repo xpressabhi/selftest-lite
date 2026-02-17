@@ -18,6 +18,7 @@ import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
 import TestIdEntryCard from './generate/TestIdEntryCard';
 import BookmarkedQuickStartCard from './generate/BookmarkedQuickStartCard';
+import NewTestEntryCard from './generate/NewTestEntryCard';
 import ModeSelectionCard from './generate/ModeSelectionCard';
 import ActiveModeCard from './generate/ActiveModeCard';
 import ProTipCard from './generate/ProTipCard';
@@ -56,6 +57,7 @@ const GenerateTestForm = () => {
 	const { t, language: uiLanguage } = useLanguage();
 
 	const [activeMode, setActiveMode] = useState('');
+	const [showModeSelection, setShowModeSelection] = useState(false);
 	const [showBookmarkedExamsOnly, setShowBookmarkedExamsOnly] = useState(false);
 	const [showExamBrowser, setShowExamBrowser] = useState(true);
 	const [examSearchQuery, setExamSearchQuery] = useState('');
@@ -156,6 +158,11 @@ const GenerateTestForm = () => {
 			: activeMode === TEST_MODES.QUIZ_PRACTICE
 				? t('quizPractice')
 				: '';
+	const heroSubtitle = activeMode
+		? t('configureAndGenerate')
+		: showModeSelection
+			? t('chooseModeToContinue')
+			: t('resumeOrCreate');
 
 	useEffect(() => {
 		if (
@@ -330,6 +337,7 @@ const GenerateTestForm = () => {
 	}, [GENERATION_TIMEOUT_MS, MAX_RETRIES, router, t, testHistory, updateHistory, wait]);
 
 	const handleModeSelect = useCallback((mode) => {
+		setShowModeSelection(true);
 		setActiveMode(mode);
 		setError(null);
 		setExamSearchQuery('');
@@ -349,8 +357,14 @@ const GenerateTestForm = () => {
 
 	const handleBackToModeSelection = useCallback(() => {
 		setActiveMode('');
+		setShowModeSelection(true);
 		setError(null);
 		setShowAdvanced(false);
+	}, []);
+
+	const handleStartNewTest = useCallback(() => {
+		setShowModeSelection(true);
+		setError(null);
 	}, []);
 
 	const toggleSyllabusFocus = useCallback((unit) => {
@@ -607,11 +621,7 @@ const GenerateTestForm = () => {
 				<h1 className='display-4 fw-bold mb-2' style={{ letterSpacing: '-1px' }}>
 					{t('createQuiz')}
 				</h1>
-				<p className='text-muted fs-5'>
-					{activeMode
-						? t('configureAndGenerate')
-						: t('useBookmarksOrChooseMode')}
-				</p>
+				<p className='text-muted fs-5'>{heroSubtitle}</p>
 			</div>
 
 			{!activeMode && (
@@ -635,14 +645,23 @@ const GenerateTestForm = () => {
 				/>
 			)}
 
-			{!activeMode ? (
+			{!activeMode && !showModeSelection && (
+				<NewTestEntryCard
+					t={t}
+					onStartNewTest={handleStartNewTest}
+				/>
+			)}
+
+			{!activeMode && showModeSelection && (
 				<ModeSelectionCard
 					t={t}
 					onSelectMode={handleModeSelect}
 					fullExamValue={TEST_MODES.FULL_EXAM}
 					quizPracticeValue={TEST_MODES.QUIZ_PRACTICE}
 				/>
-			) : (
+			)}
+
+			{activeMode && (
 				<ActiveModeCard
 					t={t}
 					currentModeLabel={currentModeLabel}

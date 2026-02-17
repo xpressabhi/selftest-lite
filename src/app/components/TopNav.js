@@ -7,6 +7,7 @@ import Icon from './Icon';
 import DataSaverToggle from './DataSaverToggle';
 import { useDataSaver } from '../context/DataSaverContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import useTestSearch from '../hooks/useTestSearch';
 
 /**
@@ -20,12 +21,14 @@ import useTestSearch from '../hooks/useTestSearch';
 export default function TopNav() {
 	const [isScrolled, setIsScrolled] = useState(false);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [isThemeMounted, setIsThemeMounted] = useState(false);
 	const menuRef = useRef(null);
 	const navRef = useRef(null);
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isDataSaverActive } = useDataSaver();
 	const { t, language: uiLanguage, toggleLanguage } = useLanguage();
+	const { theme, toggleTheme } = useTheme();
 	const {
 		isSearchOpen,
 		searchQuery,
@@ -38,6 +41,8 @@ export default function TopNav() {
 	} = useTestSearch({ isDataSaverActive });
 	const uiLanguageLabel =
 		uiLanguage === 'hindi' ? t('hindiLabel') : t('englishLabel');
+	const isDarkThemeActive = isThemeMounted && theme === 'dark';
+	const themeLabel = isDarkThemeActive ? t('darkMode') : t('lightMode');
 	const uiLocale = uiLanguage === 'hindi' ? 'hi-IN' : 'en-IN';
 
 	const triggerHaptic = () => {
@@ -57,6 +62,10 @@ export default function TopNav() {
 		handleScroll();
 
 		return () => window.removeEventListener('scroll', handleScroll);
+	}, []);
+
+	useEffect(() => {
+		setIsThemeMounted(true);
 	}, []);
 
 	// Close menu on outside click
@@ -135,6 +144,11 @@ export default function TopNav() {
 
 	const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
+	const handleThemeToggle = () => {
+		triggerHaptic();
+		toggleTheme();
+	};
+
 	const navLinks = [
 		{ href: '/about', label: t('about'), icon: 'info' },
 		{ href: '/blog', label: t('blog'), icon: 'book' },
@@ -203,14 +217,27 @@ export default function TopNav() {
 						<Icon name="globe" size={20} />
 					</button>
 
-						<Link
-							href="/history"
-							className="nav-btn"
-							aria-label={t('history')}
-							onClick={triggerHaptic}
-						>
-						<Icon name="history" size={24} />
-					</Link>
+					<button
+						className="nav-btn"
+						onClick={handleThemeToggle}
+						aria-label={`${t('toggleThemeAria')} (${themeLabel})`}
+						title={`${t('theme')}: ${themeLabel}`}
+						type="button"
+					>
+						<Icon name={isDarkThemeActive ? 'sun' : 'moon'} size={20} />
+					</button>
+
+					<button
+						className="nav-btn"
+						onClick={() => {
+							triggerHaptic();
+							router.push('/history');
+						}}
+						aria-label={t('history')}
+						type="button"
+					>
+						<Icon name="history" size={20} />
+					</button>
 
 					{/* Menu Button (mobile) */}
 					<button
@@ -223,7 +250,7 @@ export default function TopNav() {
 						aria-label={t('toggleMenu')}
 						type="button"
 				>
-					<Icon name={isMenuOpen ? 'x' : 'list'} size={24} />
+					<Icon name={isMenuOpen ? 'x' : 'list'} size={20} />
 				</button>
 			</div>
 
@@ -258,8 +285,10 @@ export default function TopNav() {
 									className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
 									onClick={triggerHaptic}
 								>
-									<Icon name={link.icon} size={20} />
-									<span>{link.label}</span>
+									<span className="mobile-link-icon" aria-hidden="true">
+										<Icon name={link.icon} size={20} />
+									</span>
+									<span className="mobile-link-label">{link.label}</span>
 								</Link>
 						))}
 					</nav>
@@ -474,6 +503,13 @@ export default function TopNav() {
 					color: var(--text-primary);
 				}
 
+				.nav-btn :global(svg) {
+					width: 20px;
+					height: 20px;
+					display: block;
+					flex-shrink: 0;
+				}
+
 				/* Mobile Menu */
 				.mobile-menu {
 					position: fixed;
@@ -537,22 +573,42 @@ export default function TopNav() {
 					padding: 24px;
 					display: flex;
 					flex-direction: column;
-					gap: 8px;
+					gap: 10px;
 					overflow-y: auto;
 				}
 
 				.mobile-nav-link {
 					display: flex;
 					align-items: center;
-					gap: 16px;
-					padding: 16px;
+					gap: 14px;
+					padding: 14px 16px;
+					min-height: 54px;
 					color: var(--text-primary);
 					text-decoration: none;
-					font-size: 1.1rem;
+					font-size: 1rem;
 					font-weight: 500;
 					border-radius: var(--radius-lg);
 					transition: all 0.2s ease;
 					border: 1px solid transparent;
+				}
+
+				.mobile-link-icon {
+					width: 24px;
+					height: 24px;
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					flex-shrink: 0;
+				}
+
+				.mobile-link-icon :global(svg) {
+					width: 20px;
+					height: 20px;
+					display: block;
+				}
+
+				.mobile-link-label {
+					line-height: 1.2;
 				}
 
 				.mobile-nav-link:active {

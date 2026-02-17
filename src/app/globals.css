@@ -122,6 +122,63 @@ body, .glass-card, .card, .btn, .form-control, .top-nav, .bottom-nav {
 	box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4), var(--glow-primary);
 }
 
+/* Bootstrap utility contrast fixes for dark theme */
+[data-theme='dark'] .text-dark {
+	color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .text-muted {
+	color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .bg-white,
+[data-theme='dark'] .bg-light {
+	background-color: var(--bg-tertiary) !important;
+	color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .bg-light.bg-opacity-50 {
+	background-color: rgba(37, 37, 66, 0.72) !important;
+}
+
+[data-theme='dark'] .border-light {
+	border-color: var(--border-color) !important;
+}
+
+[data-theme='dark'] .btn-light {
+	background-color: var(--bg-tertiary);
+	border-color: var(--border-color);
+	color: var(--text-primary);
+}
+
+[data-theme='dark'] .btn-light:hover,
+[data-theme='dark'] .btn-light:focus,
+[data-theme='dark'] .btn-light:active {
+	background-color: #30304d !important;
+	border-color: var(--border-color) !important;
+	color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .badge.bg-light,
+[data-theme='dark'] .text-bg-light {
+	background-color: var(--bg-secondary) !important;
+	color: var(--text-primary) !important;
+	border: 1px solid var(--border-color);
+}
+
+[data-theme='dark'] .alert-light {
+	background-color: var(--bg-secondary);
+	color: var(--text-primary);
+	border-color: var(--border-color);
+}
+
+[data-theme='dark'] .form-control.bg-light,
+[data-theme='dark'] .form-select.bg-light {
+	background-color: var(--bg-secondary) !important;
+	color: var(--text-primary) !important;
+	border-color: var(--border-color) !important;
+}
+
 /* ===========================================
    BASE RESET & TYPOGRAPHY
    =========================================== */
@@ -157,6 +214,17 @@ body {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
+}
+
+/* Ensure Bootstrap defaults don't override theme body colors */
+[data-theme='light'] body {
+	background-color: var(--bg-secondary) !important;
+	color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] body {
+	background-color: var(--bg-secondary) !important;
+	color: var(--text-primary) !important;
 }
 
 html.app-standalone body {

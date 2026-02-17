@@ -232,12 +232,42 @@ function TestContent() {
 		return () => clearInterval(timerRef.current);
 	}, [loading, questionPaper, isSubmitted, timeLeft]);
 
+	const confirmSubmit = useCallback(() => {
+		if (isSubmitted || !questionPaper) return;
+		setIsSubmitted(true);
+
+		const calculatedScore =
+			questionPaper.questions.filter((q, index) => answers[index] === q.answer)
+				.length || 0;
+		const updatedPaper = {
+			...questionPaper,
+			userAnswers: answers,
+			timestamp: Date.now(),
+			totalQuestions: questionPaper.questions.length,
+			score: calculatedScore,
+			timeTaken: elapsedTime, // Store total time taken in seconds
+			isSpeedChallenge: questionPaper.requestParams?.testType === 'speed-challenge',
+		};
+		updateHistory(updatedPaper);
+		cleanUpAnswers();
+
+		router.push('/results?id=' + questionPaper.id);
+	}, [
+		answers,
+		cleanUpAnswers,
+		elapsedTime,
+		isSubmitted,
+		questionPaper,
+		router,
+		updateHistory,
+	]);
+
 	// Auto-submit when time runs out
 	useEffect(() => {
 		if (timeLeft === 0 && !isSubmitted) {
 			confirmSubmit();
 		}
-	}, [timeLeft, isSubmitted]);
+	}, [confirmSubmit, timeLeft, isSubmitted]);
 
 	const formatTime = (seconds) => {
 		const mins = Math.floor(seconds / 60);
@@ -259,28 +289,6 @@ function TestContent() {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		setShowSubmitModal(true);
-	};
-
-	const confirmSubmit = () => {
-		if (isSubmitted) return;
-		setIsSubmitted(true);
-
-		const calculatedScore =
-			questionPaper.questions.filter((q, index) => answers[index] === q.answer)
-				.length || 0;
-		const updatedPaper = {
-			...questionPaper,
-			userAnswers: answers,
-			timestamp: Date.now(),
-			totalQuestions: questionPaper.questions.length,
-			score: calculatedScore,
-			timeTaken: elapsedTime, // Store total time taken in seconds
-			isSpeedChallenge: questionPaper.requestParams?.testType === 'speed-challenge',
-		};
-		updateHistory(updatedPaper);
-		cleanUpAnswers();
-
-		router.push('/results?id=' + questionPaper.id);
 	};
 
 	// Clean up timeout on unmount

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -22,6 +22,13 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 	const { t } = useLanguage();
 	const [isVisible, setIsVisible] = useState(false);
 	const [progress, setProgress] = useState(100);
+
+	const handleDismiss = useCallback(() => {
+		setIsVisible(false);
+		setTimeout(() => {
+			onDismiss?.(id);
+		}, 300);
+	}, [id, onDismiss]);
 
 	useEffect(() => {
 		// Trigger entrance animation
@@ -50,14 +57,7 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 			clearTimeout(dismissTimer);
 			clearInterval(progressInterval);
 		};
-	}, [duration]);
-
-	const handleDismiss = () => {
-		setIsVisible(false);
-		setTimeout(() => {
-			onDismiss?.(id);
-		}, 300);
-	};
+	}, [duration, handleDismiss]);
 
 	const icons = {
 		success: 'checkCircle',

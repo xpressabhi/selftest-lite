@@ -24,7 +24,7 @@ const AchievementShowcase = dynamic(() => import('./components/AchievementShowca
 
 export default function Home() {
 	return (
-		<div className='typeform-bg container d-flex flex-column align-items-center text-dark'>
+		<div className='typeform-bg container d-flex flex-column align-items-center'>
 			<GenerateTestForm />
 			<UnsubmittedTestAlert />
 			<StreakBanner />

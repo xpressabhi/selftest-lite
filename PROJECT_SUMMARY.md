@@ -76,6 +76,7 @@ src/app/api/
 - No auto-retry when API limits are exceeded
 - End-to-end hard timeout at 180 seconds (client + server)
 - Stores tests in Neon PostgreSQL database (`ai_test` table)
+- Guided create flow on home: `Test ID -> bookmarks -> Create New Test -> mode selection -> configuration`
 
 ### 2. Test Taking (`/test`)
 - Question-by-question navigation with swipe gestures
@@ -104,6 +105,7 @@ src/app/api/
 - English and Hindi UI language options
 - UI language switching via LanguageContext
 - Paper language selection (English/Hindi) for test generation
+- Localized new-flow and theme labels in both English and Hindi locale JSON files
 
 ### 6. PWA & UX Enhancements
 - Service worker for offline functionality
@@ -113,6 +115,7 @@ src/app/api/
 - Toast notification system for feedback
 - Data saver mode for slow connections
 - Offline and slow connection indicators
+- Top-nav light/dark theme switch (persisted with `ThemeContext`)
 
 ### 7. Gamification & Engagement (New)
 - **Daily Streak System**: Tracks consecutive days of activity with freeze protection
