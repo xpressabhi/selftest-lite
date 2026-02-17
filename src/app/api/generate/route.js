@@ -12,10 +12,31 @@ import {
 import {
 	API_LIMIT_ERROR_CODE,
 	isApiLimitExceededError,
+	API_TIMEOUT_ERROR_CODE,
+	isApiTimeoutError,
 } from '../../utils/apiLimitError';
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const BATCH_SIZE = 25;
+const GENERATION_TIMEOUT_MS = 180000;
+
+class GenerationTimeoutError extends Error {
+	constructor() {
+		super('Generation timed out after 180 seconds. Please retry.');
+		this.name = 'GenerationTimeoutError';
+		this.code = API_TIMEOUT_ERROR_CODE;
+	}
+}
+
+function getRemainingTimeMs(deadlineMs) {
+	return deadlineMs - Date.now();
+}
+
+function assertWithinDeadline(deadlineMs) {
+	if (getRemainingTimeMs(deadlineMs) <= 0) {
+		throw new GenerationTimeoutError();
+	}
+}
 
 function sanitizeQuestion(question) {
 	return {
@@ -38,7 +59,10 @@ async function generateQuestionBatch({
 	language,
 	testMode,
 	objectiveOnly,
+	deadlineMs,
 }) {
+	assertWithinDeadline(deadlineMs);
+
 	const prompt = generatePrompt({
 		topic,
 		numQuestions,
@@ -53,20 +77,39 @@ async function generateQuestionBatch({
 		objectiveOnly,
 	});
 
-	const response = await ai.models.generateContent({
-		model: MODEL_NAME,
-		contents: prompt,
-		config: {
-			responseMimeType: 'application/json',
-			responseJsonSchema: z.toJSONSchema(paperSchema),
-			thinkingConfig: {
-				thinkingLevel: 'minimal',
-			},
-		},
-	});
+	const remainingTimeMs = getRemainingTimeMs(deadlineMs);
+	if (remainingTimeMs <= 0) {
+		throw new GenerationTimeoutError();
+	}
 
-	const cleanedText = response.text.trim();
-	return JSON.parse(cleanedText);
+	let timeoutHandle;
+	try {
+		const response = await Promise.race([
+			ai.models.generateContent({
+				model: MODEL_NAME,
+				contents: prompt,
+				config: {
+					responseMimeType: 'application/json',
+					responseJsonSchema: z.toJSONSchema(paperSchema),
+					thinkingConfig: {
+						thinkingLevel: 'minimal',
+					},
+				},
+			}),
+			new Promise((_, reject) => {
+				timeoutHandle = setTimeout(() => {
+					reject(new GenerationTimeoutError());
+				}, remainingTimeMs);
+			}),
+		]);
+
+		const cleanedText = response.text.trim();
+		return JSON.parse(cleanedText);
+	} finally {
+		if (timeoutHandle) {
+			clearTimeout(timeoutHandle);
+		}
+	}
 }
 
 async function generatePaper({
@@ -82,12 +125,15 @@ async function generatePaper({
 	language,
 	testMode,
 	objectiveOnly,
+	deadlineMs,
 }) {
 	const totalBatches = Math.ceil(numQuestions / BATCH_SIZE);
 	const generatedQuestions = [];
 	let resolvedPaperTopic = resolvedTopic;
 
 	for (let index = 0; index < totalBatches; index += 1) {
+		assertWithinDeadline(deadlineMs);
+
 		const batchQuestions = Math.min(
 			BATCH_SIZE,
 			numQuestions - generatedQuestions.length,
@@ -121,6 +167,7 @@ async function generatePaper({
 			language,
 			testMode,
 			objectiveOnly,
+			deadlineMs,
 		});
 
 		validateGeneratedPaper({
@@ -276,6 +323,7 @@ export async function POST(request) {
 				language,
 				testMode,
 				objectiveOnly,
+				deadlineMs: startedAt + GENERATION_TIMEOUT_MS,
 			});
 
 			const storedPaper = {
@@ -333,10 +381,18 @@ export async function POST(request) {
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
 			const isLimitError = isApiLimitExceededError(parseError);
-			const statusCode = isLimitError ? 429 : 500;
+			const isTimeoutError = isApiTimeoutError(parseError);
+			const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;
+			const errorCode = isLimitError
+				? API_LIMIT_ERROR_CODE
+				: isTimeoutError
+					? API_TIMEOUT_ERROR_CODE
+					: 'GENERATION_FAILED';
 			const errorMessage = isLimitError
 				? 'API limit exceeded. Please retry manually after some time.'
-				: 'Failed to generate valid quiz questions. Please try again.';
+				: isTimeoutError
+					? 'Generation timed out after 180 seconds. Please retry.'
+					: 'Failed to generate valid quiz questions. Please try again.';
 
 			await logApiEvent({
 				route: '/api/generate',
@@ -359,7 +415,7 @@ export async function POST(request) {
 			return NextResponse.json(
 				{
 					error: errorMessage,
-					code: isLimitError ? API_LIMIT_ERROR_CODE : 'GENERATION_FAILED',
+					code: errorCode,
 					details: parseError.message,
 				},
 				{ status: statusCode },
@@ -368,10 +424,18 @@ export async function POST(request) {
 	} catch (error) {
 		console.error(error);
 		const isLimitError = isApiLimitExceededError(error);
-		const statusCode = isLimitError ? 429 : 500;
+		const isTimeoutError = isApiTimeoutError(error);
+		const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;
+		const errorCode = isLimitError
+			? API_LIMIT_ERROR_CODE
+			: isTimeoutError
+				? API_TIMEOUT_ERROR_CODE
+				: 'GENERATION_UNEXPECTED';
 		const errorMessage = isLimitError
 			? 'API limit exceeded. Please retry manually after some time.'
-			: 'An unexpected error occurred';
+			: isTimeoutError
+				? 'Generation timed out after 180 seconds. Please retry.'
+				: 'An unexpected error occurred';
 
 		await logApiEvent({
 			route: '/api/generate',
@@ -385,7 +449,7 @@ export async function POST(request) {
 		return NextResponse.json(
 			{
 				error: errorMessage,
-				code: isLimitError ? API_LIMIT_ERROR_CODE : 'GENERATION_UNEXPECTED',
+				code: errorCode,
 			},
 			{ status: statusCode },
 		);

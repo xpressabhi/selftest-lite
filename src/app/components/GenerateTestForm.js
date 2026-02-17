@@ -11,6 +11,8 @@ import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '../data/indianExams';
 import {
 	isApiLimitExceededError,
 	isApiLimitExceededResponse,
+	isApiTimeoutError,
+	isApiTimeoutResponse,
 } from '../utils/apiLimitError';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
@@ -77,6 +79,7 @@ const GenerateTestForm = () => {
 
 	const router = useRouter();
 	const MAX_RETRIES = 3;
+	const GENERATION_TIMEOUT_MS = 180000;
 	const { isOffline, shouldSaveData } = useNetworkStatus();
 	const wait = useCallback(
 		(ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -225,9 +228,18 @@ const GenerateTestForm = () => {
 	const runGeneration = useCallback(async (requestParams) => {
 		setLoading(true);
 		setError(null);
+		const generationStartedAt = Date.now();
+
+		const remainingMs = () =>
+			GENERATION_TIMEOUT_MS - (Date.now() - generationStartedAt);
 
 		try {
 			for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+				if (remainingMs() <= 0) {
+					setError(t('generationTimedOutRetry'));
+					return;
+				}
+
 				if (attempt > 1) {
 					setError(
 						`${t('retrying')} (${t('attempt')} ${attempt} ${t('of')} ${MAX_RETRIES})`,
@@ -235,19 +247,34 @@ const GenerateTestForm = () => {
 				}
 
 				try {
-					const response = await fetch('/api/generate', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({
-							...requestParams,
-							previousTests: testHistory.slice(0, 10),
-						}),
-					});
+					const controller = new AbortController();
+					const timeoutId = setTimeout(
+						() => controller.abort(),
+						Math.max(1, remainingMs()),
+					);
+					let response;
+					try {
+						response = await fetch('/api/generate', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							signal: controller.signal,
+							body: JSON.stringify({
+								...requestParams,
+								previousTests: testHistory.slice(0, 10),
+							}),
+						});
+					} finally {
+						clearTimeout(timeoutId);
+					}
 
 					if (!response.ok) {
 						const errorData = await response.json().catch(() => ({}));
+						if (isApiTimeoutResponse(response.status, errorData)) {
+							setError(t('generationTimedOutRetry'));
+							return;
+						}
 						if (isApiLimitExceededResponse(response.status, errorData)) {
 							setError(errorData.error || t('rateLimitExceeded'));
 							return;
@@ -268,6 +295,15 @@ const GenerateTestForm = () => {
 						return;
 					}
 				} catch (err) {
+					if (
+						err?.name === 'AbortError' ||
+						isApiTimeoutError(err) ||
+						remainingMs() <= 0
+					) {
+						setError(t('generationTimedOutRetry'));
+						return;
+					}
+
 					if (isApiLimitExceededError(err)) {
 						setError(t('rateLimitExceeded'));
 						return;
@@ -281,12 +317,17 @@ const GenerateTestForm = () => {
 					}
 				}
 
-				await wait(1500);
+				const retryDelayMs = Math.min(1500, Math.max(0, remainingMs()));
+				if (retryDelayMs <= 0) {
+					setError(t('generationTimedOutRetry'));
+					return;
+				}
+				await wait(retryDelayMs);
 			}
 		} finally {
 			setLoading(false);
 		}
-	}, [MAX_RETRIES, router, t, testHistory, updateHistory, wait]);
+	}, [GENERATION_TIMEOUT_MS, MAX_RETRIES, router, t, testHistory, updateHistory, wait]);
 
 	const handleModeSelect = useCallback((mode) => {
 		setActiveMode(mode);

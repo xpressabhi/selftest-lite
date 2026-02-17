@@ -13,6 +13,11 @@ import useSoundEffects from '../hooks/useSoundEffects';
 import useStreak from '../hooks/useStreak';
 import useAchievements from '../hooks/useAchievements';
 import SoundToggle from '../components/SoundToggle';
+import {
+	isApiLimitExceededResponse,
+	isApiTimeoutError,
+	isApiTimeoutResponse,
+} from '../utils/apiLimitError';
 
 // Lazy load heavy interactive/visual components
 const Confetti = dynamic(() => import('../components/Confetti'), { ssr: false });
@@ -31,6 +36,7 @@ const MarkdownRenderer = dynamic(
 import { Container, Button, Card, Badge, Alert, Accordion } from 'react-bootstrap';
 
 function ResultsContent() {
+	const REGENERATE_TIMEOUT_MS = 180000;
 	const searchParams = useSearchParams();
 	const id = searchParams.get('id');
 	const [testHistory, _, updateHistory] = useLocalStorage(
@@ -129,19 +135,36 @@ function ResultsContent() {
 		setGenerationError(null);
 
 		try {
-			const response = await fetch('/api/generate', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					...questionPaper.requestParams,
-					previousTests: testHistory.slice(0, 10),
-				}),
-			});
+			const controller = new AbortController();
+			const timeoutId = setTimeout(
+				() => controller.abort(),
+				REGENERATE_TIMEOUT_MS,
+			);
+			let response;
+			try {
+				response = await fetch('/api/generate', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					signal: controller.signal,
+					body: JSON.stringify({
+						...questionPaper.requestParams,
+						previousTests: testHistory.slice(0, 10),
+					}),
+				});
+			} finally {
+				clearTimeout(timeoutId);
+			}
 
 			if (!response.ok) {
-				const errorData = await response.json();
+				const errorData = await response.json().catch(() => ({}));
+				if (isApiTimeoutResponse(response.status, errorData)) {
+					throw new Error(t('generationTimedOutRetry'));
+				}
+				if (isApiLimitExceededResponse(response.status, errorData)) {
+					throw new Error(errorData.error || t('rateLimitExceeded'));
+				}
 				throw new Error(errorData.error || t('failedToGenerateQuiz'));
 			}
 
@@ -150,7 +173,11 @@ function ResultsContent() {
 			updateHistory(newQuestionPaper);
 			router.push('/test?id=' + newQuestionPaper.id);
 		} catch (err) {
-			setGenerationError(err.message);
+			if (err?.name === 'AbortError' || isApiTimeoutError(err)) {
+				setGenerationError(t('generationTimedOutRetry'));
+			} else {
+				setGenerationError(err.message);
+			}
 			setIsGenerating(false);
 		}
 	};

@@ -10,6 +10,16 @@ const API_LIMIT_PATTERNS = [
 ];
 
 export const API_LIMIT_ERROR_CODE = 'API_LIMIT_EXCEEDED';
+export const API_TIMEOUT_ERROR_CODE = 'GENERATION_TIMEOUT';
+
+const API_TIMEOUT_PATTERNS = [
+	/\btimeout\b/i,
+	/timed out/i,
+	/deadline exceeded/i,
+	/request timeout/i,
+	/generation timed out/i,
+	/aborted/i,
+];
 
 function collectErrorText(errorLike) {
 	if (!errorLike) return '';
@@ -38,3 +48,14 @@ export function isApiLimitExceededResponse(status, errorPayload) {
 	return isApiLimitExceededError(errorPayload);
 }
 
+export function isApiTimeoutError(errorLike) {
+	const details = collectErrorText(errorLike).toLowerCase();
+	if (!details) return false;
+	return API_TIMEOUT_PATTERNS.some((pattern) => pattern.test(details));
+}
+
+export function isApiTimeoutResponse(status, errorPayload) {
+	if ([408, 504, 524].includes(status)) return true;
+	if (errorPayload?.code === API_TIMEOUT_ERROR_CODE) return true;
+	return isApiTimeoutError(errorPayload);
+}

@@ -138,6 +138,7 @@
   "retrying": "Retrying",
   "attempt": "Attempt",
   "rateLimitExceeded": "Rate limit exceeded",
+  "generationTimedOutRetry": "Generation timed out after 180 seconds. Please retry.",
   "errorFailedGenerateAfterAttempts": "Failed to generate test after multiple attempts. Please try again later.",
   "errorFailedAfterAttempts": "Failed after multiple attempts:",
   "errorAddTopicBeforeBookmark": "Add a topic or suggested topics before bookmarking a preset for quick start.",

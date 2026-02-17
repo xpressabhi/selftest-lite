@@ -138,6 +138,7 @@
   "retrying": "फिर कोशिश",
   "attempt": "प्रयास",
   "rateLimitExceeded": "रेट लिमिट पार हो गई",
+  "generationTimedOutRetry": "180 सेकंड बाद जनरेशन टाइम-आउट हो गया। कृपया दोबारा प्रयास करें।",
   "errorFailedGenerateAfterAttempts": "कई प्रयासों के बाद टेस्ट बनाना असफल रहा। कृपया बाद में कोशिश करें।",
   "errorFailedAfterAttempts": "कई प्रयासों के बाद विफल:",
   "errorAddTopicBeforeBookmark": "क्विक स्टार्ट बुकमार्क के लिए पहले टॉपिक या सुझाए गए टॉपिक चुनें।",
