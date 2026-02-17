@@ -4,12 +4,28 @@ export function generatePrompt({
 	difficulty,
 	testType,
 	topicContext,
+	examName,
+	syllabusFocus = [],
 	previousQuestions,
 	language,
+	testMode = 'quiz-practice',
+	objectiveOnly = false,
 }) {
 	return `You are an expert quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
     
     LANGUAGE: ${language || 'English'}
+    TEST MODE: ${testMode}
+    EXAM MODE: ${
+			examName
+				? `Generate this as an India exam-style paper for ${examName}.`
+				: 'General quiz mode'
+		}
+    OBJECTIVE ONLY: ${objectiveOnly ? 'Yes' : 'No'}
+    SYLLABUS COVERAGE: ${
+			syllabusFocus.length > 0
+				? syllabusFocus.join(', ')
+				: 'Use the full provided topic context'
+		}
     
     OUTPUT FORMAT:
     The response must be a valid JSON object with this exact structure:
@@ -32,6 +48,16 @@ export function generatePrompt({
     5. Each answer must match exactly one of the options
     6. Questions must match the specified difficulty level
     7. Do not repeat previous questions
+    8. ${
+			examName
+				? `Match the tone and rigor expected in ${examName} objective practice papers.`
+				: 'Keep questions practical and realistic.'
+		}
+    9. ${
+			testMode === 'full-exam'
+				? 'Generate a full-length exam paper style output for objective testing.'
+				: 'Generate a concise quiz-practice style output.'
+		}
     
     CONTENT FORMATTING:
     For code questions (especially when testType is 'coding'):
@@ -124,6 +150,11 @@ export function generatePrompt({
           6. Include data interpretation, graph analysis, and practical measurements where relevant
           7. Avoid purely theoretical or definition-based questions
           8. Each question should demonstrate a practical use case or implementation
+          9. ${
+						examName
+							? `Ensure coverage is balanced across selected syllabus units for ${examName}.`
+							: 'Ensure broad coverage across selected context.'
+					}
           
           IMPORTANT: Generate questions that are different from the previously asked questions listed below.
           

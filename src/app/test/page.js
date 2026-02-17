@@ -412,10 +412,20 @@ function TestContent() {
 				>
 				<Container style={{ maxWidth: 720 }} className='compact-test-header-inner py-1 px-0'>
 					<div className='d-flex justify-content-between align-items-center mobile-header-row'>
-						<small className='text-muted fw-semibold d-flex align-items-center gap-2'>
+						<small className='text-muted fw-semibold d-flex align-items-center gap-2 flex-wrap'>
 							{t('question')} {index + 1} {t('of')} {questionPaper.questions.length}
 							<span className='opacity-50 mobile-progress-sep'>•</span>
 							<span className='mobile-progress-pct'>{Math.round(progress)}%</span>
+							{questionPaper.requestParams?.testMode === 'full-exam' && (
+								<span className='badge rounded-pill text-bg-dark'>
+									Full Exam
+								</span>
+							)}
+							{questionPaper.requestParams?.examName && (
+								<span className='badge rounded-pill text-bg-primary'>
+									{questionPaper.requestParams.examName}
+								</span>
+							)}
 						</small>
 						{timeLeft !== null ? (
 							<div

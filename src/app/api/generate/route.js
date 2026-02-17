@@ -10,6 +10,130 @@ import {
 	validateGeneratedPaper,
 } from '../utils/quizValidation';
 
+const MODEL_NAME = 'gemini-3-flash-preview';
+const BATCH_SIZE = 25;
+
+async function generateQuestionBatch({
+	ai,
+	topic,
+	numQuestions,
+	difficulty,
+	testType,
+	topicContext,
+	examName,
+	syllabusFocus,
+	previousQuestions,
+	language,
+	testMode,
+	objectiveOnly,
+}) {
+	const prompt = generatePrompt({
+		topic,
+		numQuestions,
+		difficulty,
+		testType,
+		topicContext,
+		examName,
+		syllabusFocus,
+		previousQuestions,
+		language,
+		testMode,
+		objectiveOnly,
+	});
+
+	const response = await ai.models.generateContent({
+		model: MODEL_NAME,
+		contents: prompt,
+		config: {
+			responseMimeType: 'application/json',
+			responseJsonSchema: z.toJSONSchema(paperSchema),
+			thinkingConfig: {
+				thinkingLevel: 'minimal',
+			},
+		},
+	});
+
+	const cleanedText = response.text.trim();
+	return JSON.parse(cleanedText);
+}
+
+async function generatePaper({
+	ai,
+	resolvedTopic,
+	numQuestions,
+	difficulty,
+	testType,
+	topicContext,
+	examName,
+	syllabusFocus,
+	previousQuestions,
+	language,
+	testMode,
+	objectiveOnly,
+}) {
+	const totalBatches = Math.ceil(numQuestions / BATCH_SIZE);
+	const generatedQuestions = [];
+	let resolvedPaperTopic = resolvedTopic;
+
+	for (let index = 0; index < totalBatches; index += 1) {
+		const batchQuestions = Math.min(
+			BATCH_SIZE,
+			numQuestions - generatedQuestions.length,
+		);
+		const batchContext = [
+			topicContext,
+			totalBatches > 1
+				? `Batch ${index + 1} of ${totalBatches}: Generate exactly ${batchQuestions} new questions and avoid overlap with earlier batches.`
+				: null,
+		]
+			.filter(Boolean)
+			.join('\n');
+		const cumulativePrevious = [
+			...previousQuestions,
+			...generatedQuestions.map((question) => ({
+				question: question.question,
+				answer: question.answer,
+			})),
+		];
+
+		const batchPaper = await generateQuestionBatch({
+			ai,
+			topic: resolvedTopic,
+			numQuestions: batchQuestions,
+			difficulty,
+			testType,
+			topicContext: batchContext,
+			examName,
+			syllabusFocus,
+			previousQuestions: cumulativePrevious,
+			language,
+			testMode,
+			objectiveOnly,
+		});
+
+		validateGeneratedPaper({
+			questionPaper: batchPaper,
+			testType,
+			numQuestions: batchQuestions,
+		});
+		if (!resolvedPaperTopic && batchPaper.topic) {
+			resolvedPaperTopic = batchPaper.topic;
+		}
+		generatedQuestions.push(...batchPaper.questions);
+	}
+
+	if (generatedQuestions.length !== numQuestions) {
+		throw new Error(
+			`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`,
+		);
+	}
+
+	return {
+		topic: resolvedPaperTopic || resolvedTopic || 'Generated Test',
+		questions: generatedQuestions,
+	};
+}
+
 export async function POST(request) {
 	const startedAt = Date.now();
 	const clientKey = getClientKey(request);
@@ -19,16 +143,27 @@ export async function POST(request) {
 			topic,
 			category,
 			selectedTopics = [],
+			testMode = 'quiz-practice',
+			examId = null,
+			examName = null,
+			examStream = null,
+			syllabusFocus = [],
 			previousTests = [],
 			testType = 'multiple-choice',
 			numQuestions = 10,
 			difficulty = 'intermediate',
 			language = 'english',
+			objectiveOnly = false,
+			durationMinutes = null,
 		} = await request.json();
 
 		const validationError = validateGenerateRequest({
 			topic,
 			selectedTopics,
+			syllabusFocus,
+			testMode,
+			examName,
+			objectiveOnly,
 			language,
 			testType,
 			numQuestions,
@@ -38,7 +173,8 @@ export async function POST(request) {
 			return NextResponse.json({ error: validationError }, { status: 400 });
 		}
 
-		// Check rate limit
+		const resolvedTopic =
+			topic || (examName ? `${examName} mock paper` : '');
 
 		const rateLimit = await rateLimiter(request, { bucket: '/api/generate' });
 		if (rateLimit.limited) {
@@ -49,7 +185,9 @@ export async function POST(request) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 				metadata: {
-					topic: topic || null,
+					topic: resolvedTopic || null,
+					testMode,
+					examName,
 					testType,
 					numQuestions,
 					difficulty,
@@ -74,18 +212,24 @@ export async function POST(request) {
 			);
 		}
 
-		// Construct the topic context
 		const topicContext = [
+			testMode === 'full-exam'
+				? 'Full-length exam mode enabled. Generate objective-style questions.'
+				: 'Quiz practice mode enabled.',
+			examName ? `Indian exam paper mode: ${examName}` : null,
+			examStream ? `Exam stream: ${examStream}` : null,
 			category ? `Category: ${category}` : null,
+			syllabusFocus.length > 0
+				? `Selected syllabus focus: ${syllabusFocus.join(', ')}`
+				: null,
 			selectedTopics.length > 0
 				? `Selected topics: ${selectedTopics.join(', ')}`
 				: null,
-			topic ? `Additional context: ${topic}` : null,
+			resolvedTopic ? `Additional context: ${resolvedTopic}` : null,
 		]
 			.filter(Boolean)
 			.join('\n');
 
-		// Extract all previous questions to help AI avoid duplicates
 		const previousQuestions = previousTests.flatMap(
 			(test) =>
 				test.questions?.map((q) => ({
@@ -93,6 +237,7 @@ export async function POST(request) {
 					answer: q.answer,
 				})) || [],
 		);
+
 		const apiKey = process.env.GEMINI_API_KEY;
 		if (!apiKey) {
 			return NextResponse.json(
@@ -102,50 +247,47 @@ export async function POST(request) {
 		}
 
 		const ai = new GoogleGenAI(apiKey);
-
-		const prompt = generatePrompt({
-			topic,
-			numQuestions,
-			difficulty,
-			testType,
-			topicContext,
-			previousQuestions,
-			language,
-		});
-
-		const response = await ai.models.generateContent({
-			model: 'gemini-3-flash-preview',
-			contents: prompt,
-			config: {
-				responseMimeType: 'application/json',
-				responseJsonSchema: z.toJSONSchema(paperSchema),
-				thinkingConfig: {
-					thinkingLevel: 'minimal',
-				}
-			},
-		});
-
 		let questionPaper;
-		try {
-			// Try to parse the response as JSON
-			const cleanedText = response.text.trim();
-			questionPaper = JSON.parse(cleanedText);
 
-			validateGeneratedPaper({ questionPaper, testType, numQuestions });
+		try {
+			questionPaper = await generatePaper({
+				ai,
+				resolvedTopic,
+				numQuestions,
+				difficulty,
+				testType,
+				topicContext,
+				examName,
+				syllabusFocus,
+				previousQuestions,
+				language,
+				testMode,
+				objectiveOnly,
+			});
+
 			const storedPaper = {
 				...questionPaper,
 				requestParams: {
+					topic: resolvedTopic,
+					testMode,
+					examId,
+					examName,
+					examStream,
 					category: category || null,
 					selectedTopics,
+					syllabusFocus,
 					testType,
 					numQuestions,
 					difficulty,
 					language,
+					objectiveOnly,
+					durationMinutes,
 				},
 			};
 
 			const testId = await createTestRecord(storedPaper, {
-				topic,
+				topic: resolvedTopic,
+				examName,
 				testType,
 				numQuestions,
 				difficulty,
@@ -160,6 +302,8 @@ export async function POST(request) {
 				durationMs: Date.now() - startedAt,
 				metadata: {
 					topic: questionPaper.topic,
+					testMode,
+					examName,
 					testType,
 					numQuestions,
 					difficulty,
@@ -169,14 +313,12 @@ export async function POST(request) {
 				},
 			});
 
-			// Return the question paper with the database ID
 			return NextResponse.json({
 				...storedPaper,
 				id: testId,
 			});
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
-			console.error('Raw response:', response.text);
 
 			await logApiEvent({
 				route: '/api/generate',
@@ -186,7 +328,9 @@ export async function POST(request) {
 				durationMs: Date.now() - startedAt,
 				errorMessage: parseError.message,
 				metadata: {
-					topic: topic || null,
+					topic: resolvedTopic || null,
+					testMode,
+					examName,
 					testType,
 					numQuestions,
 					difficulty,

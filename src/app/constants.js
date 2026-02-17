@@ -4,6 +4,8 @@ export const STORAGE_KEYS = {
 	USER_ANSWERS: 'selftest_user_answers',
 	UNSUBMITTED_TEST: 'selftest_unsubmitted_test',
 	USER_PROMPTS: 'selftest_user_prompts',
+	BOOKMARKED_EXAMS: 'selftest_bookmarked_exams',
+	BOOKMARKED_QUIZ_PRESETS: 'selftest_bookmarked_quiz_presets',
 };
 
 export const TOPIC_CATEGORIES = {

@@ -9,17 +9,38 @@ import {
 export function validateGenerateRequest({
 	topic,
 	selectedTopics = [],
+	syllabusFocus = [],
+	testMode = 'quiz-practice',
+	examName = null,
+	objectiveOnly = false,
 	language,
 	testType,
 	numQuestions,
 	difficulty,
 }) {
-	if (!topic && selectedTopics.length === 0) {
-		return 'Topic or selected topics are required';
+	const hasContext =
+		Boolean(topic) ||
+		selectedTopics.length > 0 ||
+		syllabusFocus.length > 0;
+
+	if (testMode !== 'full-exam' && !hasContext) {
+		return 'Topic, selected topics, or syllabus focus is required';
+	}
+
+	if (testMode === 'full-exam' && !examName) {
+		return 'Exam selection is required for full exam mode';
+	}
+
+	if (testMode === 'full-exam' && !objectiveOnly) {
+		return 'Full exam mode currently supports objective papers only';
 	}
 
 	if (!VALID_LANGUAGES.includes(String(language).toLowerCase())) {
 		return 'Invalid language selection';
+	}
+
+	if (testMode === 'full-exam' && testType !== 'multiple-choice') {
+		return 'Full exam mode supports multiple-choice objective format';
 	}
 
 	if (!VALID_TEST_TYPES.includes(testType)) {
