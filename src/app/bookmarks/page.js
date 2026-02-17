@@ -26,8 +26,8 @@ export default function BookmarksPage() {
         }
     };
 
-    return (
-        <Container style={{ maxWidth: '800px' }}>
+	return (
+		<Container style={{ maxWidth: '800px' }}>
             <div className='d-flex align-items-center gap-3 mb-4 mt-4'>
                 <Icon name='bookmarkFill' className='text-primary display-6' />
                 <div>
@@ -51,23 +51,25 @@ export default function BookmarksPage() {
                 </Card>
             ) : (
                 <div className='d-flex flex-column gap-3'>
-                    {bookmarks
-                        .sort((a, b) => b.bookmarkedAt - a.bookmarkedAt)
-                        .map((q, index) => (
+					{bookmarks
+						.sort((a, b) => b.bookmarkedAt - a.bookmarkedAt)
+						.map((q, index) => (
                             <Card
                                 key={index}
                                 className='border-0 glass-card shadow-sm overflow-hidden'
                             >
                                 <Card.Body className='p-4'>
                                     <div className='d-flex justify-content-between align-items-start mb-3'>
-                                        <Badge
-                                            bg='light'
-                                            text='dark'
-                                            className='d-flex align-items-center gap-1 px-3 py-2 rounded-pill border'
-                                        >
-                                            <Icon name='clock' size={12} />
-                                            {new Date(q.bookmarkedAt || Date.now()).toLocaleDateString(uiLocale)}
-                                        </Badge>
+										<Badge
+											bg='light'
+											text='dark'
+											className='d-flex align-items-center gap-1 px-3 py-2 rounded-pill border'
+										>
+											<Icon name='clock' size={12} />
+											{q.bookmarkedAt
+												? new Date(q.bookmarkedAt).toLocaleDateString(uiLocale)
+												: t('na')}
+										</Badge>
                                         <Button
                                             variant='link'
                                             className='text-danger p-0'

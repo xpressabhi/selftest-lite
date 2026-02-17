@@ -405,7 +405,7 @@ export default function TopNav() {
 						padding-bottom: 0;
 						padding-left: max(12px, var(--safe-left));
 						box-sizing: border-box;
-						z-index: 1000;
+						z-index: 1101;
 						transition: box-shadow 0.2s ease;
 					}
 
@@ -623,12 +623,15 @@ export default function TopNav() {
 					font-weight: 600;
 				}
 
-				.menu-footer {
-					padding: 24px;
-					padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-					border-top: 1px solid var(--border-color);
-					background: var(--bg-secondary);
-				}
+					.menu-footer {
+						padding: 24px;
+						padding-bottom: max(
+							calc(24px + env(safe-area-inset-bottom, 0px)),
+							calc(var(--bottom-nav-offset) + 12px)
+						);
+						border-top: 1px solid var(--border-color);
+						background: var(--bg-secondary);
+					}
 
 				/* Backdrop */
 				.menu-backdrop {

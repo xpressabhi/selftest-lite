@@ -8,7 +8,7 @@ import { Button, ListGroup, Badge } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useLanguage } from '../context/LanguageContext';
 
-export default function TestHistory({ onTestClick }) {
+export default function TestHistory({ onTestClick, showHeader = true }) {
 	const [testHistory, setTestHistory] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
 		[],
@@ -44,11 +44,13 @@ export default function TestHistory({ onTestClick }) {
 	if (testHistory.length === 0) {
 		return (
 			<div className='w-100' style={{ maxWidth: '800px' }}>
-				<div className='d-flex justify-content-between align-items-center mb-3 mx-3 py-3'>
-					<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
-						<Icon name='history' className='text-primary' /> {t('previousTests')}
-					</h2>
-				</div>
+				{showHeader && (
+					<div className='d-flex justify-content-between align-items-center mb-3 mx-3 py-3'>
+						<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
+							<Icon name='history' className='text-primary' /> {t('previousTests')}
+						</h2>
+					</div>
+				)}
 				<div className='p-4 text-center text-muted'>
 					<Icon name='inbox' size={48} className='mb-3' />
 					<p className='mb-0'>{t('noPreviousTestsFound')}</p>
@@ -59,10 +61,12 @@ export default function TestHistory({ onTestClick }) {
 
 	return (
 		<div className='w-100' style={{ maxWidth: '800px' }}>
-			<div className='d-flex justify-content-between align-items-center mb-3 mx-3 gap-2 flex-wrap py-3'>
-				<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
-					<Icon name='history' className='text-primary' /> {t('previousTests')}
-				</h2>
+			<div className={`d-flex justify-content-between align-items-center mb-3 ${showHeader ? 'mx-3 py-3' : 'py-1'} gap-2 flex-wrap`}>
+				{showHeader && (
+					<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
+						<Icon name='history' className='text-primary' /> {t('previousTests')}
+					</h2>
+				)}
 				<div className='d-flex gap-2 ms-auto'>
 					<Button
 						variant={showFavoritesOnly ? 'warning' : 'outline-warning'}
