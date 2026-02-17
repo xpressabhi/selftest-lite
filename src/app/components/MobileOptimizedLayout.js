@@ -7,6 +7,7 @@ import PullToRefresh from './PullToRefresh';
 import DataSaverToggle from './DataSaverToggle';
 import { ToastContainer } from './Toast';
 import useNetworkStatus from '../hooks/useNetworkStatus';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Mobile-Optimized Layout
@@ -24,6 +25,7 @@ import useNetworkStatus from '../hooks/useNetworkStatus';
  */
 export default function MobileOptimizedLayout({ children, onRefresh }) {
 	const { isOffline, isSlowConnection } = useNetworkStatus();
+	const { t } = useLanguage();
 	const [toasts, setToasts] = useState([]);
 	const [isStandalone, setIsStandalone] = useState(false);
 
@@ -41,9 +43,9 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 	// Show offline notification
 	useEffect(() => {
 		if (isOffline) {
-			addToast('warning', 'You are offline. Some features may be limited.');
+			addToast('warning', t('offlineToastMessage'));
 		}
-	}, [isOffline]);
+	}, [isOffline, t]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return undefined;
@@ -147,7 +149,7 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 		<div className={`app-layout ${isStandalone ? 'standalone' : ''}`}>
 			{/* Skip link for accessibility */}
 			<a href="#main-content" className="skip-link">
-				Skip to main content
+				{t('skipToMainContent')}
 			</a>
 
 			{/* Top Navigation */}
@@ -162,7 +164,7 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 				<span className="offline-icon" aria-hidden="true">
 					⚠️
 				</span>
-				<span>You are offline</span>
+				<span>{t('youAreOffline')}</span>
 			</div>
 
 			{/* Slow Connection Banner */}
@@ -171,7 +173,7 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 					<span className="slow-icon" aria-hidden="true">
 						📶
 					</span>
-					<span>Slow connection detected</span>
+					<span>{t('slowConnectionDetected')}</span>
 				</div>
 			)}
 

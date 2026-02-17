@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import dynamic from 'next/dynamic';
+import { useLanguage } from '../context/LanguageContext';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
 	{
-		loading: () => <p>Loading...</p>,
+		loading: () => <p>...</p>,
 		ssr: false,
 	},
 );
 
-const PrintableContent = ({ questionPaper }) => {
+const PrintableContent = ({ questionPaper, t }) => {
 	return (
 		<div className='print-content'>
 			<style jsx global>{`
@@ -118,7 +119,7 @@ const PrintableContent = ({ questionPaper }) => {
 				}
 			`}</style>
 			<div className='watermark'>selftest.in</div>
-			<h2>{questionPaper.topic || 'Test'}</h2>
+			<h2>{questionPaper.topic || t('testLabel')}</h2>
 			{questionPaper.questions.map((q, i) => (
 				<div key={i} className='question'>
 					<span className='question-number'>Q{i + 1}.</span>
@@ -136,7 +137,7 @@ const PrintableContent = ({ questionPaper }) => {
 				</div>
 			))}
 			<div className='answers'>
-				<h3>Answers</h3>
+				<h3>{t('answers')}</h3>
 				<ol>
 					{questionPaper.questions.map((q, i) => (
 						<li key={i} className='answer-item'>
@@ -151,6 +152,7 @@ const PrintableContent = ({ questionPaper }) => {
 
 export default function Print({ questionPaper }) {
 	const [showPreview, setShowPreview] = useState(false);
+	const { t } = useLanguage();
 
 	const handlePrint = () => {
 		if (!questionPaper) return;
@@ -167,19 +169,19 @@ export default function Print({ questionPaper }) {
 				properties: {},
 				children: [
 					new Paragraph({
-						text: questionPaper.topic || 'Test Document',
+						text: questionPaper.topic || t('testDocument'),
 						heading: HeadingLevel.HEADING_1,
 						alignment: 'center',
 					}),
 					new Paragraph({
-						text: 'Generated from selftest.in',
+						text: t('generatedFromSelftest'),
 						alignment: 'center',
 					}),
 					new Paragraph({
 						text: '',
 					}),
 					new Paragraph({
-						text: 'Questions',
+						text: t('questionsHeading'),
 						heading: HeadingLevel.HEADING_2,
 					}),
 				],
@@ -190,7 +192,7 @@ export default function Print({ questionPaper }) {
 			questionPaper.questions.forEach((q, i) => {
 				questionChildren.push(
 					new Paragraph({
-						text: `Question ${i + 1}`,
+						text: `${t('question')} ${i + 1}`,
 						heading: HeadingLevel.HEADING_3,
 						spacing: {
 							before: 200,
@@ -200,7 +202,7 @@ export default function Print({ questionPaper }) {
 						text: q.question.replace(/\*\*(.*?)\*\*/g, '$1'), // Simple markdown to text conversion
 					}),
 					new Paragraph({
-						text: 'Options:',
+						text: `${t('options')}:`,
 						spacing: {
 							before: 100,
 						},
@@ -229,7 +231,7 @@ export default function Print({ questionPaper }) {
 			// Add answers section
 			questionChildren.push(
 				new Paragraph({
-					text: 'Answers and Explanations',
+					text: t('answersAndExplanations'),
 					heading: HeadingLevel.HEADING_2,
 					pageBreakBefore: true,
 					spacing: {
@@ -242,7 +244,7 @@ export default function Print({ questionPaper }) {
 			questionPaper.questions.forEach((q, i) => {
 				questionChildren.push(
 					new Paragraph({
-						text: `Answer to Question ${i + 1}`,
+						text: `${t('answerToQuestion')} ${i + 1}`,
 						heading: HeadingLevel.HEADING_3,
 						spacing: {
 							before: 200,
@@ -260,8 +262,8 @@ export default function Print({ questionPaper }) {
 
 			// Create a new document with sections
 			const doc = new Document({
-				title: questionPaper.topic || 'Test Document',
-				description: 'Generated from selftest.in',
+				title: questionPaper.topic || t('testDocument'),
+				description: t('generatedFromSelftest'),
 				sections: [titleSection, contentSection],
 			});
 
@@ -284,9 +286,7 @@ export default function Print({ questionPaper }) {
 			}, 100);
 		} catch (error) {
 			console.error('Error generating DOCX file:', error);
-			alert(
-				'Failed to generate DOCX file. Please try again or use a different format.',
-			);
+			alert(t('failedGenerateDocx'));
 		}
 	};
 
@@ -300,18 +300,18 @@ export default function Print({ questionPaper }) {
 
 			// Set presentation properties
 			pptx.layout = 'LAYOUT_16x9';
-			pptx.title = questionPaper.topic || 'Test Presentation';
-			pptx.subject = 'Generated from selftest.in';
+			pptx.title = questionPaper.topic || t('testPresentation');
+			pptx.subject = t('generatedFromSelftest');
 
 			// Add title slide
 			const titleSlide = pptx.addSlide();
 			titleSlide.addText(
 				[
 					{
-						text: questionPaper.topic || 'Test Presentation',
+						text: questionPaper.topic || t('testPresentation'),
 						options: { fontSize: 36, bold: true },
 					},
-					{ text: '\nGenerated from selftest.in', options: { fontSize: 18 } },
+					{ text: `\n${t('generatedFromSelftest')}`, options: { fontSize: 18 } },
 				],
 				{ x: 0.5, y: 1.5, w: 9, h: 2, align: 'center' },
 			);
@@ -333,7 +333,7 @@ export default function Print({ questionPaper }) {
 				const slide = pptx.addSlide();
 
 				// Add question title
-				slide.addText(`Question ${i + 1}`, {
+				slide.addText(`${t('question')} ${i + 1}`, {
 					x: 0.5,
 					y: 0.5,
 					w: 9,
@@ -369,7 +369,7 @@ export default function Print({ questionPaper }) {
 				});
 
 				// Add answer
-				slide.addText('Answer:', {
+				slide.addText(`${t('answerLabel')}:`, {
 					x: 0.5,
 					y: 4.8,
 					w: 9,
@@ -409,9 +409,7 @@ export default function Print({ questionPaper }) {
 			});
 		} catch (error) {
 			console.error('Error generating PPTX file:', error);
-			alert(
-				'Failed to generate PPTX file. Please try again or use a different format.',
-			);
+			alert(t('failedGeneratePptx'));
 		}
 	};
 
@@ -445,7 +443,7 @@ export default function Print({ questionPaper }) {
 				className='btn btn-outline-secondary d-flex align-items-center gap-2'
 				onClick={handlePrint}
 			>
-				<Icon name='print' /> Print
+				<Icon name='print' /> {t('print')}
 			</button>
 		);
 	}
@@ -488,7 +486,7 @@ export default function Print({ questionPaper }) {
 					onClick={handlePrintContent}
 					style={{ opacity: 1, visibility: 'visible' }}
 				>
-					<Icon name='print' /> Print
+					<Icon name='print' /> {t('print')}
 				</button>
 				<button
 					type='button'
@@ -496,7 +494,7 @@ export default function Print({ questionPaper }) {
 					onClick={() => setShowPreview(false)}
 					style={{ opacity: 1, visibility: 'visible' }}
 				>
-					<Icon name='close' /> Close
+					<Icon name='close' /> {t('close')}
 				</button>
 			</div>
 
@@ -518,7 +516,7 @@ export default function Print({ questionPaper }) {
 							backgroundColor: '#ffffff',
 						}}
 					>
-						<PrintableContent questionPaper={questionPaper} />
+						<PrintableContent questionPaper={questionPaper} t={t} />
 					</div>
 				</div>
 			</div>

@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function useTestSearch({ isDataSaverActive = false } = {}) {
+	const { t } = useLanguage();
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchResults, setSearchResults] = useState([]);
@@ -43,14 +45,14 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 					signal: controller.signal,
 				});
 				if (!response.ok) {
-					throw new Error('Failed to fetch tests');
+					throw new Error(t('failedToFetchTests'));
 				}
 
 				const data = await response.json();
 				setSearchResults(Array.isArray(data.tests) ? data.tests : []);
 			} catch (error) {
 				if (error.name !== 'AbortError') {
-					setSearchError('Unable to load tests right now.');
+					setSearchError(t('unableLoadTests'));
 					setSearchResults([]);
 				}
 			} finally {
@@ -59,7 +61,7 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 				}
 			}
 		},
-		[isDataSaverActive],
+		[isDataSaverActive, t],
 	);
 
 	useEffect(() => {

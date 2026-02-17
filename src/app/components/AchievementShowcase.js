@@ -5,12 +5,14 @@ import { Card, Row, Col, ProgressBar } from 'react-bootstrap';
 import Icon from './Icon';
 import useAchievements from '../hooks/useAchievements';
 import useStreak from '../hooks/useStreak';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * AchievementShowcase - Displays unlocked achievements and progress
  * Shows on the home page below stats dashboard
  */
 export default function AchievementShowcase({ compact = false }) {
+    const { t } = useLanguage();
     const { longestStreak } = useStreak();
     const {
         allAchievements,
@@ -30,10 +32,10 @@ export default function AchievementShowcase({ compact = false }) {
     }, [allAchievements]);
 
     const categoryLabels = {
-        milestones: '🎯 Milestones',
-        performance: '⭐ Performance',
-        streaks: '🔥 Streaks',
-        special: '✨ Special',
+        milestones: `🎯 ${t('milestones')}`,
+        performance: `⭐ ${t('performance')}`,
+        streaks: `🔥 ${t('streaks')}`,
+        special: `✨ ${t('special')}`,
     };
 
     if (compact) {
@@ -61,7 +63,7 @@ export default function AchievementShowcase({ compact = false }) {
                         className='text-muted small fw-medium'
                         style={{ fontSize: '0.7rem' }}
                     >
-                        +{totalCount - unlockedCount} locked
+                        +{totalCount - unlockedCount} {t('locked')}
                     </span>
                 )}
             </div>
@@ -76,7 +78,7 @@ export default function AchievementShowcase({ compact = false }) {
                     <div className='d-flex align-items-center justify-content-between mb-3'>
                         <h5 className='mb-0 d-flex align-items-center gap-2 fw-bold'>
                             <span style={{ fontSize: '1.2rem' }}>🏆</span>
-                            Achievements
+                            {t('achievements')}
                         </h5>
                         <span className='text-muted small fw-bold'>
                             {unlockedCount}/{totalCount}

@@ -23,7 +23,7 @@ const Print = dynamic(() => import('../components/Print'), { loading: () => <But
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
 	{
-		loading: () => <p>Loading...</p>,
+		loading: () => <p>...</p>,
 		ssr: false,
 	},
 );
@@ -65,11 +65,11 @@ function ResultsContent() {
 			if (paper) {
 				setQuestionPaper(paper);
 			} else {
-				setError('Test result not found.');
+				setError(t('testResultNotFound'));
 			}
 			setLoading(false);
 		}
-	}, [id, testHistory]);
+	}, [id, testHistory, t]);
 
 	useEffect(() => {
 		if (!questionPaper || questionPaper.userAnswers) return;
@@ -176,7 +176,7 @@ function ResultsContent() {
 			// Create new test object directly without API call since we have the questions
 			const newTest = {
 				id: crypto.randomUUID(), // Generate client-side ID for immediate use
-				topic: `Retry: ${questionPaper.topic}`,
+				topic: `${t('retryPrefix')} ${questionPaper.topic}`,
 				timestamp: null, // Indicates unsubmitted
 				questions: incorrectQuestions,
 				requestParams: questionPaper.requestParams, // Keep original params
@@ -196,7 +196,7 @@ function ResultsContent() {
 			router.push('/test?id=' + newTest.id);
 
 		} catch (err) {
-			setGenerationError("Failed to prepare retry test: " + err.message);
+			setGenerationError(`${t('failedPrepareRetry')} ${err.message}`);
 			setIsRetrying(false);
 		}
 	};
@@ -261,10 +261,10 @@ function ResultsContent() {
 	const percentage = Math.round((score / totalQuestions) * 100);
 
 	const formatTime = (seconds) => {
-		if (!seconds) return 'N/A';
+		if (!seconds) return t('na');
 		const mins = Math.floor(seconds / 60);
 		const secs = seconds % 60;
-		return `${mins}m ${secs}s`;
+		return `${mins}${t('minuteShort')} ${secs}${t('secondShort')}`;
 	};
 
 	let feedbackColor = '#3b82f6'; // blue-500
@@ -315,7 +315,7 @@ function ResultsContent() {
 							<span style={{ fontSize: '1.6rem' }}>{a.icon}</span>
 							<div>
 								<div className='fw-bold small' style={{ color: 'var(--accent-primary)' }}>
-									Achievement Unlocked!
+									{t('achievementUnlocked')}
 								</div>
 								<div className='fw-semibold small'>{a.title}</div>
 							</div>
@@ -342,7 +342,7 @@ function ResultsContent() {
 						{questionPaper.requestParams?.testType === 'speed-challenge' && (
 							<div className='position-absolute top-0 end-0 m-3'>
 								<Badge bg='danger' className='d-flex align-items-center gap-1 shadow-sm px-3 py-2 rounded-pill'>
-									<Icon name='zap' size={14} /> Ref: Speed Challenge
+									<Icon name='zap' size={14} /> {t('speedChallengeRef')}
 								</Badge>
 							</div>
 						)}
@@ -388,12 +388,12 @@ function ResultsContent() {
 										bg='warning'
 										text='dark'
 										className='px-3 py-2 rounded-pill d-inline-flex align-items-center gap-2 fw-bold'
-										style={{ fontSize: '0.85rem' }}
-									>
-										🔥 {currentStreak} Day Streak
-									</Badge>
-								</div>
-							)}
+									style={{ fontSize: '0.85rem' }}
+								>
+									🔥 {currentStreak} {t('dayStreak')}
+								</Badge>
+							</div>
+						)}
 
 							<div className='d-flex justify-content-center gap-2 flex-wrap'>
 								<Button
@@ -426,14 +426,14 @@ function ResultsContent() {
 										className='d-flex align-items-center gap-2 px-4 rounded-pill text-dark fw-bold'
 										onClick={handleRetryMistakes}
 										disabled={isRetrying}
-									>
-										<Icon
-											name='repeat1'
-											className={`${isRetrying ? 'spinner' : ''}`}
-										/>
-										{isRetrying ? 'Preparing...' : 'Retry Wrong Qs'}
-									</Button>
-								)}
+										>
+											<Icon
+												name='repeat1'
+												className={`${isRetrying ? 'spinner' : ''}`}
+											/>
+											{isRetrying ? t('preparing') : t('retryWrongQs')}
+										</Button>
+									)}
 							</div>
 
 							{generationError && (
@@ -537,11 +537,11 @@ function ResultsContent() {
 																{`${t('correctAnswerIs')} **${q.answer}**.`}
 															</MarkdownRenderer>
 														</div>
-														{q.explanation && (
-															<div className='mt-2 pt-2 border-top border-secondary border-opacity-10'>
-																<Badge bg='primary' className='mb-2 bg-opacity-75 text-white fw-medium' style={{ fontSize: '0.65rem' }}>
-																	AI Explanation
-																</Badge>
+															{q.explanation && (
+																<div className='mt-2 pt-2 border-top border-secondary border-opacity-10'>
+																	<Badge bg='primary' className='mb-2 bg-opacity-75 text-white fw-medium' style={{ fontSize: '0.65rem' }}>
+																		{t('aiExplanation')}
+																	</Badge>
 																<div className='text-dark'>
 																	<MarkdownRenderer>{q.explanation}</MarkdownRenderer>
 																</div>
@@ -561,7 +561,9 @@ function ResultsContent() {
 																className={loadingExplanation[index] ? 'spinner' : 'text-primary'}
 															/>
 															<span className='small fw-bold'>
-																{loadingExplanation[index] ? 'Generating explanation...' : 'Explain with AI'}
+																{loadingExplanation[index]
+																	? t('generatingExplanation')
+																	: t('generateExplanation')}
 															</span>
 														</Button>
 													)}
@@ -586,10 +588,12 @@ function ResultsContent() {
 
 // Main component that wraps ResultsContent in Suspense
 export default function Results() {
+	const { t } = useLanguage();
+
 	return (
 		<Suspense
 			fallback={
-				<Container className='text-center mt-5'>Loading results...</Container>
+				<Container className='text-center mt-5'>{t('loadingResults')}</Container>
 			}
 		>
 			<ResultsContent />

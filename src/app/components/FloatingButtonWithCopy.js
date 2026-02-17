@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Button } from 'react-bootstrap';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function FloatingButtonWithCopy({
-	label = 'label',
+	label,
 	data = '0',
 }) {
+	const { t } = useLanguage();
 	const [copied, setCopied] = useState(false);
+	const displayLabel = label || t('testId');
 
 	const handleCopy = async () => {
 		try {
@@ -24,7 +27,7 @@ export default function FloatingButtonWithCopy({
 				onClick={handleCopy}
 				className='d-flex align-items-center gap-1 shadow-sm'
 			>
-				<span>{copied ? 'Copied!' : `${label} ${data}`}</span>
+				<span>{copied ? t('copied') : `${displayLabel} ${data}`}</span>
 			</Button>
 		</div>
 	);

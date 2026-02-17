@@ -3,12 +3,14 @@
 import { Button } from 'react-bootstrap';
 import Icon from './Icon';
 import useSoundEffects from '../hooks/useSoundEffects';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Sound Toggle Button Component
  * Allows users to enable/disable sound effects
  */
 export default function SoundToggle({ className = '', variant = 'ghost' }) {
+    const { t } = useLanguage();
     const { soundEnabled, toggleSound, playTick } = useSoundEffects();
 
     const handleClick = () => {
@@ -30,8 +32,8 @@ export default function SoundToggle({ className = '', variant = 'ghost' }) {
                 borderRadius: '50%',
                 padding: 0,
             }}
-            aria-label={soundEnabled ? 'Disable sound effects' : 'Enable sound effects'}
-            title={soundEnabled ? 'Sound On' : 'Sound Off'}
+            aria-label={soundEnabled ? t('disableSoundEffects') : t('enableSoundEffects')}
+            title={soundEnabled ? t('soundOn') : t('soundOff')}
         >
             <Icon
                 name={soundEnabled ? 'volumeUp' : 'volumeMute'}

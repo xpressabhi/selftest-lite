@@ -1,7 +1,8 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import Icon from './Icon'
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Pull-to-refresh wrapper for mobile devices
@@ -17,82 +18,83 @@ export default function PullToRefresh({
     disabled = false,
     threshold = 80,
 }) {
-    const [pulling, setPulling] = useState(false)
-    const [pullDistance, setPullDistance] = useState(0)
-    const [refreshing, setRefreshing] = useState(false)
-    const containerRef = useRef(null)
-    const startY = useRef(0)
-    const currentY = useRef(0)
+    const { t } = useLanguage();
+    const [pulling, setPulling] = useState(false);
+    const [pullDistance, setPullDistance] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    const containerRef = useRef(null);
+    const startY = useRef(0);
+    const currentY = useRef(0);
     const isIOS =
         typeof navigator !== 'undefined' &&
-        /iphone|ipad|ipod/i.test(navigator.userAgent)
+        /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     const handleTouchStart = useCallback((e) => {
-        if (disabled || refreshing) return
+        if (disabled || refreshing) return;
 
         // Only enable pull-to-refresh when scrolled to top
-        if (window.scrollY > 0) return
+        if (window.scrollY > 0) return;
 
-        startY.current = e.touches[0].clientY
-        setPulling(true)
-    }, [disabled, refreshing])
+        startY.current = e.touches[0].clientY;
+        setPulling(true);
+    }, [disabled, refreshing]);
 
     const handleTouchMove = useCallback((e) => {
-        if (!pulling || disabled || refreshing) return
+        if (!pulling || disabled || refreshing) return;
 
-        currentY.current = e.touches[0].clientY
-        const diff = currentY.current - startY.current
+        currentY.current = e.touches[0].clientY;
+        const diff = currentY.current - startY.current;
 
         // Only pull down, not up
         if (diff > 0 && window.scrollY === 0) {
             // Apply resistance - pull distance is reduced as it gets longer
-            const resistance = Math.min(diff * 0.4, threshold * 1.5)
-            setPullDistance(resistance)
+            const resistance = Math.min(diff * 0.4, threshold * 1.5);
+            setPullDistance(resistance);
 
             // Prevent default scrolling when pulling
             if (resistance > 10) {
-                e.preventDefault()
+                e.preventDefault();
             }
         }
-    }, [pulling, disabled, refreshing, threshold])
+    }, [pulling, disabled, refreshing, threshold]);
 
     const handleTouchEnd = useCallback(async () => {
-        if (!pulling) return
+        if (!pulling) return;
 
-        setPulling(false)
+        setPulling(false);
 
         if (pullDistance >= threshold && onRefresh && !refreshing) {
-            setRefreshing(true)
+            setRefreshing(true);
             try {
-                await onRefresh()
+                await onRefresh();
             } finally {
-                setRefreshing(false)
+                setRefreshing(false);
             }
         }
 
-        setPullDistance(0)
-    }, [pulling, pullDistance, threshold, onRefresh, refreshing])
+        setPullDistance(0);
+    }, [pulling, pullDistance, threshold, onRefresh, refreshing]);
 
     useEffect(() => {
-        const container = containerRef.current
-        if (!container) return
+        const container = containerRef.current;
+        if (!container) return;
 
-        container.addEventListener('touchstart', handleTouchStart, { passive: true })
-        container.addEventListener('touchmove', handleTouchMove, { passive: false })
-        container.addEventListener('touchend', handleTouchEnd)
+        container.addEventListener('touchstart', handleTouchStart, { passive: true });
+        container.addEventListener('touchmove', handleTouchMove, { passive: false });
+        container.addEventListener('touchend', handleTouchEnd);
 
         return () => {
-            container.removeEventListener('touchstart', handleTouchStart)
-            container.removeEventListener('touchmove', handleTouchMove)
-            container.removeEventListener('touchend', handleTouchEnd)
-        }
-    }, [handleTouchStart, handleTouchMove, handleTouchEnd])
+            container.removeEventListener('touchstart', handleTouchStart);
+            container.removeEventListener('touchmove', handleTouchMove);
+            container.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
-    const showIndicator = pullDistance > 10 || refreshing
-    const progress = Math.min(pullDistance / threshold, 1)
+    const showIndicator = pullDistance > 10 || refreshing;
+    const progress = Math.min(pullDistance / threshold, 1);
     // iOS Safari can hide fixed elements if any ancestor has transform.
     // Keep transform off on iOS so fixed bottom bars remain stable.
-    const contentOffset = !isIOS && pullDistance > 0 ? pullDistance * 0.3 : 0
+    const contentOffset = !isIOS && pullDistance > 0 ? pullDistance * 0.3 : 0;
 
     return (
         <div ref={containerRef} className="ptr-container" style={{ minHeight: '100%' }}>
@@ -108,14 +110,14 @@ export default function PullToRefresh({
                 {refreshing ? (
                     <div className="ptr-content">
                         <div className="ptr-spinner" role="status">
-                            <span className="sr-only">Loading...</span>
+                            <span className="sr-only">{t('loading')}</span>
                         </div>
-                        <span className="ptr-text">Refreshing...</span>
+                        <span className="ptr-text">{t('refreshing')}</span>
                     </div>
                 ) : pullDistance >= threshold ? (
                     <div className="ptr-content">
                         <Icon name="checkCircle" size={20} color="var(--accent-primary)" />
-                        <span className="ptr-text ready">Release to refresh</span>
+                        <span className="ptr-text ready">{t('releaseToRefresh')}</span>
                     </div>
                 ) : (
                     <div className="ptr-content">
@@ -127,7 +129,7 @@ export default function PullToRefresh({
                                 transition: 'transform 0.1s ease'
                             }}
                         />
-                        <span className="ptr-text">Pull to refresh</span>
+                        <span className="ptr-text">{t('pullToRefresh')}</span>
                     </div>
                 )}
             </div>
@@ -249,5 +251,5 @@ export default function PullToRefresh({
                 }
             `}</style>
         </div>
-    )
+    );
 }

@@ -31,11 +31,11 @@ export default function StatsDashboard() {
 
         // Format time (e.g., "2h 15m")
         const formatTotalTime = (seconds) => {
-            if (!seconds) return '0m';
+            if (!seconds) return `0${t('minuteShort')}`;
             const hrs = Math.floor(seconds / 3600);
             const mins = Math.floor((seconds % 3600) / 60);
-            if (hrs > 0) return `${hrs}h ${mins}m`;
-            return `${mins}m`;
+            if (hrs > 0) return `${hrs}${t('hourShort')} ${mins}${t('minuteShort')}`;
+            return `${mins}${t('minuteShort')}`;
         };
 
         return {
@@ -44,7 +44,7 @@ export default function StatsDashboard() {
             questionsAnswered: totalQuestions,
             timeSpent: formatTotalTime(totalTime),
         };
-    }, [testHistory]);
+    }, [testHistory, t]);
 
     if (!stats) return null;
 
@@ -53,7 +53,7 @@ export default function StatsDashboard() {
             <Card className='border-0 glass-card shadow-sm'>
                 <Card.Body className='p-4'>
                     <h5 className='mb-4 d-flex align-items-center gap-2 fw-bold text-primary'>
-                        <Icon name='trophy' /> Your Progress
+                        <Icon name='trophy' /> {t('yourProgress')}
                     </h5>
                     <Row className='g-3 text-center'>
                         <Col xs={6} md={3}>
@@ -61,7 +61,7 @@ export default function StatsDashboard() {
                                 <Icon name='clipboard' className='text-primary opacity-75' size={24} />
                                 <div>
                                     <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                        Quizzes
+                                        {t('quizzes')}
                                     </div>
                                     <div className='h3 fw-bold mb-0 text-dark'>{stats.totalTests}</div>
                                 </div>
@@ -72,7 +72,7 @@ export default function StatsDashboard() {
                                 <Icon name='chart' className='text-info opacity-75' size={24} />
                                 <div>
                                     <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                        Avg Score
+                                        {t('avgScore')}
                                     </div>
                                     <div className={`h3 fw-bold mb-0 ${stats.averageScore >= 80 ? 'text-success' : stats.averageScore >= 50 ? 'text-warning' : 'text-danger'}`}>
                                         {stats.averageScore}%
@@ -85,7 +85,7 @@ export default function StatsDashboard() {
                                 <Icon name='checkCircle' className='text-success opacity-75' size={24} />
                                 <div>
                                     <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                        Questions
+                                        {t('questionsHeading')}
                                     </div>
                                     <div className='h3 fw-bold mb-0 text-dark'>{stats.questionsAnswered}</div>
                                 </div>
@@ -96,7 +96,7 @@ export default function StatsDashboard() {
                                 <Icon name='clock' className='text-warning opacity-75' size={24} />
                                 <div>
                                     <div className='text-muted small text-uppercase fw-bold mb-1'>
-                                        Time Spent
+                                        {t('timeSpent')}
                                     </div>
                                     <div className='h3 fw-bold mb-0 text-dark'>{stats.timeSpent}</div>
                                 </div>

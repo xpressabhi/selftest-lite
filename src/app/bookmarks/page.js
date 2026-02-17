@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Container, Card, Badge, Button, Accordion, ListGroup } from 'react-bootstrap';
 import Icon from '../components/Icon';
@@ -10,19 +9,19 @@ import { useLanguage } from '../context/LanguageContext';
 const MarkdownRenderer = dynamic(
     () => import('../components/MarkdownRenderer'),
     {
-        loading: () => <p>Loading...</p>,
+        loading: () => <p>...</p>,
         ssr: false,
     },
 );
 
 export default function BookmarksPage() {
     const { bookmarks, removeBookmark } = useBookmarks();
-    const { t } = useLanguage();
-    const [expandedId, setExpandedId] = useState(null);
+    const { t, language } = useLanguage();
+    const uiLocale = language === 'hindi' ? 'hi-IN' : 'en-IN';
 
     const handleRemove = (e, question) => {
         e.stopPropagation();
-        if (window.confirm('Remove this bookmark?')) {
+        if (window.confirm(t('removeBookmarkConfirm'))) {
             removeBookmark(question);
         }
     };
@@ -32,9 +31,10 @@ export default function BookmarksPage() {
             <div className='d-flex align-items-center gap-3 mb-4 mt-4'>
                 <Icon name='bookmarkFill' className='text-primary display-6' />
                 <div>
-                    <h1 className='display-5 fw-bold mb-0'>My Bookmarks</h1>
+                    <h1 className='display-5 fw-bold mb-0'>{t('myBookmarks')}</h1>
                     <p className='text-muted mb-0'>
-                        {bookmarks.length} saved question{bookmarks.length !== 1 ? 's' : ''}
+                        {bookmarks.length}{' '}
+                        {bookmarks.length === 1 ? t('savedQuestion') : t('savedQuestions')}
                     </p>
                 </div>
             </div>
@@ -43,9 +43,9 @@ export default function BookmarksPage() {
                 <Card className='border-0 glass-card shadow-sm text-center py-5'>
                     <Card.Body>
                         <Icon name='bookmark' size={48} className='text-muted opacity-25 mb-3' />
-                        <h3 className='text-muted'>No bookmarks yet</h3>
+                        <h3 className='text-muted'>{t('noBookmarksYet')}</h3>
                         <p className='text-muted opacity-75'>
-                            Save interesting questions during tests to review them here later.
+                            {t('saveQuestionsForReview')}
                         </p>
                     </Card.Body>
                 </Card>
@@ -66,13 +66,13 @@ export default function BookmarksPage() {
                                             className='d-flex align-items-center gap-1 px-3 py-2 rounded-pill border'
                                         >
                                             <Icon name='clock' size={12} />
-                                            {new Date(q.bookmarkedAt || Date.now()).toLocaleDateString()}
+                                            {new Date(q.bookmarkedAt || Date.now()).toLocaleDateString(uiLocale)}
                                         </Badge>
                                         <Button
                                             variant='link'
                                             className='text-danger p-0'
                                             onClick={(e) => handleRemove(e, q)}
-                                            title='Remove bookmark'
+                                            title={t('removeBookmark')}
                                         >
                                             <Icon name='trash' size={20} />
                                         </Button>
@@ -96,12 +96,12 @@ export default function BookmarksPage() {
                                             <Accordion.Header className='small p-0'>
                                                 <span className='d-flex align-items-center gap-2 text-primary fw-semibold'>
                                                     <Icon name='info' size={16} />
-                                                    Show Explanation & Options
+                                                    {t('showExplanationOptions')}
                                                 </span>
                                             </Accordion.Header>
                                             <Accordion.Body className='px-0 pt-3 pb-0'>
                                                 <div className='mb-3'>
-                                                    <strong>Options:</strong>
+                                                    <strong>{t('options')}:</strong>
                                                     <ListGroup as="ol">
                                                         {q.options.map((opt, i) => (
                                                             <ListGroup.Item as="li" key={i} className={`mb-1 ${opt === q.answer ? 'text-success fw-bold' : 'text-muted'}`}>
@@ -113,7 +113,7 @@ export default function BookmarksPage() {
                                                 </div>
                                                 {q.explanation && (
                                                     <div className='bg-light rounded-3 p-3 text-muted'>
-                                                        <strong>Explanation:</strong>
+                                                        <strong>{t('explanation')}:</strong>
                                                         <div className='mt-1'>
                                                             <MarkdownRenderer>{q.explanation}</MarkdownRenderer>
                                                         </div>

@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Icon from './Icon';
 import DataSaverToggle from './DataSaverToggle';
 import { useDataSaver } from '../context/DataSaverContext';
+import { useLanguage } from '../context/LanguageContext';
 import useTestSearch from '../hooks/useTestSearch';
 
 /**
@@ -24,6 +25,7 @@ export default function TopNav() {
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isDataSaverActive } = useDataSaver();
+	const { t, language: uiLanguage, toggleLanguage } = useLanguage();
 	const {
 		isSearchOpen,
 		searchQuery,
@@ -34,6 +36,9 @@ export default function TopNav() {
 		openSearch,
 		closeSearch,
 	} = useTestSearch({ isDataSaverActive });
+	const uiLanguageLabel =
+		uiLanguage === 'hindi' ? t('hindiLabel') : t('englishLabel');
+	const uiLocale = uiLanguage === 'hindi' ? 'hi-IN' : 'en-IN';
 
 	const triggerHaptic = () => {
 		if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
@@ -131,10 +136,10 @@ export default function TopNav() {
 	const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
 	const navLinks = [
-		{ href: '/about', label: 'About', icon: 'info' },
-		{ href: '/blog', label: 'Blog', icon: 'book' },
-		{ href: '/faq', label: 'FAQ', icon: 'question' },
-		{ href: '/contact', label: 'Contact', icon: 'envelope' },
+		{ href: '/about', label: t('about'), icon: 'info' },
+		{ href: '/blog', label: t('blog'), icon: 'book' },
+		{ href: '/faq', label: t('faq'), icon: 'question' },
+		{ href: '/contact', label: t('contact'), icon: 'envelope' },
 	];
 
 	return (
@@ -144,13 +149,17 @@ export default function TopNav() {
 			role="banner"
 		>
 			{/* Logo */}
-			<Link href="/" className="nav-brand d-flex align-items-center gap-2" aria-label="Selftest Home">
+			<Link
+				href="/"
+				className="nav-brand d-flex align-items-center gap-2"
+				aria-label={t('selftestHome')}
+			>
 				<Icon name="bookOpen" size={24} />
 				<span className="brand-text lead text-decoration-none">selftest.in</span>
 			</Link>
 
 			{/* Desktop Navigation */}
-			<nav className="desktop-nav" aria-label="Main navigation">
+			<nav className="desktop-nav" aria-label={t('mainNavigation')}>
 				{navLinks.map((link) => (
 					<Link
 						key={link.href}
@@ -175,18 +184,31 @@ export default function TopNav() {
 							triggerHaptic();
 							openSearch();
 						}}
-						aria-label="Search tests"
+						aria-label={t('searchTests')}
 						type="button"
 					>
 						<Icon name="search" size={20} />
 					</button>
 
-					<Link
-						href="/history"
+					<button
 						className="nav-btn"
-						aria-label="History"
-						onClick={triggerHaptic}
+						onClick={() => {
+							triggerHaptic();
+							toggleLanguage();
+						}}
+						aria-label={`${t('switchLanguageAria')} (${uiLanguageLabel})`}
+						title={`${t('uiLanguage')}: ${uiLanguageLabel}`}
+						type="button"
 					>
+						<Icon name="globe" size={20} />
+					</button>
+
+						<Link
+							href="/history"
+							className="nav-btn"
+							aria-label={t('history')}
+							onClick={triggerHaptic}
+						>
 						<Icon name="history" size={24} />
 					</Link>
 
@@ -198,7 +220,7 @@ export default function TopNav() {
 							toggleMenu();
 						}}
 						aria-expanded={isMenuOpen}
-						aria-label="Toggle menu"
+						aria-label={t('toggleMenu')}
 						type="button"
 				>
 					<Icon name={isMenuOpen ? 'x' : 'list'} size={24} />
@@ -207,23 +229,28 @@ export default function TopNav() {
 
 			{/* Mobile Menu Dropdown */}
 				{isMenuOpen && (
-					<div className="mobile-menu" ref={menuRef} role="dialog" aria-label="Navigation menu">
+					<div
+						className="mobile-menu"
+						ref={menuRef}
+						role="dialog"
+						aria-label={t('navigationMenu')}
+					>
 						<div className="menu-header">
-							<span className="menu-title">Menu</span>
+							<span className="menu-title">{t('menu')}</span>
 							<button
 								className="menu-close"
 								onClick={() => {
 									triggerHaptic();
 									setIsMenuOpen(false);
 								}}
-								aria-label="Close menu"
+								aria-label={t('closeMenu')}
 								type="button"
 							>
 								<Icon name="x" size={24} />
 							</button>
 						</div>
 
-						<nav className="mobile-nav" aria-label="Mobile navigation">
+						<nav className="mobile-nav" aria-label={t('mobileNavigation')}>
 							{navLinks.map((link) => (
 								<Link
 									key={link.href}
@@ -264,50 +291,50 @@ export default function TopNav() {
 				>
 					<div
 						className="search-modal"
-						role="dialog"
-						aria-modal="true"
-						aria-label="Search past tests"
+							role="dialog"
+							aria-modal="true"
+							aria-label={t('searchPastTests')}
 						onClick={(event) => event.stopPropagation()}
 					>
 						<div className="search-header">
-							<h2>Search Tests</h2>
+								<h2>{t('searchTests')}</h2>
 								<button
 									className="menu-close"
 									onClick={() => {
 										triggerHaptic();
 										closeSearch();
 									}}
-									aria-label="Close search"
-									type="button"
-								>
+										aria-label={t('closeSearch')}
+										type="button"
+									>
 								<Icon name="x" size={22} />
 							</button>
 						</div>
 
 						<div className="search-input-wrap">
 							<Icon name="search" className="search-input-icon" size={16} />
-							<input
-								autoFocus
-								type="text"
-								className="search-input"
-								placeholder="Search by topic..."
-								value={searchQuery}
-								onChange={(event) => setSearchQuery(event.target.value)}
-							/>
-						</div>
+								<input
+									autoFocus
+									type="text"
+									className="search-input"
+									placeholder={t('searchByTopic')}
+									value={searchQuery}
+									onChange={(event) => setSearchQuery(event.target.value)}
+								/>
+							</div>
 
-						<div className="search-subtitle">
-							{searchQuery.trim() ? 'Matching tests' : 'Recent tests'}
-						</div>
+							<div className="search-subtitle">
+								{searchQuery.trim() ? t('matchingTests') : t('recentTests')}
+							</div>
 
-						<div className="results-list">
-							{searchLoading ? (
-								<div className="results-state">Loading...</div>
-							) : searchError ? (
-								<div className="results-state">{searchError}</div>
-							) : searchResults.length === 0 ? (
-								<div className="results-state">No tests found.</div>
-							) : (
+							<div className="results-list">
+								{searchLoading ? (
+									<div className="results-state">{t('loading')}</div>
+								) : searchError ? (
+									<div className="results-state">{searchError}</div>
+								) : searchResults.length === 0 ? (
+									<div className="results-state">{t('noTestsFound')}</div>
+								) : (
 								searchResults.map((test) => (
 									<button
 										key={test.id}
@@ -316,12 +343,12 @@ export default function TopNav() {
 										onClick={() => openTestFromSearch(test.id)}
 									>
 										<div className="result-title">
-											{test.topic || `Test #${test.id}`}
+											{test.topic || `${t('testPrefix')} #${test.id}`}
 										</div>
 										<div className="result-meta">
 											<span>#{test.id}</span>
 											<span>
-												{new Date(test.created_at).toLocaleDateString()}
+												{new Date(test.created_at).toLocaleDateString(uiLocale)}
 											</span>
 										</div>
 									</button>

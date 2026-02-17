@@ -5,12 +5,14 @@ import { Card, Badge } from 'react-bootstrap';
 import Icon from './Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { STORAGE_KEYS } from '../constants';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * PerformanceChart - Pure CSS/SVG performance trend visualization
  * Shows score trends over the last N quizzes with topic breakdown
  */
 export default function PerformanceChart() {
+    const { t, language } = useLanguage();
     const [testHistory] = useLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
     const [hoveredIndex, setHoveredIndex] = useState(null);
 
@@ -23,30 +25,34 @@ export default function PerformanceChart() {
 
     // Compute chart data
     const chartData = useMemo(() => {
-        return completedTests.map((t, i) => {
-            const percentage = Math.round((t.score / t.totalQuestions) * 100);
+        return completedTests.map((test, i) => {
+            const percentage = Math.round((test.score / test.totalQuestions) * 100);
             return {
                 label: `#${i + 1}`,
                 score: percentage,
-                topic: t.topic || 'Unknown',
-                date: t.timestamp ? new Date(t.timestamp).toLocaleDateString() : 'N/A',
-                time: t.timeTaken ? `${Math.floor(t.timeTaken / 60)}m ${t.timeTaken % 60}s` : null,
-                raw: `${t.score}/${t.totalQuestions}`,
+                topic: test.topic || t('unknownTopic'),
+                date: test.timestamp
+                    ? new Date(test.timestamp).toLocaleDateString(language === 'hindi' ? 'hi-IN' : 'en-IN')
+                    : t('na'),
+                time: test.timeTaken
+                    ? `${Math.floor(test.timeTaken / 60)}${t('minuteShort')} ${test.timeTaken % 60}${t('secondShort')}`
+                    : null,
+                raw: `${test.score}/${test.totalQuestions}`,
             };
         });
-    }, [completedTests]);
+    }, [completedTests, language, t]);
 
     // Topic frequency breakdown
     const topicBreakdown = useMemo(() => {
         const topics = {};
-        completedTests.forEach((t) => {
-            const topic = t.topic || 'Unknown';
+        completedTests.forEach((test) => {
+            const topic = test.topic || t('unknownTopic');
             if (!topics[topic]) {
                 topics[topic] = { count: 0, totalScore: 0, totalQuestions: 0 };
             }
             topics[topic].count += 1;
-            topics[topic].totalScore += t.score || 0;
-            topics[topic].totalQuestions += t.totalQuestions || 0;
+            topics[topic].totalScore += test.score || 0;
+            topics[topic].totalQuestions += test.totalQuestions || 0;
         });
 
         return Object.entries(topics)
@@ -59,7 +65,7 @@ export default function PerformanceChart() {
             }))
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
-    }, [completedTests]);
+    }, [completedTests, t]);
 
     // Average score
     const avgScore = useMemo(() => {
@@ -114,7 +120,7 @@ export default function PerformanceChart() {
                     <div className='d-flex align-items-center justify-content-between mb-2'>
                         <h5 className='mb-0 d-flex align-items-center gap-2 fw-bold'>
                             <span style={{ fontSize: '1.2rem' }}>📊</span>
-                            Performance Trend
+                            {t('performanceTrend')}
                         </h5>
                         <div className='d-flex align-items-center gap-2'>
                             <Badge
@@ -123,10 +129,10 @@ export default function PerformanceChart() {
                                 style={{ fontSize: '0.7rem' }}
                             >
                                 {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
-                                {trend === 'up' ? 'Improving' : trend === 'down' ? 'Declining' : 'Steady'}
+                                {trend === 'up' ? t('improving') : trend === 'down' ? t('declining') : t('steady')}
                             </Badge>
                             <span className='fw-bold' style={{ color: getScoreColor(avgScore), fontSize: '0.85rem' }}>
-                                Avg {avgScore}%
+                                {t('avg')} {avgScore}%
                             </span>
                         </div>
                     </div>
@@ -253,10 +259,10 @@ export default function PerformanceChart() {
                     </div>
 
                     {/* Topic breakdown */}
-                    {topicBreakdown.length > 1 && (
+                                {topicBreakdown.length > 1 && (
                         <div className='mt-3 pt-3 border-top'>
                             <small className='text-muted fw-bold text-uppercase d-block mb-2' style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>
-                                Top Topics
+                                {t('topTopics')}
                             </small>
                             <div className='d-flex flex-wrap gap-2'>
                                 {topicBreakdown.map((topic) => (

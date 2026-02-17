@@ -28,10 +28,7 @@ const TEST_MODES = {
 	QUIZ_PRACTICE: 'quiz-practice',
 };
 
-const ENTRY_PATHS = {
-	EXISTING: 'existing',
-	NEW: 'new',
-};
+const EXAM_GROUP_FILTERS = ['all', 'A', 'B', 'C', 'D'];
 
 const GenerateTestForm = () => {
 	const [testHistory, __, updateHistory] = useLocalStorage(
@@ -46,11 +43,13 @@ const GenerateTestForm = () => {
 		STORAGE_KEYS.BOOKMARKED_QUIZ_PRESETS,
 		[],
 	);
+	const { t, language: uiLanguage } = useLanguage();
 
 	const [activeMode, setActiveMode] = useState('');
-	const [entryPath, setEntryPath] = useState('');
 	const [showBookmarkedExamsOnly, setShowBookmarkedExamsOnly] = useState(false);
 	const [showExamBrowser, setShowExamBrowser] = useState(true);
+	const [examSearchQuery, setExamSearchQuery] = useState('');
+	const [examGroupFilter, setExamGroupFilter] = useState('all');
 	const [testId, setTestId] = useState('');
 	const [topic, setTopic] = useState('');
 	const [loading, setLoading] = useState(false);
@@ -62,7 +61,10 @@ const GenerateTestForm = () => {
 	const [selectedExamId, setSelectedExamId] = useState('');
 	const [selectedSyllabusFocus, setSelectedSyllabusFocus] = useState([]);
 	const [difficulty, setDifficulty] = useState('intermediate');
-	const [language, setLanguage] = useState('hindi');
+	const [paperLanguage, setPaperLanguage] = useLocalStorage(
+		STORAGE_KEYS.PAPER_LANGUAGE,
+		uiLanguage,
+	);
 	const [selectedCategory, setSelectedCategory] = useState('');
 	const [startTime, setStartTime] = useState(null);
 	const [elapsed, setElapsed] = useState(0);
@@ -71,9 +73,21 @@ const GenerateTestForm = () => {
 	const router = useRouter();
 	const timerRef = useRef(null);
 	const MAX_RETRIES = 3;
-	const { t, language: uiLanguage, toggleLanguage } = useLanguage();
 	const { isOffline, shouldSaveData } = useNetworkStatus();
 	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+	const difficultyOptions = [
+		{ value: 'beginner', label: t('beginner') },
+		{ value: 'intermediate', label: t('intermediate') },
+		{ value: 'advanced', label: t('advanced') },
+		{ value: 'expert', label: t('expert') },
+	];
+	const formatOptions = [
+		{ value: 'multiple-choice', label: t('multipleChoice') },
+		{ value: 'true-false', label: t('trueFalse') },
+		{ value: 'coding', label: t('codingProblems') },
+		{ value: 'mixed', label: t('mixedFormat') },
+		{ value: 'speed-challenge', label: t('speedChallenge') },
+	];
 
 	const objectiveExams = useMemo(() => OBJECTIVE_ONLY_EXAMS, []);
 	const selectedExam = useMemo(
@@ -85,20 +99,46 @@ const GenerateTestForm = () => {
 		[bookmarkedExamIds, objectiveExams],
 	);
 	const visibleExams = useMemo(() => {
-		if (!showBookmarkedExamsOnly) return objectiveExams;
-		return bookmarkedExams;
-	}, [showBookmarkedExamsOnly, objectiveExams, bookmarkedExams]);
+		const normalizedQuery = examSearchQuery.trim().toLowerCase();
+		const baseExams = showBookmarkedExamsOnly ? bookmarkedExams : objectiveExams;
+
+		return baseExams.filter((exam) => {
+			const matchesGroup =
+				examGroupFilter === 'all' ||
+				exam.group
+					.split('/')
+					.map((item) => item.trim())
+					.includes(examGroupFilter);
+			if (!matchesGroup) return false;
+			if (!normalizedQuery) return true;
+
+			const searchableText = [
+				exam.name,
+				exam.stream,
+				exam.group,
+				...(Array.isArray(exam.syllabus) ? exam.syllabus : []),
+			]
+				.join(' ')
+				.toLowerCase();
+
+			return searchableText.includes(normalizedQuery);
+		});
+	}, [
+		examSearchQuery,
+		examGroupFilter,
+		showBookmarkedExamsOnly,
+		objectiveExams,
+		bookmarkedExams,
+	]);
 	const hasNewTestInputContext =
 		activeMode === TEST_MODES.FULL_EXAM
 			? Boolean(selectedExamId)
 			: topic.trim().length > 0 || selectedTopics.length > 0;
-	const isExistingTestPath = entryPath === ENTRY_PATHS.EXISTING;
-	const isNewTestPath = entryPath === ENTRY_PATHS.NEW;
 	const currentModeLabel =
 		activeMode === TEST_MODES.FULL_EXAM
-			? 'Full Exam Paper'
+			? t('fullExamPaper')
 			: activeMode === TEST_MODES.QUIZ_PRACTICE
-				? 'Quiz Practice'
+				? t('quizPractice')
 				: '';
 
 	useEffect(() => {
@@ -110,10 +150,6 @@ const GenerateTestForm = () => {
 			setNumQuestions(5);
 		}
 	}, [activeMode, numQuestions, shouldSaveData]);
-
-	useEffect(() => {
-		setLanguage(uiLanguage);
-	}, [uiLanguage]);
 
 	useEffect(() => {
 		if (activeMode !== TEST_MODES.FULL_EXAM) return;
@@ -130,6 +166,13 @@ const GenerateTestForm = () => {
 		setTestType('multiple-choice');
 		setDifficulty(exam.defaultDifficulty);
 		setNumQuestions(exam.fullLengthQuestions);
+		if (
+			Array.isArray(exam.availableLanguages) &&
+			exam.availableLanguages.length > 0 &&
+			!exam.availableLanguages.includes(paperLanguage)
+		) {
+			setPaperLanguage(exam.availableLanguages[0]);
+		}
 		setShowAdvanced(false);
 		setShowExamBrowser(false);
 		setTopic((prevTopic) =>
@@ -137,7 +180,7 @@ const GenerateTestForm = () => {
 				? prevTopic
 				: `${exam.name} full-length objective mock paper`,
 		);
-	}, [activeMode, selectedExamId]);
+	}, [activeMode, selectedExamId, paperLanguage, setPaperLanguage]);
 
 	useEffect(() => {
 		if (startTime) {
@@ -182,7 +225,7 @@ const GenerateTestForm = () => {
 			testType: 'multiple-choice',
 			numQuestions: exam.fullLengthQuestions,
 			difficulty: exam.defaultDifficulty,
-			language,
+			language: paperLanguage,
 			objectiveOnly: true,
 			durationMinutes: exam.durationMinutes,
 		};
@@ -198,7 +241,9 @@ const GenerateTestForm = () => {
 			for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
 				if (attempt > 1) {
 					setRetryCount(attempt - 1);
-					setError(`Retrying... (Attempt ${attempt} of ${MAX_RETRIES})`);
+					setError(
+						`${t('retrying')} (${t('attempt')} ${attempt} ${t('of')} ${MAX_RETRIES})`,
+					);
 				}
 
 				try {
@@ -216,13 +261,13 @@ const GenerateTestForm = () => {
 					if (!response.ok) {
 						const errorData = await response.json().catch(() => ({}));
 						if (response.status === 429) {
-							setError(errorData.error || 'Rate limit exceeded');
+							setError(errorData.error || t('rateLimitExceeded'));
 							return;
 						}
 						if (attempt === MAX_RETRIES) {
 							setError(
 								errorData.error ||
-									'Failed to generate test after multiple attempts. Please try again later.',
+									t('errorFailedGenerateAfterAttempts'),
 							);
 							return;
 						}
@@ -237,7 +282,7 @@ const GenerateTestForm = () => {
 				} catch (err) {
 					if (attempt === MAX_RETRIES) {
 						setError(
-							`Failed after ${MAX_RETRIES} attempts: ${err.message}. Please try again later.`,
+							`${t('errorFailedAfterAttempts')} ${err.message}`,
 						);
 						return;
 					}
@@ -254,8 +299,10 @@ const GenerateTestForm = () => {
 
 	const handleModeSelect = (mode) => {
 		setActiveMode(mode);
-		setEntryPath('');
 		setError(null);
+		setExamSearchQuery('');
+		setExamGroupFilter('all');
+		setShowBookmarkedExamsOnly(false);
 		if (mode === TEST_MODES.QUIZ_PRACTICE) {
 			setSelectedExamId('');
 			setSelectedSyllabusFocus([]);
@@ -270,14 +317,8 @@ const GenerateTestForm = () => {
 
 	const handleBackToModeSelection = () => {
 		setActiveMode('');
-		setEntryPath('');
 		setError(null);
 		setShowAdvanced(false);
-	};
-
-	const handleEntryPathSelect = (path) => {
-		setEntryPath(path);
-		setError(null);
 	};
 
 	const toggleSyllabusFocus = (unit) => {
@@ -302,9 +343,7 @@ const GenerateTestForm = () => {
 		const topicSeed = topic.trim();
 		const normalizedTopics = [...selectedTopics].sort();
 		if (!topicSeed && normalizedTopics.length === 0) {
-			setError(
-				'Add a topic or suggested topics before bookmarking a preset for quick start.',
-			);
+			setError(t('errorAddTopicBeforeBookmark'));
 			return;
 		}
 
@@ -312,7 +351,7 @@ const GenerateTestForm = () => {
 			testType,
 			numQuestions,
 			difficulty,
-			language,
+			paperLanguage,
 			selectedCategory || '',
 			normalizedTopics.join('|'),
 			topicSeed,
@@ -321,7 +360,7 @@ const GenerateTestForm = () => {
 			(preset) => preset.key === presetKey,
 		);
 		if (alreadyExists) {
-			setError('This quiz preset is already bookmarked.');
+			setError(t('errorPresetAlreadyBookmarked'));
 			return;
 		}
 
@@ -332,7 +371,7 @@ const GenerateTestForm = () => {
 			testType,
 			numQuestions,
 			difficulty,
-			language,
+			language: paperLanguage,
 			category: selectedCategory || '',
 			selectedTopics: normalizedTopics,
 			topicSeed,
@@ -345,7 +384,7 @@ const GenerateTestForm = () => {
 	const handleQuickStartExam = async (examId) => {
 		const exam = getIndianExamById(examId);
 		if (!exam) {
-			setError('Bookmarked exam is unavailable.');
+			setError(t('errorBookmarkedExamUnavailable'));
 			return;
 		}
 		const requestParams = getExamRequestParams({
@@ -361,7 +400,7 @@ const GenerateTestForm = () => {
 			: [];
 		const presetTopic = preset.topicSeed || '';
 		if (!presetTopic && presetTopics.length === 0) {
-			setError('This bookmarked preset is missing topic context.');
+			setError(t('errorPresetMissingTopic'));
 			return;
 		}
 
@@ -377,7 +416,7 @@ const GenerateTestForm = () => {
 			testType: preset.testType || 'multiple-choice',
 			numQuestions: Number(preset.numQuestions) || 10,
 			difficulty: preset.difficulty || 'intermediate',
-			language: preset.language || language,
+			language: preset.language || paperLanguage,
 			objectiveOnly: false,
 			durationMinutes: null,
 		};
@@ -389,20 +428,20 @@ const GenerateTestForm = () => {
 		if (testId && testId.trim()) {
 			router.push(`/test?id=${testId.trim()}`);
 		} else {
-			setError('Please enter a valid test ID');
+			setError(t('errorInvalidTestId'));
 		}
 	};
 
 	const handleSubmit = async (e) => {
 		if (e) e.preventDefault();
 		if (!activeMode) {
-			setError('Please select a test mode first.');
+			setError(t('errorSelectTestModeFirst'));
 			return;
 		}
 
 		if (activeMode === TEST_MODES.FULL_EXAM) {
 			if (!selectedExam) {
-				setError('Please select an objective exam for full-length paper.');
+				setError(t('errorSelectObjectiveExam'));
 				return;
 			}
 			const requestParams = getExamRequestParams({
@@ -417,7 +456,7 @@ const GenerateTestForm = () => {
 		const combinedTopics = [...new Set(selectedTopics)];
 		const effectiveTopic = topic.trim();
 		if (!effectiveTopic && combinedTopics.length === 0) {
-			setError('Please provide a topic or choose suggested topics.');
+			setError(t('errorProvideTopic'));
 			return;
 		}
 
@@ -433,7 +472,7 @@ const GenerateTestForm = () => {
 			testType,
 			numQuestions,
 			difficulty,
-			language,
+			language: paperLanguage,
 			objectiveOnly: false,
 			durationMinutes: null,
 		};
@@ -448,49 +487,63 @@ const GenerateTestForm = () => {
 				</h1>
 				<p className='text-muted fs-5'>
 					{activeMode
-						? 'Configure your test and generate paper.'
-						: 'Use bookmarks for instant start or choose a mode.'}
+						? t('configureAndGenerate')
+						: t('useBookmarksOrChooseMode')}
 				</p>
-			</div>
-
-			<div className='d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3'>
-				<Button
-					type='button'
-					variant='outline-secondary'
-					size='sm'
-					className='rounded-pill'
-					onClick={toggleLanguage}
-				>
-					UI Language: {uiLanguage === 'hindi' ? 'Hindi' : 'English'}
-				</Button>
-				<Form.Select
-					size='sm'
-					value={language}
-					onChange={(e) => setLanguage(e.target.value)}
-					className='glass-input'
-					style={{ width: '160px' }}
-					aria-label='Paper language'
-				>
-					<option value='english'>Paper: English</option>
-					<option value='hindi'>Paper: Hindi</option>
-					<option value='spanish'>Paper: Spanish</option>
-				</Form.Select>
 			</div>
 
 			{!activeMode && (
 				<Card className='w-100 border-0 glass-card mb-3' style={{ maxWidth: '720px' }}>
 					<Card.Body className='p-3 p-md-4'>
-						<div className='d-flex justify-content-between align-items-center gap-2 mb-2'>
-							<div className='fw-semibold'>Bookmarked Quick Start</div>
-							<Badge bg='light' text='dark' className='border'>
-								Direct Create
-							</Badge>
-						</div>
+							<Form onSubmit={handleTestIdSubmit}>
+								<Form.Group>
+									<div className='small text-muted fw-semibold mb-2'>
+										{t('haveTestIdTitle')}
+									</div>
+								<InputGroup className='mb-1'>
+									<Form.Control
+										type='text'
+										placeholder={t('enterTestId')}
+										value={testId}
+										onChange={(e) => setTestId(e.target.value)}
+										className='glass-input border-end-0'
+										style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+									/>
+									<Button
+										variant='outline-primary'
+										type='submit'
+										className='border-start-0 px-4'
+										style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+									>
+										{t('go')}
+									</Button>
+								</InputGroup>
+								<Form.Text className='text-muted small'>{t('haveTestId')}</Form.Text>
+							</Form.Group>
+							{error && (
+								<Alert variant='danger' className='border-0 shadow-sm mt-3 mb-0'>
+									{error}
+								</Alert>
+							)}
+						</Form>
+					</Card.Body>
+				</Card>
+			)}
+
+			{!activeMode && (
+				<Card className='w-100 border-0 glass-card mb-3' style={{ maxWidth: '720px' }}>
+					<Card.Body className='p-3 p-md-4'>
+							<div className='d-flex justify-content-between align-items-center gap-2 mb-2'>
+								<div className='fw-semibold'>{t('bookmarkedQuickStart')}</div>
+								<Badge bg='light' text='dark' className='border'>
+									{t('directCreate')}
+								</Badge>
+							</div>
 						<Row className='g-3'>
 							<Col xs={12}>
 								<div className='small text-muted mb-1 d-flex align-items-center gap-1'>
 									<Icon name='starFill' size={12} className='text-warning' />
-									Bookmarked Exams
+									{t('bookmarkedExams')}
 								</div>
 								{bookmarkedExams.length > 0 ? (
 									<div className='d-flex flex-wrap gap-2'>
@@ -504,20 +557,20 @@ const GenerateTestForm = () => {
 												disabled={loading}
 												onClick={() => handleQuickStartExam(exam.id)}
 											>
-												Start {exam.name}
+												{t('start')} {exam.name}
 											</Button>
 										))}
 									</div>
 								) : (
 									<div className='small text-muted'>
-										No bookmarked exams yet. Bookmark from Full Exam mode.
+										{t('noBookmarkedExams')}
 									</div>
 								)}
 							</Col>
 							<Col xs={12}>
 								<div className='small text-muted mb-1 d-flex align-items-center gap-1'>
 									<Icon name='starFill' size={12} className='text-warning' />
-									Bookmarked Quiz Presets
+									{t('bookmarkedQuizPresets')}
 								</div>
 								{bookmarkedQuizPresets.length > 0 ? (
 									<div className='d-flex flex-wrap gap-2'>
@@ -531,13 +584,13 @@ const GenerateTestForm = () => {
 												disabled={loading}
 												onClick={() => handleQuickStartPreset(preset)}
 											>
-												Start {preset.label}
+												{t('start')} {preset.label}
 											</Button>
 										))}
 									</div>
 								) : (
 									<div className='small text-muted'>
-										No bookmarked quiz presets yet. Save one in Quiz mode.
+										{t('noBookmarkedQuizPresets')}
 									</div>
 								)}
 							</Col>
@@ -548,9 +601,9 @@ const GenerateTestForm = () => {
 
 			{!activeMode ? (
 				<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
-					<Card.Body className='p-4 p-md-5'>
-						<div className='d-flex flex-column gap-3'>
-							<div className='fw-semibold'>Choose Test Mode</div>
+						<Card.Body className='p-4 p-md-5'>
+							<div className='d-flex flex-column gap-3'>
+								<div className='fw-semibold'>{t('chooseTestMode')}</div>
 							<Row className='g-2'>
 								<Col xs={12} md={6}>
 									<Button
@@ -560,7 +613,7 @@ const GenerateTestForm = () => {
 										onClick={() => handleModeSelect(TEST_MODES.FULL_EXAM)}
 									>
 										<Icon name='bookOpen' />
-										<span>Full Exam Paper</span>
+										<span>{t('fullExamPaper')}</span>
 									</Button>
 								</Col>
 								<Col xs={12} md={6}>
@@ -571,7 +624,7 @@ const GenerateTestForm = () => {
 										onClick={() => handleModeSelect(TEST_MODES.QUIZ_PRACTICE)}
 									>
 										<Icon name='sparkles' />
-										<span>Quiz Practice</span>
+										<span>{t('quizPractice')}</span>
 									</Button>
 								</Col>
 							</Row>
@@ -591,21 +644,21 @@ const GenerateTestForm = () => {
 									variant='outline-secondary'
 									size='sm'
 									className='d-none d-md-inline-flex rounded-pill align-items-center gap-2'
-									onClick={handleBackToModeSelection}
-								>
-									<Icon name='repeat1' size={14} />
-									Change mode
-								</Button>
+										onClick={handleBackToModeSelection}
+									>
+										<Icon name='repeat1' size={14} />
+										{t('changeMode')}
+									</Button>
 								<Button
 									type='button'
 									variant='outline-secondary'
 									size='sm'
 									className='d-md-none rounded-circle d-inline-flex align-items-center justify-content-center p-0'
-									style={{ width: '34px', height: '34px' }}
-									onClick={handleBackToModeSelection}
-									aria-label='Change mode'
-									title='Change mode'
-								>
+										style={{ width: '34px', height: '34px' }}
+										onClick={handleBackToModeSelection}
+										aria-label={t('changeMode')}
+										title={t('changeMode')}
+									>
 									<Icon name='repeat1' size={14} />
 								</Button>
 							</div>
@@ -617,112 +670,115 @@ const GenerateTestForm = () => {
 			{activeMode && (
 				<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
 					<Card.Body className='p-4 p-md-5'>
-						<div className='mb-4'>
-							<div className='small text-muted fw-semibold mb-2'>Continue With</div>
-							<div className='d-flex flex-wrap gap-2'>
-								<Button
-									type='button'
-									variant={
-										isExistingTestPath ? 'primary' : 'outline-primary'
-									}
-									size='sm'
-									className='rounded-pill'
-									onClick={() => handleEntryPathSelect(ENTRY_PATHS.EXISTING)}
-								>
-									Use Test ID
-								</Button>
-								<Button
-									type='button'
-									variant={isNewTestPath ? 'primary' : 'outline-primary'}
-									size='sm'
-									className='rounded-pill'
-									onClick={() => handleEntryPathSelect(ENTRY_PATHS.NEW)}
-								>
-									Create New Test
-								</Button>
+							<div className='d-flex justify-content-end mb-3'>
+								<div style={{ minWidth: '170px' }}>
+									<Form.Label className='small text-muted fw-semibold mb-1 d-block'>
+										{t('paperLanguage')}
+									</Form.Label>
+									<Form.Select
+										size='sm'
+										value={paperLanguage}
+										onChange={(e) => setPaperLanguage(e.target.value)}
+										className='glass-input'
+										aria-label={t('paperLanguage')}
+									>
+										<option value='english'>{t('englishLabel')}</option>
+										<option value='hindi'>{t('hindiLabel')}</option>
+									</Form.Select>
+								</div>
 							</div>
-						</div>
 
-						{!entryPath && (
-							<Alert variant='light' className='border'>
-								Choose an option to continue.
-							</Alert>
-						)}
-
-						{isExistingTestPath && (
-							<Form onSubmit={handleTestIdSubmit}>
-								<Form.Group>
-									<InputGroup className='mb-1'>
-										<Form.Control
-											type='text'
-											placeholder={t('enterTestId')}
-											value={testId}
-											onChange={(e) => setTestId(e.target.value)}
-											className='glass-input border-end-0'
-											style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-										/>
-										<Button
-											variant='outline-primary'
-											type='submit'
-											className='border-start-0 px-4'
-											style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-										>
-											{t('go')}
-										</Button>
-									</InputGroup>
-									<Form.Text className='text-muted small'>{t('haveTestId')}</Form.Text>
-								</Form.Group>
-								{error && (
-									<Alert variant='danger' className='border-0 shadow-sm mt-3 mb-0'>
-										{error}
-									</Alert>
-								)}
-							</Form>
-						)}
-
-						{isNewTestPath && (
-							<Form onSubmit={handleSubmit}>
+						<Form onSubmit={handleSubmit}>
 								{activeMode === TEST_MODES.FULL_EXAM && (
 									<div className='d-flex flex-column gap-3'>
-										<div className='d-flex flex-wrap justify-content-between align-items-center gap-2'>
-											<Form.Label className='small text-muted fw-semibold mb-0'>
-												Objective Exams (No Subjective)
-											</Form.Label>
-											<div className='d-flex align-items-center gap-2'>
-												<Form.Check
-													type='switch'
-													id='bookmarked-exams-only'
-													label='Bookmarked only'
-													checked={showBookmarkedExamsOnly}
-													onChange={(e) =>
-														setShowBookmarkedExamsOnly(e.target.checked)
-													}
-												/>
+											<div className='d-flex flex-wrap justify-content-between align-items-center gap-2'>
+												<Form.Label className='small text-muted fw-semibold mb-0'>
+													{t('objectiveExamsNoSubjective')}
+												</Form.Label>
+												<div className='d-flex align-items-center gap-2'>
+													<Form.Check
+														type='switch'
+														id='bookmarked-exams-only'
+														label={t('bookmarkedOnly')}
+														checked={showBookmarkedExamsOnly}
+														onChange={(e) =>
+															setShowBookmarkedExamsOnly(e.target.checked)
+														}
+													/>
+												<Button
+													type='button'
+													size='sm'
+														variant='outline-secondary'
+														className='rounded-pill'
+														onClick={() => setShowExamBrowser((prev) => !prev)}
+													>
+														{showExamBrowser ? t('hideList') : t('browseExams')}
+													</Button>
+												</div>
+											</div>
+
+										<Row className='g-2'>
+											<Col xs={12} md={7}>
+												<Form.Control
+													type='text'
+														size='sm'
+														value={examSearchQuery}
+														onChange={(e) => setExamSearchQuery(e.target.value)}
+														placeholder={t('searchExamStreamSyllabus')}
+														className='glass-input'
+													/>
+												</Col>
+											<Col xs={7} md={3}>
+													<Form.Select
+														size='sm'
+														value={examGroupFilter}
+														onChange={(e) => setExamGroupFilter(e.target.value)}
+														className='glass-input'
+														aria-label={t('filterByGroup')}
+													>
+														{EXAM_GROUP_FILTERS.map((group) => (
+															<option key={group} value={group}>
+																{group === 'all'
+																	? t('allGroups')
+																	: `${t('group')} ${group}`}
+															</option>
+														))}
+													</Form.Select>
+											</Col>
+											<Col xs={5} md={2}>
 												<Button
 													type='button'
 													size='sm'
 													variant='outline-secondary'
-													className='rounded-pill'
-													onClick={() => setShowExamBrowser((prev) => !prev)}
-												>
-													{showExamBrowser ? 'Hide list' : 'Browse exams'}
-												</Button>
+													className='w-100'
+														onClick={() => {
+															setExamSearchQuery('');
+															setExamGroupFilter('all');
+														}}
+													>
+														{t('clear')}
+													</Button>
+												</Col>
+											</Row>
+
+											<div className='small text-muted'>
+												{t('showingObjectiveExams')} {visibleExams.length}{' '}
+												{t('objectiveExamsInLanguages')}
 											</div>
-										</div>
 
 										<Form.Select
 											size='sm'
-											value={selectedExamId}
-											onChange={(e) => setSelectedExamId(e.target.value)}
-											className='glass-input'
-										>
-											<option value=''>Choose objective exam</option>
-											{visibleExams.map((exam) => (
-												<option key={exam.id} value={exam.id}>
-													{exam.name} ({exam.stream})
-												</option>
-											))}
-										</Form.Select>
+												value={selectedExamId}
+												onChange={(e) => setSelectedExamId(e.target.value)}
+												className='glass-input'
+											>
+												<option value=''>{t('chooseObjectiveExam')}</option>
+												{visibleExams.map((exam) => (
+													<option key={exam.id} value={exam.id}>
+														{exam.name} • {t('group')} {exam.group} • {exam.stream}
+													</option>
+												))}
+											</Form.Select>
 
 										{showExamBrowser && (
 											<div
@@ -738,13 +794,22 @@ const GenerateTestForm = () => {
 														>
 															<div>
 																<div className='small fw-semibold text-dark'>{exam.name}</div>
-																<div className='small text-muted'>
-																	{exam.fullLengthQuestions} Q • {exam.durationMinutes} min
+																	<div className='small text-muted'>
+																		{exam.fullLengthQuestions} {t('questionShort')} •{' '}
+																		{exam.durationMinutes} {t('minuteShort')}
+																	</div>
+																	<div className='small text-muted'>
+																		{t('group')} {exam.group} • {exam.stream}
+																	</div>
+																	<div className='small text-muted'>
+																		{t('languages')}: {exam.availableLanguages.join(' / ')}
+																	</div>
+																	{isBookmarked && (
+																		<div className='small text-warning'>
+																			{t('bookmarkedTag')}
+																		</div>
+																	)}
 																</div>
-																{isBookmarked && (
-																	<div className='small text-warning'>Bookmarked</div>
-																)}
-															</div>
 															<div className='d-flex align-items-center gap-2'>
 																<Button
 																	type='button'
@@ -753,17 +818,17 @@ const GenerateTestForm = () => {
 																		selectedExamId === exam.id
 																			? 'primary'
 																			: 'outline-secondary'
-																	}
-																	onClick={() => setSelectedExamId(exam.id)}
-																>
-																	Select
-																</Button>
+																		}
+																		onClick={() => setSelectedExamId(exam.id)}
+																	>
+																		{t('select')}
+																	</Button>
 																<Button
 																	type='button'
 																	variant='link'
 																	className='p-0'
 																	onClick={() => toggleExamBookmark(exam.id)}
-																	aria-label='bookmark exam'
+																	aria-label={t('bookmarkExam')}
 																>
 																	<Icon
 																		name={isBookmarked ? 'starFill' : 'star'}
@@ -782,31 +847,37 @@ const GenerateTestForm = () => {
 											<Card className='border-0 bg-light bg-opacity-50'>
 												<Card.Body className='p-3'>
 													<div className='d-flex flex-wrap gap-2 mb-2'>
-														<Badge bg='primary'>Objective</Badge>
-														<Badge bg='secondary'>
-															{selectedExam.fullLengthQuestions} Questions
+														<Badge bg='primary'>{t('objective')}</Badge>
+														<Badge bg='dark'>
+															{t('group')} {selectedExam.group}
 														</Badge>
 														<Badge bg='secondary'>
-															{selectedExam.durationMinutes} Minutes
+															{selectedExam.fullLengthQuestions} {t('questionsLabel')}
+														</Badge>
+														<Badge bg='secondary'>
+															{selectedExam.durationMinutes} {t('minutesLabel')}
+														</Badge>
+														<Badge bg='info' text='dark'>
+															{selectedExam.availableLanguages.join(' / ')}
 														</Badge>
 													</div>
 													<p className='small text-muted mb-2'>{selectedExam.description}</p>
 													<Form.Group className='mb-2'>
 														<Form.Label className='small text-muted fw-semibold'>
-															Optional Topic Notes
+															{t('optionalTopicNotes')}
 														</Form.Label>
 														<Form.Control
 															as='textarea'
 															rows={2}
 															value={topic}
 															onChange={(e) => setTopic(e.target.value)}
-															placeholder='Add custom instruction for this full exam paper'
+															placeholder={t('fullExamInstructionPlaceholder')}
 															className='glass-input'
 															style={{ resize: 'none' }}
 														/>
 													</Form.Group>
 													<Form.Label className='small text-muted fw-semibold'>
-														Syllabus Focus
+														{t('syllabusFocus')}
 													</Form.Label>
 													<div className='d-flex flex-wrap gap-2'>
 														{selectedExam.syllabus.map((unit) => (
@@ -828,7 +899,7 @@ const GenerateTestForm = () => {
 													</div>
 													<Form.Text className='small text-muted d-block mt-2'>
 														{selectedSyllabusFocus.length} of {selectedExam.syllabus.length}{' '}
-														units selected
+														{t('unitsSelected')}
 													</Form.Text>
 												</Card.Body>
 											</Card>
@@ -868,7 +939,7 @@ const GenerateTestForm = () => {
 												size='sm'
 												onClick={saveCurrentQuizPreset}
 											>
-												Bookmark Current Preset
+												{t('bookmarkCurrentPreset')}
 											</Button>
 										</div>
 
@@ -883,7 +954,7 @@ const GenerateTestForm = () => {
 												>
 													{[5, 10, 15, 20].map((num) => (
 														<option key={num} value={num}>
-															{num} Qs
+															{num} {t('qsShort')}
 														</option>
 													))}
 												</Form.Select>
@@ -894,10 +965,11 @@ const GenerateTestForm = () => {
 													className='glass-input'
 													style={{ minWidth: '120px' }}
 												>
-													<option value='beginner'>Beginner</option>
-													<option value='intermediate'>Intermediate</option>
-													<option value='advanced'>Advanced</option>
-													<option value='expert'>Expert</option>
+													{difficultyOptions.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
 												</Form.Select>
 												<Form.Select
 													size='sm'
@@ -906,11 +978,11 @@ const GenerateTestForm = () => {
 													className='glass-input'
 													style={{ minWidth: '150px' }}
 												>
-													<option value='multiple-choice'>Multiple Choice</option>
-													<option value='true-false'>True/False</option>
-													<option value='coding'>Coding Problems</option>
-													<option value='mixed'>Mixed Format</option>
-													<option value='speed-challenge'>Speed Challenge</option>
+													{formatOptions.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
 												</Form.Select>
 											</div>
 										)}
@@ -920,7 +992,7 @@ const GenerateTestForm = () => {
 												<Row className='g-3'>
 													<Col xs={6} sm={3}>
 														<Form.Label className='small text-muted fw-semibold'>
-															Questions
+															{t('questionsHeading')}
 														</Form.Label>
 														<Form.Select
 															size='sm'
@@ -937,7 +1009,7 @@ const GenerateTestForm = () => {
 													</Col>
 													<Col xs={6} sm={3}>
 														<Form.Label className='small text-muted fw-semibold'>
-															Difficulty
+															{t('difficultyHeading')}
 														</Form.Label>
 														<Form.Select
 															size='sm'
@@ -945,15 +1017,16 @@ const GenerateTestForm = () => {
 															onChange={(e) => setDifficulty(e.target.value)}
 															className='glass-input'
 														>
-															<option value='beginner'>Beginner</option>
-															<option value='intermediate'>Intermediate</option>
-															<option value='advanced'>Advanced</option>
-															<option value='expert'>Expert</option>
+															{difficultyOptions.map((option) => (
+																<option key={option.value} value={option.value}>
+																	{option.label}
+																</option>
+															))}
 														</Form.Select>
 													</Col>
 													<Col xs={12} sm={6}>
 														<Form.Label className='small text-muted fw-semibold'>
-															Format
+															{t('formatHeading')}
 														</Form.Label>
 														<Form.Select
 															size='sm'
@@ -961,11 +1034,11 @@ const GenerateTestForm = () => {
 															onChange={(e) => setTestType(e.target.value)}
 															className='glass-input'
 														>
-															<option value='multiple-choice'>Multiple Choice</option>
-															<option value='true-false'>True/False</option>
-															<option value='coding'>Coding Problems</option>
-															<option value='mixed'>Mixed Format</option>
-															<option value='speed-challenge'>Speed Challenge</option>
+															{formatOptions.map((option) => (
+																<option key={option.value} value={option.value}>
+																	{option.label}
+																</option>
+															))}
 														</Form.Select>
 													</Col>
 												</Row>
@@ -973,7 +1046,7 @@ const GenerateTestForm = () => {
 												<hr className='my-3 opacity-25' />
 
 												<Form.Label className='small text-muted fw-semibold d-flex justify-content-between'>
-													<span>Category (Optional)</span>
+													<span>{t('categoryOptional')}</span>
 													{selectedCategory && (
 														<Button
 															type='button'
@@ -985,7 +1058,7 @@ const GenerateTestForm = () => {
 																setSelectedTopics([]);
 															}}
 														>
-															Clear
+															{t('clear')}
 														</Button>
 													)}
 												</Form.Label>
@@ -1014,11 +1087,11 @@ const GenerateTestForm = () => {
 													))}
 												</div>
 
-												{selectedCategory && (
-													<div className='fade-slide fade-in'>
-														<Form.Label className='small text-muted fw-semibold'>
-															Suggested Topics
-														</Form.Label>
+													{selectedCategory && (
+														<div className='fade-slide fade-in'>
+															<Form.Label className='small text-muted fw-semibold'>
+																{t('suggestedTopics')}
+															</Form.Label>
 														<div className='d-flex flex-wrap gap-2'>
 															{TOPIC_CATEGORIES[selectedCategory]?.map((topicItem) => (
 																<Button
@@ -1065,8 +1138,7 @@ const GenerateTestForm = () => {
 										>
 											<Icon name='signal' size={16} />
 											<span>
-												Slow connection detected. Reduced to {numQuestions} questions for
-												faster loading.
+												{t('slowConnectionReduced')} {numQuestions} {t('forFasterLoading')}
 											</span>
 										</Alert>
 									)}
@@ -1080,7 +1152,7 @@ const GenerateTestForm = () => {
 										>
 											<Icon name='signal' size={16} />
 											<span>
-												Full-length objective papers may take longer on slow connection.
+												{t('fullLengthSlowConnection')}
 											</span>
 										</Alert>
 									)}
@@ -1092,8 +1164,7 @@ const GenerateTestForm = () => {
 									>
 										<Icon name='wifiOff' size={16} />
 										<span>
-											You&apos;re offline. You can still access previously generated tests
-											from history.
+											{t('offlineAccessHistory')}
 										</span>
 									</Alert>
 								)}
@@ -1122,7 +1193,6 @@ const GenerateTestForm = () => {
 									</div>
 								</Button>
 							</Form>
-						)}
 					</Card.Body>
 				</Card>
 			)}
@@ -1136,7 +1206,7 @@ const GenerateTestForm = () => {
 						</div>
 						<p className='text-muted small mb-0' style={{ maxWidth: '460px' }}>
 							{activeMode === TEST_MODES.FULL_EXAM
-								? 'Tap bookmarked exam chips to instantly create full papers. Use browse list only when needed.'
+								? t('fullExamProTip')
 								: t('proTipContent')}
 						</p>
 					</div>

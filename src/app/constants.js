@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
 	USER_PROMPTS: 'selftest_user_prompts',
 	BOOKMARKED_EXAMS: 'selftest_bookmarked_exams',
 	BOOKMARKED_QUIZ_PRESETS: 'selftest_bookmarked_quiz_presets',
+	PAPER_LANGUAGE: 'selftest_paper_language',
 };
 
 export const TOPIC_CATEGORIES = {

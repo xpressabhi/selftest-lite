@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Modal } from 'react-bootstrap';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function QuestionNavigatorModal({
 	show,
@@ -10,10 +11,11 @@ export default function QuestionNavigatorModal({
 	answers,
 	onJump,
 }) {
+	const { t } = useLanguage();
 	return (
 		<Modal show={show} onHide={onHide} centered>
 			<Modal.Header closeButton>
-				<Modal.Title>Jump to question</Modal.Title>
+				<Modal.Title>{t('jumpToQuestion')}</Modal.Title>
 			</Modal.Header>
 			<Modal.Body>
 				<div className='navigator-grid'>

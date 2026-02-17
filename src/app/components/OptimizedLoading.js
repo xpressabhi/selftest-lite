@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Optimized Loading Component
@@ -16,11 +17,13 @@ import { useEffect, useState } from 'react';
  * @param {Function} props.onTimeout - Callback when timeout is reached
  */
 export default function OptimizedLoading({
-	message = 'Loading...',
+	message,
 	timeout = 30000,
 	onTimeout,
 }) {
+	const { t } = useLanguage();
 	const [showTimeout, setShowTimeout] = useState(false);
+	const loadingMessage = message || t('loading');
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
@@ -35,14 +38,14 @@ export default function OptimizedLoading({
 		<div className="loading-container" role="status" aria-live="polite">
 			<div className="loading-content">
 				<div className="spinner" aria-hidden="true" />
-				<p className="loading-text">{message}</p>
+				<p className="loading-text">{loadingMessage}</p>
 				{showTimeout && (
 					<button
 						className="retry-btn"
 						onClick={() => window.location.reload()}
 						type="button"
 					>
-						Reload Page
+						{t('reloadPage')}
 					</button>
 				)}
 			</div>

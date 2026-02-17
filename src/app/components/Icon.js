@@ -273,6 +273,18 @@ const ICONS = {
 			<path d='M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2zm1 12h2V2h-2v12zm-3 0V7H7v7h2zm-5 0v-3H2v3h2z' />
 		</svg>
 	),
+	globe: (props) => (
+		<svg viewBox='0 0 24 24' fill='none' aria-hidden {...props}>
+			<circle cx='12' cy='12' r='9' stroke='currentColor' strokeWidth='1.8' />
+			<path d='M3 12h18' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' />
+			<path
+				d='M12 3c3 2.8 3 15.2 0 18M12 3c-3 2.8-3 15.2 0 18'
+				stroke='currentColor'
+				strokeWidth='1.8'
+				strokeLinecap='round'
+			/>
+		</svg>
+	),
 };
 
 export default function Icon({ name, className, style, size, color, ...rest }) {

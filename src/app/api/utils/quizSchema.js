@@ -6,9 +6,6 @@ export const questionSchema = z.object({
 	answer: z
 		.string()
 		.describe('The correct answer to the question, Must match exactly one of the options'),
-	explanation: z
-		.string()
-		.describe('The explanation for the answer in details with examples if needed.'),
 });
 
 export const paperSchema = z.object({

@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { Card, Badge } from 'react-bootstrap';
 import Icon from './Icon';
 import useStreak from '../hooks/useStreak';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * StreakBanner - Shows current streak, weekly activity dots, and streak-at-risk warnings
  * Displayed on the home page above the quiz form
  */
 export default function StreakBanner() {
+    const { t, language } = useLanguage();
     const {
         currentStreak,
         longestStreak,
@@ -61,10 +63,11 @@ export default function StreakBanner() {
                         }}
                     >
                         <span>⚠️</span>
-                        <span>Your streak is at risk! Take a quiz today to keep it alive.</span>
+                        <span>{t('streakAtRiskMessage')}</span>
                         {freezesRemaining > 0 && (
                             <Badge bg='dark' pill className='ms-1' style={{ fontSize: '0.65rem' }}>
-                                🧊 {freezesRemaining} freeze{freezesRemaining > 1 ? 's' : ''} left
+                                🧊 {freezesRemaining}{' '}
+                                {freezesRemaining > 1 ? t('freezesLeft') : t('freezeLeft')}
                             </Badge>
                         )}
                     </div>
@@ -102,13 +105,13 @@ export default function StreakBanner() {
                                         {currentStreak}
                                     </span>
                                     <span className='text-muted small fw-medium'>
-                                        day{currentStreak !== 1 ? 's' : ''} streak
+                                        {t('dayStreak')}
                                     </span>
                                 </div>
                                 {longestStreak > currentStreak && (
                                     <small className='text-muted d-flex align-items-center gap-1' style={{ fontSize: '0.7rem' }}>
                                         <Icon name='trophy' size={10} className='text-warning' />
-                                        Best: {longestStreak} days
+                                        {t('best')}: {longestStreak}
                                     </small>
                                 )}
                             </div>
@@ -122,7 +125,7 @@ export default function StreakBanner() {
                                 style={{ fontSize: '0.7rem' }}
                             >
                                 <Icon name='checkCircle' size={12} />
-                                Done Today
+                                {t('doneToday')}
                             </Badge>
                         )}
                     </div>
@@ -133,7 +136,7 @@ export default function StreakBanner() {
                             <div
                                 key={day.date}
                                 className='d-flex flex-column align-items-center gap-1 flex-grow-1'
-                                title={`${day.date}: ${day.quizCount} quiz${day.quizCount !== 1 ? 'zes' : ''}`}
+                                title={`${day.date}: ${day.quizCount} ${t(day.quizCount === 1 ? 'quiz' : 'quizzes')}`}
                             >
                                 <div
                                     className='rounded-circle'
@@ -165,7 +168,10 @@ export default function StreakBanner() {
                                         color: day.isToday ? 'var(--accent-primary)' : undefined,
                                     }}
                                 >
-                                    {day.dayName}
+                                    {new Date(day.date).toLocaleDateString(
+                                        language === 'hindi' ? 'hi-IN' : 'en-IN',
+                                        { weekday: 'short' },
+                                    )}
                                 </span>
                             </div>
                         ))}

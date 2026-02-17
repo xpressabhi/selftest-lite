@@ -2,6 +2,7 @@
 
 import Icon from './Icon';
 import { useDataSaver } from '../context/DataSaverContext';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Data Saver Toggle Component
@@ -21,6 +22,7 @@ export default function DataSaverToggle({ showLabel = true, variant = 'button' }
 		isSlowConnection,
 		toggleDataSaver,
 	} = useDataSaver();
+	const { t } = useLanguage();
 
 	const toggle = () => {
 		toggleDataSaver();
@@ -32,15 +34,15 @@ export default function DataSaverToggle({ showLabel = true, variant = 'button' }
 				<Icon name="wifiOff" size={16} />
 				<span>
 					{isAutoMode && isSlowConnection
-						? 'Data saver mode enabled automatically (slow connection)'
-							: 'Data saver mode enabled'}
+						? t('dataSaverAutoEnabled')
+						: t('dataSaverEnabled')}
 				</span>
 				<button
 					className="disable-btn"
 					onClick={toggle}
 					type="button"
 				>
-					Disable
+					{t('disable')}
 				</button>
 				<style jsx>{`
 					.data-saver-banner {
@@ -79,16 +81,16 @@ export default function DataSaverToggle({ showLabel = true, variant = 'button' }
 		return (
 			<div className="data-saver-switch">
 				<div className="switch-info">
-					<span className="switch-label">Data Saver</span>
+					<span className="switch-label">{t('dataSaver')}</span>
 					{showLabel && (
-						<span className="switch-description">Reduce animations and data usage</span>
+						<span className="switch-description">{t('reduceAnimationsDataUsage')}</span>
 					)}
 				</div>
 				<button
 					className={`switch ${isEnabled ? 'on' : 'off'}`}
 					onClick={toggle}
 					aria-pressed={isEnabled}
-					aria-label="Toggle data saver mode"
+					aria-label={t('toggleDataSaverMode')}
 					type="button"
 				>
 					<span className="switch-thumb" />
@@ -171,12 +173,12 @@ export default function DataSaverToggle({ showLabel = true, variant = 'button' }
 			className={`data-saver-btn ${isEnabled ? 'active' : ''}`}
 			onClick={toggle}
 			aria-pressed={isEnabled}
-			aria-label="Toggle data saver mode"
+			aria-label={t('toggleDataSaverMode')}
 			type="button"
 		>
 			<Icon name={isEnabled ? 'wifiOff' : 'wifi'} size={18} />
 			{showLabel && (
-				<span>Data Saver {isEnabled ? 'On' : 'Off'}</span>
+				<span>{`${t('dataSaver')} ${isEnabled ? t('on') : t('off')}`}</span>
 			)}
 			<style jsx>{`
 				.data-saver-btn {

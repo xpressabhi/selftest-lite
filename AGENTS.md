@@ -84,6 +84,9 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
   - Default to Server Components.
   - Use `"use client"` for components using hooks (`useState`, `useEffect`, `useContext`) or browser APIs.
 - **CSS-in-JS**: Use `styled-jsx` within components for component-specific styles when `globals.css` isn't enough.
+- **Localization (Mandatory)**:
+  - Any new or changed user-facing UI text must be provided in **both English and Hindi**.
+  - Store UI strings in `src/app/locales/english.json` and `src/app/locales/hindi.json`; do not hardcode text in components.
 
 ---
 

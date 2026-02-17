@@ -2,13 +2,14 @@
 
 import React from 'react';
 import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Error Boundary Component
  * Catches JavaScript errors in child components and displays a fallback UI
  * Essential for mobile/low-end devices where errors are more common
  */
-export default class ErrorBoundary extends React.Component {
+class ErrorBoundaryImpl extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = { hasError: false, error: null };
@@ -43,6 +44,7 @@ export default class ErrorBoundary extends React.Component {
 	};
 
 	render() {
+		const { t } = this.props;
 		if (this.state.hasError) {
 			return (
 				<div className="error-boundary">
@@ -50,9 +52,9 @@ export default class ErrorBoundary extends React.Component {
 						<div className="error-icon">
 							<Icon name="exclamationCircle" size={48} />
 						</div>
-						<h2 className="error-title">Something went wrong</h2>
+						<h2 className="error-title">{t('somethingWentWrong')}</h2>
 						<p className="error-message">
-							We apologize for the inconvenience. Please try again.
+							{t('errorBoundaryMessage')}
 						</p>
 						<div className="error-actions">
 							{this.props.onReset && (
@@ -61,7 +63,7 @@ export default class ErrorBoundary extends React.Component {
 									onClick={this.handleReset}
 									type="button"
 								>
-									Try Again
+									{t('tryAgain')}
 								</button>
 								)}
 							<button
@@ -69,12 +71,12 @@ export default class ErrorBoundary extends React.Component {
 								onClick={this.handleReload}
 								type="button"
 							>
-								Reload Page
+								{t('reloadPage')}
 							</button>
 						</div>
 						{process.env.NODE_ENV === 'development' && this.state.error && (
 							<details className="error-details">
-								<summary>Error Details (Development Only)</summary>
+								<summary>{t('errorDetailsDevOnly')}</summary>
 								<pre>{this.state.error.stack}</pre>
 							</details>
 						)}
@@ -167,4 +169,9 @@ export default class ErrorBoundary extends React.Component {
 
 		return this.props.children;
 	}
+}
+
+export default function ErrorBoundary(props) {
+	const { t } = useLanguage();
+	return <ErrorBoundaryImpl {...props} t={t} />;
 }

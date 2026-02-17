@@ -13,12 +13,12 @@ const StatsDashboard = dynamic(() => import('./components/StatsDashboard'), {
 });
 
 const PerformanceChart = dynamic(() => import('./components/PerformanceChart'), {
-	loading: () => <div style={{ height: '200px' }} className="d-flex align-items-center justify-content-center text-muted">Loading chart...</div>,
+	loading: () => <div style={{ height: '200px' }} className="d-flex align-items-center justify-content-center text-muted">...</div>,
 	ssr: false
 });
 
 const AchievementShowcase = dynamic(() => import('./components/AchievementShowcase'), {
-	loading: () => <div style={{ height: '150px' }} className="d-flex align-items-center justify-content-center text-muted">Loading achievements...</div>,
+	loading: () => <div style={{ height: '150px' }} className="d-flex align-items-center justify-content-center text-muted">...</div>,
 	ssr: false
 });
 

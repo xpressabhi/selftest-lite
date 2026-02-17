@@ -1,18 +1,21 @@
 import React from 'react';
 import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Share({ paper }) {
+	const { t } = useLanguage();
 	const { id, topic } = paper || {};
 	const handleShare = async () => {
 		if (!id) return;
 		const params = new URLSearchParams({ id }).toString();
 		const shareUrl = `${window.location.origin}/test?${params}`;
+		const safeTopic = topic || t('defaultTestTopic');
 
 		if (navigator.share) {
 			try {
 				await navigator.share({
-					title: topic || 'Test Topic',
-					text: topic + ' - Check out this test!',
+					title: safeTopic,
+					text: `${safeTopic} - ${t('checkOutThisTest')}`,
 					url: shareUrl,
 				});
 			} catch (err) {
@@ -21,7 +24,7 @@ export default function Share({ paper }) {
 		} else {
 			// fallback: copy link
 			await navigator.clipboard.writeText(shareUrl);
-			alert('Share link copied to clipboard!');
+			alert(t('shareLinkCopied'));
 		}
 	};
 	if (!id) return null;
@@ -31,7 +34,7 @@ export default function Share({ paper }) {
 			className='btn btn-outline-secondary d-flex align-items-center gap-2'
 			onClick={handleShare}
 		>
-			<Icon name='share' /> Share
+			<Icon name='share' /> {t('share')}
 		</button>
 	);
 }

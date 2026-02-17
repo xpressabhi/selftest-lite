@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from '../constants';
 import Icon from './Icon';
 import { Button, ListGroup, Badge } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function TestHistory({ onTestClick }) {
 	const [testHistory, setTestHistory] = useLocalStorage(
@@ -14,6 +15,7 @@ export default function TestHistory({ onTestClick }) {
 	);
 	const router = useRouter();
 	const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+	const { t, language } = useLanguage();
 
 	const toggleFavorite = (e, testId) => {
 		e.stopPropagation();
@@ -24,17 +26,18 @@ export default function TestHistory({ onTestClick }) {
 	};
 
 	const clearHistory = () => {
-		if (window.confirm('Are you sure you want to clear all test history?')) {
+		if (window.confirm(t('clearHistoryConfirm'))) {
 			setTestHistory([]);
 		}
 	};
 
 	const formatDateTime = (timestamp) => {
 		const date = new Date(timestamp);
+		const locale = language === 'hindi' ? 'hi-IN' : 'en-IN';
 		return (
-			date.toLocaleDateString() +
+			date.toLocaleDateString(locale) +
 			' ' +
-			date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+			date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 		);
 	};
 
@@ -43,12 +46,12 @@ export default function TestHistory({ onTestClick }) {
 			<div className='w-100' style={{ maxWidth: '800px' }}>
 				<div className='d-flex justify-content-between align-items-center mb-3 mx-3 py-3'>
 					<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
-						<Icon name='history' className='text-primary' /> Previous Tests
+						<Icon name='history' className='text-primary' /> {t('previousTests')}
 					</h2>
 				</div>
 				<div className='p-4 text-center text-muted'>
 					<Icon name='inbox' size={48} className='mb-3' />
-					<p className='mb-0'>No previous tests found.</p>
+					<p className='mb-0'>{t('noPreviousTestsFound')}</p>
 				</div>
 			</div>
 		);
@@ -58,7 +61,7 @@ export default function TestHistory({ onTestClick }) {
 		<div className='w-100' style={{ maxWidth: '800px' }}>
 			<div className='d-flex justify-content-between align-items-center mb-3 mx-3 gap-2 flex-wrap py-3'>
 				<h2 className='h4 mb-0 d-flex align-items-center gap-2 text-dark'>
-					<Icon name='history' className='text-primary' /> Previous Tests
+					<Icon name='history' className='text-primary' /> {t('previousTests')}
 				</h2>
 				<div className='d-flex gap-2 ms-auto'>
 					<Button
@@ -68,7 +71,7 @@ export default function TestHistory({ onTestClick }) {
 						onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
 					>
 						<Icon name={showFavoritesOnly ? 'starFill' : 'star'} />{' '}
-						{showFavoritesOnly ? 'Favorites' : 'Favorites'}
+						{t('favorites')}
 					</Button>
 					<Button
 						variant='outline-danger'
@@ -76,7 +79,7 @@ export default function TestHistory({ onTestClick }) {
 						className='d-flex align-items-center gap-2 fw-bold text-nowrap'
 						onClick={clearHistory}
 					>
-						<Icon name='trash' /> Clear
+						<Icon name='trash' /> {t('clear')}
 					</Button>
 				</div>
 			</div>
@@ -84,7 +87,7 @@ export default function TestHistory({ onTestClick }) {
 				testHistory.filter((t) => t.isFavorite).length === 0 && (
 					<div className='p-4 text-center text-muted'>
 						<Icon name='star' size={48} className='mb-3 opacity-25' />
-						<p className='mb-0'>No favorite tests yet.</p>
+						<p className='mb-0'>{t('noFavoriteTestsYet')}</p>
 					</div>
 				)}
 			<ListGroup className='rounded-3 overflow-hidden'>
@@ -119,7 +122,7 @@ export default function TestHistory({ onTestClick }) {
 								</div>
 								<div className='text-truncate'>
 									<h6 className='mb-1 text-primary text-truncate'>
-										{test.topic || 'Untitled Test'}
+										{test.topic || t('untitledTest')}
 									</h6>
 									{test.timestamp && (
 										<small className='text-muted d-flex align-items-center gap-1'>
@@ -147,7 +150,7 @@ export default function TestHistory({ onTestClick }) {
 								</div>
 							) : (
 								<Badge pill className='fs-6'>
-									NEW
+									{t('newBadge')}
 								</Badge>
 							)}
 						</ListGroup.Item>

@@ -10,8 +10,16 @@ import {
 	validateGeneratedPaper,
 } from '../utils/quizValidation';
 
-const MODEL_NAME = 'gemini-3-flash-preview';
+const MODEL_NAME = 'gemini-2.5-flash';
 const BATCH_SIZE = 25;
+
+function sanitizeQuestion(question) {
+	return {
+		question: question.question,
+		options: question.options,
+		answer: question.answer,
+	};
+}
 
 async function generateQuestionBatch({
 	ai,
@@ -119,7 +127,7 @@ async function generatePaper({
 		if (!resolvedPaperTopic && batchPaper.topic) {
 			resolvedPaperTopic = batchPaper.topic;
 		}
-		generatedQuestions.push(...batchPaper.questions);
+		generatedQuestions.push(...batchPaper.questions.map(sanitizeQuestion));
 	}
 
 	if (generatedQuestions.length !== numQuestions) {

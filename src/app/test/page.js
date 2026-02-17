@@ -16,7 +16,7 @@ import SoundToggle from '../components/SoundToggle';
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
 	{
-		loading: () => <p>Loading...</p>,
+		loading: () => <p>...</p>,
 		ssr: false,
 	},
 );
@@ -111,11 +111,11 @@ function TestContent() {
 					})
 					.catch((err) => {
 						setLoading(false);
-						setError('Failed to load test. Please try again. ' + err.message);
+						setError(`${t('failedToLoadTest')} ${err.message}`);
 					});
 			}
 		}
-	}, [router, testHistory, testId, updateHistory]);
+	}, [router, testHistory, testId, updateHistory, t]);
 
 	// Initialize Speed Challenge timer
 	useEffect(() => {
@@ -418,7 +418,7 @@ function TestContent() {
 							<span className='mobile-progress-pct'>{Math.round(progress)}%</span>
 							{questionPaper.requestParams?.testMode === 'full-exam' && (
 								<span className='badge rounded-pill text-bg-dark'>
-									Full Exam
+									{t('fullExamPaper')}
 								</span>
 							)}
 							{questionPaper.requestParams?.examName && (
@@ -439,7 +439,7 @@ function TestContent() {
 								<span className='fw-bold font-monospace small'>
 									{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
 								</span>
-								<span className='small opacity-75 timer-label'>left</span>
+								<span className='small opacity-75 timer-label'>{t('left')}</span>
 							</div>
 						) : (
 							<div className='bg-light rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm'>
@@ -459,7 +459,7 @@ function TestContent() {
 								onClick={() => setShowNavigatorModal(true)}
 							>
 								<Icon name='list' size={14} />
-								Jump
+								{t('jump')}
 							</Button>
 						</div>
 						<Button
@@ -616,9 +616,8 @@ function TestContent() {
 					<div className='mb-4 text-center'>
 						<small className='text-muted fw-medium'>
 							{remainingCount > 0
-								? `${remainingCount} question${remainingCount !== 1 ? 's' : ''
-								} remaining`
-								: 'All questions answered!'}
+								? `${remainingCount} ${remainingCount === 1 ? t('questionRemaining') : t('questionsRemaining')}`
+								: t('allQuestionsAnswered')}
 						</small>
 					</div>
 					<div className='d-none d-md-flex justify-content-center gap-2 mb-4'>
@@ -630,7 +629,7 @@ function TestContent() {
 							onClick={() => setShowNavigatorModal(true)}
 						>
 							<Icon name='list' size={14} />
-							Jump
+							{t('jump')}
 						</Button>
 						<Button
 							type='button'
@@ -641,7 +640,7 @@ function TestContent() {
 							disabled={currentQuestionIndex === questionPaper.questions.length - 1}
 						>
 							<Icon name='chevronRight' size={14} />
-							{isCurrentAnswered ? 'Next' : 'Skip'}
+							{isCurrentAnswered ? t('next') : t('skip')}
 						</Button>
 					</div>
 
@@ -661,7 +660,7 @@ function TestContent() {
 				</form>
 
 				<div className='d-none d-md-flex gap-3 mt-4'>
-					<FloatingButtonWithCopy data={testId} label='Test Id' />
+					<FloatingButtonWithCopy data={testId} label={t('testId')} />
 					<Share paper={questionPaper} />
 					<Print questionPaper={questionPaper} />
 				</div>
@@ -711,7 +710,7 @@ function TestContent() {
 									disabled={fadeState === 'fade-out'}
 								>
 									<Icon name='chevronRight' size={16} />
-									{isCurrentAnswered ? 'Next' : 'Skip'}
+									{isCurrentAnswered ? t('next') : t('skip')}
 								</Button>
 								<Button
 									variant='outline-success'
@@ -730,7 +729,7 @@ function TestContent() {
 
 				<Modal show={showMoreModal} onHide={() => setShowMoreModal(false)} centered>
 					<Modal.Header closeButton>
-						<Modal.Title>More actions</Modal.Title>
+						<Modal.Title>{t('moreActions')}</Modal.Title>
 					</Modal.Header>
 					<Modal.Body>
 						<div className='d-flex flex-column gap-2'>
@@ -743,13 +742,13 @@ function TestContent() {
 								}}
 							>
 								<Icon name='list' size={14} />
-								Jump to question
+								{t('jumpToQuestion')}
 							</Button>
 							<div className='d-flex justify-content-center'>
 								<SoundToggle variant="light" size="sm" className="rounded-pill border px-3 py-2 text-muted" />
 							</div>
 							<div className='mobile-tools-actions'>
-								<FloatingButtonWithCopy data={testId} label='Test Id' />
+								<FloatingButtonWithCopy data={testId} label={t('testId')} />
 								<Share paper={questionPaper} />
 								<Print questionPaper={questionPaper} />
 							</div>
@@ -1011,10 +1010,11 @@ function TestContent() {
 
 // Main component that wraps ResultsContent in Suspense
 export default function Test() {
+	const { t } = useLanguage();
 	return (
 		<Suspense
 			fallback={
-				<Container className='text-center mt-5'>Loading test...</Container>
+				<Container className='text-center mt-5'>{t('loadingTest')}</Container>
 			}
 		>
 			<TestContent />

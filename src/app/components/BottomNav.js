@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Bottom Navigation Component
@@ -13,17 +14,17 @@ import Icon from './Icon';
  * - Active state highlighting
  * - Safe area support for notched devices
  */
-const navItems = [
-	{ href: '/', label: 'Home', icon: 'home' },
-	{ href: '/bookmarks', label: 'Bookmarks', icon: 'bookmark' },
-	{ href: '/', label: 'Create', icon: 'plusCircle', isCenter: true },
-	{ href: '/history', label: 'History', icon: 'history' },
-	{ href: '/about', label: 'About', icon: 'info' },
-];
-
 export default function BottomNav() {
 	const pathname = usePathname();
 	const navRef = useRef(null);
+	const { t } = useLanguage();
+	const navItems = [
+		{ href: '/', label: t('homeTab'), icon: 'home' },
+		{ href: '/bookmarks', label: t('bookmarksTab'), icon: 'bookmark' },
+		{ href: '/', label: t('createTab'), icon: 'plusCircle', isCenter: true },
+		{ href: '/history', label: t('historyTab'), icon: 'history' },
+		{ href: '/about', label: t('aboutTab'), icon: 'info' },
+	];
 
 	const isActive = (href) => pathname === href;
 	const triggerHaptic = () => {
@@ -88,7 +89,7 @@ export default function BottomNav() {
 	}, []);
 
 	return (
-		<nav ref={navRef} className="bottom-nav d-xl-none" aria-label="Main navigation">
+		<nav ref={navRef} className="bottom-nav d-xl-none" aria-label={t('mainNavigation')}>
 			{navItems.map((item) => (
 				<Link
 					key={item.label}

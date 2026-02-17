@@ -1,35 +1,37 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import useNetworkStatus from '../hooks/useNetworkStatus'
-import Icon from './Icon'
-import { Alert } from 'react-bootstrap'
+import { useState, useEffect } from 'react';
+import useNetworkStatus from '../hooks/useNetworkStatus';
+import Icon from './Icon';
+import { Alert } from 'react-bootstrap';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Shows a banner when user is offline or on slow connection
  * Provides feedback and guidance for better experience
  */
 export default function OfflineIndicator() {
-    const { isOffline, isSlowConnection, effectiveType } = useNetworkStatus()
-    const [showSlowWarning, setShowSlowWarning] = useState(false)
-    const [dismissed, setDismissed] = useState(false)
+    const { t } = useLanguage();
+    const { isOffline, isSlowConnection, effectiveType } = useNetworkStatus();
+    const [showSlowWarning, setShowSlowWarning] = useState(false);
+    const [dismissed, setDismissed] = useState(false);
 
     useEffect(() => {
         // Show slow connection warning with a slight delay to avoid flashing
         if (isSlowConnection && !isOffline) {
-            const timer = setTimeout(() => setShowSlowWarning(true), 2000)
-            return () => clearTimeout(timer)
+            const timer = setTimeout(() => setShowSlowWarning(true), 2000);
+            return () => clearTimeout(timer);
         } else {
-            setShowSlowWarning(false)
+            setShowSlowWarning(false);
         }
-    }, [isSlowConnection, isOffline])
+    }, [isSlowConnection, isOffline]);
 
     // Reset dismissed state when going offline
     useEffect(() => {
-        if (isOffline) setDismissed(false)
-    }, [isOffline])
+        if (isOffline) setDismissed(false);
+    }, [isOffline]);
 
-    if (dismissed && !isOffline) return null
+    if (dismissed && !isOffline) return null;
 
     if (isOffline) {
         return (
@@ -45,10 +47,10 @@ export default function OfflineIndicator() {
             >
                 <Icon name="wifiOff" size={18} />
                 <span className="fw-medium small">
-                    You're offline. Previously loaded quizzes are still available.
+                    {t('offlineQuizzesAvailable')}
                 </span>
             </Alert>
-        )
+        );
     }
 
     if (showSlowWarning && !dismissed) {
@@ -67,11 +69,11 @@ export default function OfflineIndicator() {
             >
                 <Icon name="signal" size={18} />
                 <span className="fw-medium small">
-                    Slow connection detected ({effectiveType}). Using optimized mode.
+                    {t('slowConnectionUsingOptimized')} ({effectiveType}).
                 </span>
             </Alert>
-        )
+        );
     }
 
-    return null
+    return null;
 }

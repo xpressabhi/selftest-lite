@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Icon from './Icon';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Toast notification system
@@ -18,6 +19,7 @@ import Icon from './Icon';
  * @param {Function} props.onDismiss - Dismiss callback
  */
 export default function Toast({ id, type = 'info', message, duration = 5000, onDismiss }) {
+	const { t } = useLanguage();
 	const [isVisible, setIsVisible] = useState(false);
 	const [progress, setProgress] = useState(100);
 
@@ -86,7 +88,7 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 					e.stopPropagation();
 					handleDismiss();
 				}}
-				aria-label="Dismiss notification"
+				aria-label={t('dismissNotification')}
 				type="button"
 			>
 				<Icon name="x" size={16} />
@@ -190,8 +192,9 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
  * Toast Container - Manages multiple toasts
  */
 export function ToastContainer({ toasts = [], removeToast }) {
+	const { t } = useLanguage();
 	return (
-		<div className="toast-container" role="region" aria-label="Notifications">
+		<div className="toast-container" role="region" aria-label={t('notifications')}>
 			{toasts.map((toast) => (
 				<Toast
 					key={toast.id}

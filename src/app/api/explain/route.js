@@ -4,6 +4,8 @@ import { rateLimiter } from '../utils/rateLimiter';
 import { generateExplanationPrompt } from '../utils/prompt';
 import { getClientKey, logApiEvent } from '../utils/storage';
 
+const EXPLANATION_MODEL = 'gemini-2.5-flash-lite';
+
 export async function POST(request) {
 	const startedAt = Date.now();
 	const clientKey = getClientKey(request);
@@ -64,11 +66,14 @@ export async function POST(request) {
 		});
 
 		const response = await ai.models.generateContent({
-			model: 'gemini-3-flash-preview',
+			model: EXPLANATION_MODEL,
 			contents: prompt,
 			config: { responseMimeType: 'application/json' },
 		});
-		const questionPaper = JSON.parse(response.text);
+		const parsed = JSON.parse(response.text.trim());
+		if (!parsed?.explanation || typeof parsed.explanation !== 'string') {
+			throw new Error('Invalid explanation response from model');
+		}
 
 		await logApiEvent({
 			route: '/api/explain',
@@ -82,7 +87,7 @@ export async function POST(request) {
 			},
 		});
 
-		return NextResponse.json(questionPaper);
+		return NextResponse.json(parsed);
 	} catch (error) {
 		console.error(error);
 

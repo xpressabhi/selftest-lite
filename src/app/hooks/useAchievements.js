@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import useLocalStorage from './useLocalStorage';
 import { STORAGE_KEYS } from '../constants';
+import { useLanguage } from '../context/LanguageContext';
 
 const ACHIEVEMENTS_KEY = 'selftest_achievements';
 
@@ -146,9 +147,21 @@ const ACHIEVEMENT_DEFS = [
  * Tracks unlocked achievements based on quiz history and streak data
  */
 export default function useAchievements(streakData = {}) {
+    const { t } = useLanguage();
     const [unlockedIds, setUnlockedIds] = useLocalStorage(ACHIEVEMENTS_KEY, []);
     const [testHistory] = useLocalStorage(STORAGE_KEYS.TEST_HISTORY, []);
     const [newlyUnlocked, setNewlyUnlocked] = useState([]);
+
+    const translateOrFallback = useCallback((key, fallback) => {
+        const translated = t(key);
+        return translated === key ? fallback : translated;
+    }, [t]);
+
+    const localizeAchievement = useCallback((def) => ({
+        ...def,
+        title: translateOrFallback(`achievement_${def.id}_title`, def.title),
+        description: translateOrFallback(`achievement_${def.id}_description`, def.description),
+    }), [translateOrFallback]);
 
     // Compute stats from test history
     const stats = useMemo(() => {
@@ -220,19 +233,21 @@ export default function useAchievements(streakData = {}) {
         if (newUnlocks.length > 0) {
             const newIds = newUnlocks.map((a) => a.id);
             setUnlockedIds([...unlockedIds, ...newIds]);
-            setNewlyUnlocked(newUnlocks);
+            const localizedNewUnlocks = newUnlocks.map(localizeAchievement);
+            setNewlyUnlocked(localizedNewUnlocks);
+            return localizedNewUnlocks;
         }
 
         return newUnlocks;
-    }, [unlockedIds, stats, setUnlockedIds]);
+    }, [unlockedIds, stats, setUnlockedIds, localizeAchievement]);
 
     // All achievements with their unlock status
     const allAchievements = useMemo(() => {
         return ACHIEVEMENT_DEFS.map((def) => ({
-            ...def,
+            ...localizeAchievement(def),
             unlocked: unlockedIds.includes(def.id),
         }));
-    }, [unlockedIds]);
+    }, [unlockedIds, localizeAchievement]);
 
     const unlockedCount = unlockedIds.length;
     const totalCount = ACHIEVEMENT_DEFS.length;

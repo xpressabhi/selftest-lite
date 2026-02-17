@@ -2,10 +2,16 @@
 
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import { useLanguage } from '../context/LanguageContext';
+
+function MarkdownLoading() {
+	const { t } = useLanguage();
+	return <span className='text-muted'>{t('loadingContent')}</span>;
+}
 
 // Dynamically import the heavy renderer
 const HeavyMarkdownRenderer = dynamic(() => import('./HeavyMarkdownRenderer'), {
-	loading: () => <span className='text-muted'>Loading content...</span>,
+	loading: () => <MarkdownLoading />,
 	ssr: false,
 });
 
