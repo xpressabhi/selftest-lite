@@ -109,8 +109,6 @@ body, .glass-card, .card, .btn, .form-control, .top-nav, .bottom-nav {
 
 	[data-theme='dark'] .top-nav {
 		background: rgba(15, 15, 26, 0.85);
-		backdrop-filter: blur(12px) saturate(180%);
-		-webkit-backdrop-filter: blur(12px) saturate(180%);
 		border-bottom: 1px solid var(--glass-border);
 	}
 

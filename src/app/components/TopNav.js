@@ -625,10 +625,7 @@ export default function TopNav() {
 
 					.menu-footer {
 						padding: 24px;
-						padding-bottom: max(
-							calc(24px + env(safe-area-inset-bottom, 0px)),
-							calc(var(--bottom-nav-offset) + 12px)
-						);
+						padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
 						border-top: 1px solid var(--border-color);
 						background: var(--bg-secondary);
 					}
