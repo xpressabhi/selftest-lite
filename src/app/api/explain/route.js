@@ -3,6 +3,10 @@ import { GoogleGenAI } from '@google/genai';
 import { rateLimiter } from '../utils/rateLimiter';
 import { generateExplanationPrompt } from '../utils/prompt';
 import { getClientKey, logApiEvent } from '../utils/storage';
+import {
+	API_LIMIT_ERROR_CODE,
+	isApiLimitExceededError,
+} from '../../utils/apiLimitError';
 
 const EXPLANATION_MODEL = 'gemini-2.5-flash-lite';
 
@@ -25,6 +29,7 @@ export async function POST(request) {
 			return NextResponse.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
+					code: API_LIMIT_ERROR_CODE,
 					resetTime: new Date(rateLimit.resetTime).toISOString(),
 					remaining: rateLimit.remaining,
 				},
@@ -90,19 +95,27 @@ export async function POST(request) {
 		return NextResponse.json(parsed);
 	} catch (error) {
 		console.error(error);
+		const isLimitError = isApiLimitExceededError(error);
+		const statusCode = isLimitError ? 429 : 500;
+		const errorMessage = isLimitError
+			? 'API limit exceeded. Please retry manually after some time.'
+			: 'An unexpected error occurred';
 
 		await logApiEvent({
 			route: '/api/explain',
 			action: 'explain_answer',
 			clientKey,
-			statusCode: 500,
+			statusCode,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
 
 		return NextResponse.json(
-			{ error: 'An unexpected error occurred' },
-			{ status: 500 },
+			{
+				error: errorMessage,
+				code: isLimitError ? API_LIMIT_ERROR_CODE : 'EXPLANATION_FAILED',
+			},
+			{ status: statusCode },
 		);
 	}
 }

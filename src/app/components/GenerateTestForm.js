@@ -8,6 +8,10 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import useNetworkStatus from '../hooks/useNetworkStatus';
 import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '../data/indianExams';
+import {
+	isApiLimitExceededError,
+	isApiLimitExceededResponse,
+} from '../utils/apiLimitError';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
 import TestIdEntryCard from './generate/TestIdEntryCard';
@@ -244,7 +248,7 @@ const GenerateTestForm = () => {
 
 					if (!response.ok) {
 						const errorData = await response.json().catch(() => ({}));
-						if (response.status === 429) {
+						if (isApiLimitExceededResponse(response.status, errorData)) {
 							setError(errorData.error || t('rateLimitExceeded'));
 							return;
 						}
@@ -264,6 +268,11 @@ const GenerateTestForm = () => {
 						return;
 					}
 				} catch (err) {
+					if (isApiLimitExceededError(err)) {
+						setError(t('rateLimitExceeded'));
+						return;
+					}
+
 					if (attempt === MAX_RETRIES) {
 						setError(
 							`${t('errorFailedAfterAttempts')} ${err.message}`,

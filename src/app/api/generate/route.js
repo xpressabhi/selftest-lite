@@ -9,6 +9,10 @@ import {
 	validateGenerateRequest,
 	validateGeneratedPaper,
 } from '../utils/quizValidation';
+import {
+	API_LIMIT_ERROR_CODE,
+	isApiLimitExceededError,
+} from '../../utils/apiLimitError';
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const BATCH_SIZE = 25;
@@ -206,6 +210,7 @@ export async function POST(request) {
 			return NextResponse.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
+					code: API_LIMIT_ERROR_CODE,
 					resetTime: new Date(rateLimit.resetTime).toISOString(),
 					remaining: rateLimit.remaining,
 				},
@@ -327,12 +332,17 @@ export async function POST(request) {
 			});
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
+			const isLimitError = isApiLimitExceededError(parseError);
+			const statusCode = isLimitError ? 429 : 500;
+			const errorMessage = isLimitError
+				? 'API limit exceeded. Please retry manually after some time.'
+				: 'Failed to generate valid quiz questions. Please try again.';
 
 			await logApiEvent({
 				route: '/api/generate',
 				action: 'generate_quiz',
 				clientKey,
-				statusCode: 500,
+				statusCode,
 				durationMs: Date.now() - startedAt,
 				errorMessage: parseError.message,
 				metadata: {
@@ -348,27 +358,36 @@ export async function POST(request) {
 
 			return NextResponse.json(
 				{
-					error: 'Failed to generate valid quiz questions. Please try again.',
+					error: errorMessage,
+					code: isLimitError ? API_LIMIT_ERROR_CODE : 'GENERATION_FAILED',
 					details: parseError.message,
 				},
-				{ status: 500 },
+				{ status: statusCode },
 			);
 		}
 	} catch (error) {
 		console.error(error);
+		const isLimitError = isApiLimitExceededError(error);
+		const statusCode = isLimitError ? 429 : 500;
+		const errorMessage = isLimitError
+			? 'API limit exceeded. Please retry manually after some time.'
+			: 'An unexpected error occurred';
 
 		await logApiEvent({
 			route: '/api/generate',
 			action: 'generate_quiz',
 			clientKey,
-			statusCode: 500,
+			statusCode,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
 
 		return NextResponse.json(
-			{ error: 'An unexpected error occurred' },
-			{ status: 500 },
+			{
+				error: errorMessage,
+				code: isLimitError ? API_LIMIT_ERROR_CODE : 'GENERATION_UNEXPECTED',
+			},
+			{ status: statusCode },
 		);
 	}
 }
