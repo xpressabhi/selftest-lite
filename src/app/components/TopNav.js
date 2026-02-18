@@ -9,6 +9,7 @@ import { useDataSaver } from '../context/DataSaverContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import useTestSearch from '../hooks/useTestSearch';
+import { APP_EVENTS } from '../constants';
 
 /**
  * Top Navigation Component
@@ -149,6 +150,18 @@ export default function TopNav() {
 		toggleTheme();
 	};
 
+	const handleOpenTourGuide = () => {
+		triggerHaptic();
+		setIsMenuOpen(false);
+		if (pathname !== '/') {
+			router.push('/?tour=1');
+			return;
+		}
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(new Event(APP_EVENTS.OPEN_TOUR));
+		}
+	};
+
 	const navLinks = [
 		{ href: '/about', label: t('about'), icon: 'info' },
 		{ href: '/blog', label: t('blog'), icon: 'book' },
@@ -172,18 +185,25 @@ export default function TopNav() {
 				<span className="brand-text lead text-decoration-none">selftest.in</span>
 			</Link>
 
-			{/* Desktop Navigation */}
-			<nav className="desktop-nav" aria-label={t('mainNavigation')}>
-				{navLinks.map((link) => (
-					<Link
+				{/* Desktop Navigation */}
+				<nav className="desktop-nav" aria-label={t('mainNavigation')}>
+					{navLinks.map((link) => (
+						<Link
 						key={link.href}
 						href={link.href}
 						className={`nav-link ${pathname === link.href ? 'active' : ''}`}
+						>
+							{link.label}
+						</Link>
+					))}
+					<button
+						type="button"
+						className="nav-link nav-link-button"
+						onClick={handleOpenTourGuide}
 					>
-						{link.label}
-					</Link>
-				))}
-			</nav>
+						{t('tourGuide')}
+					</button>
+				</nav>
 
 			{/* Right Actions */}
 				<div className="nav-actions">
@@ -277,9 +297,9 @@ export default function TopNav() {
 							</button>
 						</div>
 
-						<nav className="mobile-nav" aria-label={t('mobileNavigation')}>
-							{navLinks.map((link) => (
-								<Link
+							<nav className="mobile-nav" aria-label={t('mobileNavigation')}>
+								{navLinks.map((link) => (
+									<Link
 									key={link.href}
 									href={link.href}
 									className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
@@ -288,10 +308,20 @@ export default function TopNav() {
 									<span className="mobile-link-icon" aria-hidden="true">
 										<Icon name={link.icon} size={20} />
 									</span>
-									<span className="mobile-link-label">{link.label}</span>
-								</Link>
-						))}
-					</nav>
+										<span className="mobile-link-label">{link.label}</span>
+									</Link>
+								))}
+								<button
+									type="button"
+									className="mobile-nav-link mobile-nav-action"
+									onClick={handleOpenTourGuide}
+								>
+									<span className="mobile-link-icon" aria-hidden="true">
+										<Icon name="sparkles" size={20} />
+									</span>
+									<span className="mobile-link-label">{t('tourGuide')}</span>
+								</button>
+						</nav>
 
 						<div className="menu-footer">
 							<DataSaverToggle variant="switch" />
@@ -444,20 +474,26 @@ export default function TopNav() {
 					}
 				}
 
-				.nav-link {
-					padding: 8px 16px;
-					color: var(--text-secondary);
+					.nav-link {
+						padding: 8px 16px;
+						color: var(--text-secondary);
 					text-decoration: none;
 					font-size: 0.875rem;
 					font-weight: 500;
 					border-radius: var(--radius-md);
-					transition: color 0.15s ease, background 0.15s ease;
-				}
+						transition: color 0.15s ease, background 0.15s ease;
+					}
 
-				.nav-link:hover,
-				.nav-link.active {
-					color: var(--accent-primary);
-					background: rgba(99, 102, 241, 0.1);
+					.nav-link-button {
+						border: none;
+						background: transparent;
+						cursor: pointer;
+					}
+
+					.nav-link:hover,
+					.nav-link.active {
+						color: var(--accent-primary);
+						background: rgba(99, 102, 241, 0.1);
 				}
 
 				/* Actions */
@@ -577,9 +613,9 @@ export default function TopNav() {
 					overflow-y: auto;
 				}
 
-				.mobile-nav-link {
-					display: flex;
-					align-items: center;
+					.mobile-nav-link {
+						display: flex;
+						align-items: center;
 					gap: 14px;
 					padding: 14px 16px;
 					min-height: 54px;
@@ -589,8 +625,16 @@ export default function TopNav() {
 					font-weight: 500;
 					border-radius: var(--radius-lg);
 					transition: all 0.2s ease;
-					border: 1px solid transparent;
-				}
+						border: 1px solid transparent;
+					}
+
+					.mobile-nav-action {
+						width: 100%;
+						background: transparent;
+						border: none;
+						cursor: pointer;
+						text-align: left;
+					}
 
 				.mobile-link-icon {
 					width: 24px;
