@@ -555,14 +555,24 @@ function ResultsContent() {
 										<span className='text-muted fw-bold opacity-50'>#{index + 1}</span>
 									</div>
 
-									<Button
-										variant='link'
-										className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
-											}`}
-										onClick={() => toggleBookmark(q)}
-									>
-										<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={24} />
-									</Button>
+										<Button
+											variant='link'
+											className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
+												}`}
+											onClick={() => toggleBookmark(q)}
+											aria-label={
+												isBookmarked(q)
+													? t('removeQuestionBookmark')
+													: t('bookmarkQuestion')
+											}
+											title={
+												isBookmarked(q)
+													? t('removeQuestionBookmark')
+													: t('bookmarkQuestion')
+											}
+										>
+											<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={24} />
+										</Button>
 
 									<div className='mb-4 fs-5 fw-medium text-dark pe-4'>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>

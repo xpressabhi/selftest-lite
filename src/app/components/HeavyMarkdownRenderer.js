@@ -6,6 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import './markdown-styles.css';
+import { useLanguage } from '../context/LanguageContext';
 
 // We'll lazy-load the syntax highlighter only if a fenced code block with a
 // language is encountered. This prevents bundling the heavy library on
@@ -59,8 +60,54 @@ function normalizeMarkdown(input) {
 	return out;
 }
 
+function sanitizeMermaidSvg(svgString) {
+	if (
+		typeof window === 'undefined' ||
+		typeof svgString !== 'string' ||
+		!svgString.trim()
+	) {
+		return '';
+	}
+
+	try {
+		const parser = new window.DOMParser();
+		const parsed = parser.parseFromString(svgString, 'image/svg+xml');
+		const svgElement = parsed.documentElement;
+		if (!svgElement || svgElement.nodeName.toLowerCase() !== 'svg') {
+			return '';
+		}
+
+		parsed
+			.querySelectorAll('script,foreignObject,iframe,object,embed,link')
+			.forEach((node) => node.remove());
+
+		const allElements = [svgElement, ...svgElement.querySelectorAll('*')];
+		for (const element of allElements) {
+			for (const attr of Array.from(element.attributes)) {
+				const attrName = attr.name.toLowerCase();
+				const attrValue = String(attr.value || '').trim();
+				if (attrName.startsWith('on')) {
+					element.removeAttribute(attr.name);
+					continue;
+				}
+				if (
+					(attrName === 'href' || attrName === 'xlink:href') &&
+					/^(?:javascript|data):/i.test(attrValue)
+				) {
+					element.removeAttribute(attr.name);
+				}
+			}
+		}
+
+		return new window.XMLSerializer().serializeToString(svgElement);
+	} catch {
+		return '';
+	}
+}
+
 function MermaidBlock({ chart }) {
 	const [svg, setSvg] = useState('');
+	const { t } = useLanguage();
 
 	useEffect(() => {
 		let mounted = true;
@@ -78,13 +125,13 @@ function MermaidBlock({ chart }) {
 					theme: 'default',
 				});
 
-				const id = `mmd-${Math.random().toString(36).slice(2)}`;
-				const result = await mermaid.render(id, chart);
-				if (mounted) {
-					setSvg(result.svg);
-				}
-			} catch (_error) {
-				// Fallback to plain code block on parse/runtime errors.
+					const id = `mmd-${Math.random().toString(36).slice(2)}`;
+					const result = await mermaid.render(id, chart);
+					if (mounted) {
+						setSvg(sanitizeMermaidSvg(result.svg));
+					}
+				} catch (_error) {
+					// Fallback to plain code block on parse/runtime errors.
 			}
 		};
 
@@ -99,7 +146,7 @@ function MermaidBlock({ chart }) {
 		return (
 			<div
 				className='mermaid-diagram'
-				aria-label='Rendered diagram'
+				aria-label={t('renderedDiagram')}
 				dangerouslySetInnerHTML={{ __html: svg }}
 			/>
 		);

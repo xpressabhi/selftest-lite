@@ -527,15 +527,16 @@ function TestContent() {
 								{t('jump')}
 							</Button>
 						</div>
-						<Button
-							variant='outline-secondary'
-							size='sm'
-							className='rounded-pill d-md-none p-1 d-flex align-items-center justify-content-center mobile-more-btn'
-							style={{ width: '32px', height: '32px' }}
-							onClick={() => setShowMoreModal(true)}
-						>
-							<Icon name='list' size={14} />
-						</Button>
+							<Button
+								variant='outline-secondary'
+								size='sm'
+								className='rounded-pill d-md-none p-1 d-flex align-items-center justify-content-center mobile-more-btn'
+								style={{ width: '32px', height: '32px' }}
+								onClick={() => setShowMoreModal(true)}
+								aria-label={t('moreActions')}
+							>
+								<Icon name='list' size={14} />
+							</Button>
 					</div>
 					<ProgressBar
 						now={progress}
@@ -625,15 +626,25 @@ function TestContent() {
 							}`}
 						>
 							<Card.Body className='p-3 p-md-5 text-center'>
-								<Button
-									variant='link'
-									className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
-										}`}
-									onClick={() => toggleBookmark(q)}
-									style={{ zIndex: 10 }}
-								>
-									<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={28} />
-								</Button>
+									<Button
+										variant='link'
+										className={`position-absolute top-0 end-0 m-3 p-0 ${isBookmarked(q) ? 'text-primary' : 'text-muted opacity-25'
+											}`}
+										onClick={() => toggleBookmark(q)}
+										style={{ zIndex: 10 }}
+										aria-label={
+											isBookmarked(q)
+												? t('removeQuestionBookmark')
+												: t('bookmarkQuestion')
+										}
+										title={
+											isBookmarked(q)
+												? t('removeQuestionBookmark')
+												: t('bookmarkQuestion')
+										}
+									>
+										<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={28} />
+									</Button>
 								<div className='fw-medium text-dark pt-2 question-text'>
 									<MarkdownRenderer>{q.question}</MarkdownRenderer>
 								</div>

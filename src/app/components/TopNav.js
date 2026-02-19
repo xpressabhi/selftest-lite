@@ -342,13 +342,14 @@ export default function TopNav() {
 			</div>
 
 			{/* Mobile Menu Dropdown */}
-				{isMenuOpen && (
-					<div
-						className="mobile-menu"
-						ref={menuRef}
-						role="dialog"
-						aria-label={t('navigationMenu')}
-					>
+					{isMenuOpen && (
+						<div
+							className="mobile-menu"
+							ref={menuRef}
+							role="dialog"
+							aria-modal="true"
+							aria-label={t('navigationMenu')}
+						>
 						<div className="menu-header">
 							<span className="menu-title">{t('menu')}</span>
 							<button
@@ -471,7 +472,10 @@ export default function TopNav() {
 							) : (
 								<div className="auth-signin-panel">
 									<p className="auth-signin-copy">{t('signInCta')}</p>
-									<GoogleSignInButton onCredential={handleGoogleCredential} />
+									<GoogleSignInButton
+										onCredential={handleGoogleCredential}
+										className="google-signin-container"
+									/>
 								</div>
 							)}
 							{authError && (
@@ -982,8 +986,7 @@ export default function TopNav() {
 					font-size: 0.88rem;
 				}
 
-				.auth-signin-panel :global([aria-label='Sign in with Google']),
-				.auth-signin-panel :global([aria-label='Google से साइन इन करें']) {
+				.google-signin-container {
 					width: 100%;
 				}
 

@@ -4,6 +4,8 @@ import { ensureStorageSchema, query } from './storage';
 export const SESSION_COOKIE_NAME = 'selftest_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const GOOGLE_TOKEN_INFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
+const GOOGLE_VERIFY_TIMEOUT_MS = 10000;
+const MAX_GOOGLE_CREDENTIAL_LENGTH = 6000;
 
 function hashSessionToken(rawSessionToken) {
 	return createHash('sha256').update(rawSessionToken).digest('hex');
@@ -101,15 +103,31 @@ export async function verifyGoogleCredential(credential) {
 	if (!credential || typeof credential !== 'string') {
 		throw new Error('Google credential is required');
 	}
+	if (credential.length > MAX_GOOGLE_CREDENTIAL_LENGTH) {
+		throw new Error('Google credential validation failed');
+	}
 
 	const expectedClientId = getGoogleClientId();
 	const tokenInfoUrl = new URL(GOOGLE_TOKEN_INFO_URL);
 	tokenInfoUrl.searchParams.set('id_token', credential);
 
-	const response = await fetch(tokenInfoUrl.toString(), {
-		method: 'GET',
-		cache: 'no-store',
-	});
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), GOOGLE_VERIFY_TIMEOUT_MS);
+	let response;
+	try {
+		response = await fetch(tokenInfoUrl.toString(), {
+			method: 'GET',
+			cache: 'no-store',
+			signal: controller.signal,
+		});
+	} catch (error) {
+		if (error?.name === 'AbortError') {
+			throw new Error('Google credential validation failed');
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
+	}
 
 	if (!response.ok) {
 		throw new Error('Invalid Google credential');

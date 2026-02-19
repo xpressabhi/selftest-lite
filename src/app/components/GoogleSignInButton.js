@@ -56,7 +56,11 @@ function loadGoogleScript() {
 	return googleScriptPromise;
 }
 
-export default function GoogleSignInButton({ onCredential, disabled = false }) {
+export default function GoogleSignInButton({
+	onCredential,
+	disabled = false,
+	className = '',
+}) {
 	const { t, language } = useLanguage();
 	const { theme } = useTheme();
 	const buttonRef = useRef(null);
@@ -147,6 +151,7 @@ export default function GoogleSignInButton({ onCredential, disabled = false }) {
 	return (
 		<div
 			ref={buttonRef}
+			className={className}
 			aria-label={t('signInWithGoogle')}
 			aria-disabled={disabled}
 		/>

@@ -6,6 +6,8 @@ import {
 	verifyGoogleCredential,
 } from '../../utils/auth';
 import { getClientKey, logApiEvent } from '../../utils/storage';
+import { rateLimiter } from '../../utils/rateLimiter';
+import { API_LIMIT_ERROR_CODE } from '../../../utils/apiLimitError';
 
 function getStatusCode(error) {
 	if (!error?.message) {
@@ -33,6 +35,36 @@ export async function POST(request) {
 	const clientKey = getClientKey(request);
 
 	try {
+		const rateLimit = await rateLimiter(request, {
+			bucket: '/api/auth/google',
+			limit: 12,
+			windowMs: 60 * 1000,
+		});
+		if (rateLimit.limited) {
+			await logApiEvent({
+				route: '/api/auth/google',
+				action: 'google_sign_in',
+				clientKey,
+				statusCode: 429,
+				durationMs: Date.now() - startedAt,
+			});
+
+			return NextResponse.json(
+				{
+					error: 'Too many sign-in attempts. Please retry shortly.',
+					code: API_LIMIT_ERROR_CODE,
+				},
+				{
+					status: 429,
+					headers: {
+						'X-RateLimit-Limit': '12',
+						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+					},
+				},
+			);
+		}
+
 		const body = await request.json();
 		const credential = body?.credential;
 

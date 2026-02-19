@@ -17,7 +17,7 @@ const CustomNavbar = () => {
 	const [isTop, setIsTop] = useState(true);
 	const [showOffcanvas, setShowOffcanvas] = useState(false);
 	const scrollTimer = useRef(null);
-	const { language, toggleLanguage } = useLanguage();
+	const { language, toggleLanguage, t } = useLanguage();
 	const { theme, toggleTheme } = useTheme();
 
 	useEffect(() => {
@@ -86,43 +86,43 @@ const CustomNavbar = () => {
 									href='/about'
 									className='nav-link d-flex align-items-center'
 								>
-									<Icon name='info' className='me-1' /> About
+									<Icon name='info' className='me-1' /> {t('about')}
 								</Link>
 								<Link
 									href='/blog'
 									className='nav-link d-flex align-items-center'
 								>
-									<Icon name='book' className='me-1' /> Blog
+									<Icon name='book' className='me-1' /> {t('blog')}
 								</Link>
 								<Link
 									href='/faq'
 									className='nav-link d-flex align-items-center'
 								>
-									<Icon name='question' className='me-1' /> FAQ
+									<Icon name='question' className='me-1' /> {t('faq')}
 								</Link>
 								<Link
 									href='/privacy'
 									className='nav-link d-flex align-items-center'
 								>
-									<Icon name='file' className='me-1' /> Privacy
+									<Icon name='file' className='me-1' /> {t('privacy')}
 								</Link>
 								<Link
 									href='/contact'
 									className='nav-link d-flex align-items-center'
 								>
-									<Icon name='envelope' className='me-1' /> Contact
+									<Icon name='envelope' className='me-1' /> {t('contact')}
 								</Link>
 								<Link
 									href='/bookmarks'
 									className='nav-link d-flex align-items-center'
 								>
-									<Icon name='bookmark' className='me-1' /> Bookmarks
+									<Icon name='bookmark' className='me-1' /> {t('bookmarks')}
 								</Link>
 								<Button
 									variant='link'
 									className='nav-link p-0 border-0'
 									onClick={toggleTheme}
-									aria-label='Toggle theme'
+									aria-label={t('toggleThemeAria')}
 								>
 									<Icon name={theme === 'light' ? 'moon' : 'sun'} />
 								</Button>
@@ -133,7 +133,7 @@ const CustomNavbar = () => {
 								<Link
 									href='/bookmarks'
 									className='nav-link p-2'
-									aria-label='Bookmarks'
+									aria-label={t('bookmarks')}
 								>
 									<Icon name='bookmark' size={20} />
 								</Link>
@@ -141,7 +141,7 @@ const CustomNavbar = () => {
 									variant='link'
 									className='p-2 text-dark'
 									onClick={handleShow}
-									aria-label='History'
+									aria-label={t('history')}
 								>
 									<Icon name='history' size={20} />
 								</Button>
@@ -149,7 +149,7 @@ const CustomNavbar = () => {
 									variant='link'
 									className='p-2 text-dark'
 									onClick={handleShow}
-									aria-label='Menu'
+									aria-label={t('toggleMenu')}
 								>
 									<Icon name='list' size={24} />
 								</Button>
@@ -157,7 +157,7 @@ const CustomNavbar = () => {
 									variant='link'
 									className='p-2 text-dark'
 									onClick={toggleTheme}
-									aria-label='Toggle theme'
+									aria-label={t('toggleThemeAria')}
 								>
 									<Icon name={theme === 'light' ? 'moon' : 'sun'} size={20} />
 								</Button>
@@ -185,7 +185,7 @@ const CustomNavbar = () => {
 			{/* Mobile Offcanvas */}
 			<Offcanvas show={showOffcanvas} onHide={handleClose} placement='start'>
 				<Offcanvas.Header closeButton>
-					<Offcanvas.Title>Menu</Offcanvas.Title>
+					<Offcanvas.Title>{t('menu')}</Offcanvas.Title>
 				</Offcanvas.Header>
 				<Offcanvas.Body className='d-flex flex-column'>
 					{/* Navigation Links in Offcanvas */}
@@ -195,42 +195,42 @@ const CustomNavbar = () => {
 							className='w-100 fw-bold mb-2'
 							onClick={toggleLanguage}
 						>
-							Change Language ({language === 'english' ? 'English' : 'हिंदी'})
+							{t('switchLanguageAria')} ({language === 'english' ? t('englishLabel') : t('hindiLabel')})
 						</Button>
 						<Link
 							href='/about'
 							className='nav-link py-2 d-flex align-items-center'
 							onClick={handleClose}
 						>
-							<Icon name='info' className='me-3 text-primary' /> About
+							<Icon name='info' className='me-3 text-primary' /> {t('about')}
 						</Link>
 						<Link
 							href='/blog'
 							className='nav-link py-2 d-flex align-items-center'
 							onClick={handleClose}
 						>
-							<Icon name='book' className='me-3 text-primary' /> Blog
+							<Icon name='book' className='me-3 text-primary' /> {t('blog')}
 						</Link>
 						<Link
 							href='/faq'
 							className='nav-link py-2 d-flex align-items-center'
 							onClick={handleClose}
 						>
-							<Icon name='question' className='me-3 text-primary' /> FAQ
+							<Icon name='question' className='me-3 text-primary' /> {t('faq')}
 						</Link>
 						<Link
 							href='/privacy'
 							className='nav-link py-2 d-flex align-items-center'
 							onClick={handleClose}
 						>
-							<Icon name='file' className='me-3 text-primary' /> Privacy
+							<Icon name='file' className='me-3 text-primary' /> {t('privacy')}
 						</Link>
 						<Link
 							href='/contact'
 							className='nav-link py-2 d-flex align-items-center'
 							onClick={handleClose}
 						>
-							<Icon name='envelope' className='me-3 text-primary' /> Contact
+							<Icon name='envelope' className='me-3 text-primary' /> {t('contact')}
 						</Link>
 					</div>
 

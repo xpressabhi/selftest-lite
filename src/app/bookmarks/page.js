@@ -70,14 +70,15 @@ export default function BookmarksPage() {
 												? new Date(q.bookmarkedAt).toLocaleDateString(uiLocale)
 												: t('na')}
 										</Badge>
-                                        <Button
-                                            variant='link'
-                                            className='text-danger p-0'
-                                            onClick={(e) => handleRemove(e, q)}
-                                            title={t('removeBookmark')}
-                                        >
-                                            <Icon name='trash' size={20} />
-                                        </Button>
+	                                        <Button
+	                                            variant='link'
+	                                            className='text-danger p-0'
+	                                            onClick={(e) => handleRemove(e, q)}
+	                                            title={t('removeBookmark')}
+	                                            aria-label={t('removeBookmark')}
+	                                        >
+	                                            <Icon name='trash' size={20} />
+	                                        </Button>
                                     </div>
 
                                     <div className='mb-3 fs-5 fw-medium text-dark'>
