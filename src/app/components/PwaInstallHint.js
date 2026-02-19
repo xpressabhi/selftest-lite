@@ -9,16 +9,22 @@ const DISMISS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 const getDeviceInfo = () => {
 	if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-		return { isMobile: false, isIos: false };
+		return { isMobile: false, isIos: false, isInAppBrowser: false };
 	}
 	const userAgent = (navigator.userAgent || '').toLowerCase();
 	const isIos = /iphone|ipad|ipod/.test(userAgent);
 	const isMobileUserAgent = /android|iphone|ipad|ipod|mobile/.test(userAgent);
 	const isSmallViewport = window.matchMedia('(max-width: 1023px)').matches;
+	const isInAppBrowser =
+		isIos &&
+		/whatsapp|instagram|fban|fbav|line|telegram|snapchat|messenger/.test(
+			userAgent,
+		);
 
 	return {
 		isMobile: isMobileUserAgent || isSmallViewport,
 		isIos,
+		isInAppBrowser,
 	};
 };
 
@@ -26,6 +32,7 @@ export default function PwaInstallHint({ isStandalone = false }) {
 	const { t } = useLanguage();
 	const [isMobile, setIsMobile] = useState(false);
 	const [isIos, setIsIos] = useState(false);
+	const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 	const [dismissedAt, setDismissedAt] = useState(0);
 	const [deferredPrompt, setDeferredPrompt] = useState(null);
 	const [isInstalling, setIsInstalling] = useState(false);
@@ -51,6 +58,7 @@ export default function PwaInstallHint({ isStandalone = false }) {
 			const info = getDeviceInfo();
 			setIsMobile(info.isMobile);
 			setIsIos(info.isIos);
+			setIsInAppBrowser(info.isInAppBrowser);
 		};
 
 		updateDeviceInfo();
@@ -144,7 +152,11 @@ export default function PwaInstallHint({ isStandalone = false }) {
 			<div className='hint-content'>
 				<p className='hint-title'>{t('installAppPromptTitle')}</p>
 				<p className='hint-description'>
-					{isIos ? t('installAppPromptIosBody') : t('installAppPromptBody')}
+					{isIos
+						? isInAppBrowser
+							? t('installAppPromptIosInAppBody')
+							: t('installAppPromptIosBody')
+						: t('installAppPromptBody')}
 				</p>
 				<div className='hint-actions'>
 					<button
@@ -167,7 +179,13 @@ export default function PwaInstallHint({ isStandalone = false }) {
 					<div className='hint-guide' role='note'>
 						<p className='guide-title'>{t('installGuideTitle')}</p>
 						<ol className='guide-list'>
-							{isIos ? (
+							{isIos && isInAppBrowser ? (
+								<>
+									<li>{t('installGuideIosInAppStep1')}</li>
+									<li>{t('installGuideIosInAppStep2')}</li>
+									<li>{t('installGuideIosInAppStep3')}</li>
+								</>
+							) : isIos ? (
 								<>
 									<li>{t('installGuideIosStep1')}</li>
 									<li>{t('installGuideIosStep2')}</li>
