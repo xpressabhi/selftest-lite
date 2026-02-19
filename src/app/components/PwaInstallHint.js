@@ -30,6 +30,7 @@ export default function PwaInstallHint({ isStandalone = false }) {
 	const [deferredPrompt, setDeferredPrompt] = useState(null);
 	const [isInstalling, setIsInstalling] = useState(false);
 	const [isMounted, setIsMounted] = useState(false);
+	const [showGuide, setShowGuide] = useState(false);
 
 	useEffect(() => {
 		setIsMounted(true);
@@ -96,10 +97,10 @@ export default function PwaInstallHint({ isStandalone = false }) {
 			isMounted &&
 			isMobile &&
 			!isStandalone &&
-			!isDismissedRecently &&
-			(Boolean(deferredPrompt) || isIos),
-		[deferredPrompt, isDismissedRecently, isIos, isMobile, isMounted, isStandalone],
+			!isDismissedRecently,
+		[isDismissedRecently, isMobile, isMounted, isStandalone],
 	);
+	const canOneTapInstall = !isIos && Boolean(deferredPrompt);
 
 	const handleDismiss = useCallback(() => {
 		if (typeof window === 'undefined') return;
@@ -125,6 +126,14 @@ export default function PwaInstallHint({ isStandalone = false }) {
 		}
 	}, [deferredPrompt, handleDismiss]);
 
+	const handlePrimaryAction = useCallback(async () => {
+		if (canOneTapInstall) {
+			await handleInstall();
+			return;
+		}
+		setShowGuide(true);
+	}, [canOneTapInstall, handleInstall]);
+
 	if (!canShowInstallHint) return null;
 
 	return (
@@ -138,20 +147,49 @@ export default function PwaInstallHint({ isStandalone = false }) {
 					{isIos ? t('installAppPromptIosBody') : t('installAppPromptBody')}
 				</p>
 				<div className='hint-actions'>
-					{!isIos && deferredPrompt && (
-						<button
-							type='button'
-							className='hint-install-btn'
-							onClick={handleInstall}
-							disabled={isInstalling}
-						>
-							{isInstalling ? t('preparing') : t('installNow')}
-						</button>
-					)}
+					<button
+						type='button'
+						className='hint-install-btn'
+						onClick={handlePrimaryAction}
+						disabled={isInstalling}
+					>
+						{isInstalling
+							? t('preparing')
+							: canOneTapInstall
+								? t('installNow')
+								: t('openInstallGuide')}
+					</button>
 					<button type='button' className='hint-dismiss-btn' onClick={handleDismiss}>
 						{t('later')}
 					</button>
 				</div>
+				{showGuide && (
+					<div className='hint-guide' role='note'>
+						<p className='guide-title'>{t('installGuideTitle')}</p>
+						<ol className='guide-list'>
+							{isIos ? (
+								<>
+									<li>{t('installGuideIosStep1')}</li>
+									<li>{t('installGuideIosStep2')}</li>
+									<li>{t('installGuideIosStep3')}</li>
+								</>
+							) : (
+								<>
+									<li>{t('installGuideAndroidStep1')}</li>
+									<li>{t('installGuideAndroidStep2')}</li>
+									<li>{t('installGuideAndroidStep3')}</li>
+								</>
+							)}
+						</ol>
+						<button
+							type='button'
+							className='hint-dismiss-btn guide-close'
+							onClick={() => setShowGuide(false)}
+						>
+							{t('gotIt')}
+						</button>
+					</div>
+				)}
 			</div>
 			<style jsx>{`
 				.pwa-install-hint {
@@ -231,6 +269,32 @@ export default function PwaInstallHint({ isStandalone = false }) {
 					background: transparent;
 					color: var(--text-secondary);
 					border-color: var(--border-color);
+				}
+
+				.hint-guide {
+					margin-top: 8px;
+					padding: 10px;
+					background: var(--bg-secondary);
+					border: 1px solid var(--border-color);
+					border-radius: var(--radius-sm);
+				}
+
+				.guide-title {
+					margin: 0 0 6px;
+					font-size: 0.78rem;
+					font-weight: 700;
+					color: var(--text-primary);
+				}
+
+				.guide-list {
+					margin: 0;
+					padding-left: 18px;
+					font-size: 0.76rem;
+					color: var(--text-secondary);
+				}
+
+				.guide-close {
+					margin-top: 8px;
 				}
 
 				@media (min-width: 1024px) {

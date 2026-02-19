@@ -12,7 +12,14 @@ export default function Share({ paper }) {
 		const normalizedConfiguredOrigin = configuredOrigin
 			? configuredOrigin.replace(/\/+$/, '')
 			: '';
-		const shareOrigin = normalizedConfiguredOrigin || window.location.origin;
+		const hostname = (window.location.hostname || '').toLowerCase();
+		const isSelftestDomain =
+			hostname === 'selftest.in' ||
+			hostname === 'www.selftest.in' ||
+			hostname.endsWith('.selftest.in');
+		const shareOrigin =
+			normalizedConfiguredOrigin ||
+			(isSelftestDomain ? 'https://selftest.in' : window.location.origin);
 		const shareUrl = `${shareOrigin}/test?${params}`;
 		const safeTopic = topic || t('defaultTestTopic');
 

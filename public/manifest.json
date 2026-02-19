@@ -10,6 +10,14 @@
 		"client_mode": "navigate-existing"
 	},
 	"handle_links": "preferred",
+	"url_handlers": [
+		{
+			"origin": "https://selftest.in"
+		},
+		{
+			"origin": "https://www.selftest.in"
+		}
+	],
 	"orientation": "portrait-primary",
 	"background_color": "#f8f9fa",
 	"theme_color": "#6366f1",
