@@ -5,6 +5,7 @@ import TopNav from './TopNav';
 import BottomNav from './BottomNav';
 import PullToRefresh from './PullToRefresh';
 import DataSaverToggle from './DataSaverToggle';
+import PwaInstallHint from './PwaInstallHint';
 import { ToastContainer } from './Toast';
 import useNetworkStatus from '../hooks/useNetworkStatus';
 import { useLanguage } from '../context/LanguageContext';
@@ -178,15 +179,17 @@ export default function MobileOptimizedLayout({ children, onRefresh }) {
 			)}
 
 			{/* Main Content */}
-			<main
-				id="main-content"
-				className="main-content"
-				tabIndex={-1}
-			>
-				{/* Data Saver Toggle (shown on slow connections) */}
-				{isSlowConnection && (
-					<DataSaverToggle variant="banner" />
-				)}
+				<main
+					id="main-content"
+					className="main-content"
+					tabIndex={-1}
+				>
+					<PwaInstallHint isStandalone={isStandalone} />
+
+					{/* Data Saver Toggle (shown on slow connections) */}
+					{isSlowConnection && (
+						<DataSaverToggle variant="banner" />
+					)}
 
 				{/* Pull-to-refresh wrapper */}
 				<PullToRefresh onRefresh={handleRefresh} disabled={isOffline}>

@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
 	BOOKMARKED_QUIZ_PRESETS: 'selftest_bookmarked_quiz_presets',
 	PAPER_LANGUAGE: 'selftest_paper_language',
 	HOME_TOUR_COMPLETED: 'selftest_home_tour_completed',
+	PWA_INSTALL_DISMISSED_AT: 'selftest_pwa_install_dismissed_at',
 };
 
 export const APP_EVENTS = {
