@@ -8,7 +8,12 @@ export default function Share({ paper }) {
 	const handleShare = async () => {
 		if (!id) return;
 		const params = new URLSearchParams({ id }).toString();
-		const shareUrl = `${window.location.origin}/test?${params}`;
+		const configuredOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN;
+		const normalizedConfiguredOrigin = configuredOrigin
+			? configuredOrigin.replace(/\/+$/, '')
+			: '';
+		const shareOrigin = normalizedConfiguredOrigin || window.location.origin;
+		const shareUrl = `${shareOrigin}/test?${params}`;
 		const safeTopic = topic || t('defaultTestTopic');
 
 		if (navigator.share) {

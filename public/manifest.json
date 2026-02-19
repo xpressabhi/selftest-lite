@@ -3,9 +3,13 @@
 	"short_name": "Selftest",
 	"id": "/",
 	"description": "Generate and take AI-powered quizzes on any topic. Works offline with previously loaded quizzes.",
-	"start_url": "/?source=pwa",
+	"start_url": "/",
 	"display": "standalone",
 	"display_override": ["standalone", "minimal-ui", "browser"],
+	"launch_handler": {
+		"client_mode": "navigate-existing"
+	},
+	"handle_links": "preferred",
 	"orientation": "portrait-primary",
 	"background_color": "#f8f9fa",
 	"theme_color": "#6366f1",
