@@ -72,12 +72,55 @@ function ResultsContent() {
 		if (paper) {
 			setQuestionPaper(paper);
 			setError(null);
-		} else {
-			setQuestionPaper(null);
-			setError(t('testResultNotFound'));
+			setLoading(false);
+			return;
 		}
-		setLoading(false);
-	}, [id, isHistoryHydrated, testHistory, t]);
+
+		let isMounted = true;
+		fetch(`/api/test?id=${id}`)
+			.then((response) => response.json())
+			.then((data) => {
+				if (!isMounted) return;
+				if (data.error || !data.test) {
+					setQuestionPaper(null);
+					setError(t('testResultNotFound'));
+					setLoading(false);
+					return;
+				}
+
+				const hydratedPaper = {
+					...data.test,
+					id: data.id,
+				};
+				if (data.myAttempt) {
+					hydratedPaper.userAnswers = data.myAttempt.user_answers || {};
+					hydratedPaper.score = data.myAttempt.score;
+					hydratedPaper.totalQuestions =
+						data.myAttempt.total_questions ||
+						data.test?.questions?.length ||
+						null;
+					hydratedPaper.timeTaken = data.myAttempt.time_taken;
+					hydratedPaper.timestamp = data.myAttempt.submitted_at
+						? new Date(data.myAttempt.submitted_at).getTime()
+						: Date.now();
+				}
+
+				updateHistory(hydratedPaper);
+				setQuestionPaper(hydratedPaper);
+				setError(null);
+				setLoading(false);
+			})
+			.catch(() => {
+				if (!isMounted) return;
+				setQuestionPaper(null);
+				setError(t('testResultNotFound'));
+				setLoading(false);
+			});
+
+		return () => {
+			isMounted = false;
+		};
+	}, [id, isHistoryHydrated, testHistory, t, updateHistory]);
 
 	useEffect(() => {
 		if (!questionPaper || questionPaper.userAnswers) return;

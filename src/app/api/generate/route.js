@@ -3,7 +3,13 @@ import { GoogleGenAI } from '@google/genai';
 import { rateLimiter } from '../utils/rateLimiter';
 import { generatePrompt } from '../utils/prompt';
 import * as z from 'zod';
-import { createTestRecord, getClientKey, logApiEvent } from '../utils/storage';
+import {
+	createTestRecord,
+	findReusableFullExamRecord,
+	getClientKey,
+	logApiEvent,
+} from '../utils/storage';
+import { getAuthenticatedUser } from '../utils/auth';
 import { paperSchema } from '../utils/quizSchema';
 import {
 	validateGenerateRequest,
@@ -232,8 +238,76 @@ export async function POST(request) {
 			return NextResponse.json({ error: validationError }, { status: 400 });
 		}
 
+		const authUser = await getAuthenticatedUser(request);
+		if (!authUser?.id) {
+			return NextResponse.json(
+				{
+					error: 'Please sign in to create a new test.',
+					code: 'AUTH_REQUIRED',
+				},
+				{ status: 401 },
+			);
+		}
+
 		const resolvedTopic =
 			topic || (examName ? `${examName} mock paper` : '');
+
+		if (testMode === 'full-exam' && examId) {
+			const locallyAttemptedTestIds = previousTests
+				.filter((test) => {
+					if (!test || typeof test !== 'object') {
+						return false;
+					}
+					const normalizedTestId = Number(test.id);
+					if (!Number.isInteger(normalizedTestId) || normalizedTestId <= 0) {
+						return false;
+					}
+					const requestParams = test.requestParams || {};
+					const sameExam = String(requestParams.examId || '') === String(examId);
+					const isFullExam = requestParams.testMode === 'full-exam';
+					const isSubmitted =
+						Object.prototype.hasOwnProperty.call(test, 'userAnswers');
+					return sameExam && isFullExam && isSubmitted;
+				})
+				.map((test) => Number(test.id));
+
+			const reusableRecord = await findReusableFullExamRecord({
+				examId,
+				language,
+				userId: authUser.id,
+				excludedTestIds: locallyAttemptedTestIds,
+			});
+			const reusablePaper =
+				reusableRecord?.test &&
+				typeof reusableRecord.test === 'object' &&
+				!Array.isArray(reusableRecord.test)
+					? reusableRecord.test
+					: null;
+
+			if (reusableRecord?.id && reusablePaper) {
+				await logApiEvent({
+					route: '/api/generate',
+					action: 'reuse_exam_paper',
+					clientKey,
+					statusCode: 200,
+					durationMs: Date.now() - startedAt,
+					metadata: {
+						testMode,
+						examId,
+						examName,
+						language,
+						reusedTestId: reusableRecord.id,
+						userId: authUser.id,
+					},
+				});
+
+				return NextResponse.json({
+					...reusablePaper,
+					id: reusableRecord.id,
+					reusedExisting: true,
+				});
+			}
+		}
 
 		const rateLimit = await rateLimiter(request, { bucket: '/api/generate' });
 		if (rateLimit.limited) {
@@ -353,6 +427,8 @@ export async function POST(request) {
 				numQuestions,
 				difficulty,
 				language,
+			}, {
+				createdByUserId: authUser?.id || null,
 			});
 
 			await logApiEvent({
@@ -371,6 +447,7 @@ export async function POST(request) {
 					language,
 					questionCount: questionPaper.questions.length,
 					testId,
+					createdByUserId: authUser?.id || null,
 				},
 			});
 

@@ -38,16 +38,20 @@ npm install
 
 ### 3. Environment Variables
 
-This project requires a Google Gemini API key to generate tests.
+This project requires Gemini, database, and Google login configuration.
 
 1.  Create a file named `.env.local` in the root of the project.
-2.  Add your Gemini API key to the file:
+2.  Add the following variables:
 
 ```
 GEMINI_API_KEY=your_api_key_here
+DATABASE_URL=postgres://username:password@host:5432/database
+GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
 ```
 
-You can get a Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+- You can get a Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+- Create a Google OAuth Web Client in Google Cloud Console and use its client ID for `GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 
 ### 4. Run the Development Server
 

@@ -51,14 +51,14 @@ export default function PrivacyPage() {
 										to provide our service.
 									</p>
 									<div className='bg-light rounded-4 p-4'>
-										<ul className='list-unstyled mb-0'>
-											<li className='mb-3 d-flex align-items-start'>
-												<Icon name='checkCircle' className='text-success me-2 mt-1' size={18} />
-												<div>
-													<strong>Test History:</strong> Stored locally in your browser&apos;s LocalStorage.
-													We do not sync this data to our servers unless you explicitly sign in (feature coming soon).
-												</div>
-											</li>
+											<ul className='list-unstyled mb-0'>
+												<li className='mb-3 d-flex align-items-start'>
+													<Icon name='checkCircle' className='text-success me-2 mt-1' size={18} />
+													<div>
+														<strong>Test History & Preferences:</strong> Cached locally in your browser for offline use.
+														If you sign in with Google, we also sync this data to your account in our database for backup and cross-session recovery.
+													</div>
+												</li>
 											<li className='mb-3 d-flex align-items-start'>
 												<Icon name='checkCircle' className='text-success me-2 mt-1' size={18} />
 												<div>
@@ -103,19 +103,18 @@ export default function PrivacyPage() {
 									</p>
 								</div>
 
-								<div className='mb-5' id='rights'>
+									<div className='mb-5' id='rights'>
 									<div className='d-flex align-items-center mb-3'>
 										<div className='p-2 bg-primary-subtle text-primary rounded-circle me-3'>
 											<Icon name='lock' size={20} />
 										</div>
 										<h2 className='h3 fw-bold mb-0'>4. Your Rights</h2>
 									</div>
-									<p className='text-muted'>
-										Since most data is stored locally on your device, you have full control over it.
-										You can delete your test history at any time by clearing your browser cache or using the
-										&quot;Clear History&quot; button in the app settings.
-									</p>
-								</div>
+										<p className='text-muted'>
+											You can clear local data at any time from your browser storage or by using in-app history controls.
+											If you are signed in with Google, synced data may still remain in your account-backed records.
+										</p>
+									</div>
 
 								<div className='mb-0' id='contact'>
 									<div className='d-flex align-items-center mb-3'>

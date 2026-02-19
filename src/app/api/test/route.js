@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import {
 	createTestRecord,
 	getTestRecordById,
+	getUserTestAttemptByTestId,
 	listTestRecords,
 } from '../utils/storage';
+import { getAuthenticatedUser } from '../utils/auth';
 
 export async function GET(request) {
 	try {
@@ -11,11 +13,13 @@ export async function GET(request) {
 		const id = searchParams.get('id');
 		const search = searchParams.get('q') || '';
 		const limit = searchParams.get('limit') || '10';
+		const authUser = await getAuthenticatedUser(request);
 
 		if (!id) {
 			const tests = await listTestRecords({
 				search,
 				limit: Number(limit),
+				createdByUserId: authUser?.id || null,
 			});
 
 			return NextResponse.json({ tests });
@@ -26,7 +30,14 @@ export async function GET(request) {
 			return NextResponse.json({ error: 'Test not found' }, { status: 404 });
 		}
 
-		return NextResponse.json(testRecord);
+		const myAttempt = authUser?.id
+			? await getUserTestAttemptByTestId(authUser.id, id)
+			: null;
+
+		return NextResponse.json({
+			...testRecord,
+			myAttempt,
+		});
 	} catch (error) {
 		console.error('Database error:', error);
 		return NextResponse.json(
@@ -39,6 +50,7 @@ export async function GET(request) {
 export async function POST(request) {
 	try {
 		const { test, requestParams = {} } = await request.json();
+		const authUser = await getAuthenticatedUser(request);
 
 		if (!test) {
 			return NextResponse.json(
@@ -47,7 +59,13 @@ export async function POST(request) {
 			);
 		}
 
-		const testId = await createTestRecord(test, requestParams);
+		const testId = await createTestRecord(
+			test,
+			requestParams,
+			{
+				createdByUserId: authUser?.id || null,
+			},
+		);
 
 		return NextResponse.json({
 			message: 'Test created successfully',

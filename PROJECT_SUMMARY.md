@@ -56,6 +56,10 @@ src/app/api/
 ├── generate/route.js      # POST: Generate quiz via Gemini API
 ├── explain/route.js       # POST: Generate AI explanations
 ├── test/route.js          # GET/POST: Test CRUD operations
+├── auth/google/route.js   # POST: Google credential sign-in
+├── auth/me/route.js       # GET: Resolve active session user
+├── auth/logout/route.js   # POST: Logout and clear session
+├── user/state/route.js    # GET/POST: User local-state + attempts sync
 └── utils/
     ├── prompt.js          # Gemini prompt templates
     └── rateLimiter.js     # Rate limiting utility
@@ -100,6 +104,8 @@ src/app/api/
 - Test ID-based sharing
 - Offline support indicator
 - Hydration-safe localStorage sync to avoid SSR/CSR mismatch issues
+- Signed-in state sync to DB for bookmarks, preferences, and history backup
+- User attempt sync so results can be restored across sessions/devices
 
 ### 5. Multi-language Support
 - English and Hindi UI language options
@@ -124,6 +130,12 @@ src/app/api/
 - **Speed Challenge Mode**: Time-attack mode with countdown timer
 - **Celebration Effects**: Confetti, trophy bursts, and sound effects for high scores
 
+### 8. Google Authentication (New)
+- Sign in with Google from top navigation account modal
+- Server-side verification of Google ID credential before session creation
+- Secure HTTP-only session cookie (`selftest_session`)
+- Session-backed user identity for generated test ownership (`created_by_user_id`)
+
 ---
 
 ## Component Architecture
@@ -141,6 +153,8 @@ src/app/api/
 | `TopNav` | Desktop-friendly top navigation |
 | `BottomNav` | Mobile-optimized bottom navigation |
 | `MobileOptimizedLayout` | Layout wrapper with PWA/mobile features |
+| `UserDataSyncManager` | Syncs localStorage + test attempts to DB for signed-in users |
+| `GoogleSignInButton` | Google Identity Services sign-in button wrapper |
 | `MarkdownRenderer` | Renders questions with math/code support |
 | `TouchOption` | Mobile-friendly quiz option buttons |
 | `PullToRefresh` | Mobile pull-to-refresh interaction |
@@ -158,6 +172,7 @@ src/app/api/
 | `LanguageContext` | UI language management |
 | `ThemeContext` | Light/dark theme switching |
 | `DataSaverContext` | Slow connection optimizations |
+| `AuthContext` | Google auth session state |
 
 ### Custom Hooks
 
@@ -175,7 +190,7 @@ src/app/api/
 
 ## Database Schema
 
-Primary storage uses Neon PostgreSQL with three operational tables:
+Primary storage uses Neon PostgreSQL with operational tables for tests, auth, sync, and telemetry:
 
 ```sql
 CREATE TABLE ai_test (
@@ -186,7 +201,50 @@ CREATE TABLE ai_test (
   difficulty TEXT,
   language TEXT,
   num_questions INTEGER,
+  created_by_user_id BIGINT REFERENCES app_user(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE app_user (
+  id BIGSERIAL PRIMARY KEY,
+  google_sub TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  picture_url TEXT,
+  locale TEXT,
+  last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE app_user_session (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  session_token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE app_user_state (
+  user_id BIGINT PRIMARY KEY REFERENCES app_user(id) ON DELETE CASCADE,
+  storage JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE app_user_test_attempt (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  test_id BIGINT NOT NULL REFERENCES ai_test(id) ON DELETE CASCADE,
+  user_answers JSONB NOT NULL DEFAULT '{}'::jsonb,
+  score INTEGER,
+  total_questions INTEGER,
+  time_taken INTEGER,
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, test_id)
 );
 
 CREATE TABLE api_rate_limit_events (
@@ -212,6 +270,11 @@ CREATE TABLE api_request_events (
 Notes:
 - `ai_test.test` keeps full generated quiz payload (topic/questions/options/answer/explanation).
 - `ai_test` metadata columns make filtering and analytics cheaper than JSON scans.
+- `ai_test.created_by_user_id` links generated papers to authenticated Google users.
+- `app_user` stores normalized Google account profile metadata.
+- `app_user_session` stores hashed session tokens for HTTP-only cookie auth.
+- `app_user_state` stores synchronized local app state (history, bookmarks, preferences) as JSON.
+- `app_user_test_attempt` stores user-specific test submissions/results per test ID.
 - `api_rate_limit_events` powers DB-backed sliding-window rate limiting across instances.
 - `api_request_events` stores API latency/error telemetry for production debugging.
 
@@ -222,6 +285,8 @@ Notes:
 ```bash
 # Required
 GEMINI_API_KEY=your_gemini_api_key
+GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
 
 # Database (Neon PostgreSQL)
 DATABASE_URL=postgres://...

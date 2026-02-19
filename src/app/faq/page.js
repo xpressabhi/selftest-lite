@@ -103,18 +103,19 @@ export default function FAQPage() {
 										</button>
 									</h3>
 								</div>
-								<div
-									id='collapseThree'
-									className='collapse'
-									aria-labelledby='headingThree'
-									data-bs-parent='#faqAccordion'
-								>
-									<div className='card-body px-4 pb-4 pt-0 text-muted'>
-										No. We prioritize your privacy. Your test history and generated quizzes are stored locally
-										in your browser&apos;s storage. We do not sell your personal data to third parties.
+									<div
+										id='collapseThree'
+										className='collapse'
+										aria-labelledby='headingThree'
+										data-bs-parent='#faqAccordion'
+									>
+										<div className='card-body px-4 pb-4 pt-0 text-muted'>
+											We minimize data collection. Your activity is cached locally for offline use and, when you
+											sign in with Google, synced securely to your account so you can recover tests, bookmarks,
+											and preferences across sessions. We do not sell your personal data to third parties.
+										</div>
 									</div>
 								</div>
-							</div>
 
 							<div className='card border-0 shadow-sm rounded-4 mb-3 overflow-hidden'>
 								<div className='card-header bg-white border-0 p-0' id='headingFour'>
@@ -132,19 +133,19 @@ export default function FAQPage() {
 										</button>
 									</h3>
 								</div>
-								<div
-									id='collapseFour'
-									className='collapse'
-									aria-labelledby='headingFour'
-									data-bs-parent='#faqAccordion'
-								>
-									<div className='card-body px-4 pb-4 pt-0 text-muted'>
-										Since data is stored locally, your quizzes are saved on your device.
-										If you clear your browser cache, your history will be lost.
-										We are working on an optional account feature to let you sync quizzes across devices.
+									<div
+										id='collapseFour'
+										className='collapse'
+										aria-labelledby='headingFour'
+										data-bs-parent='#faqAccordion'
+									>
+										<div className='card-body px-4 pb-4 pt-0 text-muted'>
+											Yes. Your quizzes are saved locally on your device for offline support. If you are signed in
+											with Google, the same data is also synced to our database so you can restore it later.
+											Without sign-in, clearing browser storage can remove your local history.
+										</div>
 									</div>
 								</div>
-							</div>
 						</div>
 
 						{/* Technical Section */}

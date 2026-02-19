@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useNetworkStatus from '../hooks/useNetworkStatus';
@@ -16,6 +16,7 @@ import {
 } from '../utils/apiLimitError';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import TestIdEntryCard from './generate/TestIdEntryCard';
 import BookmarkedQuickStartCard from './generate/BookmarkedQuickStartCard';
 import NewTestEntryCard from './generate/NewTestEntryCard';
@@ -25,6 +26,7 @@ import ProTipCard from './generate/ProTipCard';
 import LoadingElapsed from './generate/LoadingElapsed';
 import FullExamConfigurationSection from './generate/FullExamConfigurationSection';
 import QuizPracticeConfigurationSection from './generate/QuizPracticeConfigurationSection';
+import GoogleSignInButton from './GoogleSignInButton';
 import {
 	Container,
 	Form,
@@ -32,6 +34,7 @@ import {
 	Alert,
 	Card,
 	Spinner,
+	Modal,
 } from 'react-bootstrap';
 
 const TEST_MODES = {
@@ -55,6 +58,7 @@ const GenerateTestForm = () => {
 		[],
 	);
 	const { t, language: uiLanguage } = useLanguage();
+	const { isAuthenticated, loginWithGoogleCredential } = useAuth();
 
 	const [activeMode, setActiveMode] = useState('');
 	const [showModeSelection, setShowModeSelection] = useState(false);
@@ -78,6 +82,9 @@ const GenerateTestForm = () => {
 		uiLanguage,
 	);
 	const [selectedCategory, setSelectedCategory] = useState('');
+	const [showAuthRequiredModal, setShowAuthRequiredModal] = useState(false);
+	const [authPromptError, setAuthPromptError] = useState('');
+	const pendingGenerationRequestRef = useRef(null);
 
 	const router = useRouter();
 	const MAX_RETRIES = 3;
@@ -165,6 +172,19 @@ const GenerateTestForm = () => {
 			: t('resumeOrCreate');
 
 	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		const url = new URL(window.location.href);
+		if (url.searchParams.get('start') !== 'create') return;
+		setShowModeSelection(true);
+		setActiveMode('');
+		setError(null);
+		url.searchParams.delete('start');
+		url.searchParams.delete('mode');
+		const cleanedPath = `${url.pathname}${url.search}${url.hash}`;
+		window.history.replaceState({}, '', cleanedPath);
+	}, []);
+
+	useEffect(() => {
 		if (
 			activeMode === TEST_MODES.QUIZ_PRACTICE &&
 			shouldSaveData &&
@@ -229,10 +249,17 @@ const GenerateTestForm = () => {
 			language: paperLanguage,
 			objectiveOnly: true,
 			durationMinutes: exam.durationMinutes,
-		};
-	}, [paperLanguage]);
+			};
+		}, [paperLanguage]);
 
-	const runGeneration = useCallback(async (requestParams) => {
+	const promptSignInForGeneration = useCallback((requestParams) => {
+		pendingGenerationRequestRef.current = requestParams;
+		setAuthPromptError('');
+		setShowAuthRequiredModal(true);
+		setError(t('errorSignInRequiredCreate'));
+	}, [t]);
+
+	const runGenerationCore = useCallback(async (requestParams) => {
 		setLoading(true);
 		setError(null);
 		const generationStartedAt = Date.now();
@@ -276,27 +303,31 @@ const GenerateTestForm = () => {
 						clearTimeout(timeoutId);
 					}
 
-					if (!response.ok) {
-						const errorData = await response.json().catch(() => ({}));
-						if (isApiTimeoutResponse(response.status, errorData)) {
-							setError(t('generationTimedOutRetry'));
-							return;
-						}
-						if (isApiLimitExceededResponse(response.status, errorData)) {
-							setError(errorData.error || t('rateLimitExceeded'));
-							return;
-						}
-						if (attempt === MAX_RETRIES) {
-							setError(
-								errorData.error ||
-									t('errorFailedGenerateAfterAttempts'),
-							);
-							return;
-						}
-					} else {
-						const questionPaper = await response.json();
-						questionPaper.requestParams = requestParams;
-						updateHistory(questionPaper);
+						if (!response.ok) {
+							const errorData = await response.json().catch(() => ({}));
+							if (response.status === 401) {
+								promptSignInForGeneration(requestParams);
+								return;
+							}
+							if (isApiTimeoutResponse(response.status, errorData)) {
+								setError(t('generationTimedOutRetry'));
+								return;
+							}
+							if (isApiLimitExceededResponse(response.status, errorData)) {
+								setError(errorData.error || t('rateLimitExceeded'));
+								return;
+							}
+							if (attempt === MAX_RETRIES) {
+								setError(
+									errorData.error ||
+										t('errorFailedGenerateAfterAttempts'),
+								);
+								return;
+							}
+						} else {
+							const questionPaper = await response.json();
+							questionPaper.requestParams = requestParams;
+							updateHistory(questionPaper);
 						setError(null);
 						router.push('/test?id=' + questionPaper.id);
 						return;
@@ -334,7 +365,49 @@ const GenerateTestForm = () => {
 		} finally {
 			setLoading(false);
 		}
-	}, [GENERATION_TIMEOUT_MS, MAX_RETRIES, router, t, testHistory, updateHistory, wait]);
+	}, [
+		GENERATION_TIMEOUT_MS,
+		MAX_RETRIES,
+		promptSignInForGeneration,
+		router,
+		t,
+		testHistory,
+		updateHistory,
+		wait,
+	]);
+
+	const runGeneration = useCallback(async (requestParams) => {
+		if (!isAuthenticated) {
+			promptSignInForGeneration(requestParams);
+			return;
+		}
+		await runGenerationCore(requestParams);
+	}, [isAuthenticated, promptSignInForGeneration, runGenerationCore]);
+
+	const handleGenerationAuthModalHide = useCallback(() => {
+		setShowAuthRequiredModal(false);
+		setAuthPromptError('');
+		pendingGenerationRequestRef.current = null;
+	}, []);
+
+	const handleGenerationAuthCredential = useCallback(
+		async (credential) => {
+			setAuthPromptError('');
+			try {
+				await loginWithGoogleCredential(credential);
+				setShowAuthRequiredModal(false);
+				setError(null);
+				const pendingRequest = pendingGenerationRequestRef.current;
+				pendingGenerationRequestRef.current = null;
+				if (pendingRequest) {
+					await runGenerationCore(pendingRequest);
+				}
+			} catch (authError) {
+				setAuthPromptError(authError.message || t('googleLoginFailed'));
+			}
+		},
+		[loginWithGoogleCredential, runGenerationCore, t],
+	);
 
 	const handleModeSelect = useCallback((mode) => {
 		setShowModeSelection(true);
@@ -669,8 +742,8 @@ const GenerateTestForm = () => {
 				/>
 			)}
 
-			{activeMode && (
-				<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
+				{activeMode && (
+					<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
 					<Card.Body className='p-4 p-md-5'>
 							<div className='d-flex justify-content-end mb-3'>
 								<div style={{ minWidth: '170px' }}>
@@ -814,16 +887,40 @@ const GenerateTestForm = () => {
 								</Button>
 							</Form>
 					</Card.Body>
-				</Card>
-			)}
+					</Card>
+				)}
 
-			<ProTipCard
-				t={t}
-				activeMode={activeMode}
-				fullExamValue={TEST_MODES.FULL_EXAM}
-			/>
-		</Container>
-	);
-};
+				<Modal
+					show={showAuthRequiredModal}
+					onHide={handleGenerationAuthModalHide}
+					centered
+				>
+					<Modal.Header closeButton>
+						<Modal.Title>{t('signInRequiredCreateTitle')}</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<p className='text-muted mb-3'>{t('signInRequiredCreateBody')}</p>
+						<div className='d-flex justify-content-center'>
+							<GoogleSignInButton
+								onCredential={handleGenerationAuthCredential}
+								disabled={loading}
+							/>
+						</div>
+						{authPromptError && (
+							<Alert variant='danger' className='mt-3 mb-0'>
+								{authPromptError}
+							</Alert>
+						)}
+					</Modal.Body>
+				</Modal>
+
+				<ProTipCard
+					t={t}
+					activeMode={activeMode}
+					fullExamValue={TEST_MODES.FULL_EXAM}
+				/>
+			</Container>
+		);
+	};
 
 export default GenerateTestForm;

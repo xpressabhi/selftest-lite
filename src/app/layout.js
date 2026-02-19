@@ -5,6 +5,8 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { DataSaverProvider } from './context/DataSaverContext';
+import { AuthProvider } from './context/AuthContext';
+import UserDataSyncManager from './components/UserDataSyncManager';
 
 export const metadata = {
 	title: 'selftest.in',
@@ -65,11 +67,14 @@ export default function RootLayout({ children }) {
 				<ThemeProvider>
 					<DataSaverProvider>
 						<LanguageProvider>
-							<MobileOptimizedLayout>
-								{children}
-							</MobileOptimizedLayout>
-							<Analytics />
-							<SpeedInsights />
+							<AuthProvider>
+								<UserDataSyncManager />
+								<MobileOptimizedLayout>
+									{children}
+								</MobileOptimizedLayout>
+								<Analytics />
+								<SpeedInsights />
+							</AuthProvider>
 						</LanguageProvider>
 					</DataSaverProvider>
 				</ThemeProvider>

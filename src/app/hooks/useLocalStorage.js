@@ -62,33 +62,50 @@ function useLocalStorage(key, initialValue) {
 			}
 		};
 
+		const handleLocalSync = (event) => {
+			const syncedKeys = event?.detail?.keys;
+			if (Array.isArray(syncedKeys) && !syncedKeys.includes(key)) {
+				return;
+			}
+
+			try {
+				const item = window.localStorage.getItem(key);
+				setStoredValue(item ? JSON.parse(item) : getInitialValue());
+			} catch (error) {
+				console.error('Error parsing synced localStorage key', key, error);
+			}
+		};
+
 		window.addEventListener('storage', handleStorageChange);
+		window.addEventListener('selftest-local-sync', handleLocalSync);
 		return () => {
 			window.removeEventListener('storage', handleStorageChange);
+			window.removeEventListener('selftest-local-sync', handleLocalSync);
 		};
 	}, [key, getInitialValue]);
 
-	const updateHistory = (updatedPaper) => {
+	const updateHistory = useCallback((updatedPaper) => {
 		setStoredValue((prevStoredValue) => {
 			const safeHistory = Array.isArray(prevStoredValue) ? prevStoredValue : [];
 			const updatedHistory = safeHistory.filter((t) => t.id !== updatedPaper.id);
 			updatedHistory.unshift({
 				...updatedPaper,
-				timestamp: Date.now(),
+				timestamp: updatedPaper.timestamp || Date.now(),
 			});
 			return updatedHistory
 				.sort((a, b) => b.timestamp - a.timestamp)
 				.slice(0, 100);
 		});
-	};
-	const cleanUpKey = () => {
+	}, []);
+
+	const cleanUpKey = useCallback(() => {
 		if (typeof window === 'undefined') return;
 		try {
 			window.localStorage.removeItem(key);
 		} catch (error) {
 			console.error('Error removing localStorage key', key, error);
 		}
-	};
+	}, [key]);
 
 	return [storedValue, setStoredValue, updateHistory, cleanUpKey, isHydrated];
 }
