@@ -12,6 +12,16 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 	onQuickStartExam,
 	onQuickStartPreset,
 }) {
+	const hasBookmarkedExams = bookmarkedExams.length > 0;
+	const hasBookmarkedQuizPresets = bookmarkedQuizPresets.length > 0;
+	const hasAnyBookmarks = hasBookmarkedExams || hasBookmarkedQuizPresets;
+
+	if (!hasAnyBookmarks) {
+		return null;
+	}
+
+	const columnSize = hasBookmarkedExams && hasBookmarkedQuizPresets ? 6 : 12;
+
 	return (
 		<Card className='w-100 border-0 glass-card mb-3' style={{ maxWidth: '720px' }}>
 			<Card.Body className='p-3 p-md-4'>
@@ -22,12 +32,12 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 					</Badge>
 				</div>
 				<Row className='g-3'>
-					<Col xs={12}>
-						<div className='small text-muted mb-1 d-flex align-items-center gap-1'>
-							<Icon name='starFill' size={12} className='text-warning' />
-							{t('bookmarkedExams')}
-						</div>
-						{bookmarkedExams.length > 0 ? (
+					{hasBookmarkedExams && (
+						<Col xs={12} md={columnSize}>
+							<div className='small text-muted mb-1 d-flex align-items-center gap-1'>
+								<Icon name='starFill' size={12} className='text-warning' />
+								{t('bookmarkedExams')}
+							</div>
 							<div className='d-flex flex-wrap gap-2'>
 								{bookmarkedExams.map((exam) => (
 									<Button
@@ -43,18 +53,14 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 									</Button>
 								))}
 							</div>
-						) : (
-							<div className='small text-muted'>
-								{t('noBookmarkedExams')}
+						</Col>
+					)}
+					{hasBookmarkedQuizPresets && (
+						<Col xs={12} md={columnSize}>
+							<div className='small text-muted mb-1 d-flex align-items-center gap-1'>
+								<Icon name='starFill' size={12} className='text-warning' />
+								{t('bookmarkedQuizPresets')}
 							</div>
-						)}
-					</Col>
-					<Col xs={12}>
-						<div className='small text-muted mb-1 d-flex align-items-center gap-1'>
-							<Icon name='starFill' size={12} className='text-warning' />
-							{t('bookmarkedQuizPresets')}
-						</div>
-						{bookmarkedQuizPresets.length > 0 ? (
 							<div className='d-flex flex-wrap gap-2'>
 								{bookmarkedQuizPresets.map((preset) => (
 									<Button
@@ -70,12 +76,8 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 									</Button>
 								))}
 							</div>
-						) : (
-							<div className='small text-muted'>
-								{t('noBookmarkedQuizPresets')}
-							</div>
-						)}
-					</Col>
+						</Col>
+					)}
 				</Row>
 			</Card.Body>
 		</Card>
