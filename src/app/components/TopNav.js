@@ -315,7 +315,7 @@ export default function TopNav() {
 					</button>
 
 					<button
-						className="nav-btn"
+						className="nav-btn d-none d-xl-inline-flex"
 						onClick={() => {
 							triggerHaptic();
 							router.push('/history');
