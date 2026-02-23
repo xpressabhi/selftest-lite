@@ -7,13 +7,15 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 	const { t } = useLanguage();
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
+	const [searchLanguageFilter, setSearchLanguageFilter] = useState('all');
+	const [searchExamTypeFilter, setSearchExamTypeFilter] = useState('all');
 	const [searchResults, setSearchResults] = useState([]);
 	const [searchLoading, setSearchLoading] = useState(false);
 	const [searchError, setSearchError] = useState('');
 	const searchAbortRef = useRef(null);
 
 	const fetchTests = useCallback(
-		async (query = '') => {
+		async (query = '', languageFilter = 'all', examTypeFilter = 'all') => {
 			if (searchAbortRef.current) {
 				searchAbortRef.current.abort();
 			}
@@ -39,6 +41,12 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 				});
 				if (trimmed) {
 					params.set('q', trimmed);
+				}
+				if (languageFilter !== 'all') {
+					params.set('language', languageFilter);
+				}
+				if (examTypeFilter !== 'all') {
+					params.set('examType', examTypeFilter);
 				}
 
 				const response = await fetch(`/api/test?${params.toString()}`, {
@@ -69,11 +77,17 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 
 		const delay = searchQuery.trim() ? 250 : 0;
 		const timer = setTimeout(() => {
-			fetchTests(searchQuery);
+			fetchTests(searchQuery, searchLanguageFilter, searchExamTypeFilter);
 		}, delay);
 
 		return () => clearTimeout(timer);
-	}, [isSearchOpen, searchQuery, fetchTests]);
+	}, [
+		isSearchOpen,
+		searchQuery,
+		searchLanguageFilter,
+		searchExamTypeFilter,
+		fetchTests,
+	]);
 
 	useEffect(() => {
 		return () => {
@@ -86,6 +100,8 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 	const openSearch = () => {
 		setIsSearchOpen(true);
 		setSearchQuery('');
+		setSearchLanguageFilter('all');
+		setSearchExamTypeFilter('all');
 		setSearchError('');
 	};
 
@@ -96,10 +112,14 @@ export default function useTestSearch({ isDataSaverActive = false } = {}) {
 	return {
 		isSearchOpen,
 		searchQuery,
+		searchLanguageFilter,
+		searchExamTypeFilter,
 		searchResults,
 		searchLoading,
 		searchError,
 		setSearchQuery,
+		setSearchLanguageFilter,
+		setSearchExamTypeFilter,
 		openSearch,
 		closeSearch,
 	};

@@ -373,6 +373,8 @@ export async function listTestRecords({
 	search = '',
 	limit = 10,
 	createdByUserId = null,
+	language = 'all',
+	examType = 'all',
 } = {}) {
 	await ensureStorageSchema();
 
@@ -380,86 +382,67 @@ export async function listTestRecords({
 	const trimmedSearch = search.trim();
 	const normalizedUserId = normalizeUserId(createdByUserId);
 	const hasUserScope = normalizedUserId !== null;
+	const normalizedLanguage = String(language || '')
+		.trim()
+		.toLowerCase();
+	const normalizedExamType = String(examType || '')
+		.trim()
+		.toLowerCase();
+	const hasLanguageFilter = ['english', 'hindi'].includes(normalizedLanguage);
+	const hasExamTypeFilter = ['full-exam', 'quiz-practice'].includes(
+		normalizedExamType,
+	);
 
-	if (!trimmedSearch) {
-		if (hasUserScope) {
-			const result = await query(
-				`SELECT
-					id,
-					COALESCE(topic, test->>'topic', 'Untitled test') AS topic,
-					test_type,
-					difficulty,
-					language,
-					num_questions,
-					COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
-					created_at
-				 FROM ai_test
-				 WHERE created_by_user_id = $1
-				 ORDER BY created_at DESC
-				 LIMIT $2`,
-				[normalizedUserId, cappedLimit],
-			);
-			return result.rows;
-		}
+	const whereClauses = [];
+	const queryParams = [];
 
-		const result = await query(
-			`SELECT
-				id,
-				COALESCE(topic, test->>'topic', 'Untitled test') AS topic,
-				test_type,
-				difficulty,
-				language,
-				num_questions,
-				COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
-				created_at
-			 FROM ai_test
-			 ORDER BY created_at DESC
-			 LIMIT $1`,
-			[cappedLimit],
-		);
-		return result.rows;
-	}
-
-	const searchPattern = `%${trimmedSearch}%`;
 	if (hasUserScope) {
-		const result = await query(
-			`SELECT
-				id,
-				COALESCE(topic, test->>'topic', 'Untitled test') AS topic,
-				test_type,
-				difficulty,
-				language,
-				num_questions,
-				COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
-				created_at
-			 FROM ai_test
-			 WHERE
-				created_by_user_id = $1
-				AND COALESCE(topic, test->>'topic', '') ILIKE $2
-			 ORDER BY created_at DESC
-			 LIMIT $3`,
-			[normalizedUserId, searchPattern, cappedLimit],
-		);
-		return result.rows;
+		queryParams.push(normalizedUserId);
+		whereClauses.push(`created_by_user_id = $${queryParams.length}`);
 	}
+
+	if (trimmedSearch) {
+		queryParams.push(`%${trimmedSearch}%`);
+		whereClauses.push(
+			`COALESCE(topic, test->>'topic', '') ILIKE $${queryParams.length}`,
+		);
+	}
+
+	if (hasLanguageFilter) {
+		queryParams.push(normalizedLanguage);
+		whereClauses.push(
+			`LOWER(COALESCE(language, test->'requestParams'->>'language', 'english')) = $${queryParams.length}`,
+		);
+	}
+
+	if (hasExamTypeFilter) {
+		queryParams.push(normalizedExamType);
+		whereClauses.push(
+			`LOWER(COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice')) = $${queryParams.length}`,
+		);
+	}
+
+	queryParams.push(cappedLimit);
+	const whereSql =
+		whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
 	const result = await query(
 		`SELECT
 			id,
 			COALESCE(topic, test->>'topic', 'Untitled test') AS topic,
-			test_type,
-			difficulty,
-			language,
+			COALESCE(test_type, test->'requestParams'->>'testType', 'multiple-choice') AS test_type,
+			COALESCE(difficulty, test->'requestParams'->>'difficulty', 'intermediate') AS difficulty,
+			LOWER(COALESCE(language, test->'requestParams'->>'language', 'english')) AS language,
 			num_questions,
-			COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
+			LOWER(COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice')) AS test_mode,
 			created_at
 		 FROM ai_test
-		 WHERE
-			COALESCE(topic, test->>'topic', '') ILIKE $1
+		 ${whereSql}
 		 ORDER BY created_at DESC
-		 LIMIT $2`,
-		[searchPattern, cappedLimit],
+		 LIMIT $${queryParams.length}`,
+		queryParams,
 	);
+
 	return result.rows;
 }
 

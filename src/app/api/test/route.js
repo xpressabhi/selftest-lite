@@ -13,11 +13,15 @@ export async function GET(request) {
 		const id = searchParams.get('id');
 		const search = searchParams.get('q') || '';
 		const limit = searchParams.get('limit') || '10';
+		const language = searchParams.get('language') || 'all';
+		const examType = searchParams.get('examType') || 'all';
 
 		if (!id) {
 			const tests = await listTestRecords({
 				search,
 				limit: Number(limit),
+				language,
+				examType,
 			});
 
 			return NextResponse.json({ tests });

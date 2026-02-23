@@ -39,10 +39,14 @@ export default function TopNav() {
 	const {
 		isSearchOpen,
 		searchQuery,
+		searchLanguageFilter,
+		searchExamTypeFilter,
 		searchResults,
 		searchLoading,
 		searchError,
 		setSearchQuery,
+		setSearchLanguageFilter,
+		setSearchExamTypeFilter,
 		openSearch,
 		closeSearch,
 	} = useTestSearch({ isDataSaverActive });
@@ -264,6 +268,18 @@ export default function TopNav() {
 		return `${count} ${t('questionsLabel')}`;
 	};
 
+	const languageFilterOptions = [
+		{ value: 'all', label: t('searchFilterAll') },
+		{ value: 'english', label: t('englishLabel') },
+		{ value: 'hindi', label: t('hindiLabel') },
+	];
+
+	const examTypeFilterOptions = [
+		{ value: 'all', label: t('searchFilterAll') },
+		{ value: 'quiz-practice', label: t('quizPractice') },
+		{ value: 'full-exam', label: t('fullExamPaper') },
+	];
+
 	return (
 		<header
 			ref={navRef}
@@ -282,22 +298,24 @@ export default function TopNav() {
 
 				{/* Desktop Navigation */}
 				<nav className="desktop-nav" aria-label={t('mainNavigation')}>
-					{navLinks.map((link) => (
-						<Link
-						key={link.href}
-						href={link.href}
-						className={`nav-link ${pathname === link.href ? 'active' : ''}`}
+					<div className="desktop-nav-track">
+						{navLinks.map((link) => (
+							<Link
+								key={link.href}
+								href={link.href}
+								className={`nav-link desktop-nav-link ${pathname === link.href ? 'active' : ''}`}
+							>
+								{link.label}
+							</Link>
+						))}
+						<button
+							type="button"
+							className="nav-link nav-link-button desktop-nav-link"
+							onClick={handleOpenTourGuide}
 						>
-							{link.label}
-						</Link>
-					))}
-					<button
-						type="button"
-						className="nav-link nav-link-button"
-						onClick={handleOpenTourGuide}
-					>
-						{t('tourGuide')}
-					</button>
+							{t('tourGuide')}
+						</button>
+					</div>
 				</nav>
 
 			{/* Right Actions */}
@@ -412,15 +430,18 @@ export default function TopNav() {
 							<nav className="mobile-nav" aria-label={t('mobileNavigation')}>
 								{navLinks.map((link) => (
 									<Link
-									key={link.href}
-									href={link.href}
-									className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
-									onClick={triggerHaptic}
-								>
-									<span className="mobile-link-icon" aria-hidden="true">
-										<Icon name={link.icon} size={20} />
-									</span>
+										key={link.href}
+										href={link.href}
+										className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
+										onClick={triggerHaptic}
+									>
+										<span className="mobile-link-icon" aria-hidden="true">
+											<Icon name={link.icon} size={20} />
+										</span>
 										<span className="mobile-link-label">{link.label}</span>
+										<span className="mobile-link-arrow" aria-hidden="true">
+											<Icon name="chevronRight" size={16} />
+										</span>
 									</Link>
 								))}
 								<button
@@ -432,6 +453,9 @@ export default function TopNav() {
 										<Icon name="sparkles" size={20} />
 									</span>
 									<span className="mobile-link-label">{t('tourGuide')}</span>
+									<span className="mobile-link-arrow" aria-hidden="true">
+										<Icon name="chevronRight" size={16} />
+									</span>
 								</button>
 								<button
 									type="button"
@@ -443,6 +467,9 @@ export default function TopNav() {
 									</span>
 									<span className="mobile-link-label">
 										{user ? t('account') : t('signIn')}
+									</span>
+									<span className="mobile-link-arrow" aria-hidden="true">
+										<Icon name="chevronRight" size={16} />
 									</span>
 								</button>
 						</nav>
@@ -573,8 +600,54 @@ export default function TopNav() {
 								/>
 							</div>
 
-							<div className="search-subtitle">
-								{searchQuery.trim() ? t('matchingTests') : t('recentTests')}
+							<div className="search-toolbar">
+								<div className="search-subtitle">
+									<span>{searchQuery.trim() ? t('matchingTests') : t('recentTests')}</span>
+									{!searchLoading && !searchError && (
+										<span className="search-count-pill">{searchResults.length}</span>
+									)}
+								</div>
+
+								<div className="search-filters">
+									<div className="search-filter-grid">
+										<div className="search-filter-row">
+											<span className="search-filter-label">{t('searchFilterLanguage')}</span>
+											<div className="search-filter-chips">
+												{languageFilterOptions.map((option) => (
+													<button
+														key={option.value}
+														type="button"
+														className={`search-filter-chip ${searchLanguageFilter === option.value ? 'active' : ''}`}
+														onClick={() => {
+															triggerHaptic();
+															setSearchLanguageFilter(option.value);
+														}}
+													>
+														{option.label}
+													</button>
+												))}
+											</div>
+										</div>
+										<div className="search-filter-row">
+											<span className="search-filter-label">{t('searchFilterExamType')}</span>
+											<div className="search-filter-chips">
+												{examTypeFilterOptions.map((option) => (
+													<button
+														key={option.value}
+														type="button"
+														className={`search-filter-chip ${searchExamTypeFilter === option.value ? 'active' : ''}`}
+														onClick={() => {
+															triggerHaptic();
+															setSearchExamTypeFilter(option.value);
+														}}
+													>
+														{option.label}
+													</button>
+												))}
+											</div>
+										</div>
+									</div>
+								</div>
 							</div>
 
 							<div className="results-list">
@@ -585,39 +658,44 @@ export default function TopNav() {
 								) : searchResults.length === 0 ? (
 									<div className="results-state">{t('noTestsFound')}</div>
 								) : (
-								searchResults.map((test) => (
-									<button
-										key={test.id}
-										type="button"
-										className="result-item"
-										onClick={() => openTestFromSearch(test.id)}
-									>
-										<div className="result-title">
-											{test.topic || `${t('testPrefix')} #${test.id}`}
-										</div>
-										<div className="result-meta">
-											<span>#{test.id}</span>
-											<span>
-												{new Date(test.created_at).toLocaleDateString(uiLocale)}
-											</span>
-										</div>
-										<div className="result-tags">
-											{[
-												getTestModeLabel(test.test_mode),
-												getQuestionCountLabel(test.num_questions),
-												getTestTypeLabel(test.test_type),
-												getDifficultyLabel(test.difficulty),
-												getPaperLanguageLabel(test.language),
-											]
-												.filter(Boolean)
-												.map((tag) => (
-													<span key={`${test.id}-${tag}`} className="result-tag">
-														{tag}
+									searchResults.map((test) => {
+										const tags = [
+											getTestModeLabel(test.test_mode),
+											getQuestionCountLabel(test.num_questions),
+											getTestTypeLabel(test.test_type),
+											getDifficultyLabel(test.difficulty),
+											getPaperLanguageLabel(test.language),
+										].filter(Boolean);
+
+										return (
+											<button
+												key={test.id}
+												type="button"
+												className="result-item"
+												onClick={() => openTestFromSearch(test.id)}
+											>
+												<div className="result-title">
+													{test.topic || `${t('testPrefix')} #${test.id}`}
+												</div>
+												<div className="result-meta">
+													<span>#{test.id}</span>
+													<span>
+														{new Date(test.created_at).toLocaleDateString(uiLocale)}
 													</span>
-												))}
-										</div>
-									</button>
-								))
+												</div>
+												<div className="result-tags">
+													{tags.map((tag, index) => (
+														<span
+															key={`${test.id}-${tag}`}
+															className={`result-tag ${index < 2 ? 'primary' : 'secondary'}`}
+														>
+															{tag}
+														</span>
+													))}
+												</div>
+											</button>
+										);
+									})
 							)}
 						</div>
 					</div>
@@ -670,8 +748,11 @@ export default function TopNav() {
 				/* Desktop Navigation */
 				.desktop-nav {
 					display: none;
+					flex: 1;
 					align-items: center;
-					gap: 4px;
+					justify-content: center;
+					min-width: 0;
+					margin: 0 16px;
 				}
 
 				@media (min-width: 768px) {
@@ -680,33 +761,74 @@ export default function TopNav() {
 					}
 				}
 
-					.nav-link {
-						padding: 8px 16px;
-						color: var(--text-secondary);
+				@media (min-width: 1200px) {
+					.desktop-nav {
+						margin: 0 24px;
+					}
+				}
+
+				.desktop-nav-track {
+					display: inline-flex;
+					align-items: center;
+					gap: 2px;
+					padding: 4px;
+					border-radius: 999px;
+					background: var(--bg-secondary);
+					border: 1px solid var(--border-color);
+					box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+					max-width: 100%;
+					overflow-x: auto;
+					scrollbar-width: none;
+				}
+
+				.desktop-nav-track::-webkit-scrollbar {
+					display: none;
+				}
+
+				.desktop-nav-link {
+					padding: 7px 14px;
+					min-height: 36px;
+					color: var(--text-secondary);
 					text-decoration: none;
-					font-size: 0.875rem;
-					font-weight: 500;
-					border-radius: var(--radius-md);
-						transition: color 0.15s ease, background 0.15s ease;
-					}
+					font-size: 0.9rem;
+					font-weight: 600;
+					letter-spacing: 0.01em;
+					border-radius: 999px;
+					white-space: nowrap;
+					transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+				}
 
-					.nav-link-button {
-						border: none;
-						background: transparent;
-						cursor: pointer;
-					}
+				.nav-link-button {
+					border: none;
+					background: transparent;
+					cursor: pointer;
+				}
 
-					.nav-link:hover,
-					.nav-link.active {
-						color: var(--accent-primary);
-						background: rgba(99, 102, 241, 0.1);
+				.desktop-nav-link:hover {
+					color: var(--text-primary);
+					background: var(--bg-tertiary);
+				}
+
+				.desktop-nav-link.active {
+					color: var(--accent-primary);
+					background: rgba(99, 102, 241, 0.12);
+					box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.28);
 				}
 
 				/* Actions */
 				.nav-actions {
 					display: flex;
 					align-items: center;
-					gap: 4px; /* Tighter gap for better grouping */
+					gap: 6px;
+				}
+
+				@media (min-width: 768px) {
+					.nav-actions {
+						gap: 8px;
+					}
 				}
 
 				.data-saver-desktop {
@@ -737,6 +859,13 @@ export default function TopNav() {
 					margin: 0;
 					padding: 0;
 					line-height: 1;
+				}
+
+				@media (min-width: 768px) {
+					.nav-btn {
+						width: 42px;
+						height: 42px;
+					}
 				}
 
 				.nav-btn:active,
@@ -794,14 +923,15 @@ export default function TopNav() {
 						display: flex;
 						align-items: center;
 						justify-content: space-between;
-						padding: calc(20px + var(--safe-top)) 24px 20px;
+						padding: calc(18px + var(--safe-top)) 20px 16px;
 						border-bottom: 1px solid var(--border-color);
 					}
 
 				.menu-title {
-					font-size: 1.25rem;
+					font-size: 1.2rem;
 					font-weight: 700;
 					color: var(--text-primary);
+					letter-spacing: 0.01em;
 				}
 
 				.menu-close {
@@ -815,80 +945,126 @@ export default function TopNav() {
 					color: var(--text-secondary);
 					cursor: pointer;
 					border-radius: 50%;
-					transition: all 0.2s ease;
+					transition: all 0.15s ease;
+				}
+
+				.menu-close:hover,
+				.menu-close:active {
+					background: var(--bg-tertiary);
 				}
 
 				.menu-close:active {
-					transform: scale(0.95);
-					background: var(--bg-tertiary);
+					transform: scale(0.96);
 				}
 
 				.mobile-nav {
 					flex: 1;
-					padding: 24px;
+					padding: 16px;
 					display: flex;
 					flex-direction: column;
 					gap: 10px;
 					overflow-y: auto;
 				}
 
-					.mobile-nav-link {
-						display: flex;
-						align-items: center;
-					gap: 14px;
-					padding: 14px 16px;
+				.mobile-nav-link {
+					display: flex;
+					align-items: center;
+					gap: 12px;
+					padding: 12px 12px;
 					min-height: 54px;
-					color: var(--text-primary);
-					text-decoration: none;
-					font-size: 1rem;
-					font-weight: 500;
-					border-radius: var(--radius-lg);
-					transition: all 0.2s ease;
-						border: 1px solid transparent;
-					}
+					color: var(--text-primary) !important;
+					text-decoration: none !important;
+					font-size: 0.98rem;
+					font-weight: 600;
+					border-radius: 14px;
+					transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+					border: 1px solid var(--border-color);
+					background: var(--bg-secondary);
+					width: 100%;
+					text-align: left;
+				}
 
-					.mobile-nav-action {
-						width: 100%;
-						background: transparent;
-						border: none;
-						cursor: pointer;
-						text-align: left;
-					}
+				.mobile-nav-link:visited,
+				.mobile-nav-link:hover,
+				.mobile-nav-link:focus {
+					color: var(--text-primary) !important;
+					text-decoration: none !important;
+				}
+
+				.mobile-nav-action {
+					width: 100%;
+					background: var(--bg-secondary);
+					border: 1px solid var(--border-color);
+					cursor: pointer;
+					text-align: left;
+				}
 
 				.mobile-link-icon {
-					width: 24px;
-					height: 24px;
+					width: 32px;
+					height: 32px;
 					display: inline-flex;
 					align-items: center;
 					justify-content: center;
 					flex-shrink: 0;
+					border-radius: 10px;
+					background: var(--bg-primary);
+					border: 1px solid var(--border-color);
+					color: var(--accent-primary);
 				}
 
 				.mobile-link-icon :global(svg) {
-					width: 20px;
-					height: 20px;
+					width: 18px;
+					height: 18px;
 					display: block;
 				}
 
 				.mobile-link-label {
+					flex: 1;
+					min-width: 0;
 					line-height: 1.2;
 				}
 
+				.mobile-link-arrow {
+					width: 20px;
+					height: 20px;
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					color: var(--text-muted);
+					flex-shrink: 0;
+				}
+
+				.mobile-nav-link:hover,
 				.mobile-nav-link:active {
 					background: var(--bg-tertiary);
-					transform: scale(0.98);
+					border-color: rgba(99, 102, 241, 0.25);
+				}
+
+				.mobile-nav-link:active {
+					transform: translateX(1px);
 				}
 
 				.mobile-nav-link.active {
 					color: var(--accent-primary);
-					background: rgba(99, 102, 241, 0.08); /* Subtle highlight */
-					border-color: rgba(99, 102, 241, 0.1);
+					background: rgba(99, 102, 241, 0.1);
+					border-color: rgba(99, 102, 241, 0.35);
 					font-weight: 600;
+					box-shadow: 0 8px 20px rgba(99, 102, 241, 0.12);
+				}
+
+				.mobile-nav-link.active .mobile-link-icon {
+					background: rgba(99, 102, 241, 0.14);
+					border-color: rgba(99, 102, 241, 0.35);
+					color: var(--accent-primary);
+				}
+
+				.mobile-nav-link.active .mobile-link-arrow {
+					color: var(--accent-primary);
 				}
 
 					.menu-footer {
-						padding: 24px;
-						padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+						padding: 16px;
+						padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 						border-top: 1px solid var(--border-color);
 						background: var(--bg-secondary);
 					}
@@ -1128,21 +1304,109 @@ export default function TopNav() {
 				}
 
 				.search-subtitle {
-					padding: 0 12px 8px;
+					padding: 0;
 					color: var(--text-muted);
-					font-size: 0.8rem;
+					font-size: 0.78rem;
 					font-weight: 600;
-					text-transform: uppercase;
-					letter-spacing: 0.04em;
+					letter-spacing: 0.02em;
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					gap: 10px;
+				}
+
+				.search-toolbar {
+					padding: 0 12px 10px;
+					display: flex;
+					flex-direction: column;
+					gap: 10px;
+					border-bottom: 1px solid var(--border-color);
+				}
+
+				.search-count-pill {
+					display: inline-flex;
+					align-items: center;
+					justify-content: center;
+					min-width: 26px;
+					height: 22px;
+					padding: 0 7px;
+					border-radius: 999px;
+					background: var(--bg-tertiary);
+					border: 1px solid var(--border-color);
+					color: var(--text-secondary);
+					font-size: 0.72rem;
+					font-weight: 700;
+				}
+
+				.search-filters {
+					padding: 0;
+				}
+
+				.search-filter-grid {
+					display: grid;
+					grid-template-columns: 1fr;
+					gap: 8px;
+				}
+
+				.search-filter-row {
+					display: flex;
+					flex-direction: column;
+					gap: 5px;
+				}
+
+				.search-filter-label {
+					color: var(--text-muted);
+					font-size: 0.72rem;
+					font-weight: 600;
+					letter-spacing: 0.02em;
+				}
+
+				.search-filter-chips {
+					display: flex;
+					flex-wrap: nowrap;
+					gap: 6px;
+					overflow-x: auto;
+					padding-bottom: 2px;
+					-ms-overflow-style: none;
+					scrollbar-width: none;
+				}
+
+				.search-filter-chips::-webkit-scrollbar {
+					display: none;
+				}
+
+				.search-filter-chip {
+					border: 1px solid var(--border-color);
+					background: var(--bg-secondary);
+					color: var(--text-secondary);
+					border-radius: 999px;
+					font-size: 0.74rem;
+					font-weight: 600;
+					padding: 5px 11px;
+					min-height: 30px;
+					cursor: pointer;
+					line-height: 1;
+					white-space: nowrap;
+					flex-shrink: 0;
+					transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+				}
+
+				.search-filter-chip.active {
+					background: rgba(99, 102, 241, 0.12);
+					color: var(--accent-primary);
+					border-color: rgba(99, 102, 241, 0.4);
 				}
 
 					.results-list {
-						padding: 0 8px 8px;
+						padding: 10px 12px 12px;
 						overflow-y: auto;
-						max-height: min(56vh, 420px);
-						max-height: min(56dvh, 420px);
+						max-height: min(48vh, 390px);
+						max-height: min(48dvh, 390px);
 						-ms-overflow-style: none;
 						scrollbar-width: none;
+						display: flex;
+						flex-direction: column;
+						gap: 8px;
 				}
 
 				.results-list::-webkit-scrollbar {
@@ -1152,17 +1416,18 @@ export default function TopNav() {
 				.result-item {
 					width: 100%;
 					text-align: left;
-					border: 1px solid transparent;
-					background: transparent;
-					padding: 10px;
+					border: 1px solid var(--border-color);
+					background: var(--bg-secondary);
+					padding: 11px 12px;
 					border-radius: var(--radius-md);
 					cursor: pointer;
+					transition: background 0.15s ease, border-color 0.15s ease;
 				}
 
 				.result-item:active,
 				.result-item:hover {
-					background: var(--bg-secondary);
-					border-color: var(--border-color);
+					background: var(--bg-tertiary);
+					border-color: rgba(99, 102, 241, 0.3);
 				}
 
 				.result-title {
@@ -1170,12 +1435,18 @@ export default function TopNav() {
 					font-size: 0.92rem;
 					font-weight: 600;
 					line-height: 1.3;
+					display: -webkit-box;
+					-webkit-line-clamp: 2;
+					-webkit-box-orient: vertical;
+					overflow: hidden;
 				}
 
 				.result-meta {
-					margin-top: 4px;
+					margin-top: 6px;
 					display: flex;
-					gap: 10px;
+					align-items: center;
+					justify-content: space-between;
+					gap: 12px;
 					color: var(--text-muted);
 					font-size: 0.78rem;
 				}
@@ -1190,35 +1461,93 @@ export default function TopNav() {
 				.result-tag {
 					display: inline-flex;
 					align-items: center;
-					padding: 2px 8px;
+					padding: 3px 8px;
 					border-radius: 999px;
-					background: var(--bg-tertiary);
 					border: 1px solid var(--border-color);
-					color: var(--text-secondary);
 					font-size: 0.72rem;
 					font-weight: 600;
 					line-height: 1.3;
 				}
 
-				.results-state {
-					padding: 14px 10px;
-					color: var(--text-muted);
-					font-size: 0.88rem;
+				.result-tag.primary {
+					background: rgba(99, 102, 241, 0.12);
+					border-color: rgba(99, 102, 241, 0.35);
+					color: var(--accent-primary);
 				}
 
-						@media (max-width: 767px) {
-							.search-backdrop {
-								padding-top: calc(var(--navbar-height) + 8px);
-								padding-right: max(8px, var(--safe-right));
-								padding-bottom: calc(var(--bottom-nav-offset) + 8px);
-								padding-left: max(8px, var(--safe-left));
-							}
+				.result-tag.secondary {
+					background: var(--bg-primary);
+					color: var(--text-secondary);
+				}
 
-						.search-modal {
-							max-height: min(75vh, 560px);
-							max-height: min(75dvh, 560px);
-						}
+				.results-state {
+					padding: 24px 10px;
+					color: var(--text-muted);
+					font-size: 0.88rem;
+					text-align: center;
+				}
+
+				@media (min-width: 768px) {
+					.search-toolbar {
+						padding-bottom: 12px;
+						gap: 12px;
 					}
+
+					.search-filter-grid {
+						grid-template-columns: 1fr 1fr;
+						gap: 12px;
+					}
+
+					.search-filter-chips {
+						flex-wrap: wrap;
+						overflow-x: visible;
+					}
+
+					.results-list {
+						max-height: min(50vh, 430px);
+						max-height: min(50dvh, 430px);
+					}
+				}
+
+				@media (max-width: 767px) {
+					.search-backdrop {
+						padding: 0;
+						align-items: stretch;
+						justify-content: stretch;
+					}
+
+					.search-modal {
+						max-width: none;
+						width: 100vw;
+						height: 100vh;
+						height: 100dvh;
+						height: var(--app-viewport-height, 100dvh);
+						max-height: none;
+						border-radius: 0;
+						border: none;
+						box-shadow: none;
+					}
+
+					.search-header {
+						padding-top: calc(12px + var(--safe-top));
+					}
+
+					.search-input-wrap {
+						margin: 10px 12px;
+					}
+
+					.search-toolbar {
+						padding-bottom: 10px;
+						gap: 10px;
+					}
+
+					.results-list {
+						flex: 1;
+						min-height: 0;
+						max-height: none;
+						padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+					}
+				}
 			`}</style>
 		</header>
 	);

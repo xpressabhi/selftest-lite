@@ -490,5 +490,8 @@
   "blogNewsletterPlaceholder": "अपना ईमेल दर्ज करें",
   "blogNewsletterButton": "सब्सक्राइब",
   "bookmarks": "बुकमार्क्स",
-  "privacy": "गोपनीयता"
+  "privacy": "गोपनीयता",
+  "searchFilterLanguage": "भाषा",
+  "searchFilterExamType": "परीक्षा प्रकार",
+  "searchFilterAll": "सभी"
 }

@@ -490,5 +490,8 @@
   "blogNewsletterPlaceholder": "Enter your email",
   "blogNewsletterButton": "Subscribe",
   "bookmarks": "Bookmarks",
-  "privacy": "Privacy"
+  "privacy": "Privacy",
+  "searchFilterLanguage": "Language",
+  "searchFilterExamType": "Exam Type",
+  "searchFilterAll": "All"
 }
