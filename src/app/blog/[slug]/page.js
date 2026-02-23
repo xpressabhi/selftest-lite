@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Icon from '../../components/Icon';
+import { buildPageMetadata } from '../../utils/seo';
 
 // Blog data
 const BLOG_POSTS = {
@@ -297,14 +298,29 @@ const BLOG_POSTS = {
 };
 
 export async function generateMetadata({ params }) {
-    const { slug } = await params;
-    const post = BLOG_POSTS[slug];
-    if (!post) return { title: 'Article Not Found' };
+	const { slug } = await params;
+	const post = BLOG_POSTS[slug];
+	if (!post) {
+		return buildPageMetadata({
+			title: 'Article Not Found',
+			description: 'The requested article could not be found.',
+			path: '/blog',
+		});
+	}
 
-    return {
-        title: `${post.title} — selftest.in`,
-        description: post.title,
-    };
+	const publishedAt = new Date(post.date);
+	const publishedIso = Number.isNaN(publishedAt.getTime())
+		? undefined
+		: publishedAt.toISOString();
+
+	return buildPageMetadata({
+		title: post.title,
+		description: `${post.title}. Read practical learning and exam preparation guidance on selftest.in.`,
+		path: `/blog/${slug}`,
+		type: 'article',
+		publishedTime: publishedIso,
+		keywords: ['study guide', 'exam strategy', 'active recall', 'selftest blog'],
+	});
 }
 
 export default async function BlogPost({ params }) {

@@ -1,10 +1,13 @@
 import BlogIndexContent from './BlogIndexContent';
+import { buildPageMetadata } from '../utils/seo';
 
-export const metadata = {
-	title: 'Blog — selftest.in',
+export const metadata = buildPageMetadata({
+	title: 'Blog',
 	description:
-		'Articles on learning techniques, test preparation, and how to use selftest.in effectively.',
-};
+		'Read practical study strategies, exam preparation guides, and AI quiz tips from selftest.in.',
+	path: '/blog',
+	keywords: ['study tips blog', 'exam preparation blog india', 'active recall tips'],
+});
 
 export default function BlogIndex() {
 	return <BlogIndexContent />;

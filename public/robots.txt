@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /test
+Disallow: /results
+Disallow: /history
+Disallow: /bookmarks
 
 Sitemap: https://selftest.in/sitemap.xml
