@@ -391,6 +391,7 @@ export async function listTestRecords({
 					difficulty,
 					language,
 					num_questions,
+					COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
 					created_at
 				 FROM ai_test
 				 WHERE created_by_user_id = $1
@@ -409,6 +410,7 @@ export async function listTestRecords({
 				difficulty,
 				language,
 				num_questions,
+				COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
 				created_at
 			 FROM ai_test
 			 ORDER BY created_at DESC
@@ -428,6 +430,7 @@ export async function listTestRecords({
 				difficulty,
 				language,
 				num_questions,
+				COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
 				created_at
 			 FROM ai_test
 			 WHERE
@@ -448,6 +451,7 @@ export async function listTestRecords({
 			difficulty,
 			language,
 			num_questions,
+			COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice') AS test_mode,
 			created_at
 		 FROM ai_test
 		 WHERE

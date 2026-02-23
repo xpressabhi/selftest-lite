@@ -220,6 +220,50 @@ export default function TopNav() {
 		{ href: '/contact', label: t('contact'), icon: 'envelope' },
 	];
 
+	const getTestModeLabel = (mode) => {
+		return mode === 'full-exam' ? t('fullExamPaper') : t('quizPractice');
+	};
+
+	const getTestTypeLabel = (testType) => {
+		switch (testType) {
+			case 'multiple-choice':
+				return t('multipleChoice');
+			case 'true-false':
+				return t('trueFalse');
+			case 'speed-challenge':
+				return t('speedChallenge');
+			default:
+				return '';
+		}
+	};
+
+	const getDifficultyLabel = (difficulty) => {
+		switch (difficulty) {
+			case 'beginner':
+				return t('beginner');
+			case 'intermediate':
+				return t('intermediate');
+			case 'advanced':
+				return t('advanced');
+			default:
+				return '';
+		}
+	};
+
+	const getPaperLanguageLabel = (language) => {
+		if (language === 'hindi') return t('hindiLabel');
+		if (language === 'english') return t('englishLabel');
+		return '';
+	};
+
+	const getQuestionCountLabel = (numQuestions) => {
+		const count = Number(numQuestions);
+		if (!Number.isFinite(count) || count <= 0) {
+			return '';
+		}
+		return `${count} ${t('questionsLabel')}`;
+	};
+
 	return (
 		<header
 			ref={navRef}
@@ -556,6 +600,21 @@ export default function TopNav() {
 											<span>
 												{new Date(test.created_at).toLocaleDateString(uiLocale)}
 											</span>
+										</div>
+										<div className="result-tags">
+											{[
+												getTestModeLabel(test.test_mode),
+												getQuestionCountLabel(test.num_questions),
+												getTestTypeLabel(test.test_type),
+												getDifficultyLabel(test.difficulty),
+												getPaperLanguageLabel(test.language),
+											]
+												.filter(Boolean)
+												.map((tag) => (
+													<span key={`${test.id}-${tag}`} className="result-tag">
+														{tag}
+													</span>
+												))}
 										</div>
 									</button>
 								))
@@ -1119,6 +1178,26 @@ export default function TopNav() {
 					gap: 10px;
 					color: var(--text-muted);
 					font-size: 0.78rem;
+				}
+
+				.result-tags {
+					margin-top: 8px;
+					display: flex;
+					flex-wrap: wrap;
+					gap: 6px;
+				}
+
+				.result-tag {
+					display: inline-flex;
+					align-items: center;
+					padding: 2px 8px;
+					border-radius: 999px;
+					background: var(--bg-tertiary);
+					border: 1px solid var(--border-color);
+					color: var(--text-secondary);
+					font-size: 0.72rem;
+					font-weight: 600;
+					line-height: 1.3;
 				}
 
 				.results-state {

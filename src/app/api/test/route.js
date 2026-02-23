@@ -13,18 +13,17 @@ export async function GET(request) {
 		const id = searchParams.get('id');
 		const search = searchParams.get('q') || '';
 		const limit = searchParams.get('limit') || '10';
-		const authUser = await getAuthenticatedUser(request);
 
 		if (!id) {
 			const tests = await listTestRecords({
 				search,
 				limit: Number(limit),
-				createdByUserId: authUser?.id || null,
 			});
 
 			return NextResponse.json({ tests });
 		}
 
+		const authUser = await getAuthenticatedUser(request);
 		const testRecord = await getTestRecordById(id);
 		if (!testRecord) {
 			return NextResponse.json({ error: 'Test not found' }, { status: 404 });
