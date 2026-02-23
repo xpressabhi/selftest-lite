@@ -115,6 +115,18 @@ export default function TopNav() {
 	}, [isSearchOpen, closeSearch]);
 
 	useEffect(() => {
+		if (typeof window === 'undefined') return undefined;
+		const handleOpenSearch = () => {
+			setIsMenuOpen(false);
+			setIsAuthModalOpen(false);
+			setAuthError('');
+			openSearch();
+		};
+		window.addEventListener(APP_EVENTS.OPEN_SEARCH, handleOpenSearch);
+		return () => window.removeEventListener(APP_EVENTS.OPEN_SEARCH, handleOpenSearch);
+	}, [openSearch]);
+
+	useEffect(() => {
 		if (!isAuthModalOpen) return;
 		const onEscape = (event) => {
 			if (event.key === 'Escape') {
@@ -326,7 +338,7 @@ export default function TopNav() {
 					</div>
 
 					<button
-						className="nav-btn"
+						className="nav-btn d-none d-xl-inline-flex"
 						onClick={() => {
 							triggerHaptic();
 							openSearch();

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
+import { APP_EVENTS } from '../constants';
 
 /**
  * Bottom Navigation Component
@@ -18,12 +19,41 @@ export default function BottomNav() {
 	const pathname = usePathname();
 	const navRef = useRef(null);
 	const { t } = useLanguage();
+	const openSearch = () => {
+		if (typeof window === 'undefined') return;
+		window.dispatchEvent(new Event(APP_EVENTS.OPEN_SEARCH));
+	};
 	const navItems = [
-		{ href: '/', label: t('homeTab'), icon: 'home' },
-		{ href: '/bookmarks', label: t('bookmarksTab'), icon: 'bookmark' },
-		{ href: '/', label: t('createTab'), icon: 'plusCircle', isCenter: true },
-		{ href: '/history', label: t('historyTab'), icon: 'history' },
-		{ href: '/about', label: t('aboutTab'), icon: 'info' },
+		{ key: 'home', type: 'link', href: '/', label: t('homeTab'), icon: 'home' },
+		{
+			key: 'bookmarks',
+			type: 'link',
+			href: '/bookmarks',
+			label: t('bookmarksTab'),
+			icon: 'bookmark',
+		},
+		{
+			key: 'create',
+			type: 'link',
+			href: '/',
+			label: t('createTab'),
+			icon: 'plusCircle',
+			isCenter: true,
+		},
+		{
+			key: 'history',
+			type: 'link',
+			href: '/history',
+			label: t('historyTab'),
+			icon: 'history',
+		},
+		{
+			key: 'search',
+			type: 'action',
+			label: t('searchTab'),
+			icon: 'search',
+			onClick: openSearch,
+		},
 	];
 
 	const isActive = (href) => pathname === href;
@@ -90,19 +120,35 @@ export default function BottomNav() {
 
 	return (
 		<nav ref={navRef} className="bottom-nav d-xl-none" aria-label={t('mainNavigation')}>
-			{navItems.map((item) => (
-				<Link
-					key={item.label}
-					href={item.href}
-					className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
-					aria-label={item.label}
-					aria-current={isActive(item.href) ? 'page' : undefined}
-					onClick={triggerHaptic}
-				>
-					<Icon name={item.icon} size={24} />
-					<span className="nav-label">{item.label}</span>
-				</Link>
-			))}
+			{navItems.map((item) =>
+				item.type === 'action' ? (
+					<button
+						key={item.key}
+						type="button"
+						className="bottom-nav-item bottom-nav-action-btn"
+						aria-label={item.label}
+						onClick={() => {
+							triggerHaptic();
+							item.onClick?.();
+						}}
+					>
+						<Icon name={item.icon} size={24} />
+						<span className="nav-label">{item.label}</span>
+					</button>
+				) : (
+					<Link
+						key={item.key}
+						href={item.href}
+						className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
+						aria-label={item.label}
+						aria-current={isActive(item.href) ? 'page' : undefined}
+						onClick={triggerHaptic}
+					>
+						<Icon name={item.icon} size={24} />
+						<span className="nav-label">{item.label}</span>
+					</Link>
+				),
+			)}
 			<style jsx>{`
 				.bottom-nav {
 					position: fixed;
@@ -140,6 +186,12 @@ export default function BottomNav() {
 					transition: all 0.2s ease;
 					position: relative;
 					flex: 1;
+				}
+
+				.bottom-nav-action-btn {
+					border: none;
+					background: transparent;
+					font: inherit;
 				}
 
 				.bottom-nav-item:active {

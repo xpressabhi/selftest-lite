@@ -493,5 +493,6 @@
   "privacy": "Privacy",
   "searchFilterLanguage": "Language",
   "searchFilterExamType": "Exam Type",
-  "searchFilterAll": "All"
+  "searchFilterAll": "All",
+  "searchTab": "Search"
 }

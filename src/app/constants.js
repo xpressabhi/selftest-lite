@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
 
 export const APP_EVENTS = {
 	OPEN_TOUR: 'selftest-open-tour',
+	OPEN_SEARCH: 'selftest-open-search',
 };
 
 export const TOPIC_CATEGORIES = {
