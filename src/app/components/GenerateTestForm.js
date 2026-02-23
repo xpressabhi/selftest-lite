@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useNetworkStatus from '../hooks/useNetworkStatus';
-import { STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
+import { APP_EVENTS, STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
 import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '../data/indianExams';
 import {
 	isApiLimitExceededError,
@@ -170,19 +170,41 @@ const GenerateTestForm = () => {
 		: showModeSelection
 			? t('chooseModeToContinue')
 			: t('resumeOrCreate');
+	const openModeSelection = useCallback(() => {
+		setActiveMode('');
+		setShowModeSelection(true);
+		setError(null);
+		setShowAdvanced(false);
+	}, []);
+	const openCreateFlow = useCallback(() => {
+		openModeSelection();
+		setExamSearchQuery('');
+		setExamGroupFilter('all');
+		setShowBookmarkedExamsOnly(false);
+	}, [openModeSelection]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
 		const url = new URL(window.location.href);
 		if (url.searchParams.get('start') !== 'create') return;
-		setShowModeSelection(true);
-		setActiveMode('');
-		setError(null);
+		openCreateFlow();
 		url.searchParams.delete('start');
 		url.searchParams.delete('mode');
 		const cleanedPath = `${url.pathname}${url.search}${url.hash}`;
 		window.history.replaceState({}, '', cleanedPath);
-	}, []);
+	}, [openCreateFlow]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return undefined;
+		const handleOpenCreate = () => {
+			openCreateFlow();
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		};
+		window.addEventListener(APP_EVENTS.OPEN_CREATE_TEST, handleOpenCreate);
+		return () => {
+			window.removeEventListener(APP_EVENTS.OPEN_CREATE_TEST, handleOpenCreate);
+		};
+	}, [openCreateFlow]);
 
 	useEffect(() => {
 		if (
@@ -429,16 +451,12 @@ const GenerateTestForm = () => {
 	}, []);
 
 	const handleBackToModeSelection = useCallback(() => {
-		setActiveMode('');
-		setShowModeSelection(true);
-		setError(null);
-		setShowAdvanced(false);
-	}, []);
+		openModeSelection();
+	}, [openModeSelection]);
 
 	const handleStartNewTest = useCallback(() => {
-		setShowModeSelection(true);
-		setError(null);
-	}, []);
+		openModeSelection();
+	}, [openModeSelection]);
 
 	const toggleSyllabusFocus = useCallback((unit) => {
 		setSelectedSyllabusFocus((prev) =>

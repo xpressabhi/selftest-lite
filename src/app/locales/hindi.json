@@ -123,6 +123,8 @@
   "navigationMenu": "नेविगेशन मेनू",
   "mobileNavigation": "मोबाइल नेविगेशन",
   "menu": "मेनू",
+  "menuSectionExplore": "एक्सप्लोर",
+  "menuSectionActions": "त्वरित क्रियाएं",
   "closeMenu": "मेनू बंद करें",
   "searchPastTests": "पिछले टेस्ट खोजें",
   "closeSearch": "खोज बंद करें",

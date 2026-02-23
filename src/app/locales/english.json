@@ -123,6 +123,8 @@
   "navigationMenu": "Navigation menu",
   "mobileNavigation": "Mobile navigation",
   "menu": "Menu",
+  "menuSectionExplore": "Explore",
+  "menuSectionActions": "Quick Actions",
   "closeMenu": "Close menu",
   "searchPastTests": "Search past tests",
   "closeSearch": "Close search",

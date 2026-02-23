@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
 import { APP_EVENTS } from '../constants';
@@ -17,12 +17,24 @@ import { APP_EVENTS } from '../constants';
  */
 export default function BottomNav() {
 	const pathname = usePathname();
+	const router = useRouter();
 	const navRef = useRef(null);
 	const { t } = useLanguage();
+
 	const openSearch = () => {
 		if (typeof window === 'undefined') return;
 		window.dispatchEvent(new Event(APP_EVENTS.OPEN_SEARCH));
 	};
+
+	const openCreate = () => {
+		if (typeof window === 'undefined') return;
+		if (pathname === '/') {
+			window.dispatchEvent(new Event(APP_EVENTS.OPEN_CREATE_TEST));
+			return;
+		}
+		router.push('/?start=create');
+	};
+
 	const navItems = [
 		{ key: 'home', type: 'link', href: '/', label: t('homeTab'), icon: 'home' },
 		{
@@ -34,10 +46,10 @@ export default function BottomNav() {
 		},
 		{
 			key: 'create',
-			type: 'link',
-			href: '/',
+			type: 'action',
 			label: t('createTab'),
 			icon: 'plusCircle',
+			onClick: openCreate,
 			isCenter: true,
 		},
 		{
@@ -56,7 +68,12 @@ export default function BottomNav() {
 		},
 	];
 
-	const isActive = (href) => pathname === href;
+	const isActive = (item) => {
+		if (item.type !== 'link') return false;
+		if (item.href === '/') return pathname === '/';
+		return pathname === item.href;
+	};
+
 	const triggerHaptic = () => {
 		if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
 			return;
@@ -125,7 +142,7 @@ export default function BottomNav() {
 					<button
 						key={item.key}
 						type="button"
-						className="bottom-nav-item bottom-nav-action-btn"
+						className={`bottom-nav-item bottom-nav-action-btn ${item.isCenter ? 'bottom-nav-create-btn' : ''}`}
 						aria-label={item.label}
 						onClick={() => {
 							triggerHaptic();
@@ -139,9 +156,9 @@ export default function BottomNav() {
 					<Link
 						key={item.key}
 						href={item.href}
-						className={`bottom-nav-item ${isActive(item.href) ? 'active' : ''}`}
+						className={`bottom-nav-item ${isActive(item) ? 'active' : ''}`}
 						aria-label={item.label}
-						aria-current={isActive(item.href) ? 'page' : undefined}
+						aria-current={isActive(item) ? 'page' : undefined}
 						onClick={triggerHaptic}
 					>
 						<Icon name={item.icon} size={24} />
@@ -162,9 +179,10 @@ export default function BottomNav() {
 					padding-left: max(8px, var(--safe-left));
 					background: var(--bg-primary);
 					border-top: 1px solid var(--border-color);
-					display: flex;
-					justify-content: space-around;
-					align-items: center;
+					display: grid;
+					grid-template-columns: repeat(5, minmax(0, 1fr));
+					column-gap: 6px;
+					align-items: stretch;
 					box-sizing: border-box;
 					z-index: 1000;
 					box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
@@ -177,21 +195,38 @@ export default function BottomNav() {
 					align-items: center;
 					justify-content: center;
 					gap: 4px;
-					padding: 4px;
+					padding: 4px 2px;
 					color: var(--text-muted);
 					text-decoration: none;
 					font-size: 11px;
-					min-width: 56px;
+					min-width: 0;
 					min-height: 44px;
 					transition: all 0.2s ease;
 					position: relative;
-					flex: 1;
+					width: 100%;
+					border-radius: 12px;
 				}
 
 				.bottom-nav-action-btn {
 					border: none;
 					background: transparent;
 					font: inherit;
+				}
+
+				.bottom-nav-create-btn {
+					background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+					color: #fff;
+					box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);
+				}
+
+				.bottom-nav-create-btn .nav-label {
+					font-weight: 700;
+					color: #fff;
+				}
+
+				.bottom-nav-create-btn :global(svg) {
+					width: 22px;
+					height: 22px;
 				}
 
 				.bottom-nav-item:active {
@@ -211,8 +246,8 @@ export default function BottomNav() {
 					font-size: 11px;
 					font-weight: 500;
 					line-height: 1.1;
-					white-space: nowrap;
 					letter-spacing: 0.2px;
+					white-space: nowrap;
 				}
 
 				/* Reduced motion */

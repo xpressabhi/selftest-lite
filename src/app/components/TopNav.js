@@ -190,6 +190,18 @@ export default function TopNav() {
 		toggleTheme();
 	};
 
+	const handleOpenCreate = () => {
+		triggerHaptic();
+		setIsMenuOpen(false);
+		if (pathname !== '/') {
+			router.push('/?start=create');
+			return;
+		}
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(new Event(APP_EVENTS.OPEN_CREATE_TEST));
+		}
+	};
+
 	const handleOpenTourGuide = () => {
 		triggerHaptic();
 		setIsMenuOpen(false);
@@ -234,6 +246,11 @@ export default function TopNav() {
 		{ href: '/blog', label: t('blog'), icon: 'book' },
 		{ href: '/faq', label: t('faq'), icon: 'question' },
 		{ href: '/contact', label: t('contact'), icon: 'envelope' },
+	];
+
+	const menuLinks = [
+		...navLinks,
+		{ href: '/history', label: t('history'), icon: 'history' },
 	];
 
 	const getTestModeLabel = (mode) => {
@@ -322,6 +339,13 @@ export default function TopNav() {
 						))}
 						<button
 							type="button"
+							className="nav-link nav-link-button desktop-nav-link desktop-create-link"
+							onClick={handleOpenCreate}
+						>
+							{t('createTab')}
+						</button>
+						<button
+							type="button"
 							className="nav-link nav-link-button desktop-nav-link"
 							onClick={handleOpenTourGuide}
 						>
@@ -402,7 +426,7 @@ export default function TopNav() {
 
 					{/* Menu Button (mobile) */}
 					<button
-						className="nav-btn d-md-none"
+						className="nav-btn d-xl-none"
 						onClick={() => {
 							triggerHaptic();
 							toggleMenu();
@@ -440,7 +464,8 @@ export default function TopNav() {
 						</div>
 
 							<nav className="mobile-nav" aria-label={t('mobileNavigation')}>
-								{navLinks.map((link) => (
+								<div className="mobile-section-label">{t('menuSectionExplore')}</div>
+								{menuLinks.map((link) => (
 									<Link
 										key={link.href}
 										href={link.href}
@@ -452,10 +477,41 @@ export default function TopNav() {
 										</span>
 										<span className="mobile-link-label">{link.label}</span>
 										<span className="mobile-link-arrow" aria-hidden="true">
-											<Icon name="chevronRight" size={16} />
-										</span>
-									</Link>
+										<Icon name="chevronRight" size={16} />
+									</span>
+								</Link>
 								))}
+								<div className="mobile-section-label">{t('menuSectionActions')}</div>
+								<button
+									type="button"
+									className="mobile-nav-link mobile-nav-action"
+									onClick={handleOpenCreate}
+								>
+									<span className="mobile-link-icon" aria-hidden="true">
+										<Icon name="plusCircle" size={20} />
+									</span>
+									<span className="mobile-link-label">{t('startNewTest')}</span>
+									<span className="mobile-link-arrow" aria-hidden="true">
+										<Icon name="chevronRight" size={16} />
+									</span>
+								</button>
+								<button
+									type="button"
+									className="mobile-nav-link mobile-nav-action"
+									onClick={() => {
+										triggerHaptic();
+										setIsMenuOpen(false);
+										openSearch();
+									}}
+								>
+									<span className="mobile-link-icon" aria-hidden="true">
+										<Icon name="search" size={20} />
+									</span>
+									<span className="mobile-link-label">{t('searchTests')}</span>
+									<span className="mobile-link-arrow" aria-hidden="true">
+										<Icon name="chevronRight" size={16} />
+									</span>
+								</button>
 								<button
 									type="button"
 									className="mobile-nav-link mobile-nav-action"
@@ -715,21 +771,21 @@ export default function TopNav() {
 			)}
 
 			<style jsx>{`
-					.top-nav {
-						position: fixed;
-						top: 0;
-						left: 0;
-						right: 0;
+				.top-nav {
+					position: fixed;
+					top: 0;
+					left: 0;
+					right: 0;
 						min-height: calc(var(--navbar-base-height) + var(--safe-top));
 						background: var(--bg-primary);
 						border-bottom: 1px solid var(--border-color);
-						display: flex;
-						align-items: center;
-						justify-content: space-between;
-						padding-top: var(--safe-top);
-						padding-right: max(12px, var(--safe-right));
-						padding-bottom: 0;
-						padding-left: max(12px, var(--safe-left));
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					padding-top: var(--safe-top);
+					padding-right: max(12px, var(--safe-right));
+					padding-bottom: 0;
+					padding-left: max(12px, var(--safe-left));
 						box-sizing: border-box;
 						z-index: 1101;
 						transition: box-shadow 0.2s ease;
@@ -737,6 +793,13 @@ export default function TopNav() {
 
 				.top-nav.scrolled {
 					box-shadow: var(--shadow-md);
+				}
+
+				@media (min-width: 1200px) {
+					.top-nav {
+						padding-right: max(22px, var(--safe-right));
+						padding-left: max(22px, var(--safe-left));
+					}
 				}
 
 				/* Brand */
@@ -747,10 +810,11 @@ export default function TopNav() {
 					color: var(--text-primary);
 					text-decoration: none;
 					font-weight: 700;
-					font-size: 1.25rem;
+					font-size: 1.15rem;
 				}
 
 				.brand-text {
+					font-size: clamp(1.22rem, 1vw + 0.75rem, 1.75rem);
 					background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
 					-webkit-background-clip: text;
 					-webkit-text-fill-color: transparent;
@@ -767,7 +831,7 @@ export default function TopNav() {
 					margin: 0 16px;
 				}
 
-				@media (min-width: 768px) {
+				@media (min-width: 1200px) {
 					.desktop-nav {
 						display: flex;
 					}
@@ -782,12 +846,12 @@ export default function TopNav() {
 				.desktop-nav-track {
 					display: inline-flex;
 					align-items: center;
-					gap: 2px;
-					padding: 4px;
+					gap: 6px;
+					padding: 4px 8px;
 					border-radius: 999px;
 					background: var(--bg-secondary);
 					border: 1px solid var(--border-color);
-					box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+					box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 					max-width: 100%;
 					overflow-x: auto;
 					scrollbar-width: none;
@@ -798,11 +862,11 @@ export default function TopNav() {
 				}
 
 				.desktop-nav-link {
-					padding: 7px 14px;
-					min-height: 36px;
+					padding: 9px 16px;
+					min-height: 40px;
 					color: var(--text-secondary);
 					text-decoration: none;
-					font-size: 0.9rem;
+					font-size: 0.92rem;
 					font-weight: 600;
 					letter-spacing: 0.01em;
 					border-radius: 999px;
@@ -830,24 +894,29 @@ export default function TopNav() {
 					box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.28);
 				}
 
+				.desktop-create-link {
+					color: var(--accent-primary);
+					background: rgba(99, 102, 241, 0.08);
+					box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+				}
+
+				.desktop-create-link:hover {
+					background: rgba(99, 102, 241, 0.15);
+					color: var(--accent-primary);
+				}
+
 				/* Actions */
 				.nav-actions {
 					display: flex;
 					align-items: center;
-					gap: 6px;
-				}
-
-				@media (min-width: 768px) {
-					.nav-actions {
-						gap: 8px;
-					}
+					gap: 7px;
 				}
 
 				.data-saver-desktop {
 					display: none;
 				}
 
-				@media (min-width: 768px) {
+				@media (min-width: 1200px) {
 					.data-saver-desktop {
 						display: block;
 						margin-right: 8px;
@@ -873,7 +942,7 @@ export default function TopNav() {
 					line-height: 1;
 				}
 
-				@media (min-width: 768px) {
+				@media (min-width: 1200px) {
 					.nav-btn {
 						width: 42px;
 						height: 42px;
@@ -887,20 +956,20 @@ export default function TopNav() {
 				}
 
 				.nav-btn :global(svg) {
-					width: 20px;
-					height: 20px;
+					width: 19px;
+					height: 19px;
 					display: block;
 					flex-shrink: 0;
 				}
 
 				.user-pill {
-					width: 24px;
-					height: 24px;
+					width: 26px;
+					height: 26px;
 					border-radius: 999px;
 					display: inline-flex;
 					align-items: center;
 					justify-content: center;
-					font-size: 0.75rem;
+					font-size: 0.76rem;
 					font-weight: 700;
 					color: var(--accent-primary);
 					background: rgba(99, 102, 241, 0.16);
@@ -912,8 +981,7 @@ export default function TopNav() {
 					top: 0;
 					right: 0;
 					bottom: 0;
-					width: 85%; /* Responsive width */
-					max-width: 320px;
+					width: min(86vw, 360px);
 					background: var(--bg-primary);
 					box-shadow: var(--shadow-lg);
 					z-index: 1100;
@@ -974,20 +1042,29 @@ export default function TopNav() {
 					padding: 16px;
 					display: flex;
 					flex-direction: column;
-					gap: 10px;
+					gap: 12px;
 					overflow-y: auto;
+				}
+
+				.mobile-section-label {
+					padding: 2px 4px 0;
+					font-size: 0.72rem;
+					font-weight: 700;
+					color: var(--text-muted);
+					text-transform: uppercase;
+					letter-spacing: 0.08em;
 				}
 
 				.mobile-nav-link {
 					display: flex;
 					align-items: center;
-					gap: 12px;
-					padding: 12px 12px;
+					gap: 11px;
+					padding: 13px 12px;
 					min-height: 54px;
 					color: var(--text-primary) !important;
 					text-decoration: none !important;
 					font-size: 0.98rem;
-					font-weight: 600;
+					font-weight: 650;
 					border-radius: 14px;
 					transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
 					border: 1px solid var(--border-color);
