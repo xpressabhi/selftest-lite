@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useNetworkStatus from '../hooks/useNetworkStatus';
@@ -16,7 +16,6 @@ import {
 } from '../utils/apiLimitError';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
 import TestIdEntryCard from './generate/TestIdEntryCard';
 import BookmarkedQuickStartCard from './generate/BookmarkedQuickStartCard';
 import NewTestEntryCard from './generate/NewTestEntryCard';
@@ -26,7 +25,6 @@ import ProTipCard from './generate/ProTipCard';
 import LoadingElapsed from './generate/LoadingElapsed';
 import FullExamConfigurationSection from './generate/FullExamConfigurationSection';
 import QuizPracticeConfigurationSection from './generate/QuizPracticeConfigurationSection';
-import GoogleSignInButton from './GoogleSignInButton';
 import {
 	Container,
 	Form,
@@ -34,7 +32,6 @@ import {
 	Alert,
 	Card,
 	Spinner,
-	Modal,
 } from 'react-bootstrap';
 
 const TEST_MODES = {
@@ -58,7 +55,6 @@ const GenerateTestForm = () => {
 		[],
 	);
 	const { t, language: uiLanguage } = useLanguage();
-	const { isAuthenticated, loginWithGoogleCredential } = useAuth();
 
 	const [activeMode, setActiveMode] = useState('');
 	const [showModeSelection, setShowModeSelection] = useState(false);
@@ -82,9 +78,6 @@ const GenerateTestForm = () => {
 		uiLanguage,
 	);
 	const [selectedCategory, setSelectedCategory] = useState('');
-	const [showAuthRequiredModal, setShowAuthRequiredModal] = useState(false);
-	const [authPromptError, setAuthPromptError] = useState('');
-	const pendingGenerationRequestRef = useRef(null);
 
 	const router = useRouter();
 	const MAX_RETRIES = 3;
@@ -274,13 +267,6 @@ const GenerateTestForm = () => {
 			};
 		}, [paperLanguage]);
 
-	const promptSignInForGeneration = useCallback((requestParams) => {
-		pendingGenerationRequestRef.current = requestParams;
-		setAuthPromptError('');
-		setShowAuthRequiredModal(true);
-		setError(t('errorSignInRequiredCreate'));
-	}, [t]);
-
 	const runGenerationCore = useCallback(async (requestParams) => {
 		setLoading(true);
 		setError(null);
@@ -327,10 +313,6 @@ const GenerateTestForm = () => {
 
 						if (!response.ok) {
 							const errorData = await response.json().catch(() => ({}));
-							if (response.status === 401) {
-								promptSignInForGeneration(requestParams);
-								return;
-							}
 							if (isApiTimeoutResponse(response.status, errorData)) {
 								setError(t('generationTimedOutRetry'));
 								return;
@@ -341,8 +323,7 @@ const GenerateTestForm = () => {
 							}
 							if (attempt === MAX_RETRIES) {
 								setError(
-									errorData.error ||
-										t('errorFailedGenerateAfterAttempts'),
+									errorData.error || t('errorFailedGenerateAfterAttempts'),
 								);
 								return;
 							}
@@ -350,10 +331,10 @@ const GenerateTestForm = () => {
 							const questionPaper = await response.json();
 							questionPaper.requestParams = requestParams;
 							updateHistory(questionPaper);
-						setError(null);
-						router.push('/test?id=' + questionPaper.id);
-						return;
-					}
+							setError(null);
+							router.push('/test?id=' + questionPaper.id);
+							return;
+						}
 				} catch (err) {
 					if (
 						err?.name === 'AbortError' ||
@@ -390,7 +371,6 @@ const GenerateTestForm = () => {
 	}, [
 		GENERATION_TIMEOUT_MS,
 		MAX_RETRIES,
-		promptSignInForGeneration,
 		router,
 		t,
 		testHistory,
@@ -399,37 +379,8 @@ const GenerateTestForm = () => {
 	]);
 
 	const runGeneration = useCallback(async (requestParams) => {
-		if (!isAuthenticated) {
-			promptSignInForGeneration(requestParams);
-			return;
-		}
 		await runGenerationCore(requestParams);
-	}, [isAuthenticated, promptSignInForGeneration, runGenerationCore]);
-
-	const handleGenerationAuthModalHide = useCallback(() => {
-		setShowAuthRequiredModal(false);
-		setAuthPromptError('');
-		pendingGenerationRequestRef.current = null;
-	}, []);
-
-	const handleGenerationAuthCredential = useCallback(
-		async (credential) => {
-			setAuthPromptError('');
-			try {
-				await loginWithGoogleCredential(credential);
-				setShowAuthRequiredModal(false);
-				setError(null);
-				const pendingRequest = pendingGenerationRequestRef.current;
-				pendingGenerationRequestRef.current = null;
-				if (pendingRequest) {
-					await runGenerationCore(pendingRequest);
-				}
-			} catch (authError) {
-				setAuthPromptError(authError.message || t('googleLoginFailed'));
-			}
-		},
-		[loginWithGoogleCredential, runGenerationCore, t],
-	);
+	}, [runGenerationCore]);
 
 	const handleModeSelect = useCallback((mode) => {
 		setShowModeSelection(true);
@@ -880,14 +831,14 @@ const GenerateTestForm = () => {
 									</Alert>
 								)}
 
-								<Button
-									variant='primary'
-									type='submit'
-									disabled={loading || !hasNewTestInputContext}
-									className='w-100 py-3 fw-semibold fs-5 mt-2'
-								>
-									<div className='d-flex align-items-center justify-content-center gap-2'>
-										{!loading && <Icon name='sparkles' />}
+									<Button
+										variant='primary'
+										type='submit'
+										disabled={loading || !hasNewTestInputContext}
+										className='w-100 py-3 fw-semibold fs-5 mt-2'
+									>
+										<div className='d-flex align-items-center justify-content-center gap-2'>
+											{!loading && <Icon name='sparkles' />}
 											{loading ? (
 												<>
 													<Spinner as='span' animation='border' size='sm' />
@@ -897,40 +848,16 @@ const GenerateTestForm = () => {
 													</span>
 												</>
 											) : (
-											activeMode === TEST_MODES.FULL_EXAM
-												? t('generateExamPaper')
-												: t('generateQuiz')
-										)}
-									</div>
-								</Button>
-							</Form>
-					</Card.Body>
-					</Card>
-				)}
-
-				<Modal
-					show={showAuthRequiredModal}
-					onHide={handleGenerationAuthModalHide}
-					centered
-				>
-					<Modal.Header closeButton>
-						<Modal.Title>{t('signInRequiredCreateTitle')}</Modal.Title>
-					</Modal.Header>
-					<Modal.Body>
-						<p className='text-muted mb-3'>{t('signInRequiredCreateBody')}</p>
-						<div className='d-flex justify-content-center'>
-							<GoogleSignInButton
-								onCredential={handleGenerationAuthCredential}
-								disabled={loading}
-							/>
-						</div>
-						{authPromptError && (
-							<Alert variant='danger' className='mt-3 mb-0'>
-								{authPromptError}
-							</Alert>
-						)}
-					</Modal.Body>
-				</Modal>
+												activeMode === TEST_MODES.FULL_EXAM
+													? t('generateExamPaper')
+													: t('generateQuiz')
+											)}
+										</div>
+									</Button>
+								</Form>
+							</Card.Body>
+						</Card>
+					)}
 
 				<ProTipCard
 					t={t}
@@ -939,6 +866,6 @@ const GenerateTestForm = () => {
 				/>
 			</Container>
 		);
-	};
+};
 
 export default GenerateTestForm;

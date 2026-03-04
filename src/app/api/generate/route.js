@@ -239,15 +239,6 @@ export async function POST(request) {
 		}
 
 		const authUser = await getAuthenticatedUser(request);
-		if (!authUser?.id) {
-			return NextResponse.json(
-				{
-					error: 'Please sign in to create a new test.',
-					code: 'AUTH_REQUIRED',
-				},
-				{ status: 401 },
-			);
-		}
 
 		const resolvedTopic =
 			topic || (examName ? `${examName} mock paper` : '');
@@ -274,7 +265,7 @@ export async function POST(request) {
 			const reusableRecord = await findReusableFullExamRecord({
 				examId,
 				language,
-				userId: authUser.id,
+				userId: authUser?.id || null,
 				excludedTestIds: locallyAttemptedTestIds,
 			});
 			const reusablePaper =
@@ -297,7 +288,7 @@ export async function POST(request) {
 						examName,
 						language,
 						reusedTestId: reusableRecord.id,
-						userId: authUser.id,
+						userId: authUser?.id || null,
 					},
 				});
 

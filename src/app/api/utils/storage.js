@@ -320,9 +320,45 @@ export async function findReusableFullExamRecord({
 				.filter((value) => Number.isInteger(value) && value > 0)
 		: [];
 
-	if (!normalizedUserId || !normalizedExamId || !normalizedLanguage) {
+	if (!normalizedExamId || !normalizedLanguage) {
 		return null;
 	}
+
+	const queryParams = [normalizedExamId];
+	let joinSql = '';
+	const whereClauses = [];
+
+	if (normalizedUserId) {
+		queryParams.push(normalizedUserId);
+		joinSql = `LEFT JOIN app_user_test_attempt a
+			ON a.test_id = t.id AND a.user_id = $${queryParams.length}`;
+		whereClauses.push('a.id IS NULL');
+	}
+
+	queryParams.push(normalizedLanguage);
+	whereClauses.push(
+		`COALESCE(t.language, LOWER(t.test->'requestParams'->>'language'), 'english') = $${queryParams.length}`,
+	);
+	whereClauses.push(
+		`(
+			(t.test_mode = 'full-exam' AND t.exam_id = $1)
+			OR (
+				COALESCE(t.test->'requestParams'->>'testMode', '') = 'full-exam'
+				AND COALESCE(t.test->'requestParams'->>'examId', '') = $1
+			)
+		)`,
+	);
+	queryParams.push(normalizedExcludedTestIds);
+	whereClauses.push(`NOT (t.id = ANY($${queryParams.length}::bigint[]))`);
+	whereClauses.push(
+		`jsonb_array_length(
+			CASE
+				WHEN jsonb_typeof(t.test->'questions') = 'array'
+					THEN t.test->'questions'
+				ELSE '[]'::jsonb
+			END
+		) > 0`,
+	);
 
 	const result = await query(
 		`SELECT
@@ -336,34 +372,11 @@ export async function findReusableFullExamRecord({
 			t.num_questions,
 			t.created_by_user_id
 		 FROM ai_test t
-		 LEFT JOIN app_user_test_attempt a
-			ON a.test_id = t.id AND a.user_id = $2
-		 WHERE
-			a.id IS NULL
-			AND COALESCE(t.language, LOWER(t.test->'requestParams'->>'language'), 'english') = $3
-			AND (
-				(t.test_mode = 'full-exam' AND t.exam_id = $1)
-				OR (
-					COALESCE(t.test->'requestParams'->>'testMode', '') = 'full-exam'
-					AND COALESCE(t.test->'requestParams'->>'examId', '') = $1
-				)
-			)
-			AND NOT (t.id = ANY($4::bigint[]))
-			AND jsonb_array_length(
-				CASE
-					WHEN jsonb_typeof(t.test->'questions') = 'array'
-						THEN t.test->'questions'
-					ELSE '[]'::jsonb
-				END
-			) > 0
+		 ${joinSql}
+		 WHERE ${whereClauses.join(' AND ')}
 		 ORDER BY t.created_at DESC
 		 LIMIT 1`,
-		[
-			normalizedExamId,
-			normalizedUserId,
-			normalizedLanguage,
-			normalizedExcludedTestIds,
-		],
+		queryParams,
 	);
 
 	return result.rows[0] || null;

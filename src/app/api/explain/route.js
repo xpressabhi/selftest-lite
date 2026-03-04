@@ -8,7 +8,7 @@ import {
 	isApiLimitExceededError,
 } from '../../utils/apiLimitError';
 
-const EXPLANATION_MODEL = 'gemini-2.5-flash-lite';
+const EXPLANATION_MODEL = 'gemini-3.1-flash-lite-preview';
 
 export async function POST(request) {
 	const startedAt = Date.now();

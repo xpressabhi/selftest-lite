@@ -9,11 +9,9 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
 import useBookmarks from '../hooks/useBookmarks';
 import useSoundEffects from '../hooks/useSoundEffects';
 import SoundToggle from '../components/SoundToggle';
-import GoogleSignInButton from '../components/GoogleSignInButton';
 
 const MarkdownRenderer = dynamic(
 	() => import('../components/MarkdownRenderer'),
@@ -60,7 +58,6 @@ function TestContent() {
 	const headerVisibleRef = useRef(true);
 	const scrollRafRef = useRef(null);
 	const { t } = useLanguage();
-	const { isAuthenticated, loginWithGoogleCredential } = useAuth();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
 
 	// UX Enhancement: Sound effects
@@ -69,8 +66,6 @@ function TestContent() {
 	const [timeLeft, setTimeLeft] = useState(null); // For speed challenge
 	const [isSubmitted, setIsSubmitted] = useState(false);
 	const [isQuestionFocused, setIsQuestionFocused] = useState(false);
-	const [showAuthRequiredModal, setShowAuthRequiredModal] = useState(false);
-	const [authPromptError, setAuthPromptError] = useState('');
 
 	const scrollToQuestionTop = () => {
 		if (!questionFormRef.current || typeof window === 'undefined') return;
@@ -288,33 +283,8 @@ function TestContent() {
 
 	const confirmSubmit = useCallback(() => {
 		if (isSubmitted || !questionPaper) return;
-		if (!isAuthenticated) {
-			setShowSubmitModal(false);
-			setShowAuthRequiredModal(true);
-			setAuthPromptError('');
-			return;
-		}
 		finalizeSubmit();
-	}, [finalizeSubmit, isAuthenticated, isSubmitted, questionPaper]);
-
-	const handleResultsAuthModalHide = useCallback(() => {
-		setShowAuthRequiredModal(false);
-		setAuthPromptError('');
-	}, []);
-
-	const handleResultsAuthCredential = useCallback(
-		async (credential) => {
-			setAuthPromptError('');
-			try {
-				await loginWithGoogleCredential(credential);
-				setShowAuthRequiredModal(false);
-				finalizeSubmit();
-			} catch (authError) {
-				setAuthPromptError(authError.message || t('googleLoginFailed'));
-			}
-		},
-		[finalizeSubmit, loginWithGoogleCredential, t],
-	);
+	}, [finalizeSubmit, isSubmitted, questionPaper]);
 
 	// Auto-submit when time runs out
 	useEffect(() => {
@@ -879,29 +849,6 @@ function TestContent() {
 							{t('submitNow')}
 						</Button>
 						</Modal.Footer>
-					</Modal>
-
-					<Modal
-						show={showAuthRequiredModal}
-						onHide={handleResultsAuthModalHide}
-						centered
-					>
-						<Modal.Header closeButton>
-							<Modal.Title>{t('signInRequiredResultsTitle')}</Modal.Title>
-						</Modal.Header>
-						<Modal.Body>
-							<p className='text-muted mb-3'>{t('signInRequiredResultsBody')}</p>
-							<div className='d-flex justify-content-center'>
-								<GoogleSignInButton
-									onCredential={handleResultsAuthCredential}
-								/>
-							</div>
-							{authPromptError && (
-								<Alert variant='danger' className='mt-3 mb-0'>
-									{authPromptError}
-								</Alert>
-							)}
-						</Modal.Body>
 					</Modal>
 
 					<QuestionNavigatorModal
