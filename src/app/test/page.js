@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
+import useResolvedTestRecord from '../hooks/useResolvedTestRecord';
 import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,16 +30,19 @@ import { Container, Button, Spinner, Alert, Card, ProgressBar, Modal } from 'rea
 function TestContent() {
 	const searchParams = useSearchParams();
 	const testId = searchParams.get('id');
-	const [testHistory, _, updateHistory, ___, isHistoryHydrated] = useLocalStorage(
-		STORAGE_KEYS.TEST_HISTORY,
-		[],
-	);
 	const [answers, setAnswers, __, cleanUpAnswers] = useLocalStorage(
 		`${STORAGE_KEYS.UNSUBMITTED_TEST}_answers_${testId}`,
 		{},
 	);
-	const [questionPaper, setQuestionPaper] = useState(null);
-	const [loading, setLoading] = useState(true);
+	const {
+		updateHistory,
+		questionPaper,
+		loading,
+		error,
+	} = useResolvedTestRecord(testId, {
+		notFoundKey: 'testNotFound',
+		loadFailedKey: 'failedToLoadTest',
+	});
 
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [fadeState, setFadeState] = useState('fade-in'); // 'fade-in' or 'fade-out'
@@ -47,7 +51,6 @@ function TestContent() {
 	const questionFormRef = useRef(null);
 	const stickyHeaderRef = useRef(null);
 	const touchStartXRef = useRef(null);
-	const [error, setError] = useState(null);
 	const [showSubmitModal, setShowSubmitModal] = useState(false);
 	const [showNavigatorModal, setShowNavigatorModal] = useState(false);
 	const [showMoreModal, setShowMoreModal] = useState(false);
@@ -86,58 +89,9 @@ function TestContent() {
 	};
 
 	useEffect(() => {
-		if (!testId || !isHistoryHydrated) return;
-
-		const existingTest = testHistory.find((t) => t.id == testId); // use loose equality to handle string vs number
-		if (existingTest) {
-			if (existingTest.userAnswers) {
-				router.push('/results?id=' + existingTest.id);
-			} else {
-				setQuestionPaper(existingTest);
-				setError(null);
-				setLoading(false);
-			}
-			return;
-		}
-
-		fetch(`/api/test?id=${testId}`)
-			.then((res) => res.json())
-			.then((data) => {
-				if (data.error) {
-					setError(data.error);
-					setLoading(false);
-					return;
-				}
-				const paper = {
-					...data.test,
-					id: data.id,
-				};
-				if (data.myAttempt) {
-					paper.userAnswers = data.myAttempt.user_answers || {};
-					paper.score = data.myAttempt.score;
-					paper.totalQuestions =
-						data.myAttempt.total_questions ||
-						data.test?.questions?.length ||
-						null;
-					paper.timeTaken = data.myAttempt.time_taken;
-					paper.timestamp = data.myAttempt.submitted_at
-						? new Date(data.myAttempt.submitted_at).getTime()
-						: Date.now();
-				}
-				updateHistory(paper);
-				if (paper.userAnswers) {
-					router.push('/results?id=' + paper.id);
-					return;
-				}
-				setQuestionPaper(paper);
-				setError(null);
-				setLoading(false);
-			})
-			.catch((err) => {
-				setLoading(false);
-				setError(`${t('failedToLoadTest')} ${err.message}`);
-			});
-	}, [isHistoryHydrated, router, testHistory, testId, updateHistory, t]);
+		if (!questionPaper?.userAnswers) return;
+		router.push('/results?id=' + questionPaper.id);
+	}, [questionPaper, router]);
 
 	// Initialize Speed Challenge timer
 	useEffect(() => {

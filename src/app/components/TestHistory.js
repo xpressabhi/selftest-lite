@@ -105,7 +105,7 @@ export default function TestHistory({ onTestClick, showHeader = true }) {
 							onClick={() => {
 								if (onTestClick) onTestClick();
 								router.push(
-									test.timestamp
+									test.userAnswers
 										? `/results?id=${test.id}`
 										: `/test?id=${test.id}`,
 								);

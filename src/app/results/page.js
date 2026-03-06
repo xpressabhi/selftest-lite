@@ -3,9 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
-import useLocalStorage from '../hooks/useLocalStorage';
+import useResolvedTestRecord from '../hooks/useResolvedTestRecord';
 import Loading from '../components/Loading';
 import { useLanguage } from '../context/LanguageContext';
 import useBookmarks from '../hooks/useBookmarks';
@@ -37,19 +36,26 @@ import { Container, Button, Card, Badge, Alert, Accordion } from 'react-bootstra
 
 function ResultsContent() {
 	const REGENERATE_TIMEOUT_MS = 180000;
+	const EXPLANATION_TIMEOUT_MS = 45000;
 	const searchParams = useSearchParams();
 	const id = searchParams.get('id');
-	const [testHistory, _, updateHistory, __, isHistoryHydrated] = useLocalStorage(
-		STORAGE_KEYS.TEST_HISTORY,
-		[],
-	);
-	const [questionPaper, setQuestionPaper] = useState(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const {
+		testHistory,
+		updateHistory,
+		questionPaper,
+		setQuestionPaper,
+		loading,
+		error,
+	} = useResolvedTestRecord(id, {
+		notFoundKey: 'testResultNotFound',
+		loadFailedKey: 'testResultNotFound',
+		includeErrorDetails: false,
+	});
 	const router = useRouter();
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isRetrying, setIsRetrying] = useState(false);
 	const [loadingExplanation, setLoadingExplanation] = useState({});
+	const [explanationError, setExplanationError] = useState({});
 	const [generationError, setGenerationError] = useState(null);
 	const { t } = useLanguage();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
@@ -64,63 +70,6 @@ function ResultsContent() {
 	// Streak & Achievements
 	const { recordActivity, currentStreak, longestStreak } = useStreak();
 	const { checkAchievements, newlyUnlocked, clearNewlyUnlocked } = useAchievements({ longestStreak });
-
-	useEffect(() => {
-		if (!id || !isHistoryHydrated) return;
-
-		const paper = testHistory.find((t) => t.id == id);
-		if (paper) {
-			setQuestionPaper(paper);
-			setError(null);
-			setLoading(false);
-			return;
-		}
-
-		let isMounted = true;
-		fetch(`/api/test?id=${id}`)
-			.then((response) => response.json())
-			.then((data) => {
-				if (!isMounted) return;
-				if (data.error || !data.test) {
-					setQuestionPaper(null);
-					setError(t('testResultNotFound'));
-					setLoading(false);
-					return;
-				}
-
-				const hydratedPaper = {
-					...data.test,
-					id: data.id,
-				};
-				if (data.myAttempt) {
-					hydratedPaper.userAnswers = data.myAttempt.user_answers || {};
-					hydratedPaper.score = data.myAttempt.score;
-					hydratedPaper.totalQuestions =
-						data.myAttempt.total_questions ||
-						data.test?.questions?.length ||
-						null;
-					hydratedPaper.timeTaken = data.myAttempt.time_taken;
-					hydratedPaper.timestamp = data.myAttempt.submitted_at
-						? new Date(data.myAttempt.submitted_at).getTime()
-						: Date.now();
-				}
-
-				updateHistory(hydratedPaper);
-				setQuestionPaper(hydratedPaper);
-				setError(null);
-				setLoading(false);
-			})
-			.catch(() => {
-				if (!isMounted) return;
-				setQuestionPaper(null);
-				setError(t('testResultNotFound'));
-				setLoading(false);
-			});
-
-		return () => {
-			isMounted = false;
-		};
-	}, [id, isHistoryHydrated, testHistory, t, updateHistory]);
 
 	useEffect(() => {
 		if (!questionPaper || questionPaper.userAnswers) return;
@@ -241,34 +190,49 @@ function ResultsContent() {
 			});
 
 			if (incorrectQuestions.length === 0) {
-				setIsRetrying(false);
 				return;
 			}
 
-			// Create new test object directly without API call since we have the questions
+			const retryTopic = `${t('retryPrefix')} ${questionPaper.topic}`;
+			const retryRequestParams = {
+				...(questionPaper.requestParams || {}),
+				topic: retryTopic,
+				numQuestions: incorrectQuestions.length,
+				retrySource: 'incorrect-answers',
+				originalTestId: questionPaper.id,
+			};
 			const newTest = {
-				id: crypto.randomUUID(), // Generate client-side ID for immediate use
-				topic: `${t('retryPrefix')} ${questionPaper.topic}`,
-				timestamp: null, // Indicates unsubmitted
+				topic: retryTopic,
 				questions: incorrectQuestions,
-				requestParams: questionPaper.requestParams, // Keep original params
-				createdAt: Date.now(),
+				requestParams: retryRequestParams,
 				isRetry: true,
 				originalTestId: questionPaper.id,
 			};
 
-			// Save to local storage history
-			// Note: We need to register this ID in the database if we want shareable links, 
-			// but for local retry, client-side is faster and cheaper.
-			// However, to reuse existing Test component logic which fetches from API if not found,
-			// we should probably stick to local storage for now and maybe sync later.
-			// The current Test component prioritizes local history, so this works!
+			const response = await fetch('/api/test', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					test: newTest,
+					requestParams: retryRequestParams,
+				}),
+			});
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok || !data.id) {
+				throw new Error(data.error || t('failedPrepareRetry'));
+			}
 
-			updateHistory(newTest);
-			router.push('/test?id=' + newTest.id);
-
+			const persistedRetryTest = {
+				...newTest,
+				id: data.id,
+			};
+			updateHistory(persistedRetryTest);
+			router.push('/test?id=' + data.id);
 		} catch (err) {
 			setGenerationError(`${t('failedPrepareRetry')} ${err.message}`);
+		} finally {
 			setIsRetrying(false);
 		}
 	};
@@ -276,21 +240,44 @@ function ResultsContent() {
 	const fetchExplanation = async (index, question) => {
 		if (loadingExplanation[index]) return;
 
+		setExplanationError((prev) => ({
+			...prev,
+			[index]: '',
+		}));
 		setLoadingExplanation((prev) => ({ ...prev, [index]: true }));
 		try {
-			const res = await fetch('/api/explain', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					topic: questionPaper.topic,
-					question: question.question,
-					answer: question.answer,
-					language: questionPaper.requestParams?.language || 'english',
-				}),
-			});
+			const controller = new AbortController();
+			const timeoutId = setTimeout(
+				() => controller.abort(),
+				EXPLANATION_TIMEOUT_MS,
+			);
+			let res;
+			try {
+				res = await fetch('/api/explain', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					signal: controller.signal,
+					body: JSON.stringify({
+						topic: questionPaper.topic,
+						question: question.question,
+						answer: question.answer,
+						language: questionPaper.requestParams?.language || 'english',
+					}),
+				});
+			} finally {
+				clearTimeout(timeoutId);
+			}
 			const data = await res.json();
 
-			if (data.error) throw new Error(data.error);
+			if (!res.ok) {
+				if (isApiTimeoutResponse(res.status, data)) {
+					throw new Error(t('explanationTimedOutRetry'));
+				}
+				if (isApiLimitExceededResponse(res.status, data)) {
+					throw new Error(data.error || t('rateLimitExceeded'));
+				}
+				throw new Error(data.error || t('failedToGenerateExplanation'));
+			}
 
 			if (data.explanation) {
 				// Update local state and history to persist the explanation
@@ -305,8 +292,14 @@ function ResultsContent() {
 				updateHistory(updatedPaper);
 			}
 		} catch (e) {
-			console.error(e);
-			// Optionally show a toast or alert, but console is fine for now
+			const message =
+				e?.name === 'AbortError' || isApiTimeoutError(e)
+					? t('explanationTimedOutRetry')
+					: e.message || t('failedToGenerateExplanation');
+			setExplanationError((prev) => ({
+				...prev,
+				[index]: message,
+			}));
 		} finally {
 			setLoadingExplanation((prev) => ({ ...prev, [index]: false }));
 		}
@@ -631,23 +624,30 @@ function ResultsContent() {
 														)}
 													</div>
 													{!q.explanation && (
-														<Button
-															variant='link'
-															className='p-0 text-decoration-none d-flex align-items-center gap-2 align-self-start mt-1'
-															onClick={() => fetchExplanation(index, q)}
-															disabled={loadingExplanation[index]}
-														>
-															<Icon
-																name='sparkles'
-																size={16}
-																className={loadingExplanation[index] ? 'spinner' : 'text-primary'}
-															/>
-															<span className='small fw-bold'>
-																{loadingExplanation[index]
-																	? t('generatingExplanation')
-																	: t('generateExplanation')}
-															</span>
-														</Button>
+														<>
+															<Button
+																variant='link'
+																className='p-0 text-decoration-none d-flex align-items-center gap-2 align-self-start mt-1'
+																onClick={() => fetchExplanation(index, q)}
+																disabled={loadingExplanation[index]}
+															>
+																<Icon
+																	name='sparkles'
+																	size={16}
+																	className={loadingExplanation[index] ? 'spinner' : 'text-primary'}
+																/>
+																<span className='small fw-bold'>
+																	{loadingExplanation[index]
+																		? t('generatingExplanation')
+																		: t('generateExplanation')}
+																</span>
+															</Button>
+															{explanationError[index] && (
+																<div className='small text-danger'>
+																	{explanationError[index]}
+																</div>
+															)}
+														</>
 													)}
 												</div>
 											</Accordion.Body>

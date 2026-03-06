@@ -35,6 +35,8 @@
   "explainAnswer": "उत्तर समझाएं?",
   "generateExplanation": "व्याख्या बनाएं",
   "generatingExplanation": "व्याख्या बनाई जा रही है...",
+  "failedToGenerateExplanation": "व्याख्या बनाने में विफल। कृपया फिर प्रयास करें।",
+  "explanationTimedOutRetry": "व्याख्या बनने में समय समाप्त हो गया। कृपया फिर प्रयास करें।",
   "loading": "लोड हो रहा है...",
   "noTestFound": "कोई टेस्ट नहीं मिला!",
   "pleaseGenerate": "कृपया एक नया टेस्ट बनाएं।",

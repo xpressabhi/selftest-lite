@@ -35,6 +35,8 @@
   "explainAnswer": "Explain Answer?",
   "generateExplanation": "Generate Explanation",
   "generatingExplanation": "Generating explanation...",
+  "failedToGenerateExplanation": "Failed to generate explanation. Please try again.",
+  "explanationTimedOutRetry": "Explanation timed out. Please try again.",
   "loading": "Loading...",
   "noTestFound": "No test found!",
   "pleaseGenerate": "Please generate a new test.",

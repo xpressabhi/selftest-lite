@@ -5,10 +5,21 @@ import { generateExplanationPrompt } from '../utils/prompt';
 import { getClientKey, logApiEvent } from '../utils/storage';
 import {
 	API_LIMIT_ERROR_CODE,
+	API_TIMEOUT_ERROR_CODE,
 	isApiLimitExceededError,
+	isApiTimeoutError,
 } from '../../utils/apiLimitError';
 
 const EXPLANATION_MODEL = 'gemini-3.1-flash-lite-preview';
+const EXPLANATION_TIMEOUT_MS = 45000;
+
+class ExplanationTimeoutError extends Error {
+	constructor() {
+		super('Explanation timed out after 45 seconds. Please retry.');
+		this.name = 'ExplanationTimeoutError';
+		this.code = API_TIMEOUT_ERROR_CODE;
+	}
+}
 
 export async function POST(request) {
 	const startedAt = Date.now();
@@ -70,10 +81,22 @@ export async function POST(request) {
 			language,
 		});
 
-		const response = await ai.models.generateContent({
-			model: EXPLANATION_MODEL,
-			contents: prompt,
-			config: { responseMimeType: 'application/json' },
+		let timeoutHandle;
+		const response = await Promise.race([
+			ai.models.generateContent({
+				model: EXPLANATION_MODEL,
+				contents: prompt,
+				config: { responseMimeType: 'application/json' },
+			}),
+			new Promise((_, reject) => {
+				timeoutHandle = setTimeout(() => {
+					reject(new ExplanationTimeoutError());
+				}, EXPLANATION_TIMEOUT_MS);
+			}),
+		]).finally(() => {
+			if (timeoutHandle) {
+				clearTimeout(timeoutHandle);
+			}
 		});
 		const parsed = JSON.parse(response.text.trim());
 		if (!parsed?.explanation || typeof parsed.explanation !== 'string') {
@@ -96,10 +119,13 @@ export async function POST(request) {
 	} catch (error) {
 		console.error(error);
 		const isLimitError = isApiLimitExceededError(error);
-		const statusCode = isLimitError ? 429 : 500;
+		const isTimeoutError = isApiTimeoutError(error);
+		const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;
 		const errorMessage = isLimitError
 			? 'API limit exceeded. Please retry manually after some time.'
-			: 'An unexpected error occurred';
+			: isTimeoutError
+				? 'Explanation timed out. Please retry.'
+				: 'An unexpected error occurred';
 
 		await logApiEvent({
 			route: '/api/explain',
@@ -113,7 +139,11 @@ export async function POST(request) {
 		return NextResponse.json(
 			{
 				error: errorMessage,
-				code: isLimitError ? API_LIMIT_ERROR_CODE : 'EXPLANATION_FAILED',
+				code: isLimitError
+					? API_LIMIT_ERROR_CODE
+					: isTimeoutError
+						? API_TIMEOUT_ERROR_CODE
+						: 'EXPLANATION_FAILED',
 			},
 			{ status: statusCode },
 		);
