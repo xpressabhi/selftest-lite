@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useEffect, useState } from 'react';
+import { emitLocalStorageChange } from '../utils/storageEvents';
 
 /**
  * Sound Effects Hook
@@ -43,6 +44,7 @@ export default function useSoundEffects() {
         setSoundEnabled(prev => {
             const newValue = !prev;
             localStorage.setItem('soundEffectsEnabled', JSON.stringify(newValue));
+            emitLocalStorageChange('soundEffectsEnabled');
             return newValue;
         });
     }, []);

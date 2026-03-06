@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
 import { STORAGE_KEYS } from '../constants';
 import { useLanguage } from '../context/LanguageContext';
+import { emitLocalStorageChange } from '../utils/storageEvents';
 
 const DISMISS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -84,6 +85,7 @@ export default function PwaInstallHint({ isStandalone = false }) {
 			setIsInstalling(false);
 			setDismissedAt(0);
 			window.localStorage.removeItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT);
+			emitLocalStorageChange(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT);
 		};
 
 		window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
@@ -115,6 +117,7 @@ export default function PwaInstallHint({ isStandalone = false }) {
 		const now = Date.now();
 		setDismissedAt(now);
 		window.localStorage.setItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT, String(now));
+		emitLocalStorageChange(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT);
 	}, []);
 
 	const handleInstall = useCallback(async () => {

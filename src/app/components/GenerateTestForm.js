@@ -41,6 +41,10 @@ const TEST_MODES = {
 
 const EXAM_GROUP_FILTERS = ['all', 'A', 'B', 'C', 'D'];
 
+function normalizeQuizTestType(testType) {
+	return testType === 'mixed' ? 'multiple-choice' : testType;
+}
+
 const GenerateTestForm = () => {
 	const [testHistory, __, updateHistory] = useLocalStorage(
 		STORAGE_KEYS.TEST_HISTORY,
@@ -101,7 +105,6 @@ const GenerateTestForm = () => {
 			{ value: 'multiple-choice', label: t('multipleChoice') },
 			{ value: 'true-false', label: t('trueFalse') },
 			{ value: 'coding', label: t('codingProblems') },
-			{ value: 'mixed', label: t('mixedFormat') },
 			{ value: 'speed-challenge', label: t('speedChallenge') },
 		],
 		[t],
@@ -180,12 +183,77 @@ const GenerateTestForm = () => {
 		if (typeof window === 'undefined') return;
 		const url = new URL(window.location.href);
 		if (url.searchParams.get('start') !== 'create') return;
+
+		const requestedMode = url.searchParams.get('mode');
+		const requestedTopic = (url.searchParams.get('topic') || '').trim();
+		const requestedDifficulty = url.searchParams.get('difficulty');
+		const requestedTestType = normalizeQuizTestType(
+			url.searchParams.get('testType') || 'multiple-choice',
+		);
+		const requestedNumQuestions = Number(url.searchParams.get('numQuestions'));
+		const requestedPaperLanguage = url.searchParams.get('paperLanguage');
+		const requestedExamId = url.searchParams.get('examId');
+
 		openCreateFlow();
-		url.searchParams.delete('start');
-		url.searchParams.delete('mode');
+
+		if (requestedMode === TEST_MODES.QUIZ_PRACTICE) {
+			setActiveMode(TEST_MODES.QUIZ_PRACTICE);
+			setShowModeSelection(true);
+			if (requestedTopic) {
+				setTopic(requestedTopic);
+			}
+			if (
+				['beginner', 'intermediate', 'advanced', 'expert'].includes(
+					requestedDifficulty,
+				)
+			) {
+				setDifficulty(requestedDifficulty);
+			}
+			if (
+				['multiple-choice', 'true-false', 'coding', 'speed-challenge'].includes(
+					requestedTestType,
+				)
+			) {
+				setTestType(requestedTestType);
+			}
+			if (Number.isInteger(requestedNumQuestions) && requestedNumQuestions > 0) {
+				setNumQuestions(requestedNumQuestions);
+			}
+		}
+
+		if (requestedMode === TEST_MODES.FULL_EXAM) {
+			setActiveMode(TEST_MODES.FULL_EXAM);
+			setShowModeSelection(true);
+			if (requestedExamId) {
+				setSelectedExamId(requestedExamId);
+			}
+			if (requestedTopic) {
+				setTopic(requestedTopic);
+			}
+		}
+
+		if (
+			['english', 'hindi'].includes(requestedPaperLanguage) &&
+			requestedPaperLanguage !== paperLanguage
+		) {
+			setPaperLanguage(requestedPaperLanguage);
+		}
+
+		[
+			'start',
+			'mode',
+			'topic',
+			'difficulty',
+			'testType',
+			'numQuestions',
+			'paperLanguage',
+			'examId',
+		].forEach((param) => {
+			url.searchParams.delete(param);
+		});
 		const cleanedPath = `${url.pathname}${url.search}${url.hash}`;
 		window.history.replaceState({}, '', cleanedPath);
-	}, [openCreateFlow]);
+	}, [openCreateFlow, paperLanguage, setPaperLanguage]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return undefined;
@@ -515,7 +583,9 @@ const GenerateTestForm = () => {
 			examName: null,
 			examStream: null,
 			syllabusFocus: [],
-			testType: preset.testType || 'multiple-choice',
+			testType: normalizeQuizTestType(
+				preset.testType || 'multiple-choice',
+			),
 			numQuestions: Number(preset.numQuestions) || 10,
 			difficulty: preset.difficulty || 'intermediate',
 			language: preset.language || paperLanguage,

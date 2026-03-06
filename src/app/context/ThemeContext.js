@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { emitLocalStorageChange } from '../utils/storageEvents';
 
 const ThemeContext = createContext();
 const THEME_KEY = 'selftest_theme';
@@ -83,9 +84,11 @@ export function ThemeProvider({ children }) {
 		if (typeof window === 'undefined') return;
 		if (themePreference === SYSTEM) {
 			localStorage.removeItem(THEME_KEY);
+			emitLocalStorageChange(THEME_KEY);
 			return;
 		}
 		localStorage.setItem(THEME_KEY, themePreference);
+		emitLocalStorageChange(THEME_KEY);
 	}, [theme, themePreference]);
 
 	const toggleTheme = () => {

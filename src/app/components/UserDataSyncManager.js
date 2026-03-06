@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { STORAGE_KEYS } from '../constants';
 import { useAuth } from '../context/AuthContext';
+import { LOCAL_STORAGE_CHANGE_EVENT } from '../utils/storageEvents';
 
 const TRACKED_KEY_PREFIX = 'selftest_';
 const EXTRA_TRACKED_KEYS = new Set(['dataSaverMode', 'soundEffectsEnabled']);
 const SYNC_DEBOUNCE_MS = 1200;
-const SYNC_POLL_MS = 6000;
 
 function isTrackedKey(key) {
 	if (typeof key !== 'string') {
@@ -312,18 +312,20 @@ export default function UserDataSyncManager() {
 
 		hydrateFromServer();
 
-		let previousHash = stableSnapshotHash(readTrackedStorageSnapshot());
-		const pollId = window.setInterval(() => {
-			const currentSnapshot = readTrackedStorageSnapshot();
-			const currentHash = stableSnapshotHash(currentSnapshot);
-			if (currentHash !== previousHash) {
-				previousHash = currentHash;
-				scheduleSync();
-			}
-		}, SYNC_POLL_MS);
-
 		const handleStorage = (event) => {
 			if (isTrackedKey(event.key || '')) {
+				scheduleSync();
+			}
+		};
+
+		const handleLocalChange = (event) => {
+			const changedKeys = Array.isArray(event?.detail?.keys)
+				? event.detail.keys
+				: [];
+			if (
+				changedKeys.length === 0 ||
+				changedKeys.some((key) => isTrackedKey(key))
+			) {
 				scheduleSync();
 			}
 		};
@@ -341,12 +343,13 @@ export default function UserDataSyncManager() {
 		};
 
 		window.addEventListener('storage', handleStorage);
+		window.addEventListener(LOCAL_STORAGE_CHANGE_EVENT, handleLocalChange);
 		window.addEventListener('online', handleOnline);
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		return () => {
-			window.clearInterval(pollId);
 			window.removeEventListener('storage', handleStorage);
+			window.removeEventListener(LOCAL_STORAGE_CHANGE_EVENT, handleLocalChange);
 			window.removeEventListener('online', handleOnline);
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 			if (syncTimeoutRef.current) {

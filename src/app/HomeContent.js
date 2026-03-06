@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import GenerateTestForm from './components/GenerateTestForm';
 import UnsubmittedTestAlert from './components/UnsubmittedTestAlert';
 import StreakBanner from './components/StreakBanner';
+import RevisionQuickStart from './components/RevisionQuickStart';
 import Loading from './components/Loading';
 import FirstVisitTour from './components/FirstVisitTour';
 
@@ -50,6 +51,7 @@ export default function HomeContent() {
 			<FirstVisitTour />
 			<GenerateTestForm />
 			<UnsubmittedTestAlert />
+			<RevisionQuickStart />
 			<StreakBanner />
 			<StatsDashboard />
 			<PerformanceChart />

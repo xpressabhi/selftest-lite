@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { emitLocalStorageChange } from '../utils/storageEvents';
 
 /**
  * Custom hook to manage localStorage with React state synchronization.
@@ -42,6 +43,7 @@ function useLocalStorage(key, initialValue) {
 		if (hydratedKey !== key) return;
 		try {
 			window.localStorage.setItem(key, JSON.stringify(storedValue));
+			emitLocalStorageChange(key);
 		} catch (error) {
 			console.error('Error setting localStorage key', key, error);
 		}
@@ -102,6 +104,7 @@ function useLocalStorage(key, initialValue) {
 		if (typeof window === 'undefined') return;
 		try {
 			window.localStorage.removeItem(key);
+			emitLocalStorageChange(key);
 		} catch (error) {
 			console.error('Error removing localStorage key', key, error);
 		}

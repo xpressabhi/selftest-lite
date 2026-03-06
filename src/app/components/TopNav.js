@@ -263,6 +263,10 @@ export default function TopNav() {
 				return t('multipleChoice');
 			case 'true-false':
 				return t('trueFalse');
+			case 'coding':
+				return t('codingProblems');
+			case 'mixed':
+				return t('mixedFormat');
 			case 'speed-challenge':
 				return t('speedChallenge');
 			default:

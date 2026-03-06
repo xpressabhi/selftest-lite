@@ -3,6 +3,7 @@
 import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
 import englishTranslations from '../locales/english.json';
 import hindiTranslations from '../locales/hindi.json';
+import { emitLocalStorageChange } from '../utils/storageEvents';
 
 const LanguageContext = createContext();
 const LANGUAGE_KEY = 'selftest_language';
@@ -42,6 +43,7 @@ export function LanguageProvider({ children }) {
 	useEffect(() => {
 		if (typeof window === 'undefined' || !isLanguageReady) return;
 		localStorage.setItem(LANGUAGE_KEY, language);
+		emitLocalStorageChange(LANGUAGE_KEY);
 	}, [language, isLanguageReady]);
 
 	useEffect(() => {

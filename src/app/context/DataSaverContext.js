@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import useNetworkStatus from '../hooks/useNetworkStatus';
+import { emitLocalStorageChange } from '../utils/storageEvents';
 
 const DATA_SAVER_KEY = 'dataSaverMode';
 const DATA_SAVER_CLASS = 'data-saver';
@@ -53,12 +54,14 @@ export function DataSaverProvider({ children }) {
 		const newValue = !isDataSaverActive;
 		setUserPreference(newValue);
 		localStorage.setItem(DATA_SAVER_KEY, String(newValue));
+		emitLocalStorageChange(DATA_SAVER_KEY);
 	};
 
 	// Reset to auto mode
 	const resetToAuto = () => {
 		setUserPreference(null);
 		localStorage.removeItem(DATA_SAVER_KEY);
+		emitLocalStorageChange(DATA_SAVER_KEY);
 	};
 
 	// Apply shared data-saver class to document root

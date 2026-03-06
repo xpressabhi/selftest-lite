@@ -18,6 +18,10 @@ import {
 	isApiTimeoutResponse,
 } from '../utils/apiLimitError';
 
+function normalizeQuizTestType(testType) {
+	return testType === 'mixed' ? 'multiple-choice' : testType;
+}
+
 // Lazy load heavy interactive/visual components
 const Confetti = dynamic(() => import('../components/Confetti'), { ssr: false });
 const TrophyBurst = dynamic(() => import('../components/Confetti').then(mod => mod.TrophyBurst), { ssr: false });
@@ -136,6 +140,12 @@ function ResultsContent() {
 			);
 			let response;
 			try {
+				const normalizedRequestParams = {
+					...questionPaper.requestParams,
+					testType: normalizeQuizTestType(
+						questionPaper.requestParams?.testType || 'multiple-choice',
+					),
+				};
 				response = await fetch('/api/generate', {
 					method: 'POST',
 					headers: {
@@ -143,7 +153,7 @@ function ResultsContent() {
 					},
 					signal: controller.signal,
 					body: JSON.stringify({
-						...questionPaper.requestParams,
+						...normalizedRequestParams,
 						previousTests: testHistory.slice(0, 10),
 					}),
 				});
@@ -163,7 +173,12 @@ function ResultsContent() {
 			}
 
 			const newQuestionPaper = await response.json();
-			newQuestionPaper.requestParams = questionPaper.requestParams;
+			newQuestionPaper.requestParams = {
+				...questionPaper.requestParams,
+				testType: normalizeQuizTestType(
+					questionPaper.requestParams?.testType || 'multiple-choice',
+				),
+			};
 			updateHistory(newQuestionPaper);
 			router.push('/test?id=' + newQuestionPaper.id);
 		} catch (err) {
@@ -197,6 +212,9 @@ function ResultsContent() {
 			const retryRequestParams = {
 				...(questionPaper.requestParams || {}),
 				topic: retryTopic,
+				testType: normalizeQuizTestType(
+					questionPaper.requestParams?.testType || 'multiple-choice',
+				),
 				numQuestions: incorrectQuestions.length,
 				retrySource: 'incorrect-answers',
 				originalTestId: questionPaper.id,
