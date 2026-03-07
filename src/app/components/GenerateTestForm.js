@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useNetworkStatus from '../hooks/useNetworkStatus';
 import { APP_EVENTS, STORAGE_KEYS, TOPIC_CATEGORIES } from '../constants';
@@ -84,6 +84,8 @@ const GenerateTestForm = () => {
 	const [selectedCategory, setSelectedCategory] = useState('');
 
 	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const MAX_RETRIES = 3;
 	const GENERATION_TIMEOUT_MS = 180000;
 	const { isOffline, shouldSaveData } = useNetworkStatus();
@@ -180,25 +182,27 @@ const GenerateTestForm = () => {
 	}, [openModeSelection]);
 
 	useEffect(() => {
-		if (typeof window === 'undefined') return;
-		const url = new URL(window.location.href);
-		if (url.searchParams.get('start') !== 'create') return;
+		if (searchParams.get('start') !== 'create') return;
 
-		const requestedMode = url.searchParams.get('mode');
-		const requestedTopic = (url.searchParams.get('topic') || '').trim();
-		const requestedDifficulty = url.searchParams.get('difficulty');
+		const requestedMode = searchParams.get('mode');
+		const requestedTopic = (searchParams.get('topic') || '').trim();
+		const requestedDifficulty = searchParams.get('difficulty');
 		const requestedTestType = normalizeQuizTestType(
-			url.searchParams.get('testType') || 'multiple-choice',
+			searchParams.get('testType') || 'multiple-choice',
 		);
-		const requestedNumQuestions = Number(url.searchParams.get('numQuestions'));
-		const requestedPaperLanguage = url.searchParams.get('paperLanguage');
-		const requestedExamId = url.searchParams.get('examId');
+		const requestedNumQuestions = Number(searchParams.get('numQuestions'));
+		const requestedPaperLanguage = searchParams.get('paperLanguage');
+		const requestedExamId = searchParams.get('examId');
 
 		openCreateFlow();
 
 		if (requestedMode === TEST_MODES.QUIZ_PRACTICE) {
 			setActiveMode(TEST_MODES.QUIZ_PRACTICE);
 			setShowModeSelection(true);
+			setSelectedExamId('');
+			setSelectedSyllabusFocus([]);
+			setSelectedTopics([]);
+			setSelectedCategory('');
 			if (requestedTopic) {
 				setTopic(requestedTopic);
 			}
@@ -224,6 +228,8 @@ const GenerateTestForm = () => {
 		if (requestedMode === TEST_MODES.FULL_EXAM) {
 			setActiveMode(TEST_MODES.FULL_EXAM);
 			setShowModeSelection(true);
+			setSelectedTopics([]);
+			setSelectedCategory('');
 			if (requestedExamId) {
 				setSelectedExamId(requestedExamId);
 			}
@@ -239,6 +245,7 @@ const GenerateTestForm = () => {
 			setPaperLanguage(requestedPaperLanguage);
 		}
 
+		const cleanedSearchParams = new URLSearchParams(searchParams.toString());
 		[
 			'start',
 			'mode',
@@ -249,11 +256,19 @@ const GenerateTestForm = () => {
 			'paperLanguage',
 			'examId',
 		].forEach((param) => {
-			url.searchParams.delete(param);
+			cleanedSearchParams.delete(param);
 		});
-		const cleanedPath = `${url.pathname}${url.search}${url.hash}`;
-		window.history.replaceState({}, '', cleanedPath);
-	}, [openCreateFlow, paperLanguage, setPaperLanguage]);
+		const cleanedQuery = cleanedSearchParams.toString();
+		const cleanedPath = cleanedQuery ? `${pathname}?${cleanedQuery}` : pathname;
+		router.replace(cleanedPath, { scroll: false });
+	}, [
+		openCreateFlow,
+		pathname,
+		paperLanguage,
+		router,
+		searchParams,
+		setPaperLanguage,
+	]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return undefined;

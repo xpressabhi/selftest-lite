@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import GenerateTestForm from './components/GenerateTestForm';
 import UnsubmittedTestAlert from './components/UnsubmittedTestAlert';
@@ -18,44 +19,17 @@ const StatsDashboard = dynamic(() => import('./components/StatsDashboard'), {
 	ssr: false,
 });
 
-const PerformanceChart = dynamic(() => import('./components/PerformanceChart'), {
-	loading: () => (
-		<div
-			style={{ height: '200px' }}
-			className='d-flex align-items-center justify-content-center text-muted'
-		>
-			...
-		</div>
-	),
-	ssr: false,
-});
-
-const AchievementShowcase = dynamic(
-	() => import('./components/AchievementShowcase'),
-	{
-		loading: () => (
-			<div
-				style={{ height: '150px' }}
-				className='d-flex align-items-center justify-content-center text-muted'
-			>
-				...
-			</div>
-		),
-		ssr: false,
-	},
-);
-
 export default function HomeContent() {
 	return (
 		<div className='typeform-bg container d-flex flex-column align-items-center'>
 			<FirstVisitTour />
-			<GenerateTestForm />
+			<Suspense fallback={<div className='w-100' style={{ maxWidth: '720px' }} />}>
+				<GenerateTestForm />
+			</Suspense>
 			<UnsubmittedTestAlert />
 			<RevisionQuickStart />
 			<StreakBanner />
 			<StatsDashboard />
-			<PerformanceChart />
-			<AchievementShowcase />
 		</div>
 	);
 }
