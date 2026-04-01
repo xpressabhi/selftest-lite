@@ -11,7 +11,7 @@ const TestIdEntryCard = memo(function TestIdEntryCard({
 	onSubmit,
 }) {
 	return (
-		<Card className='w-100 border-0 glass-card mb-3' style={{ maxWidth: '720px' }}>
+		<Card className='w-100 border-0 glass-card interactive-card mb-3' style={{ maxWidth: '720px' }}>
 			<Card.Body className='p-3 p-md-4'>
 				<Form onSubmit={onSubmit}>
 					<Form.Group>
@@ -30,7 +30,7 @@ const TestIdEntryCard = memo(function TestIdEntryCard({
 							<Button
 								variant='outline-primary'
 								type='submit'
-								className='border-start-0 px-4'
+								className='border-start-0 px-4 quick-action-chip'
 								style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
 							>
 								{t('go')}

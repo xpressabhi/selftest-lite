@@ -23,11 +23,11 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 	const columnSize = hasBookmarkedExams && hasBookmarkedQuizPresets ? 6 : 12;
 
 	return (
-		<Card className='w-100 border-0 glass-card mb-3' style={{ maxWidth: '720px' }}>
+		<Card className='w-100 border-0 glass-card interactive-card mb-3' style={{ maxWidth: '720px' }}>
 			<Card.Body className='p-3 p-md-4'>
 				<div className='d-flex justify-content-between align-items-center gap-2 mb-2'>
 					<div className='fw-semibold'>{t('bookmarkedQuickStart')}</div>
-					<Badge bg='light' text='dark' className='border'>
+					<Badge bg='light' text='dark' className='border soft-badge'>
 						{t('directCreate')}
 					</Badge>
 				</div>
@@ -45,7 +45,7 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 										type='button'
 										size='sm'
 										variant='outline-primary'
-										className='rounded-pill'
+										className='rounded-pill quick-action-chip'
 										disabled={loading}
 										onClick={() => onQuickStartExam(exam.id)}
 									>
@@ -68,7 +68,7 @@ const BookmarkedQuickStartCard = memo(function BookmarkedQuickStartCard({
 										type='button'
 										size='sm'
 										variant='outline-secondary'
-										className='rounded-pill'
+										className='rounded-pill quick-action-chip'
 										disabled={loading}
 										onClick={() => onQuickStartPreset(preset)}
 									>

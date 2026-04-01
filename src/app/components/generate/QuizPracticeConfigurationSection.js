@@ -46,7 +46,7 @@ const QuizPracticeConfigurationSection = memo(function QuizPracticeConfiguration
 				<Button
 					type='button'
 					variant='link'
-					className='text-decoration-none p-0 text-muted d-flex align-items-center gap-2'
+					className='text-decoration-none p-0 text-muted d-flex align-items-center gap-2 control-link'
 					onClick={onToggleAdvanced}
 				>
 					<Icon name={showAdvanced ? 'chevronUp' : 'chevronDown'} size={14} />
@@ -107,7 +107,7 @@ const QuizPracticeConfigurationSection = memo(function QuizPracticeConfiguration
 			)}
 
 			{showAdvanced && (
-				<div className='p-4 rounded-3 bg-light bg-opacity-50 border border-light'>
+				<div className='p-4 rounded-3 bg-light bg-opacity-50 border border-light surface-panel'>
 					<Row className='g-3'>
 						<Col xs={6} sm={3}>
 							<Form.Label className='small text-muted fw-semibold'>
@@ -189,7 +189,7 @@ const QuizPracticeConfigurationSection = memo(function QuizPracticeConfiguration
 										: 'outline-secondary'
 								}
 								size='sm'
-								className={`rounded-pill px-3 ${
+								className={`rounded-pill px-3 choice-pill ${
 									selectedCategory !== category ? 'border-0 bg-white' : ''
 								}`}
 								onClick={() => onCategoryToggle(category)}
@@ -215,7 +215,7 @@ const QuizPracticeConfigurationSection = memo(function QuizPracticeConfiguration
 												: 'light'
 										}
 										size='sm'
-										className='rounded-pill'
+										className='rounded-pill choice-pill'
 										onClick={() => onTopicToggle(topicItem)}
 									>
 										{topicItem}

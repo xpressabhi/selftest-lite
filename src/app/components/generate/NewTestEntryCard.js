@@ -9,7 +9,7 @@ const NewTestEntryCard = memo(function NewTestEntryCard({
 	onStartNewTest,
 }) {
 	return (
-		<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
+		<Card className='w-100 border-0 glass-card interactive-card mb-4' style={{ maxWidth: '720px' }}>
 			<Card.Body className='p-4 p-md-5'>
 				<div className='d-flex flex-column gap-3'>
 					<div>
@@ -19,7 +19,7 @@ const NewTestEntryCard = memo(function NewTestEntryCard({
 					<Button
 						type='button'
 						variant='primary'
-						className='w-100 py-3 fw-semibold d-flex align-items-center justify-content-center gap-2'
+						className='w-100 py-3 fw-semibold d-flex align-items-center justify-content-center gap-2 generate-cta'
 						onClick={onStartNewTest}
 					>
 						<Icon name='plusCircle' />

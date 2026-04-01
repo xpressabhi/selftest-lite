@@ -12,7 +12,7 @@ const ProTipCard = memo(function ProTipCard({
 	return (
 		<Card className='border-0 bg-transparent'>
 			<Card.Body className='text-center p-3'>
-				<div className='d-flex flex-column align-items-center opacity-75'>
+				<div className='d-flex flex-column align-items-center opacity-75 interactive-card rounded-4 px-3 py-2'>
 					<div className='d-flex align-items-center gap-2 mb-2'>
 						<Icon name='lightbulb' className='text-warning' />
 						<span className='fw-semibold'>{t('proTip')}</span>

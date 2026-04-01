@@ -11,7 +11,7 @@ const ModeSelectionCard = memo(function ModeSelectionCard({
 	quizPracticeValue,
 }) {
 	return (
-		<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
+		<Card className='w-100 border-0 glass-card interactive-card mb-4' style={{ maxWidth: '720px' }}>
 			<Card.Body className='p-4 p-md-5'>
 				<div className='d-flex flex-column gap-3'>
 					<div className='fw-semibold'>{t('chooseTestMode')}</div>
@@ -20,7 +20,7 @@ const ModeSelectionCard = memo(function ModeSelectionCard({
 							<Button
 								type='button'
 								variant='outline-primary'
-								className='w-100 py-3 d-flex align-items-center justify-content-center gap-2'
+								className='w-100 py-3 d-flex align-items-center justify-content-center gap-2 selection-card'
 								onClick={() => onSelectMode(fullExamValue)}
 							>
 								<Icon name='bookOpen' />
@@ -31,7 +31,7 @@ const ModeSelectionCard = memo(function ModeSelectionCard({
 							<Button
 								type='button'
 								variant='outline-primary'
-								className='w-100 py-3 d-flex align-items-center justify-content-center gap-2'
+								className='w-100 py-3 d-flex align-items-center justify-content-center gap-2 selection-card'
 								onClick={() => onSelectMode(quizPracticeValue)}
 							>
 								<Icon name='sparkles' />

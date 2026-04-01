@@ -46,7 +46,7 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 						type='button'
 						size='sm'
 						variant='outline-secondary'
-						className='rounded-pill'
+						className='rounded-pill quick-action-chip'
 						onClick={onToggleExamBrowser}
 					>
 						{showExamBrowser ? t('hideList') : t('browseExams')}
@@ -87,7 +87,7 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 						type='button'
 						size='sm'
 						variant='outline-secondary'
-						className='w-100'
+						className='w-100 quick-action-chip'
 						onClick={onClearExamFilters}
 					>
 						{t('clear')}
@@ -116,7 +116,7 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 
 			{showExamBrowser && (
 				<div
-					className='rounded-3 border bg-white p-2'
+					className='rounded-3 border bg-white p-2 surface-panel'
 					style={{ maxHeight: '220px', overflowY: 'auto' }}
 				>
 					{visibleExams.map((exam) => {
@@ -124,7 +124,7 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 						return (
 							<div
 								key={exam.id}
-								className='px-2 py-2 border-bottom d-flex justify-content-between align-items-start gap-2'
+								className='px-2 py-2 border-bottom d-flex justify-content-between align-items-start gap-2 exam-browser-row'
 							>
 								<div>
 									<div className='small fw-semibold text-dark'>{exam.name}</div>
@@ -151,8 +151,9 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 										variant={
 											selectedExamId === exam.id
 												? 'primary'
-												: 'outline-secondary'
+											: 'outline-secondary'
 										}
+										className='quick-action-chip'
 										onClick={() => onSelectExamFromList(exam.id)}
 									>
 										{t('select')}
@@ -178,7 +179,7 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 			)}
 
 			{selectedExam && (
-				<Card className='border-0 bg-light bg-opacity-50'>
+				<Card className='border-0 bg-light bg-opacity-50 surface-panel'>
 					<Card.Body className='p-3'>
 						<div className='d-flex flex-wrap gap-2 mb-2'>
 							<Badge bg='primary'>{t('objective')}</Badge>
@@ -221,10 +222,10 @@ const FullExamConfigurationSection = memo(function FullExamConfigurationSection(
 									variant={
 										selectedSyllabusFocus.includes(unit)
 											? 'primary'
-											: 'light'
+										: 'light'
 									}
 									size='sm'
-									className='rounded-pill'
+									className='rounded-pill choice-pill'
 									onClick={() => onToggleSyllabusFocus(unit)}
 								>
 									{unit}

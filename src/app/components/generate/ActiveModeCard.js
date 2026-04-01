@@ -10,11 +10,11 @@ const ActiveModeCard = memo(function ActiveModeCard({
 	onBackToModeSelection,
 }) {
 	return (
-		<Card className='w-100 border-0 glass-card mb-2' style={{ maxWidth: '720px' }}>
+		<Card className='w-100 border-0 glass-card interactive-card mb-2' style={{ maxWidth: '720px' }}>
 			<Card.Body className='p-3'>
 				<div className='d-flex justify-content-between align-items-center gap-2'>
 					<div className='d-flex align-items-center gap-2 flex-wrap'>
-						<Badge bg='primary'>{currentModeLabel}</Badge>
+						<Badge bg='primary' className='soft-badge'>{currentModeLabel}</Badge>
 					</div>
 					<div className='d-flex align-items-center gap-1'>
 						<Button

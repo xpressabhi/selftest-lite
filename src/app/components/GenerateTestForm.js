@@ -797,7 +797,7 @@ const GenerateTestForm = () => {
 			)}
 
 				{activeMode && (
-					<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
+					<Card className='w-100 border-0 glass-card interactive-card mb-4' style={{ maxWidth: '720px' }}>
 					<Card.Body className='p-4 p-md-5'>
 							<div className='d-flex justify-content-end mb-3'>
 								<div style={{ minWidth: '170px' }}>
@@ -920,7 +920,7 @@ const GenerateTestForm = () => {
 										variant='primary'
 										type='submit'
 										disabled={loading || !hasNewTestInputContext}
-										className='w-100 py-3 fw-semibold fs-5 mt-2'
+										className='w-100 py-3 fw-semibold fs-5 mt-2 generate-cta'
 									>
 										<div className='d-flex align-items-center justify-content-center gap-2'>
 											{!loading && <Icon name='sparkles' />}

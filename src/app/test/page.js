@@ -859,12 +859,33 @@ function TestContent() {
 						backdrop-filter: blur(6px);
 						transition: transform 0.2s ease, box-shadow 0.2s ease,
 							border-color 0.2s ease, background-color 0.2s ease;
+						position: relative;
+						overflow: hidden;
 					}
 
 					.option-tile:hover {
 						transform: translateY(-1px);
 						box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
 						border-color: rgba(59, 130, 246, 0.25) !important;
+					}
+
+					.option-tile:active {
+						transform: scale(0.992);
+					}
+
+					.option-tile::after {
+						content: '';
+						position: absolute;
+						inset: 0;
+						background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), transparent 55%);
+						opacity: 0;
+						transition: opacity 0.2s ease;
+						pointer-events: none;
+					}
+
+					.option-tile:hover::after,
+					.option-active::after {
+						opacity: 1;
 					}
 
 					.option-active {
@@ -957,7 +978,7 @@ function TestContent() {
 					.question-transition {
 						opacity: 1;
 						transform: translate3d(0, 0, 0);
-						transition: opacity 0.24s ease, transform 0.24s ease;
+						transition: opacity 0.24s ease, transform 0.24s ease, filter 0.24s ease;
 						will-change: transform, opacity;
 					}
 
@@ -971,21 +992,28 @@ function TestContent() {
 
 					.question-transition.exit.forward {
 						opacity: 0;
-						transform: translate3d(-28px, 0, 0);
+						filter: saturate(0.94);
+						transform: perspective(1400px) rotateY(-10deg) translate3d(-28px, 0, -8px);
+						transform-origin: left center;
 					}
 
 					.question-transition.exit.backward {
 						opacity: 0;
-						transform: translate3d(28px, 0, 0);
+						filter: saturate(0.94);
+						transform: perspective(1400px) rotateY(10deg) translate3d(28px, 0, -8px);
+						transform-origin: right center;
 					}
 
 					@keyframes question-enter-forward {
 						from {
 							opacity: 0;
-							transform: translate3d(28px, 0, 0);
+							filter: saturate(0.94);
+							transform: perspective(1400px) rotateY(10deg) translate3d(28px, 0, -8px);
+							transform-origin: right center;
 						}
 						to {
 							opacity: 1;
+							filter: none;
 							transform: translate3d(0, 0, 0);
 						}
 					}
@@ -993,10 +1021,13 @@ function TestContent() {
 					@keyframes question-enter-backward {
 						from {
 							opacity: 0;
-							transform: translate3d(-28px, 0, 0);
+							filter: saturate(0.94);
+							transform: perspective(1400px) rotateY(-10deg) translate3d(-28px, 0, -8px);
+							transform-origin: left center;
 						}
 						to {
 							opacity: 1;
+							filter: none;
 							transform: translate3d(0, 0, 0);
 						}
 					}

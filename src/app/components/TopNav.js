@@ -815,6 +815,7 @@ export default function TopNav() {
 					text-decoration: none;
 					font-weight: 700;
 					font-size: 1.15rem;
+					transition: transform 0.18s ease;
 				}
 
 				.brand-text {
@@ -907,6 +908,16 @@ export default function TopNav() {
 				.desktop-create-link:hover {
 					background: rgba(99, 102, 241, 0.15);
 					color: var(--accent-primary);
+				}
+
+				@media (hover: hover) and (pointer: fine) {
+					.nav-brand:hover {
+						transform: translateY(-1px);
+					}
+
+					.desktop-nav-link:hover {
+						transform: translateY(-1px);
+					}
 				}
 
 				/* Actions */
