@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { memo, useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { STORAGE_KEYS } from '../constants';
 import Icon from '../components/Icon';
+import PretextBlock from '../components/PretextBlock';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useResolvedTestRecord from '../hooks/useResolvedTestRecord';
 import Loading from '../components/Loading';
 import FloatingButtonWithCopy from '../components/FloatingButtonWithCopy';
+import { useDataSaver } from '../context/DataSaverContext';
 import { useLanguage } from '../context/LanguageContext';
 import useBookmarks from '../hooks/useBookmarks';
 import useSoundEffects from '../hooks/useSoundEffects';
@@ -26,6 +28,86 @@ import Share from '../components/Share';
 import Print from '../components/Print';
 import QuestionNavigatorModal from './components/QuestionNavigatorModal';
 import { Container, Button, Spinner, Alert, Card, ProgressBar, Modal } from 'react-bootstrap';
+
+function formatClock(totalSeconds) {
+	const safeSeconds = Math.max(0, totalSeconds);
+	const mins = Math.floor(safeSeconds / 60);
+	const secs = safeSeconds % 60;
+	return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+const TimerPill = memo(function TimerPill({
+	mode,
+	initialSeconds = 0,
+	active,
+	onSnapshot,
+	onCriticalChange,
+	onExpire,
+	t,
+}) {
+	const { shouldReduceAnimations } = useDataSaver();
+	const [seconds, setSeconds] = useState(mode === 'countdown' ? initialSeconds : 0);
+	const expiredRef = useRef(false);
+
+	useEffect(() => {
+		const nextSeconds = mode === 'countdown' ? initialSeconds : 0;
+		expiredRef.current = false;
+		setSeconds(nextSeconds);
+		onSnapshot?.({
+			elapsed: mode === 'countdown' ? 0 : nextSeconds,
+			remaining: mode === 'countdown' ? nextSeconds : null,
+		});
+		onCriticalChange?.(mode === 'countdown' && nextSeconds <= 10);
+	}, [initialSeconds, mode, onCriticalChange, onSnapshot]);
+
+	useEffect(() => {
+		if (!active) return undefined;
+
+		const intervalId = window.setInterval(() => {
+			setSeconds((prev) => {
+				const next = mode === 'countdown' ? Math.max(prev - 1, 0) : prev + 1;
+				const elapsed = mode === 'countdown' ? Math.max(0, initialSeconds - next) : next;
+				const remaining = mode === 'countdown' ? next : null;
+
+				onSnapshot?.({ elapsed, remaining });
+				if (mode === 'countdown') {
+					onCriticalChange?.(next <= 10);
+					if (next === 0 && !expiredRef.current) {
+						expiredRef.current = true;
+						window.setTimeout(() => onExpire?.(), 0);
+					}
+				}
+
+				return next;
+			});
+		}, 1000);
+
+		return () => window.clearInterval(intervalId);
+	}, [active, initialSeconds, mode, onCriticalChange, onExpire, onSnapshot]);
+
+	const isCountdown = mode === 'countdown';
+	const isCritical = isCountdown && seconds <= 10;
+
+	return (
+		<div
+			className={`timer-pill rounded-pill px-2 py-1 d-flex align-items-center gap-2 border shadow-sm ${
+				isCritical ? 'timer-pill-critical' : 'timer-pill-default'
+			} ${shouldReduceAnimations ? 'timer-pill-static' : ''}`}
+		>
+			<Icon
+				name='clock'
+				size={14}
+				className={isCritical ? 'text-white' : isCountdown ? 'text-danger' : 'text-primary'}
+			/>
+			<span className='fw-bold font-monospace small'>{formatClock(seconds)}</span>
+			{isCountdown && (
+				<PretextBlock as='span' className='small opacity-75 timer-label'>
+					{t('left')}
+				</PretextBlock>
+			)}
+		</div>
+	);
+});
 
 function TestContent() {
 	const searchParams = useSearchParams();
@@ -45,7 +127,8 @@ function TestContent() {
 	});
 
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-	const [fadeState, setFadeState] = useState('fade-in'); // 'fade-in' or 'fade-out'
+	const [transitionPhase, setTransitionPhase] = useState('enter');
+	const [transitionDirection, setTransitionDirection] = useState('forward');
 	const router = useRouter();
 	const timeoutRef = useRef(null);
 	const questionFormRef = useRef(null);
@@ -55,18 +138,18 @@ function TestContent() {
 	const [showNavigatorModal, setShowNavigatorModal] = useState(false);
 	const [showMoreModal, setShowMoreModal] = useState(false);
 	const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-	const [elapsedTime, setElapsedTime] = useState(0); // in seconds
-	const timerRef = useRef(null);
+	const elapsedTimeRef = useRef(0);
+	const [isCountdownCritical, setIsCountdownCritical] = useState(false);
 	const lastScrollYRef = useRef(0);
 	const headerVisibleRef = useRef(true);
 	const scrollRafRef = useRef(null);
 	const { t } = useLanguage();
+	const { shouldReduceAnimations } = useDataSaver();
 	const { isBookmarked, toggleBookmark } = useBookmarks();
 
 	// UX Enhancement: Sound effects
 	const { playSelect, playTick } = useSoundEffects();
 
-	const [timeLeft, setTimeLeft] = useState(null); // For speed challenge
 	const [isSubmitted, setIsSubmitted] = useState(false);
 	const [isQuestionFocused, setIsQuestionFocused] = useState(false);
 
@@ -92,15 +175,6 @@ function TestContent() {
 		if (!questionPaper?.userAnswers) return;
 		router.push('/results?id=' + questionPaper.id);
 	}, [questionPaper, router]);
-
-	// Initialize Speed Challenge timer
-	useEffect(() => {
-		if (questionPaper && questionPaper.requestParams?.testType === 'speed-challenge' && timeLeft === null) {
-			// 20 seconds per question for speed challenge
-			const totalTime = questionPaper.questions.length * 20;
-			setTimeLeft(totalTime);
-		}
-	}, [questionPaper, timeLeft]);
 
 	// Set document title based on current questionPaper topic
 	useEffect(() => {
@@ -175,36 +249,6 @@ function TestContent() {
 		};
 	}, []);
 
-	// Timer logic (Elapsed time & Speed Challenge Countdown)
-	useEffect(() => {
-		if (loading || !questionPaper || isSubmitted) return;
-
-		timerRef.current = setInterval(() => {
-			setElapsedTime((prev) => prev + 1);
-
-			// Speed Challenge Countdown
-			if (timeLeft !== null) {
-				setTimeLeft((prev) => {
-					if (prev <= 1) {
-						// Time's up!
-						clearInterval(timerRef.current);
-						// Need to use a ref or function to access latest state if needed, 
-						// but confirmSubmit uses questionPaper and answers which are stable or refs might be needed.
-						// However, we can just trigger submit here.
-						// We need to call confirmSubmit, but it depends on state.
-						// Let's use a flag to trigger it in another effect or just call it if deps are fine.
-						// Since confirmSubmit is closed over render scope, we might have stale state issues inside setInterval.
-						// Better to set a flag 'timeExpired'.
-						return 0;
-					}
-					return prev - 1;
-				});
-			}
-		}, 1000);
-
-		return () => clearInterval(timerRef.current);
-	}, [loading, questionPaper, isSubmitted, timeLeft]);
-
 	const finalizeSubmit = useCallback(() => {
 		if (isSubmitted || !questionPaper) return;
 		setIsSubmitted(true);
@@ -218,7 +262,7 @@ function TestContent() {
 			timestamp: Date.now(),
 			totalQuestions: questionPaper.questions.length,
 			score: calculatedScore,
-			timeTaken: elapsedTime, // Store total time taken in seconds
+			timeTaken: elapsedTimeRef.current,
 			isSpeedChallenge: questionPaper.requestParams?.testType === 'speed-challenge',
 		};
 		updateHistory(updatedPaper);
@@ -228,7 +272,6 @@ function TestContent() {
 	}, [
 		answers,
 		cleanUpAnswers,
-		elapsedTime,
 		isSubmitted,
 		questionPaper,
 		router,
@@ -240,18 +283,9 @@ function TestContent() {
 		finalizeSubmit();
 	}, [finalizeSubmit, isSubmitted, questionPaper]);
 
-	// Auto-submit when time runs out
-	useEffect(() => {
-		if (timeLeft === 0 && !isSubmitted) {
-			confirmSubmit();
-		}
-	}, [confirmSubmit, timeLeft, isSubmitted]);
-
-	const formatTime = (seconds) => {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	};
+	const handleTimerSnapshot = useCallback(({ elapsed }) => {
+		elapsedTimeRef.current = elapsed;
+	}, []);
 
 	const handleAnswerChange = (questionIndex, answer) => {
 		// Play selection sound for tactile feedback
@@ -276,11 +310,6 @@ function TestContent() {
 		};
 	}, []);
 
-	// Ensure fade-in when question index changes (in case of manual jump)
-	useEffect(() => {
-		setFadeState('fade-in');
-	}, [currentQuestionIndex]);
-
 	// Brief visual emphasis when a new question becomes active.
 	useEffect(() => {
 		setIsQuestionFocused(true);
@@ -294,18 +323,26 @@ function TestContent() {
 			if (nextIndex < 0 || nextIndex >= questionPaper.questions.length) return;
 			if (nextIndex === currentQuestionIndex) return;
 
-			setFadeState('fade-out');
+			const nextDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
+			setTransitionDirection(nextDirection);
 			if (timeoutRef.current) clearTimeout(timeoutRef.current);
-				timeoutRef.current = setTimeout(() => {
-					playTick();
-					setCurrentQuestionIndex(nextIndex);
-					setFadeState('fade-in');
-					window.requestAnimationFrame(() => {
-						scrollToQuestionTop();
-					});
-				}, 220);
-			},
-			[questionPaper, currentQuestionIndex, playTick],
+			if (shouldReduceAnimations) {
+				playTick();
+				setCurrentQuestionIndex(nextIndex);
+				scrollToQuestionTop();
+				return;
+			}
+			setTransitionPhase('exit');
+			timeoutRef.current = setTimeout(() => {
+				playTick();
+				setCurrentQuestionIndex(nextIndex);
+				setTransitionPhase('enter');
+				window.requestAnimationFrame(() => {
+					scrollToQuestionTop();
+				});
+			}, 220);
+		},
+		[currentQuestionIndex, playTick, questionPaper, shouldReduceAnimations],
 	);
 
 	const handlePrevClick = useCallback(() => {
@@ -375,6 +412,11 @@ function TestContent() {
 	const q = questionPaper.questions?.[currentQuestionIndex];
 	const index = currentQuestionIndex;
 	const progress = ((index + 1) / questionPaper.questions.length) * 100;
+	const isSpeedChallenge = questionPaper.requestParams?.testType === 'speed-challenge';
+	const countdownSeconds = isSpeedChallenge
+		? questionPaper.questions.length * 20
+		: 0;
+	const isTransitioning = transitionPhase === 'exit';
 
 		const answeredCount = Object.keys(answers).length;
 		const totalCount = questionPaper.questions.length;
@@ -416,28 +458,16 @@ function TestContent() {
 								</span>
 							)}
 						</small>
-						{timeLeft !== null ? (
-							<div
-								className={`rounded-pill px-2 py-1 d-flex align-items-center gap-2 border shadow-sm ${timeLeft <= 10 ? 'bg-danger text-white' : 'bg-light text-dark'}`}
-								style={{
-									transition: 'all 0.3s ease',
-									animation: timeLeft <= 10 ? 'pulse 1s infinite' : 'none'
-								}}
-							>
-								<Icon name='clock' size={14} className={timeLeft <= 10 ? 'text-white' : 'text-danger'} />
-								<span className='fw-bold font-monospace small'>
-									{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-								</span>
-								<span className='small opacity-75 timer-label'>{t('left')}</span>
-							</div>
-						) : (
-							<div className='bg-light rounded-pill px-3 py-1 d-flex align-items-center gap-2 border shadow-sm'>
-								<Icon name='clock' size={14} className='text-primary' />
-								<span className='fw-bold text-dark font-monospace small'>
-									{formatTime(elapsedTime)}
-								</span>
-							</div>
-						)}
+						<TimerPill
+							key={questionPaper.id}
+							mode={isSpeedChallenge ? 'countdown' : 'elapsed'}
+							initialSeconds={countdownSeconds}
+							active={!loading && !isSubmitted}
+							onSnapshot={handleTimerSnapshot}
+							onCriticalChange={setIsCountdownCritical}
+							onExpire={confirmSubmit}
+							t={t}
+						/>
 
 						<div className='d-none d-md-flex align-items-center gap-2'>
 							<SoundToggle variant="light" size="sm" className="rounded-circle border-0 text-muted" />
@@ -464,7 +494,7 @@ function TestContent() {
 					</div>
 					<ProgressBar
 						now={progress}
-						variant={timeLeft !== null && timeLeft <= 10 ? 'danger' : 'primary'}
+						variant={isSpeedChallenge && isCountdownCritical ? 'danger' : 'primary'}
 						style={{ height: '4px', borderRadius: '10px', transition: 'all 0.3s ease' }}
 						className='bg-secondary bg-opacity-10'
 					/>
@@ -511,7 +541,7 @@ function TestContent() {
 								backdropFilter: 'blur(10px)'
 							}}
 							onClick={handlePrevClick}
-							disabled={currentQuestionIndex === 0 || fadeState === 'fade-out'}
+							disabled={currentQuestionIndex === 0 || isTransitioning}
 						>
 							<Icon name='chevronRight' style={{ transform: 'rotate(180deg)' }} />
 						</Button>
@@ -529,7 +559,7 @@ function TestContent() {
 							onClick={handleNextClick}
 							disabled={
 								currentQuestionIndex === questionPaper.questions.length - 1 ||
-								fadeState === 'fade-out'
+								isTransitioning
 							}
 						>
 							<Icon name='chevronRight' />
@@ -538,7 +568,7 @@ function TestContent() {
 
 						<div
 							key={index}
-							className={`fade-slide ${fadeState} w-100 question-stage`}
+							className={`question-transition ${transitionPhase} ${transitionDirection} w-100 question-stage`}
 						onTouchStart={onTouchStart}
 						onTouchEnd={onTouchEnd}
 					>
@@ -588,11 +618,11 @@ function TestContent() {
 									`}
 									style={{
 										transition: 'all 0.2s ease',
-										cursor: fadeState === 'fade-out' ? 'not-allowed' : 'pointer',
-										opacity: fadeState === 'fade-out' ? 0.7 : 1,
+										cursor: isTransitioning ? 'not-allowed' : 'pointer',
+										opacity: isTransitioning ? 0.7 : 1,
 									}}
 									onClick={() =>
-										fadeState !== 'fade-out' &&
+										!isTransitioning &&
 										handleAnswerChange(index, option)
 									}
 								>
@@ -636,7 +666,10 @@ function TestContent() {
 							size='sm'
 							className='rounded-pill px-3 d-flex align-items-center gap-2'
 							onClick={handleNextClick}
-							disabled={currentQuestionIndex === questionPaper.questions.length - 1}
+							disabled={
+								currentQuestionIndex === questionPaper.questions.length - 1 ||
+								isTransitioning
+							}
 						>
 							<Icon name='chevronRight' size={14} />
 							{isCurrentAnswered ? t('next') : t('skip')}
@@ -666,19 +699,14 @@ function TestContent() {
 
 					{/* Mobile Sticky Footer Navigation */}
 						<div
-							className='d-md-none fixed-bottom border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
-							style={{
-							zIndex: 1030,
-							bottom:
-								'calc(var(--bottom-nav-offset) + 8px)',
-						}}
-					>
+							className='d-md-none border-top shadow-lg p-2 d-flex gap-2 align-items-center justify-content-between mobile-submit-bar'
+						>
 						<Button
 							variant='light'
 							className='rounded-circle d-flex align-items-center justify-content-center border'
 							style={{ width: '48px', height: '48px' }}
 							onClick={handlePrevClick}
-							disabled={currentQuestionIndex === 0 || fadeState === 'fade-out'}
+							disabled={currentQuestionIndex === 0 || isTransitioning}
 						>
 							<Icon name='chevronRight' style={{ transform: 'rotate(180deg)' }} />
 						</Button>
@@ -706,7 +734,7 @@ function TestContent() {
 									className='flex-grow-1 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2 mobile-next-cta'
 									style={{ height: '44px' }}
 									onClick={handleNextClick}
-									disabled={fadeState === 'fade-out'}
+									disabled={isTransitioning}
 								>
 									<Icon name='chevronRight' size={16} />
 									{isCurrentAnswered ? t('next') : t('skip')}
@@ -844,6 +872,11 @@ function TestContent() {
 					}
 
 						.mobile-submit-bar {
+							position: fixed;
+							left: max(8px, var(--safe-left));
+							right: max(8px, var(--safe-right));
+							bottom: calc(var(--bottom-nav-height, 72px) + var(--viewport-bottom-offset, 0px) + 8px);
+							z-index: 1030;
 							background: linear-gradient(
 								to top,
 								rgba(255, 255, 255, 0.98),
@@ -851,7 +884,7 @@ function TestContent() {
 						);
 						backdrop-filter: blur(10px);
 						border-radius: 14px;
-							margin: 0 8px;
+							margin: 0;
 						}
 
 						.test-content-shell {
@@ -900,6 +933,74 @@ function TestContent() {
 						transform: translateY(-8px);
 					}
 
+					.timer-pill {
+						transition: background-color 0.2s ease, color 0.2s ease,
+							border-color 0.2s ease, box-shadow 0.2s ease;
+					}
+
+					.timer-pill-default {
+						background: var(--bg-primary);
+						color: var(--text-primary);
+					}
+
+					.timer-pill-critical {
+						background: var(--accent-danger);
+						color: #fff;
+						animation: pulse 1s infinite;
+					}
+
+					.timer-pill-static,
+					:global(.data-saver) .timer-pill-critical {
+						animation: none;
+					}
+
+					.question-transition {
+						opacity: 1;
+						transform: translate3d(0, 0, 0);
+						transition: opacity 0.24s ease, transform 0.24s ease;
+						will-change: transform, opacity;
+					}
+
+					.question-transition.enter.forward {
+						animation: question-enter-forward 260ms cubic-bezier(0.22, 1, 0.36, 1);
+					}
+
+					.question-transition.enter.backward {
+						animation: question-enter-backward 260ms cubic-bezier(0.22, 1, 0.36, 1);
+					}
+
+					.question-transition.exit.forward {
+						opacity: 0;
+						transform: translate3d(-28px, 0, 0);
+					}
+
+					.question-transition.exit.backward {
+						opacity: 0;
+						transform: translate3d(28px, 0, 0);
+					}
+
+					@keyframes question-enter-forward {
+						from {
+							opacity: 0;
+							transform: translate3d(28px, 0, 0);
+						}
+						to {
+							opacity: 1;
+							transform: translate3d(0, 0, 0);
+						}
+					}
+
+					@keyframes question-enter-backward {
+						from {
+							opacity: 0;
+							transform: translate3d(-28px, 0, 0);
+						}
+						to {
+							opacity: 1;
+							transform: translate3d(0, 0, 0);
+						}
+					}
+
 					.question-stage {
 						margin-bottom: 1rem;
 						display: flex;
@@ -930,6 +1031,13 @@ function TestContent() {
 						transition: none !important;
 					}
 
+					:global(.data-saver) .question-transition {
+						animation: none !important;
+						transition: none !important;
+						transform: none !important;
+						will-change: auto;
+					}
+
 					@media (prefers-reduced-motion: reduce) {
 						.question-card,
 						.option-tile {
@@ -939,6 +1047,14 @@ function TestContent() {
 						.compact-test-header,
 						.compact-test-header-inner {
 							transition: none !important;
+						}
+
+						.timer-pill-critical,
+						.question-transition {
+							animation: none !important;
+							transition: none !important;
+							transform: none !important;
+							will-change: auto;
 						}
 					}
 

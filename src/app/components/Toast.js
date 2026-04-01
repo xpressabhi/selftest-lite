@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './Icon';
+import PretextBlock from './PretextBlock';
+import { useDataSaver } from '../context/DataSaverContext';
 import { useLanguage } from '../context/LanguageContext';
+
+const TOAST_EXIT_DURATION_MS = 220;
 
 /**
  * Toast notification system
@@ -20,44 +24,35 @@ import { useLanguage } from '../context/LanguageContext';
  */
 export default function Toast({ id, type = 'info', message, duration = 5000, onDismiss }) {
 	const { t } = useLanguage();
-	const [isVisible, setIsVisible] = useState(false);
-	const [progress, setProgress] = useState(100);
+	const { shouldReduceAnimations } = useDataSaver();
+	const [isClosing, setIsClosing] = useState(false);
 
 	const handleDismiss = useCallback(() => {
-		setIsVisible(false);
-		setTimeout(() => {
+		if (isClosing) return;
+		if (shouldReduceAnimations) {
 			onDismiss?.(id);
-		}, 300);
-	}, [id, onDismiss]);
+			return;
+		}
+		setIsClosing(true);
+	}, [id, isClosing, onDismiss, shouldReduceAnimations]);
 
 	useEffect(() => {
-		// Trigger entrance animation
-		requestAnimationFrame(() => {
-			setIsVisible(true);
-		});
-
-		// Progress bar animation
-		const startTime = Date.now();
-		const progressInterval = setInterval(() => {
-			const elapsed = Date.now() - startTime;
-			const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
-			setProgress(remaining);
-
-			if (remaining <= 0) {
-				clearInterval(progressInterval);
-			}
-		}, 50);
-
-		// Auto dismiss
 		const dismissTimer = setTimeout(() => {
 			handleDismiss();
 		}, duration);
 
 		return () => {
 			clearTimeout(dismissTimer);
-			clearInterval(progressInterval);
 		};
 	}, [duration, handleDismiss]);
+
+	useEffect(() => {
+		if (!isClosing) return undefined;
+		const removeTimer = setTimeout(() => {
+			onDismiss?.(id);
+		}, TOAST_EXIT_DURATION_MS);
+		return () => clearTimeout(removeTimer);
+	}, [id, isClosing, onDismiss]);
 
 	const icons = {
 		success: 'checkCircle',
@@ -75,13 +70,17 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 
 	return (
 		<div
-			className={`toast ${type} ${isVisible ? 'visible' : ''}`}
+			className={`toast ${type} ${isClosing ? 'closing' : ''} ${
+				shouldReduceAnimations ? 'reduced-motion' : ''
+			}`}
 			role="alert"
 			aria-live="polite"
 			onClick={handleDismiss}
 		>
 			<Icon name={icons[type]} size={20} color={colors[type]} />
-			<p className="toast-message">{message}</p>
+			<PretextBlock as="p" className="toast-message">
+				{message}
+			</PretextBlock>
 			<button
 				className="toast-close"
 				onClick={(e) => {
@@ -93,7 +92,13 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 			>
 				<Icon name="x" size={16} />
 			</button>
-			<div className="toast-progress" style={{ width: `${progress}%`, background: colors[type] }} />
+			<div
+				className="toast-progress"
+				style={{
+					'--toast-progress-duration': `${duration}ms`,
+					background: colors[type],
+				}}
+			/>
 			<style jsx>{`
 				.toast {
 					display: flex;
@@ -107,15 +112,19 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 					position: relative;
 					overflow: hidden;
 					cursor: pointer;
-					transform: translateY(100%);
-					opacity: 0;
-					transition: transform 0.3s ease, opacity 0.3s ease;
+					animation: toast-in 220ms ease forwards;
 					will-change: transform, opacity;
 				}
 
-				.toast.visible {
-					transform: translateY(0);
+				.toast.closing {
+					animation: toast-out ${TOAST_EXIT_DURATION_MS}ms ease forwards;
+				}
+
+				.toast.reduced-motion,
+				.toast.reduced-motion.closing {
+					animation: none;
 					opacity: 1;
+					transform: none;
 				}
 
 				.toast.success {
@@ -161,7 +170,8 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 					left: 0;
 					height: 3px;
 					background: var(--accent-primary);
-					transition: width 50ms linear;
+					transform-origin: left center;
+					animation: toast-progress-shrink var(--toast-progress-duration, 5000ms) linear forwards;
 				}
 
 				/* Data saver mode */
@@ -176,11 +186,42 @@ export default function Toast({ id, type = 'info', message, duration = 5000, onD
 				/* Reduced motion */
 				@media (prefers-reduced-motion: reduce) {
 					.toast {
-						transition: none;
+						animation: none;
 					}
 
 					.toast-progress {
 						display: none;
+					}
+				}
+
+				@keyframes toast-in {
+					from {
+						opacity: 0;
+						transform: translateY(16px);
+					}
+					to {
+						opacity: 1;
+						transform: translateY(0);
+					}
+				}
+
+				@keyframes toast-out {
+					from {
+						opacity: 1;
+						transform: translateY(0);
+					}
+					to {
+						opacity: 0;
+						transform: translateY(12px);
+					}
+				}
+
+				@keyframes toast-progress-shrink {
+					from {
+						transform: scaleX(1);
+					}
+					to {
+						transform: scaleX(0);
 					}
 				}
 			`}</style>
