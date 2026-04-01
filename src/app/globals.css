@@ -616,6 +616,19 @@ h6 { font-size: 1rem; }
 	box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
 }
 
+.quick-action-chip,
+.choice-pill,
+.control-link,
+.surface-panel,
+.generate-cta,
+.exam-browser-row,
+.interactive-card,
+.glass-card,
+.glass-input,
+.bottom-nav-item {
+	-webkit-tap-highlight-color: transparent;
+}
+
 /* Data saver - remove gradients */
 .data-saver .btn-primary {
 	background: var(--accent-primary);
@@ -700,6 +713,52 @@ textarea:focus-visible {
 		transform: translateY(-1px);
 		background: rgba(99, 102, 241, 0.04);
 		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+	}
+}
+
+@media (hover: none) and (pointer: coarse) {
+	.btn:not(:disabled):active {
+		transform: scale(0.985);
+	}
+
+	.btn-primary:not(:disabled):active {
+		transform: translateY(1px) scale(0.985);
+		box-shadow: 0 4px 10px rgba(99, 102, 241, 0.18);
+	}
+
+	.control-link:active {
+		color: var(--text-primary) !important;
+		transform: translateX(1px);
+	}
+
+	.quick-action-chip:not(:disabled):active,
+	.choice-pill:not(:disabled):active {
+		transform: scale(0.97);
+		box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+	}
+
+	.interactive-card:active::before {
+		opacity: 1;
+	}
+
+	.surface-panel:active {
+		transform: scale(0.995);
+		border-color: rgba(99, 102, 241, 0.18);
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+	}
+
+	.generate-cta:active::after {
+		transform: translateX(120%);
+	}
+
+	.exam-browser-row:active {
+		transform: scale(0.995);
+		background: rgba(99, 102, 241, 0.04);
+		box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+	}
+
+	.glass-input:focus {
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 	}
 }
 

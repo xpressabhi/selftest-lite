@@ -916,6 +916,18 @@ function TestContent() {
 							background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 							border: none;
 							color: #fff;
+							position: relative;
+							overflow: hidden;
+						}
+
+						.mobile-next-cta::after {
+							content: '';
+							position: absolute;
+							inset: 0;
+							background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.16) 48%, transparent 76%);
+							transform: translateX(-120%);
+							transition: transform 0.4s ease;
+							pointer-events: none;
 						}
 
 						.mobile-side-submit {
@@ -1123,6 +1135,21 @@ function TestContent() {
 							min-height: 52px;
 							padding-top: 0.55rem !important;
 							padding-bottom: 0.55rem !important;
+						}
+					}
+
+					@media (hover: none) and (pointer: coarse) {
+						.mobile-next-cta:active::after {
+							transform: translateX(120%);
+						}
+
+						.mobile-next-cta:active,
+						.mobile-side-submit:active {
+							transform: scale(0.985);
+						}
+
+						.compact-test-header:active {
+							box-shadow: var(--shadow-md);
 						}
 					}
 
