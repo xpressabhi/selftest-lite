@@ -22,7 +22,7 @@ import {
 	isApiTimeoutError,
 } from '../../utils/apiLimitError';
 
-const MODEL_NAME = 'gemini-3-flash-preview';
+const MODEL_NAME = 'gemini-3.1-flash-lite-preview';
 const BATCH_SIZE = 25;
 const GENERATION_TIMEOUT_MS = 180000;
 
@@ -270,8 +270,8 @@ export async function POST(request) {
 			});
 			const reusablePaper =
 				reusableRecord?.test &&
-				typeof reusableRecord.test === 'object' &&
-				!Array.isArray(reusableRecord.test)
+					typeof reusableRecord.test === 'object' &&
+					!Array.isArray(reusableRecord.test)
 					? reusableRecord.test
 					: null;
 
