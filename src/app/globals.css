@@ -230,6 +230,24 @@ body {
 	text-rendering: optimizeLegibility;
 }
 
+.pretext-shell {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+}
+
+.pretext-copy {
+	display: inline-block;
+	max-width: 100%;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	text-wrap: pretty;
+}
+
+.pretext-shell-dense .pretext-copy {
+	letter-spacing: -0.01em;
+}
+
 /* Ensure Bootstrap defaults don't override theme body colors */
 [data-theme='light'] body {
 	background-color: var(--bg-secondary) !important;
@@ -1203,10 +1221,10 @@ select.form-control {
 }
 
 .question-text {
-	font-size: 1.125rem;
+	font-size: clamp(1.05rem, 1rem + 0.45vw, 1.3rem);
 	font-weight: 500;
 	color: var(--text-primary);
-	line-height: 1.6;
+	line-height: 1.72;
 	margin-bottom: 20px;
 }
 
@@ -1267,8 +1285,75 @@ select.form-control {
 
 .option-text {
 	flex: 1;
-	font-size: 1rem;
+	font-size: clamp(0.98rem, 0.96rem + 0.2vw, 1.08rem);
+	line-height: 1.65;
 	color: var(--text-primary);
+}
+
+.exam-measure {
+	width: min(100%, 48rem);
+	margin-inline: auto;
+}
+
+.results-measure {
+	width: min(100%, 54rem);
+}
+
+.test-content-shell {
+	padding-inline: clamp(0.25rem, 1vw, 0.75rem);
+}
+
+.question-stage {
+	display: grid;
+	gap: clamp(0.85rem, 2vw, 1.25rem);
+}
+
+.question-card .card-body {
+	padding: clamp(1.15rem, 2vw + 0.8rem, 2.5rem) !important;
+}
+
+.question-text .pretext-copy,
+.results-question-text .pretext-copy {
+	max-width: min(100%, 68ch);
+}
+
+.option-tile {
+	align-items: flex-start;
+	border-radius: clamp(1rem, 2vw, 1.25rem);
+	gap: clamp(0.75rem, 1.4vw, 1rem);
+	min-height: 4rem;
+}
+
+.option-tile .pretext-copy,
+.results-answer-copy .pretext-copy,
+.review-explanation-panel .pretext-copy {
+	max-width: min(100%, 76ch);
+}
+
+.review-answer-list {
+	gap: clamp(1rem, 2vw, 1.5rem) !important;
+}
+
+.review-answer-card .card-body {
+	padding: clamp(1rem, 1.6vw + 0.8rem, 1.75rem) !important;
+}
+
+.review-answer-grid {
+	display: grid !important;
+	grid-template-columns: 1fr;
+}
+
+.review-answer-panel,
+.review-explanation-panel {
+	border-radius: clamp(1rem, 2vw, 1.25rem);
+}
+
+.results-question-text {
+	line-height: 1.72;
+}
+
+.results-answer-copy {
+	line-height: 1.62;
 }
 
 /* Results Page */
@@ -1336,6 +1421,27 @@ select.form-control {
 
 	.option-item {
 		border-width: 3px;
+	}
+}
+
+@media (min-width: 768px) {
+	.question-card {
+		padding: 24px;
+	}
+
+	.review-answer-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: stretch;
+	}
+}
+
+@media (min-width: 1200px) {
+	.results-measure {
+		width: min(100%, 58rem);
+	}
+
+	.test-content-shell {
+		padding-inline: 0;
 	}
 }
 

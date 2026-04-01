@@ -72,7 +72,7 @@ src/app/api/
 ### 1. Quiz Generation (`/api/generate`)
 - Accepts topic, difficulty, question count, test mode, and language
 - Supports full exam mode (objective-only papers) and quiz-practice mode
-- Uses Google Gemini 3 Flash model (`gemini-3-flash`) with structured JSON output
+- Uses Google Gemini 3 Flash model (`gemini-3.1-flash-lite-preview`) with structured JSON output
 - Utilizes `thinkingConfig` (minimal level) for improved question quality
 - Zod schema validation for response structure
 - Rate limiting (10 requests per window)

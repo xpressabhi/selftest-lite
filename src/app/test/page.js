@@ -399,7 +399,7 @@ function TestContent() {
 						zIndex: 990,
 					}}
 				>
-				<Container style={{ maxWidth: 720 }} className='compact-test-header-inner py-1 px-0'>
+				<Container className='compact-test-header-inner exam-measure py-1 px-0'>
 					<div className='d-flex justify-content-between align-items-center mobile-header-row'>
 						<small className='text-muted fw-semibold d-flex align-items-center gap-2 flex-wrap'>
 							{t('question')} {index + 1} {t('of')} {questionPaper.questions.length}
@@ -474,7 +474,7 @@ function TestContent() {
 					<Container
 						className='d-flex flex-column justify-content-start align-items-center px-2 test-content-shell'
 					>
-				<div className='w-100 mb-3 d-none d-md-block' style={{ maxWidth: 720 }}>
+				<div className='w-100 mb-3 d-none d-md-block exam-measure'>
 					<h3 className='d-flex align-items-center gap-2 mt-2 mb-4 text-center justify-content-center'>
 						<Icon name='bookOpen' className='text-primary' />
 						<span className='fw-bold text-dark fs-4'>
@@ -485,8 +485,7 @@ function TestContent() {
 
 				<form
 					onSubmit={handleSubmit}
-					className='w-100 position-relative'
-					style={{ maxWidth: 720 }}
+					className='w-100 position-relative exam-measure'
 					ref={questionFormRef}
 				>
 					{/* Desktop Navigation Buttons */}
@@ -581,7 +580,7 @@ function TestContent() {
 								<div
 									key={i}
 									className={`
-										d-flex align-items-center p-2 p-md-3 rounded-3 cursor-pointer transition-all option-tile
+										d-flex p-2 p-md-3 rounded-3 cursor-pointer transition-all option-tile
 										${answers[index] === option
 											? 'bg-primary bg-opacity-10 border border-primary option-active'
 											: 'bg-white border border-light shadow-sm'

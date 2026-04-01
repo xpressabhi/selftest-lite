@@ -407,7 +407,7 @@ function ResultsContent() {
 				</div>
 			)}
 
-			<Container style={{ maxWidth: '800px' }}>
+			<Container className='results-measure'>
 				<div className='d-flex justify-content-end mb-2'>
 					<SoundToggle />
 				</div>
@@ -534,7 +534,7 @@ function ResultsContent() {
 					<h3 className='fw-bold m-0'>{t('reviewAnswers')}</h3>
 				</div>
 
-				<div className='d-flex flex-column gap-4'>
+				<div className='d-flex flex-column gap-4 review-answer-list'>
 					{questions.map((q, index) => {
 						const userAnswer = userAnswers[index];
 						const isCorrect = userAnswer === q.answer;
@@ -555,7 +555,7 @@ function ResultsContent() {
 						}
 
 						return (
-							<Card key={index} className='border-0 glass-card shadow-sm overflow-hidden'>
+							<Card key={index} className='border-0 glass-card shadow-sm overflow-hidden review-answer-card'>
 								<div className={`h-100 w-2 position-absolute top-0 start-0 bg-${statusColor}`} style={{ width: '6px' }} />
 								<Card.Body className='p-4'>
 									<div className='d-flex justify-content-between align-items-start mb-3'>
@@ -585,28 +585,28 @@ function ResultsContent() {
 											<Icon name={isBookmarked(q) ? 'bookmarkFill' : 'bookmark'} size={24} />
 										</Button>
 
-									<div className='mb-4 fs-5 fw-medium text-dark pe-4'>
+									<div className='mb-4 fs-5 fw-medium text-dark pe-4 results-question-text'>
 										<MarkdownRenderer>{q.question}</MarkdownRenderer>
 									</div>
 
-									<div className='d-flex flex-column gap-3'>
+									<div className='d-flex flex-column gap-3 review-answer-grid'>
 										{/* User Answer */}
-										<div className={`p-3 rounded-3 border ${isCorrect ? 'bg-success bg-opacity-10 border-success' : isSkipped ? 'bg-warning bg-opacity-10 border-warning' : 'bg-danger bg-opacity-10 border-danger'}`}>
+										<div className={`p-3 rounded-3 border review-answer-panel ${isCorrect ? 'bg-success bg-opacity-10 border-success' : isSkipped ? 'bg-warning bg-opacity-10 border-warning' : 'bg-danger bg-opacity-10 border-danger'}`}>
 											<small className={`d-block mb-1 fw-bold text-${statusColor} text-uppercase`} style={{ fontSize: '0.75rem' }}>
 												{t('yourAnswer')}
 											</small>
-											<div className={isSkipped ? 'text-muted fst-italic' : 'text-dark'}>
+											<div className={`results-answer-copy ${isSkipped ? 'text-muted fst-italic' : 'text-dark'}`}>
 												{isSkipped ? t('notAnswered') : <MarkdownRenderer>{userAnswer}</MarkdownRenderer>}
 											</div>
 										</div>
 
 										{/* Correct Answer (if wrong or skipped) */}
 										{(!isCorrect || isSkipped) && (
-											<div className='p-3 rounded-3 border bg-success bg-opacity-10 border-success'>
+											<div className='p-3 rounded-3 border bg-success bg-opacity-10 border-success review-answer-panel'>
 												<small className='d-block mb-1 fw-bold text-success text-uppercase' style={{ fontSize: '0.75rem' }}>
 													{t('correctAnswer')}
 												</small>
-												<div className='text-dark'>
+												<div className='text-dark results-answer-copy'>
 													<MarkdownRenderer>{q.answer}</MarkdownRenderer>
 												</div>
 											</div>
@@ -622,7 +622,7 @@ function ResultsContent() {
 													{t('explainAnswer')}
 												</span>
 											</Accordion.Header>
-											<Accordion.Body className='text-muted bg-light bg-opacity-50 rounded-3 mt-2'>
+											<Accordion.Body className='text-muted bg-light bg-opacity-50 rounded-3 mt-2 review-explanation-panel'>
 												<div className='d-flex flex-column gap-2'>
 													<div className='d-flex gap-2 flex-column'>
 														<div className='text-dark small'>

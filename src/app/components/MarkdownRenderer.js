@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useLanguage } from '../context/LanguageContext';
+import PretextBlock from './PretextBlock';
 
 function MarkdownLoading() {
 	const { t } = useLanguage();
@@ -52,7 +53,7 @@ const MarkdownRenderer = ({ children }) => {
 
 	// Simple heuristic: if it looks like plain text, render it directly
 	if (!needsMarkdown(textContent)) {
-		return <span style={{ whiteSpace: 'pre-wrap' }}>{textContent}</span>;
+		return <PretextBlock>{textContent}</PretextBlock>;
 	}
 
 	// For complex content, use the heavy renderer
