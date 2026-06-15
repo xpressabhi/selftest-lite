@@ -1,20 +1,11 @@
 'use client';
 
-import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
-import englishTranslations from '../locales/english.json';
-import hindiTranslations from '../locales/hindi.json';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { emitLocalStorageChange } from '../utils/storageEvents';
 
 const LanguageContext = createContext();
 const LANGUAGE_KEY = 'selftest_language';
 const SUPPORTED_LANGUAGES = ['english', 'hindi'];
-
-const TRANSLATIONS = {
-	english: englishTranslations,
-	hindi: hindiTranslations,
-};
-
-const FALLBACK_TRANSLATIONS = englishTranslations;
 
 const getSystemLanguage = () => {
 	if (typeof navigator === 'undefined') return 'english';
@@ -26,8 +17,8 @@ const getSystemLanguage = () => {
 };
 
 export function LanguageProvider({ children }) {
-	// Keep first render deterministic for SSR/CSR hydration.
 	const [language, setLanguage] = useState('english');
+	const [translations, setTranslations] = useState(null);
 	const [isLanguageReady, setIsLanguageReady] = useState(false);
 
 	useEffect(() => {
@@ -37,8 +28,32 @@ export function LanguageProvider({ children }) {
 			? savedLanguage
 			: getSystemLanguage();
 		setLanguage(preferredLanguage);
-		setIsLanguageReady(true);
 	}, []);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+
+		let mounted = true;
+		const loadTranslations = async () => {
+			try {
+				const data = language === 'hindi'
+					? await import('../locales/hindi.json')
+					: await import('../locales/english.json');
+
+				if (mounted) {
+					setTranslations(data.default || data);
+					setIsLanguageReady(true);
+				}
+			} catch (error) {
+				console.error('Failed to load translations:', error);
+			}
+		};
+
+		loadTranslations();
+		return () => {
+			mounted = false;
+		};
+	}, [language]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || !isLanguageReady) return;
@@ -51,13 +66,9 @@ export function LanguageProvider({ children }) {
 		document.documentElement.setAttribute('lang', language === 'hindi' ? 'hi' : 'en');
 	}, [language]);
 
-	const activeTranslations = useMemo(
-		() => TRANSLATIONS[language] || FALLBACK_TRANSLATIONS,
-		[language],
-	);
-
 	const t = (key) => {
-		return activeTranslations[key] || FALLBACK_TRANSLATIONS[key] || key;
+		if (!translations) return key;
+		return translations[key] || key;
 	};
 
 	const toggleLanguage = () => {
@@ -65,7 +76,7 @@ export function LanguageProvider({ children }) {
 	};
 
 	return (
-		<LanguageContext.Provider value={{ language, setLanguage, t, toggleLanguage }}>
+		<LanguageContext.Provider value={{ language, setLanguage, t, toggleLanguage, isLanguageReady }}>
 			{children}
 		</LanguageContext.Provider>
 	);

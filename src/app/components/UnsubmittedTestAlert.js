@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { STORAGE_KEYS } from '../constants';
-import { Alert, Button } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 import Icon from './Icon';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,10 +20,10 @@ export default function UnsubmittedTestAlert() {
 	if (!mounted || !unsubmittedTest) return null;
 
 	return (
-		<Alert
-			variant='warning'
-			className='my-5 p-3 mb-4 rounded-3 shadow-sm w-100'
+		<div
+			className='alert alert-warning my-5 p-3 mb-4 rounded-3 shadow-sm w-100'
 			style={{ maxWidth: '800px' }}
+			role='alert'
 		>
 			<div className='d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3'>
 				<div className='d-flex align-items-start align-items-sm-center'>
@@ -36,15 +35,14 @@ export default function UnsubmittedTestAlert() {
 						</small>
 					</div>
 				</div>
-				<Button
-					variant='warning'
-					size='sm'
-					className='d-flex align-items-center justify-content-center gap-2 fw-bold text-nowrap ms-auto ms-sm-0 w-100 w-sm-auto'
+				<button
+					type='button'
+					className='btn btn-warning btn-sm d-flex align-items-center justify-content-center gap-2 fw-bold text-nowrap ms-auto ms-sm-0 w-100 w-sm-auto'
 					onClick={() => router.push('/test?id=' + unsubmittedTest.id)}
 				>
 					<Icon name='play' /> {t('continueTest')}
-				</Button>
+				</button>
 			</div>
-		</Alert>
+		</div>
 	);
 }

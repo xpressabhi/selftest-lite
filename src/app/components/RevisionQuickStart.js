@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button } from 'react-bootstrap';
 import Icon from './Icon';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { STORAGE_KEYS } from '../constants';
@@ -66,8 +65,8 @@ export default function RevisionQuickStart() {
 	};
 
 	return (
-		<Card className='w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
-			<Card.Body className='p-4'>
+		<div className='card w-100 border-0 glass-card mb-4' style={{ maxWidth: '720px' }}>
+			<div className='card-body p-4'>
 				<div className='d-flex align-items-center gap-2 mb-2'>
 					<Icon name='repeat1' className='text-warning' />
 					<h2 className='h5 fw-bold mb-0'>{t('revisionQuickStartTitle')}</h2>
@@ -92,13 +91,13 @@ export default function RevisionQuickStart() {
 											{t('revisionRecommendationReasonSuffix')}
 										</div>
 									</div>
-									<Button
-										variant='outline-primary'
-										className='rounded-pill px-4 text-nowrap'
+									<button
+										type='button'
+										className='btn btn-outline-primary rounded-pill px-4 text-nowrap'
 										onClick={() => handleStartRevision(recommendation)}
 									>
 										{t('reviseAgain')}
-									</Button>
+									</button>
 									</div>
 								))}
 							</div>
@@ -120,13 +119,13 @@ export default function RevisionQuickStart() {
 											{t('latestScoreLabel')} <strong>{item.accuracy}%</strong>
 										</div>
 									</div>
-									<Button
-										variant='outline-primary'
-										className='rounded-pill px-4 text-nowrap'
+									<button
+										type='button'
+										className='btn btn-outline-primary rounded-pill px-4 text-nowrap'
 										onClick={() => handleStartRevision(item)}
 									>
 										{t('startReview')}
-									</Button>
+									</button>
 								</div>
 							))}
 						</div>
@@ -153,7 +152,7 @@ export default function RevisionQuickStart() {
 						</div>
 					)}
 				</div>
-			</Card.Body>
-		</Card>
+			</div>
+		</div>
 	);
 }

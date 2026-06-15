@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, Badge } from 'react-bootstrap';
 import Icon from './Icon';
 import useStreak from '../hooks/useStreak';
 import { useLanguage } from '../context/LanguageContext';
@@ -50,7 +49,7 @@ export default function StreakBanner() {
 
     return (
         <div className='w-100 mb-4 fade-in' style={{ maxWidth: '720px' }}>
-            <Card className='border-0 glass-card shadow-sm overflow-hidden'>
+            <div className='card border-0 glass-card shadow-sm overflow-hidden'>
                 {/* At-risk warning banner */}
                 {isAtRisk && (
                     <div
@@ -65,15 +64,15 @@ export default function StreakBanner() {
                         <span>⚠️</span>
                         <span>{t('streakAtRiskMessage')}</span>
                         {freezesRemaining > 0 && (
-                            <Badge bg='dark' pill className='ms-1' style={{ fontSize: '0.65rem' }}>
+                            <span className='badge bg-dark rounded-pill ms-1' style={{ fontSize: '0.65rem' }}>
                                 🧊 {freezesRemaining}{' '}
                                 {freezesRemaining > 1 ? t('freezesLeft') : t('freezeLeft')}
-                            </Badge>
+                            </span>
                         )}
                     </div>
                 )}
 
-                <Card.Body className='p-3 p-md-4'>
+                <div className='card-body p-3 p-md-4'>
                     <div className='d-flex align-items-center justify-content-between mb-3'>
                         {/* Streak counter */}
                         <div className='d-flex align-items-center gap-3'>
@@ -119,14 +118,13 @@ export default function StreakBanner() {
 
                         {/* Active today badge */}
                         {isActiveToday && (
-                            <Badge
-                                bg='success'
-                                className='d-flex align-items-center gap-1 px-3 py-2 rounded-pill'
+                            <span
+                                className='badge bg-success d-flex align-items-center gap-1 px-3 py-2 rounded-pill'
                                 style={{ fontSize: '0.7rem' }}
                             >
                                 <Icon name='checkCircle' size={12} />
                                 {t('doneToday')}
-                            </Badge>
+                            </span>
                         )}
                     </div>
 
@@ -176,8 +174,8 @@ export default function StreakBanner() {
                             </div>
                         ))}
                     </div>
-                </Card.Body>
-            </Card>
+                </div>
+            </div>
 
             <style jsx>{`
 				@keyframes streakPulse {

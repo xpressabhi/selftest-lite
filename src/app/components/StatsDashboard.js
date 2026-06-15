@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Card, Row, Col } from 'react-bootstrap';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { STORAGE_KEYS } from '../constants';
 import Icon from './Icon';
@@ -50,13 +49,13 @@ export default function StatsDashboard() {
 
     return (
         <div className='w-100 mb-4 fade-in' style={{ maxWidth: '720px' }}>
-            <Card className='border-0 glass-card shadow-sm'>
-                <Card.Body className='p-4'>
+            <div className='card border-0 glass-card shadow-sm'>
+                <div className='card-body p-4'>
                     <h5 className='mb-4 d-flex align-items-center gap-2 fw-bold text-primary'>
                         <Icon name='trophy' /> {t('yourProgress')}
                     </h5>
-                    <Row className='g-3 text-center'>
-                        <Col xs={6} md={3}>
+                    <div className='row g-3 text-center'>
+                        <div className='col-6 col-md-3'>
                             <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
                                 <Icon name='clipboard' className='text-primary opacity-75' size={24} />
                                 <div>
@@ -66,8 +65,8 @@ export default function StatsDashboard() {
                                     <div className='h3 fw-bold mb-0 text-dark'>{stats.totalTests}</div>
                                 </div>
                             </div>
-                        </Col>
-                        <Col xs={6} md={3}>
+                        </div>
+                        <div className='col-6 col-md-3'>
                             <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
                                 <Icon name='chart' className='text-info opacity-75' size={24} />
                                 <div>
@@ -79,8 +78,8 @@ export default function StatsDashboard() {
                                     </div>
                                 </div>
                             </div>
-                        </Col>
-                        <Col xs={6} md={3}>
+                        </div>
+                        <div className='col-6 col-md-3'>
                             <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
                                 <Icon name='checkCircle' className='text-success opacity-75' size={24} />
                                 <div>
@@ -90,8 +89,8 @@ export default function StatsDashboard() {
                                     <div className='h3 fw-bold mb-0 text-dark'>{stats.questionsAnswered}</div>
                                 </div>
                             </div>
-                        </Col>
-                        <Col xs={6} md={3}>
+                        </div>
+                        <div className='col-6 col-md-3'>
                             <div className='p-3 rounded-3 bg-light bg-opacity-50 h-100 d-flex flex-column align-items-center justify-content-center gap-2'>
                                 <Icon name='clock' className='text-warning opacity-75' size={24} />
                                 <div>
@@ -101,10 +100,10 @@ export default function StatsDashboard() {
                                     <div className='h3 fw-bold mb-0 text-dark'>{stats.timeSpent}</div>
                                 </div>
                             </div>
-                        </Col>
-                    </Row>
-                </Card.Body>
-            </Card>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

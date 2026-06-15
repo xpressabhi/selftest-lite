@@ -160,7 +160,6 @@ export default function RootLayout({ children }) {
 								<MobileOptimizedLayout>
 									{children}
 								</MobileOptimizedLayout>
-								<Analytics />
 								<SpeedInsights />
 							</AuthProvider>
 						</LanguageProvider>
