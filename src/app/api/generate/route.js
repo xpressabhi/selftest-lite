@@ -9,7 +9,6 @@ import {
 	getClientKey,
 	logApiEvent,
 } from '../utils/storage';
-import { getAuthenticatedUser } from '../utils/auth';
 import { paperSchema } from '../utils/quizSchema';
 import {
 	validateGenerateRequest,
@@ -238,8 +237,6 @@ export async function POST(request) {
 			return NextResponse.json({ error: validationError }, { status: 400 });
 		}
 
-		const authUser = await getAuthenticatedUser(request);
-
 		const resolvedTopic =
 			topic || (examName ? `${examName} mock paper` : '');
 
@@ -265,7 +262,6 @@ export async function POST(request) {
 			const reusableRecord = await findReusableFullExamRecord({
 				examId,
 				language,
-				userId: authUser?.id || null,
 				excludedTestIds: locallyAttemptedTestIds,
 			});
 			const reusablePaper =
@@ -288,7 +284,6 @@ export async function POST(request) {
 						examName,
 						language,
 						reusedTestId: reusableRecord.id,
-						userId: authUser?.id || null,
 					},
 				});
 
@@ -418,8 +413,6 @@ export async function POST(request) {
 				numQuestions,
 				difficulty,
 				language,
-			}, {
-				createdByUserId: authUser?.id || null,
 			});
 
 			await logApiEvent({
@@ -438,7 +431,6 @@ export async function POST(request) {
 					language,
 					questionCount: questionPaper.questions.length,
 					testId,
-					createdByUserId: authUser?.id || null,
 				},
 			});
 

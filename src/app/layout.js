@@ -5,8 +5,6 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { DataSaverProvider } from './context/DataSaverContext';
-import { AuthProvider } from './context/AuthContext';
-import UserDataSyncManager from './components/UserDataSyncManager';
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, toAbsoluteUrl } from './utils/seo';
 
 export const metadata = {
@@ -155,13 +153,10 @@ export default function RootLayout({ children }) {
 				<ThemeProvider>
 					<DataSaverProvider>
 						<LanguageProvider>
-							<AuthProvider>
-								<UserDataSyncManager />
-								<MobileOptimizedLayout>
-									{children}
-								</MobileOptimizedLayout>
-								<SpeedInsights />
-							</AuthProvider>
+							<MobileOptimizedLayout>
+								{children}
+							</MobileOptimizedLayout>
+							<SpeedInsights />
 						</LanguageProvider>
 					</DataSaverProvider>
 				</ThemeProvider>

@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from './Icon';
 import DataSaverToggle from './DataSaverToggle';
-import GoogleSignInButton from './GoogleSignInButton';
 import { useDataSaver } from '../context/DataSaverContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
 import useTestSearch from '../hooks/useTestSearch';
 import { APP_EVENTS } from '../constants';
 
@@ -24,18 +22,14 @@ import { APP_EVENTS } from '../constants';
 export default function TopNav() {
 	const [isScrolled, setIsScrolled] = useState(false);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-	const [authError, setAuthError] = useState('');
 	const [isThemeMounted, setIsThemeMounted] = useState(false);
 	const menuRef = useRef(null);
-	const authModalRef = useRef(null);
 	const navRef = useRef(null);
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isDataSaverActive } = useDataSaver();
 	const { t, language: uiLanguage, toggleLanguage } = useLanguage();
 	const { theme, toggleTheme } = useTheme();
-	const { user, isAuthLoading, loginWithGoogleCredential, logout } = useAuth();
 	const {
 		isSearchOpen,
 		searchQuery,
@@ -55,8 +49,6 @@ export default function TopNav() {
 	const isDarkThemeActive = isThemeMounted && theme === 'dark';
 	const themeLabel = isDarkThemeActive ? t('darkMode') : t('lightMode');
 	const uiLocale = uiLanguage === 'hindi' ? 'hi-IN' : 'en-IN';
-	const userDisplayName = user?.name || '';
-	const userInitial = userDisplayName ? userDisplayName.trim().charAt(0) : 'U';
 
 	const triggerHaptic = () => {
 		if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
@@ -87,9 +79,6 @@ export default function TopNav() {
 			if (menuRef.current && !menuRef.current.contains(e.target)) {
 				setIsMenuOpen(false);
 			}
-			if (authModalRef.current && !authModalRef.current.contains(e.target)) {
-				setIsAuthModalOpen(false);
-			}
 		};
 
 		document.addEventListener('mousedown', handleClickOutside);
@@ -99,8 +88,6 @@ export default function TopNav() {
 	// Close menu on route change
 	useEffect(() => {
 		setIsMenuOpen(false);
-		setIsAuthModalOpen(false);
-		setAuthError('');
 	}, [pathname]);
 
 	useEffect(() => {
@@ -118,24 +105,11 @@ export default function TopNav() {
 		if (typeof window === 'undefined') return undefined;
 		const handleOpenSearch = () => {
 			setIsMenuOpen(false);
-			setIsAuthModalOpen(false);
-			setAuthError('');
 			openSearch();
 		};
 		window.addEventListener(APP_EVENTS.OPEN_SEARCH, handleOpenSearch);
 		return () => window.removeEventListener(APP_EVENTS.OPEN_SEARCH, handleOpenSearch);
 	}, [openSearch]);
-
-	useEffect(() => {
-		if (!isAuthModalOpen) return;
-		const onEscape = (event) => {
-			if (event.key === 'Escape') {
-				setIsAuthModalOpen(false);
-			}
-		};
-		document.addEventListener('keydown', onEscape);
-		return () => document.removeEventListener('keydown', onEscape);
-	}, [isAuthModalOpen]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return undefined;
@@ -213,33 +187,6 @@ export default function TopNav() {
 			window.dispatchEvent(new Event(APP_EVENTS.OPEN_TOUR));
 		}
 	};
-
-	const openAuthModal = () => {
-		triggerHaptic();
-		setIsMenuOpen(false);
-		setAuthError('');
-		setIsAuthModalOpen(true);
-	};
-
-	const handleGoogleCredential = useCallback(
-		async (credential) => {
-			setAuthError('');
-			try {
-				await loginWithGoogleCredential(credential);
-				setIsAuthModalOpen(false);
-				router.push('/?start=create');
-			} catch (error) {
-				setAuthError(error.message || t('googleLoginFailed'));
-			}
-		},
-		[loginWithGoogleCredential, router, t],
-	);
-
-	const handleSignOut = useCallback(async () => {
-		setAuthError('');
-		await logout();
-		setIsAuthModalOpen(false);
-	}, [logout]);
 
 	const navLinks = [
 		{ href: '/about', label: t('about'), icon: 'info' },
@@ -401,22 +348,6 @@ export default function TopNav() {
 					</button>
 
 					<button
-						className="nav-btn"
-						onClick={openAuthModal}
-						aria-label={user ? t('account') : t('signIn')}
-						title={user ? t('account') : t('signIn')}
-						type="button"
-					>
-						{user ? (
-							<span className="user-pill" aria-hidden="true">
-								{userInitial.toUpperCase()}
-							</span>
-						) : (
-							<Icon name="circle" size={20} />
-						)}
-					</button>
-
-					<button
 						className="nav-btn d-none d-xl-inline-flex"
 						onClick={() => {
 							triggerHaptic();
@@ -529,21 +460,6 @@ export default function TopNav() {
 										<Icon name="chevronRight" size={16} />
 									</span>
 								</button>
-								<button
-									type="button"
-									className="mobile-nav-link mobile-nav-action"
-									onClick={openAuthModal}
-								>
-									<span className="mobile-link-icon" aria-hidden="true">
-										<Icon name="circle" size={20} />
-									</span>
-									<span className="mobile-link-label">
-										{user ? t('account') : t('signIn')}
-									</span>
-									<span className="mobile-link-arrow" aria-hidden="true">
-										<Icon name="chevronRight" size={16} />
-									</span>
-								</button>
 						</nav>
 
 						<div className="menu-footer">
@@ -563,73 +479,6 @@ export default function TopNav() {
 						aria-hidden="true"
 					/>
 				)}
-
-			{/* Auth Modal */}
-			{isAuthModalOpen && (
-				<div
-					className="auth-backdrop"
-					onClick={() => setIsAuthModalOpen(false)}
-					aria-hidden="true"
-				>
-					<div
-						className="auth-modal"
-						ref={authModalRef}
-						role="dialog"
-						aria-modal="true"
-						aria-label={t('account')}
-						onClick={(event) => event.stopPropagation()}
-					>
-						<div className="auth-header">
-							<h2>{t('account')}</h2>
-							<button
-								className="menu-close"
-								onClick={() => {
-									triggerHaptic();
-									setIsAuthModalOpen(false);
-								}}
-								aria-label={t('closeAccountDialog')}
-								type="button"
-							>
-								<Icon name="x" size={22} />
-							</button>
-						</div>
-
-						<div className="auth-content">
-							{isAuthLoading ? (
-								<div className="auth-state">{t('loading')}</div>
-							) : user ? (
-								<div className="auth-user-panel">
-									<div className="auth-avatar">{userInitial.toUpperCase()}</div>
-									<div className="auth-user-meta">
-										<div className="auth-user-name">{userDisplayName}</div>
-										<div className="auth-user-email">{user.email}</div>
-									</div>
-									<button
-										type="button"
-										className="auth-logout-btn"
-										onClick={handleSignOut}
-									>
-										{t('signOut')}
-									</button>
-								</div>
-							) : (
-								<div className="auth-signin-panel">
-									<p className="auth-signin-copy">{t('signInCta')}</p>
-									<GoogleSignInButton
-										onCredential={handleGoogleCredential}
-										className="google-signin-container"
-									/>
-								</div>
-							)}
-							{authError && (
-								<p className="auth-error" role="alert">
-									{authError}
-								</p>
-							)}
-						</div>
-					</div>
-				</div>
-			)}
 
 			{/* Search Modal */}
 			{isSearchOpen && (
@@ -977,19 +826,6 @@ export default function TopNav() {
 					flex-shrink: 0;
 				}
 
-				.user-pill {
-					width: 26px;
-					height: 26px;
-					border-radius: 999px;
-					display: inline-flex;
-					align-items: center;
-					justify-content: center;
-					font-size: 0.76rem;
-					font-weight: 700;
-					color: var(--accent-primary);
-					background: rgba(99, 102, 241, 0.16);
-				}
-
 				/* Mobile Menu */
 				.mobile-menu {
 					position: fixed;
@@ -1205,134 +1041,6 @@ export default function TopNav() {
 				:global(.data-saver) .menu-backdrop {
 					animation: none;
 					backdrop-filter: none;
-				}
-
-				.auth-backdrop {
-					position: fixed;
-					inset: 0;
-					z-index: 1200;
-					background: rgba(0, 0, 0, 0.4);
-					backdrop-filter: blur(3px);
-					display: flex;
-					align-items: flex-start;
-					justify-content: center;
-					padding-top: calc(var(--navbar-height) + 12px);
-					padding-right: max(12px, var(--safe-right));
-					padding-bottom: calc(var(--bottom-nav-offset) + 12px);
-					padding-left: max(12px, var(--safe-left));
-				}
-
-				.auth-modal {
-					width: 100%;
-					max-width: 420px;
-					background: var(--bg-primary);
-					border: 1px solid var(--border-color);
-					border-radius: var(--radius-lg);
-					box-shadow: var(--shadow-lg);
-					overflow: hidden;
-				}
-
-				.auth-header {
-					padding: 12px;
-					display: flex;
-					align-items: center;
-					justify-content: space-between;
-					border-bottom: 1px solid var(--border-color);
-				}
-
-				.auth-header h2 {
-					margin: 0;
-					font-size: 1rem;
-					font-weight: 700;
-					color: var(--text-primary);
-				}
-
-				.auth-content {
-					padding: 16px;
-				}
-
-				.auth-state {
-					color: var(--text-secondary);
-					font-size: 0.92rem;
-				}
-
-				.auth-user-panel {
-					display: grid;
-					grid-template-columns: auto 1fr;
-					gap: 12px;
-					align-items: center;
-				}
-
-				.auth-avatar {
-					width: 40px;
-					height: 40px;
-					border-radius: 999px;
-					background: rgba(99, 102, 241, 0.16);
-					color: var(--accent-primary);
-					font-weight: 700;
-					display: inline-flex;
-					align-items: center;
-					justify-content: center;
-					text-transform: uppercase;
-				}
-
-				.auth-user-meta {
-					min-width: 0;
-				}
-
-				.auth-user-name {
-					color: var(--text-primary);
-					font-size: 0.95rem;
-					font-weight: 700;
-					line-height: 1.2;
-				}
-
-				.auth-user-email {
-					color: var(--text-muted);
-					font-size: 0.82rem;
-					line-height: 1.3;
-					word-break: break-word;
-				}
-
-				.auth-logout-btn {
-					margin-top: 14px;
-					grid-column: 1 / -1;
-					width: 100%;
-					border: 1px solid var(--border-color);
-					background: var(--bg-secondary);
-					color: var(--text-primary);
-					border-radius: var(--radius-md);
-					padding: 10px 12px;
-					font-size: 0.92rem;
-					font-weight: 600;
-					cursor: pointer;
-				}
-
-				.auth-logout-btn:active,
-				.auth-logout-btn:hover {
-					background: var(--bg-tertiary);
-				}
-
-				.auth-signin-panel {
-					display: flex;
-					flex-direction: column;
-					gap: 12px;
-				}
-
-				.auth-signin-copy {
-					margin: 0;
-					color: var(--text-secondary);
-					font-size: 0.88rem;
-				}
-
-				.google-signin-container {
-					width: 100%;
-				}
-
-				.auth-error {
-					margin: 12px 0 0;
-					color: var(--danger, #dc3545);
-					font-size: 0.82rem;
 				}
 
 						.search-backdrop {

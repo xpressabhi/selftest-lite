@@ -1,0 +1,305 @@
+<script>
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import { t } from '$lib/client/i18n';
+	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
+	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import {
+		clearDraftAnswers,
+		clearUnsubmittedTest,
+		getHistory,
+		readDraftAnswers,
+		resolveTestRecord,
+		saveUnsubmittedTest,
+		upsertHistory,
+		writeDraftAnswers,
+	} from '$lib/client/storage';
+
+	let questionPaper = $state(null);
+	let answers = $state({});
+	let currentQuestionIndex = $state(0);
+	let loading = $state(true);
+	let error = $state('');
+	let startedAt = $state(Date.now());
+	let showQuestionPanel = $state(false);
+
+	let answeredCount = $derived(Object.keys(answers).length);
+	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
+	let unansweredCount = $derived(Math.max(0, totalQuestions - answeredCount));
+
+	$effect(() => {
+		if (questionPaper?.id) {
+			writeDraftAnswers(questionPaper.id, answers);
+		}
+	});
+
+	onMount(async () => {
+		const testId = page.url.searchParams.get('id');
+		try {
+			questionPaper = await resolveTestRecord(testId);
+			if (!questionPaper) {
+				error = $t('testNotFound');
+				return;
+			}
+			if (questionPaper.userAnswers) {
+				await goto(`/results?id=${questionPaper.id}`);
+				return;
+			}
+			answers = readDraftAnswers(questionPaper.id);
+			saveUnsubmittedTest(questionPaper);
+			startedAt = Date.now();
+		} catch (caughtError) {
+			error = caughtError.message || $t('testNotFound');
+		} finally {
+			loading = false;
+		}
+	});
+
+	function setAnswer(index, option) {
+		answers = {
+			...answers,
+			[index]: option,
+		};
+	}
+
+	function submitTest() {
+		if (!questionPaper) {
+			return;
+		}
+		if (unansweredCount > 0 && !confirm(`${$t('unansweredWarning')} ${unansweredCount} ${$t('unansweredQuestions')}. ${$t('submitNow')}?`)) {
+			return;
+		}
+		const score = questionPaper.questions.filter(
+			(question, index) => answers[index] === question.answer,
+		).length;
+		const submittedPaper = {
+			...questionPaper,
+			userAnswers: answers,
+			score,
+			totalQuestions: questionPaper.questions.length,
+			timeTaken: Math.round((Date.now() - startedAt) / 1000),
+			timestamp: Date.now(),
+		};
+		clearDraftAnswers(questionPaper.id);
+		clearUnsubmittedTest(questionPaper.id);
+		upsertHistory(submittedPaper);
+		const nextHistory = [submittedPaper, ...getHistory().filter((entry) => String(entry.id) !== String(submittedPaper.id))];
+		const streak = recordStreakActivity();
+		unlockAchievements(nextHistory, streak);
+		goto(`/results?id=${questionPaper.id}`);
+	}
+
+	function nextQuestion() {
+		currentQuestionIndex = Math.min(
+			currentQuestionIndex + 1,
+			(questionPaper?.questions?.length || 1) - 1,
+		);
+	}
+
+	function previousQuestion() {
+		currentQuestionIndex = Math.max(currentQuestionIndex - 1, 0);
+	}
+</script>
+
+<svelte:head>
+	<title>{questionPaper?.topic || $t('testPrefix')} | selftest.in</title>
+</svelte:head>
+
+<section class="container py-4">
+	{#if loading}
+		<div class="py-5 text-center">
+			<div class="spinner-border text-primary" role="status"></div>
+			<p class="text-muted mt-3">{$t('loading')}</p>
+		</div>
+	{:else if error}
+		<div class="alert alert-danger">{error}</div>
+		<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
+	{:else if questionPaper}
+		<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+			<div>
+				<p class="text-muted small mb-1">
+					{$t('question')} {currentQuestionIndex + 1} {$t('of')} {questionPaper.questions.length}
+				</p>
+				<h1 class="h4 fw-bold mb-0">{questionPaper.topic}</h1>
+			</div>
+			<div class="d-flex flex-wrap gap-2">
+				<button class="btn btn-outline-secondary" type="button" onclick={() => (showQuestionPanel = !showQuestionPanel)}>
+					{$t('questionsHeading')}
+				</button>
+				<button class="btn btn-success" type="button" onclick={submitTest}>
+					{$t('submitTest')}
+				</button>
+			</div>
+		</div>
+
+		<div class="submit-summary bg-body border rounded-3 p-3 mb-3">
+			<div>
+				<strong>{answeredCount}</strong>
+				<span>{$t('answeredCount')}</span>
+			</div>
+			<div>
+				<strong>{unansweredCount}</strong>
+				<span>{$t('unansweredQuestions')}</span>
+			</div>
+			<div>
+				<strong>{Math.round((Date.now() - startedAt) / 60000)}</strong>
+				<span>{$t('minutesLabel')}</span>
+			</div>
+		</div>
+
+		<div class="progress mb-3" role="progressbar">
+			<div
+				class="progress-bar"
+				style={`width: ${((Object.keys(answers).length || 0) / questionPaper.questions.length) * 100}%`}
+			></div>
+		</div>
+
+		{@const question = questionPaper.questions[currentQuestionIndex]}
+		<article class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm">
+			<div class="h5 lh-base mb-3">
+				<MarkdownContent content={question.question} />
+			</div>
+			<div class="d-grid gap-2">
+				{#each question.options || [] as option (option)}
+					<button
+						class="btn option-button text-start"
+						class:btn-primary={answers[currentQuestionIndex] === option}
+						class:btn-outline-secondary={answers[currentQuestionIndex] !== option}
+						type="button"
+						onclick={() => setAnswer(currentQuestionIndex, option)}
+					>
+						<MarkdownContent content={option} />
+					</button>
+				{/each}
+			</div>
+		</article>
+
+		{#if showQuestionPanel}
+			<div class="question-panel bg-body border rounded-3 p-3 mt-3">
+				<div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+					<h2 class="h6 fw-bold mb-0">{$t('questionsHeading')}</h2>
+					<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => (showQuestionPanel = false)}>
+						{$t('closeMenu')}
+					</button>
+				</div>
+				<div class="question-grid">
+					{#each questionPaper.questions as navigatorQuestion, index (navigatorQuestion.question)}
+						<button
+							class="question-dot"
+							class:answered={answers[index]}
+							class:active={index === currentQuestionIndex}
+							aria-label={`Go to question ${index + 1}`}
+							type="button"
+							onclick={() => {
+								currentQuestionIndex = index;
+								showQuestionPanel = false;
+							}}
+						>
+							{index + 1}
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		<div class="d-flex align-items-center justify-content-between gap-2 mt-3">
+			<button
+				class="btn btn-outline-secondary"
+				type="button"
+				disabled={currentQuestionIndex === 0}
+				onclick={previousQuestion}
+			>
+				{$t('tourPrevious')}
+			</button>
+			<div class="d-flex flex-wrap justify-content-center gap-1 compact-dots">
+				{#each questionPaper.questions as navigatorQuestion, index (navigatorQuestion.question)}
+					<button
+						class="question-dot"
+						class:answered={answers[index]}
+						class:active={index === currentQuestionIndex}
+						aria-label={`Go to question ${index + 1}`}
+						type="button"
+						onclick={() => (currentQuestionIndex = index)}
+					>
+						{index + 1}
+					</button>
+				{/each}
+			</div>
+			<button
+				class="btn btn-outline-primary"
+				type="button"
+				disabled={currentQuestionIndex === questionPaper.questions.length - 1}
+				onclick={nextQuestion}
+			>
+				{$t('tourNext')}
+			</button>
+		</div>
+	{/if}
+</section>
+
+<style>
+	.test-card {
+		max-width: 860px;
+		margin: 0 auto;
+	}
+
+	.option-button {
+		min-height: 48px;
+		white-space: normal;
+	}
+
+	.question-dot {
+		width: 44px;
+		height: 44px;
+		border: 1px solid var(--bs-border-color);
+		border-radius: 999px;
+		background: var(--bs-body-bg);
+		color: var(--bs-body-color);
+		font-size: 0.8rem;
+	}
+
+	.question-dot.answered {
+		border-color: var(--bs-primary);
+	}
+
+	.question-dot.active {
+		background: var(--bs-primary);
+		border-color: var(--bs-primary);
+		color: #fff;
+	}
+
+	.submit-summary {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+		text-align: center;
+	}
+
+	.submit-summary div {
+		display: flex;
+		min-height: 54px;
+		align-items: center;
+		flex-direction: column;
+		justify-content: center;
+		border-radius: 8px;
+		background: var(--bs-tertiary-bg);
+	}
+
+	.submit-summary span {
+		color: var(--bs-secondary-color);
+		font-size: 0.75rem;
+	}
+
+	.question-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+		gap: 8px;
+	}
+
+	@media (max-width: 575.98px) {
+		.compact-dots {
+			display: none !important;
+		}
+	}
+</style>

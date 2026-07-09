@@ -1,16 +1,38 @@
-import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import js from '@eslint/js';
+import svelte from 'eslint-plugin-svelte';
+import globals from 'globals';
 
-const eslintConfig = [
-	...nextCoreWebVitals,
+export default [
 	{
+		ignores: [
+			'**/.svelte-kit/**',
+			'**/.next/**',
+			'**/.vercel/**',
+			'**/build/**',
+			'**/node_modules/**',
+			'**/src/app/**',
+			'**/src-next/**',
+			'**/public/sw.js',
+			'**/public/workbox-*.js',
+		],
+	},
+	js.configs.recommended,
+	...svelte.configs.recommended,
+	{
+		languageOptions: {
+			ecmaVersion: 2024,
+			sourceType: 'module',
+			globals: {
+				...globals.browser,
+				...globals.node,
+			},
+		},
 		rules: {
-			'import/no-anonymous-default-export': 'off',
-			'react/no-unescaped-entities': 'off',
-			'react-hooks/immutability': 'off',
-			'react-hooks/purity': 'off',
-			'react-hooks/set-state-in-effect': 'off',
+			'no-console': 'off',
+			'svelte/no-navigation-without-resolve': 'off',
+			'svelte/no-dom-manipulating': 'off',
+			'svelte/prefer-svelte-reactivity': 'off',
+			'svelte/no-at-html-tags': 'off',
 		},
 	},
 ];
-
-export default eslintConfig;
