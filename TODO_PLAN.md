@@ -84,5 +84,5 @@ This document outlines the remaining tasks required to complete the migration fr
 *(Perform after each major task)*
 - [ ] Run `npm run lint` and `npm run build`.
 - [ ] Verify 320px, 375px, 414px breakpoints on mobile viewports.
-- [ ] Test Sync/Auth flow with real credentials.
+- [ ] Verify local-first history, bookmarks, preferences, and attempts persist across reloads.
 - [ ] Validate DataSaver (Slow 3G) behavior.

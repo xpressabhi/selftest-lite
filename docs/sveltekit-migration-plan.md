@@ -2,12 +2,18 @@
 
 Status: implementation started
 
+## Authoritative scope decision
+
+- Authentication, Google sign-in, session cookies, cloud user-state sync, and user-attempt persistence are intentionally removed.
+- Do not add `app_user`, `app_user_session`, `app_user_state`, `app_user_test_attempt`, or `ai_test.created_by_user_id` to the runtime schema.
+- Keep the product local-first: browser storage holds user-specific history, bookmarks, preferences, and attempts; Neon stores generated tests and operational telemetry only.
+
 Decision baseline:
 - Full in-place rewrite.
 - Vercel deployment.
 - Bootstrap for quick migration and visual parity.
 - JavaScript only.
-- Preserve auth, localStorage, public URLs, API routes, SEO, PWA behavior, and database schema.
+- Preserve localStorage, public URLs, public API routes, SEO, PWA behavior, and the account-free database schema.
 - Full parity before production cutover.
 - Minimize behavior changes during migration.
 
@@ -27,14 +33,11 @@ Use this document as the migration checklist and source of truth. Update it when
 - Server/API migration baseline is implemented:
   - Server utilities are available under `src/lib/server/*`.
   - Shared API error helpers are available under `src/lib/shared/*`.
-  - SvelteKit endpoints exist for `/api/generate`, `/api/explain`, `/api/test`, `/api/user/state`, `/api/auth/google`, `/api/auth/me`, and `/api/auth/logout`.
-  - Existing DB schema, Gemini prompt logic, rate limiting, test persistence, and `selftest_session` cookie behavior are preserved.
+  - SvelteKit endpoints exist for `/api/generate`, `/api/explain`, and `/api/test`.
+  - Gemini prompt logic, rate limiting, anonymous test persistence, and local-first state are preserved.
 - Core Svelte client foundation is implemented:
-  - Auth store and session refresh/logout helpers.
   - Preference stores for language, theme, and data saver.
   - LocalStorage helpers preserving existing keys and JSON shapes.
-  - User data sync component using `/api/user/state`.
-  - Google sign-in component using the existing `/api/auth/google` endpoint.
 - Functional route baseline is implemented:
   - `/` can generate a quiz through `/api/generate` and stores the result under existing localStorage/history keys.
   - `/test` can load a local or remote test, persist draft answers, navigate questions, and submit.
@@ -48,14 +51,11 @@ Use this document as the migration checklist and source of truth. Update it when
   - `npm run build` passes.
   - Dev server checked at `http://127.0.0.1:5173/`.
   - `/` and `/history` return `200`.
-  - `/api/auth/me` returns expected unauthenticated `401` and clears stale `selftest_session`.
 
 ### Partially Implemented
 
 - PWA support is configured with `vite-plugin-pwa`, but full offline behavior, install prompt, cache policy parity, and slow-network QA are not complete.
 - SEO metadata exists at the layout level, but page-specific metadata and dynamic blog SEO are not fully ported.
-- Google sign-in is wired, but full browser verification with a real Google credential is still required.
-- User-state sync is ported, but needs authenticated end-to-end QA across reloads, sign-out, and sign-in.
 - Markdown and KaTeX rendering are available, but Mermaid/lazy diagram rendering is not implemented yet.
 - Theme/language/data-saver state exists, but the new Svelte UI is not fully localized and does not yet consume the existing locale JSON files throughout.
 - The active UI is functional but not yet full visual parity with the old React/Bootstrap implementation.
@@ -86,8 +86,6 @@ Use this document as the migration checklist and source of truth. Update it when
 - AdSense script integration and any Vercel analytics/speed-insights replacement are not finished.
 - Generated Next files and old React/Next source have not been removed yet; they remain as reference during migration.
 - Full QA is not complete:
-  - Google sign-in with real credentials.
-  - Authenticated sync.
   - Quiz generation with production env values.
   - Explanation generation.
   - LocalStorage migration from an existing browser profile.
@@ -99,12 +97,12 @@ Use this document as the migration checklist and source of truth. Update it when
 ## Progress Checkpoints
 
 - 2026-06-20: Created SvelteKit/Vercel scaffold, switched package scripts to Vite/SvelteKit, copied static assets into `static/`, ported server utilities and API endpoints, added route-compatible placeholder pages, configured PWA generation, and verified `npm run lint` plus `npm run build`.
-- 2026-06-20: Added Svelte client stores/helpers for auth, preferences, localStorage, history, draft answers, Google sign-in, and user-state sync. Replaced `/`, `/test`, `/results`, and `/history` placeholders with functional Svelte flows. Added sanitized markdown + KaTeX rendering for question/review content. Re-verified `npm run lint` and `npm run build`.
-- Remaining: replace remaining placeholder pages with full visual-parity Svelte components, finish Hindi/English localization wiring across new UI, add Mermaid/lazy diagram rendering, finish analytics/ad integrations, and complete full mobile/PWA/auth/localStorage parity QA.
+- 2026-06-20: Added Svelte client stores/helpers for preferences, localStorage, history, and draft answers. Replaced `/`, `/test`, `/results`, and `/history` placeholders with functional Svelte flows. Added sanitized markdown + KaTeX rendering for question/review content. Re-verified `npm run lint` and `npm run build`.
+- Remaining: replace remaining placeholder pages with full visual-parity Svelte components, finish Hindi/English localization wiring across new UI, add Mermaid/lazy diagram rendering, finish analytics/ad integrations, and complete full mobile/PWA/localStorage parity QA.
 
 ## Summary
 
-Rewrite the app in place from Next.js 16 App Router to SvelteKit, targeting Vercel with full production parity before cutover. Preserve public URLs, API routes, auth/session behavior, localStorage keys, database schema, SEO metadata, PWA behavior, Bootstrap-based visual design, Hindi/English localization, and low-end mobile performance.
+Rewrite the app in place from Next.js 16 App Router to SvelteKit, targeting Vercel with full production parity before cutover. Preserve public URLs, public API routes, localStorage keys, the account-free database schema, SEO metadata, PWA behavior, Bootstrap-based visual design, Hindi/English localization, and low-end mobile performance.
 
 Use JavaScript only. Do a direct replacement on a migration branch, using git as rollback. Do not intentionally redesign UI during migration; visual parity is the first target.
 
@@ -117,25 +115,21 @@ Use JavaScript only. Do a direct replacement on a migration branch, using git as
 - Recreate the app shell:
   - `src/routes/+layout.svelte` replaces the current root layout.
   - `src/app.html` owns viewport, PWA, AdSense, Bootstrap CDN, icons, theme-color, and base document markup.
-  - Convert React Contexts to Svelte stores for auth, language, theme, data saver, network, toast, and user sync.
+  - Convert React Contexts to Svelte stores for language, theme, data saver, network, and toast.
 - Preserve route compatibility:
   - `/`, `/test`, `/results`, `/history`, `/bookmarks`, `/about`, `/contact`, `/privacy`, `/terms`, `/faq`, `/blog`, `/blog/[slug]`.
   - Keep `/robots.txt`, `/sitemap.xml`, `/manifest.json`, `/ads.txt`, and icon paths unchanged.
 - Preserve API compatibility:
-  - `/api/generate`, `/api/explain`, `/api/test`, `/api/user/state`, `/api/auth/google`, `/api/auth/me`, `/api/auth/logout`.
+  - `/api/generate`, `/api/explain`, `/api/test`.
   - Response bodies, status codes, rate-limit headers, timeout codes, and request payloads must remain compatible.
   - Move server utilities into `src/lib/server/*`.
   - Replace `NextResponse.json` with SvelteKit `json`.
   - Replace Next request cookies with SvelteKit `cookies`.
-- Preserve auth:
-  - Keep cookie name `selftest_session`.
-  - Keep 30-day TTL, SHA-256 token hashing, `httpOnly`, `sameSite: 'lax'`, `path: '/'`, production-only `secure`.
-  - Keep DB tables and session refresh behavior.
-  - Preserve existing env names: `GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `GEMINI_API_KEY`, `DATABASE_URL`.
-  - Expose Google client ID to the client through SvelteKit server-loaded config, not by requiring a new public env var.
+- Preserve the account-free scope:
+  - Do not port authentication routes, session cookies, Google OAuth configuration, cloud user-state sync, or user-attempt persistence.
+  - Keep only `GEMINI_API_KEY` and `DATABASE_URL` as application environment variables.
 - Preserve local data:
   - Keep all current localStorage keys exactly, including `selftest_history`, `selftest_question_paper`, `selftest_user_answers`, `selftest_unsubmitted_test`, `selftest_language`, `selftest_theme`, `dataSaverMode`, and `soundEffectsEnabled`.
-  - Port `UserDataSyncManager` behavior exactly: tracked key prefix, extra keys, debounce, remote hydrate, attempt merge, online/visibility sync.
 - Preserve rendering fidelity:
   - Rebuild markdown rendering with `unified`, `remark-gfm`, `remark-math`, `rehype-katex`, sanitized HTML output, and lazy Mermaid rendering.
   - Do not render unsanitized model HTML.
@@ -143,7 +137,7 @@ Use JavaScript only. Do a direct replacement on a migration branch, using git as
 - Preserve PWA:
   - Replace `next-pwa` with `vite-plugin-pwa`.
   - Do not reuse generated Next `public/sw.js`; regenerate SvelteKit-compatible Workbox output.
-  - Keep offline/slow banners, install hint, manifest, safe-area CSS, and API/auth cache exclusions.
+  - Keep offline/slow banners, install hint, manifest, safe-area CSS, and API cache exclusions.
 - Preserve UI parity:
   - Convert React Bootstrap components to equivalent Bootstrap HTML classes in Svelte.
   - Keep Bootstrap CDN loading unless a component requires npm CSS import.
@@ -167,7 +161,6 @@ Use JavaScript only. Do a direct replacement on a migration branch, using git as
 
 - API paths, methods, payloads, response shapes, error codes, and rate-limit headers remain unchanged.
 - Database schema remains unchanged; no destructive migration.
-- Cookie name and session token format remain unchanged.
 - LocalStorage key names and stored JSON shapes remain unchanged.
 - Public routes and blog slugs remain unchanged.
 - Environment variable names remain backward-compatible.
@@ -176,17 +169,13 @@ Use JavaScript only. Do a direct replacement on a migration branch, using git as
 
 - Run `npm run lint` and `npm run build`.
 - API parity checks:
-  - `/api/auth/me` unauthenticated returns `401` and clears stale cookie.
-  - Google sign-in creates same DB user/session shape and sets `selftest_session`.
   - `/api/generate` validates inputs, respects timeouts, stores `ai_test`, and returns the same quiz shape.
   - `/api/explain` returns `{ explanation }` and preserves timeout/rate-limit behavior.
-  - `/api/user/state` hydrates and syncs localStorage snapshots and attempts.
-  - `/api/test?id=...` includes `myAttempt` when authenticated.
 - Client flow checks:
   - Generate quiz in English and Hindi.
   - Take test, submit, view results, revisit from history.
   - Bookmark exams and quiz presets.
-  - Sign in, sync data, reload, sign out, sign back in.
+  - Create a test, reload, and verify local history, bookmarks, preferences, and attempts remain available.
   - Recover unsubmitted test.
   - Switch theme and language.
 - Rendering checks:
@@ -209,4 +198,4 @@ Use JavaScript only. Do a direct replacement on a migration branch, using git as
 - Bootstrap remains the visual foundation.
 - Vercel remains the deployment target.
 - Existing production environment variable names must keep working.
-- Existing users must keep their sessions, local history, bookmarks, and synced account data.
+- Existing users must keep their local history, bookmarks, and preferences.
