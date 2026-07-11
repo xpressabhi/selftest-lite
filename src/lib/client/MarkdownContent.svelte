@@ -1,43 +1,48 @@
 <script>
-	import { onMount } from 'svelte';
 	import { tick } from 'svelte';
-	import { unified } from 'unified';
-	import remarkParse from 'remark-parse';
-	import remarkGfm from 'remark-gfm';
-	import remarkMath from 'remark-math';
-	import rehypeKatex from 'rehype-katex';
-	import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
-	import rehypeStringify from 'rehype-stringify';
-	import remarkRehype from 'remark-rehype';
 	import { isDataSaverActive } from './preferences';
 
 	let { content = '' } = $props();
 	let html = $state('');
 	let containerElement = $state();
 
-	const sanitizeSchema = {
-		...defaultSchema,
-		attributes: {
-			...defaultSchema.attributes,
-			code: [...(defaultSchema.attributes?.code || []), ['className', /^language-./]],
-			span: [...(defaultSchema.attributes?.span || []), ['className']],
-			div: [...(defaultSchema.attributes?.div || []), ['className']],
-		},
-	};
+	function escapeHtml(value) {
+		return String(value || '')
+			.replaceAll('&', '&amp;')
+			.replaceAll('<', '&lt;')
+			.replaceAll('>', '&gt;')
+			.replaceAll('"', '&quot;')
+			.replaceAll("'", '&#039;');
+	}
+
+	function needsRichRenderer(value) {
+		return /(^|\n)\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>|```)|\*\*|__|~~|`|\[[^\]]+\]\([^)]*\)|\$\$?|\|.+\|/m.test(
+			value,
+		);
+	}
+
+	function hasMath(value) {
+		return /\$\$?|\\\(|\\\[|\\begin\{/.test(value);
+	}
+
+	function hasMermaid(value) {
+		return /```mermaid\b/i.test(value);
+	}
 
 	async function renderMarkdown(value) {
-		const file = await unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(remarkMath)
-			.use(remarkRehype)
-			.use(rehypeSanitize, sanitizeSchema)
-			.use(rehypeKatex)
-			.use(rehypeStringify)
-			.process(value || '');
-		html = String(file);
+		if (needsRichRenderer(value || '')) {
+			if (hasMath(value || '')) {
+				await import('katex/dist/katex.min.css');
+			}
+			const { renderRichMarkdown } = await import('./markdownRenderer.js');
+			html = await renderRichMarkdown(value);
+		} else {
+			html = escapeHtml(value).replaceAll('\n', '<br>');
+		}
 		await tick();
-		renderMermaid();
+		if (hasMermaid(value || '')) {
+			renderMermaid();
+		}
 	}
 
 	async function renderMermaid() {
@@ -70,10 +75,6 @@
 			}),
 		);
 	}
-
-	onMount(() => {
-		renderMarkdown(content);
-	});
 
 	$effect(() => {
 		renderMarkdown(content);

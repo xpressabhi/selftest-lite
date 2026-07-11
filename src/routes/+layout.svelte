@@ -13,7 +13,6 @@
 	} from '$lib/client/preferences';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import '../app/globals.css';
-	import 'katex/dist/katex.min.css';
 
 	let { children } = $props();
 	let isOffline = $state(false);

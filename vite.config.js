@@ -12,6 +12,10 @@ export default defineConfig({
 			workbox: {
 				cleanupOutdatedCaches: true,
 				navigateFallback: '/',
+				// Route and renderer chunks cache at runtime after their first use.
+				// This keeps the install-time cache small on slow networks without removing
+				// offline availability for pages and renderers the user has opened.
+				globIgnores: ['**/_app/immutable/chunks/**'],
 				runtimeCaching: [
 					{
 						urlPattern: ({ url }) =>
