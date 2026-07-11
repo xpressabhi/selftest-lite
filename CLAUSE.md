@@ -12,8 +12,8 @@ Selftest-lite is a web application that allows you to generate and take multiple
 - `git status`, `git add .`, `git commit -m "message"`, `git push`: Standard Git commands for version control.
 
 ## High-Level Architecture
-1. **Frontend**: Built with [Next.js](https://nextjs.org) and [React](https://react.dev/) using [Bootstrap](https://getbootstrap.com/).
-2. **Backend**: A simple Next.js API route that communicates with the Gemini API to generate quizzes.
+1. **Frontend**: Built with [SvelteKit](https://svelte.dev/) and Tailwind CSS.
+2. **Backend**: SvelteKit server routes that communicate with Gemini to generate quizzes.
 3. **API Interaction**: The frontend sends prompts to the Gemini API, which returns JSON data that is parsed and displayed as a quiz.
 
 ## Development Setup

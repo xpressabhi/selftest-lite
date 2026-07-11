@@ -3,13 +3,13 @@
 Welcome, Agent! This guide is designed to help you quickly understand the **Selftest-lite** codebase and contribute effectively.
 
 ## 🚀 Project Overview
-**Selftest-lite** is an AI-powered quiz generation platform built with Next.js (App Router), leveraging the Google Gemini API for content generation and Neon PostgreSQL for persistence.
+**Selftest-lite** is an AI-powered quiz generation platform built with SvelteKit, leveraging the Google Gemini API for content generation and Neon PostgreSQL for persistence.
 
 ### Tech Stack Highlights:
-- **Framework**: Next.js 16 (App Router)
+- **Framework**: SvelteKit 2
 - **AI**: Google Gemini 3 Flash for paper generation (`/api/generate`) + Gemini 2.5 Flash Lite for explanations (`/api/explain`)
 - **Database**: Neon PostgreSQL (via `@neondatabase/serverless`)
-- **UI**: React Bootstrap + Custom CSS (Mobile-first)
+- **UI**: Tailwind CSS + Custom CSS (Mobile-first)
 - **PWA**: `next-pwa` with custom service worker logic
 
 ---
@@ -17,14 +17,14 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 ## 🏗 Architecture & Key Patterns
 
 ### 1. The "Mobile-First" Layout
-The entire app is wrapped in `src/app/components/MobileOptimizedLayout.js`.
+The entire app is wrapped in `src/routes/+layout.svelte`.
 - **TopNav**: Static desktop-style nav.
 - **BottomNav**: Mobile bottom-tab navigation.
 - **PWA Features**: Service worker registration, offline/slow-connection banners, and pull-to-refresh are handled here.
 - **Toasts**: A global toast system is managed via `MobileOptimizedLayout`.
 
 ### 2. AI Quiz Generation (`/api/generate`)
-Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
+Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 - **Pattern**: The prompt uses structured output (JSON mode) with Zod validation.
 - **Thinking**: We use Gemini's `thinkingConfig` (minimal level) to ensure high-quality, non-repetitive questions.
 - **Deduplication**: We pass `previousQuestions` to the prompt to avoid duplicate questions for a user.
@@ -34,8 +34,8 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
 - **Local**: Test history and user answers are cached in `localStorage` using the `useLocalStorage` hook.
 
 ### 4. Styling System
-- **Bootstrap**: Loaded via CDN in `layout.js` for performance.
-- **Custom CSS**: Unified variables in `src/app/globals.css`. Use CSS variables for colors to support light/dark modes.
+- **Tailwind**: Generated through the SvelteKit PostCSS pipeline.
+- **Custom CSS**: Shared variables and Tailwind component primitives live in `src/lib/styles/globals.css`.
 - **Animations**: Prefer subtle transforms and transitions for a "premium" feel. Use `shouldReduceAnimations` from `useDataSaver` for low-end devices.
 
 ---
@@ -44,7 +44,7 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
 
 ### 1. Mobile-First, Desktop-Ready
 - **Always** design for mobile screens (320px+) first.
-- Use `src/app/components/BottomNav.js` for mobile navigation and `TopNav.js` for desktop.
+- Use `src/routes/+layout.svelte` for mobile and desktop navigation.
 - Ensure all interactive elements have a minimum tap target of **44x44px**. 
 
 ### 2. High-End vs. Low-End Devices
@@ -78,7 +78,7 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
 ## 🛠 Coding Standards for Agents
 
 - **File Naming**: PascalCase for components (`MyComponent.js`), camelCase for everything else.
-- **Semicolons**: **Required**. Use `eslint` to verify (Next.js 16 defaults).
+- **Semicolons**: **Required**. Use `eslint` to verify.
 - **Single Quotes**: Preferred.
 - **Client/Server Boundary**: 
   - Default to Server Components.
@@ -86,25 +86,25 @@ Quizzes are generated via complex prompts in `src/app/api/utils/prompt.js`.
 - **CSS-in-JS**: Use `styled-jsx` within components for component-specific styles when `globals.css` isn't enough.
 - **Localization (Mandatory)**:
   - Any new or changed user-facing UI text must be provided in **both English and Hindi**.
-  - Store UI strings in `src/app/locales/english.json` and `src/app/locales/hindi.json`; do not hardcode text in components.
+  - Store UI strings in `src/lib/locales/english.json` and `src/lib/locales/hindi.json`; do not hardcode text in components.
 
 ---
 
 ## 📝 Common Tasks
 
 ### Adding a New Page:
-1. Create a folder in `src/app/[pagename]/page.js`.
-2. Ensure it uses `Container` from `react-bootstrap` for consistent padding.
+1. Create a folder in `src/routes/[pagename]/+page.svelte`.
+2. Use the shared Tailwind container utilities for consistent padding.
 3. Update `PROJECT_SUMMARY.md` after adding the route.
 
 ### Modifying the Prompt:
-1. Edit `src/app/api/utils/prompt.js`.
-2. Ensure any schema changes are also reflected in the Zod schema in `src/app/api/generate/route.js`.
+1. Edit `src/lib/server/prompt.js`.
+2. Ensure any schema changes are also reflected in `src/routes/api/generate/+server.js`.
 
 ### Adding a Component:
-1. Place it in `src/app/components/`.
-2. Use the `Icon.js` component for all SVG icons.
-3. If it needs state, mark it as `"use client"`.
+1. Place shared components in `src/lib/client/`.
+2. Use native SVG or a local Svelte component for icons.
+3. Use Svelte runes or stores for state.
 
 ---
 
@@ -121,7 +121,7 @@ Before submitting a change:
 2. [ ] Verify mobile responsiveness (check Safari/Chrome mobile view).
 3. [ ] Test with "Slow 3G" throttling in DevTools to ensure `DataSaver` triggers.
 4. [ ] Verify safe areas on iOS (no content hidden behind notches or home indicators).
-5. [ ] If adding an API, check rate limiting in `src/app/api/utils/rateLimiter.js`.
+5. [ ] If adding an API, check rate limiting in `src/lib/server/rateLimiter.js`.
 6. [ ] Ensure Google Adsense (`ADSENSE.md`) or PWA features aren't broken.
 7. [ ] Validate quiz/explanation rendering for markdown + math/symbol-heavy content.
 8. [ ] Validate behavior on low-end Android profile + slow internet (no blocking jank).

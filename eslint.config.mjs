@@ -6,14 +6,9 @@ export default [
 	{
 		ignores: [
 			'**/.svelte-kit/**',
-			'**/.next/**',
 			'**/.vercel/**',
 			'**/build/**',
 			'**/node_modules/**',
-			'**/src/app/**',
-			'**/src-next/**',
-			'**/public/sw.js',
-			'**/public/workbox-*.js',
 		],
 	},
 	js.configs.recommended,

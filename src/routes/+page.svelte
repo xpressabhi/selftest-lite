@@ -13,8 +13,8 @@
 		saveCurrentPaper,
 	} from '$lib/client/storage';
 	import { STORAGE_KEYS } from '$lib/client/constants';
-	import { TOPIC_CATEGORIES } from '../app/constants';
-	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '../app/data/indianExams';
+	import { TOPIC_CATEGORIES } from '$lib/shared/constants';
+	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 
 	const TEST_MODES = {
 		FULL_EXAM: 'full-exam',
@@ -583,7 +583,7 @@
 	.exam-row {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 48px;
-		border-bottom: 1px solid var(--bs-border-color);
+		border-bottom: 1px solid var(--line);
 	}
 
 	.exam-row:last-child {
@@ -591,7 +591,7 @@
 	}
 
 	.exam-row.selected {
-		background: rgba(var(--bs-primary-rgb), 0.08);
+		background: rgba(var(--brand-rgb), 0.08);
 	}
 
 	.exam-main,

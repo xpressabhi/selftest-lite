@@ -1,6 +1,6 @@
 import { derived } from 'svelte/store';
-import en from '../../app/locales/english.json';
-import hi from '../../app/locales/hindi.json';
+import en from '../locales/english.json';
+import hi from '../locales/hindi.json';
 import { language } from './preferences';
 
 const dictionaries = {

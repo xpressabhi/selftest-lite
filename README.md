@@ -1,6 +1,6 @@
 # Selftest-lite
 
-Selftest-lite is a web application that allows you to generate and take multiple-choice quizzes on any topic you can imagine. Simply provide a description, and the app will use AI to generate a test for you.
+Selftest-lite is a SvelteKit web application for generating and taking AI-powered multiple-choice quizzes.
 
 ## Features
 
@@ -11,10 +11,10 @@ Selftest-lite is a web application that allows you to generate and take multiple
 
 ## How it Works
 
-Selftest-lite is built with [Next.js](https://nextjs.org) and uses the [Google Gemini API](https://ai.google.dev/) to generate quizzes.
+Selftest-lite is built with [SvelteKit](https://svelte.dev/docs/kit/introduction), [Tailwind CSS](https://tailwindcss.com/), and the [Google Gemini API](https://ai.google.dev/).
 
-- The frontend is built with [React](https://react.dev/) and [Bootstrap](https://getbootstrap.com/).
-- The backend is a simple Next.js API route that communicates with the Gemini API.
+- The frontend uses Svelte components and Tailwind-generated CSS.
+- The backend uses SvelteKit server routes to communicate with Gemini.
 - When you request a new test, the application sends a prompt to the Gemini API and parses the response to create a quiz.
 
 ## Getting Started
@@ -52,13 +52,13 @@ DATABASE_URL=postgres://username:password@host:5432/database
 
 ### 4. Run the Development Server
 
-Start the Next.js development server:
+Start the SvelteKit development server:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+Open the URL printed by Vite (normally [http://localhost:5173](http://localhost:5173)) in your browser.
 
 ## License
 

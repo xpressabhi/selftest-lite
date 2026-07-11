@@ -11,7 +11,7 @@
 		saveQuestionBookmarks,
 	} from '$lib/client/storage';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
-	import { getIndianExamById } from '../../app/data/indianExams';
+	import { getIndianExamById } from '$lib/data/indianExams';
 
 	let examIds = $state([]);
 	let presets = $state([]);

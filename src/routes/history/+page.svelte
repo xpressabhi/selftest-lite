@@ -136,9 +136,9 @@
 		align-items: center;
 		flex-direction: column;
 		justify-content: center;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 8px;
-		background: var(--bs-body-bg);
+		background: var(--surface);
 	}
 
 	.stat-card strong {
@@ -146,7 +146,7 @@
 	}
 
 	.stat-card span {
-		color: var(--bs-secondary-color);
+		color: var(--text-muted);
 		font-size: 0.8rem;
 	}
 </style>

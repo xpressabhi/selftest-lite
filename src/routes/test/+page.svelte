@@ -252,20 +252,20 @@
 	.question-dot {
 		width: 44px;
 		height: 44px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 999px;
-		background: var(--bs-body-bg);
-		color: var(--bs-body-color);
+		background: var(--surface);
+		color: var(--text);
 		font-size: 0.8rem;
 	}
 
 	.question-dot.answered {
-		border-color: var(--bs-primary);
+		border-color: var(--color-brand-600);
 	}
 
 	.question-dot.active {
-		background: var(--bs-primary);
-		border-color: var(--bs-primary);
+		background: var(--color-brand-600);
+		border-color: var(--color-brand-600);
 		color: #fff;
 	}
 
@@ -283,11 +283,11 @@
 		flex-direction: column;
 		justify-content: center;
 		border-radius: 8px;
-		background: var(--bs-tertiary-bg);
+		background: var(--surface-muted);
 	}
 
 	.submit-summary span {
-		color: var(--bs-secondary-color);
+		color: var(--text-muted);
 		font-size: 0.75rem;
 	}
 

@@ -12,8 +12,8 @@
 		<h1 class="h2 fw-bold">{$t('aboutHeroTitle')}</h1>
 		<p class="lead text-muted">{$t('aboutHeroBody')}</p>
 		<div class="d-flex flex-wrap gap-2 mb-4">
-			<span class="badge text-bg-primary">{$t('aboutBadgeFree')}</span>
-			<span class="badge text-bg-secondary">{$t('aboutBadgePrivacy')}</span>
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{$t('aboutBadgeFree')}</span>
+			<span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-800">{$t('aboutBadgePrivacy')}</span>
 		</div>
 
 		<section class="mb-4">
@@ -42,7 +42,7 @@
 		<div class="bg-body border rounded-3 p-4">
 			<h2 class="h4 fw-bold">{$t('aboutCtaTitle')}</h2>
 			<p class="text-muted">{$t('aboutCtaBody')}</p>
-			<a class="btn btn-primary" href="/">{$t('aboutCtaButton')}</a>
+			<a class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors inline-block text-center" href="/">{$t('aboutCtaButton')}</a>
 		</div>
 	</div>
 </section>

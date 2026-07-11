@@ -12,7 +12,7 @@
 		themePreference,
 	} from '$lib/client/preferences';
 	import { STORAGE_KEYS } from '$lib/client/constants';
-	import '../app/globals.css';
+	import '$lib/styles/globals.css';
 
 	let { children } = $props();
 	let isOffline = $state(false);
@@ -440,7 +440,7 @@
 		z-index: 1200;
 		padding: 8px 12px;
 		border-radius: 0 0 8px 8px;
-		background: var(--bs-primary);
+		background: var(--color-brand-600);
 		color: #fff;
 		font-weight: 700;
 		text-decoration: none;
@@ -479,7 +479,7 @@
 	}
 
 	.brand-mark {
-		color: var(--bs-primary);
+		color: var(--color-brand-600);
 		font-size: 1.35rem;
 		line-height: 1;
 	}
@@ -489,9 +489,9 @@
 		align-items: center;
 		gap: 14px;
 		padding: 4px 8px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--bs-body-bg) 92%, var(--bs-primary));
+		background: color-mix(in srgb, var(--surface) 92%, var(--color-brand-600));
 	}
 
 	.desktop-nav a,
@@ -510,8 +510,8 @@
 	.desktop-nav .create-link {
 		padding: 7px 15px;
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--bs-primary) 14%, transparent);
-		color: var(--bs-primary);
+		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
+		color: var(--color-brand-600);
 	}
 
 	.header-actions {
@@ -537,8 +537,8 @@
 	.header-icon:hover,
 	.header-icon:focus-visible,
 	.header-icon.active {
-		background: color-mix(in srgb, var(--bs-primary) 13%, transparent);
-		color: var(--bs-primary);
+		background: color-mix(in srgb, var(--color-brand-600) 13%, transparent);
+		color: var(--color-brand-600);
 		outline: none;
 	}
 
@@ -550,8 +550,8 @@
 		display: grid;
 		gap: 2px;
 		padding: 8px 20px 14px;
-		border-top: 1px solid var(--bs-border-color);
-		background: var(--bs-body-bg);
+		border-top: 1px solid var(--line);
+		background: var(--surface);
 	}
 
 	.mobile-menu a,
@@ -559,7 +559,7 @@
 		min-height: 44px;
 		padding: 10px 4px;
 		border: 0;
-		border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 65%, transparent);
+		border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
 		background: transparent;
 		text-align: left;
 	}
@@ -597,7 +597,7 @@
 
 	.bottom-nav a.active,
 	.bottom-nav button:focus-visible {
-		color: var(--bs-primary);
+		color: var(--color-brand-600);
 		font-weight: 700;
 		outline: none;
 	}
@@ -608,7 +608,7 @@
 	}
 
 	.create-tab {
-		color: var(--bs-primary) !important;
+		color: var(--color-brand-600) !important;
 		font-weight: 700;
 	}
 
@@ -628,9 +628,9 @@
 		max-height: min(70vh, 620px);
 		overflow: auto;
 		padding: 18px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 16px;
-		background: var(--bs-body-bg);
+		background: var(--surface);
 		box-shadow: 0 20px 60px rgba(15, 23, 42, 0.26);
 		translate: -50% 0;
 		margin: 0;
@@ -653,18 +653,18 @@
 		display: grid;
 		gap: 2px;
 		padding: 11px 12px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 10px;
 		color: inherit;
 		text-decoration: none;
 	}
 
 	.search-results a:hover {
-		border-color: var(--bs-primary);
+		border-color: var(--color-brand-600);
 	}
 
 	.search-results span {
-		color: var(--bs-secondary-color);
+		color: var(--text-muted);
 		font-size: 0.82rem;
 	}
 
@@ -715,9 +715,9 @@
 		justify-content: space-between;
 		gap: 12px;
 		padding: 12px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 8px;
-		background: var(--bs-body-bg);
+		background: var(--surface);
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
 	}
 
@@ -742,7 +742,7 @@
 		min-height: 34px;
 		padding: 7px 14px;
 		border-radius: 999px;
-		background: var(--bs-primary);
+		background: var(--color-brand-600);
 		color: #fff;
 		font-size: 0.8rem;
 		font-weight: 700;

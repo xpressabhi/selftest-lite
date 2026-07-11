@@ -363,15 +363,15 @@
 	.week-strip span {
 		height: 12px;
 		border-radius: 999px;
-		background: var(--bs-tertiary-bg);
+		background: var(--surface-muted);
 	}
 
 	.week-strip span.active {
-		background: var(--bs-primary);
+		background: var(--color-brand-600);
 	}
 
 	.week-strip span.today {
-		outline: 2px solid rgba(var(--bs-primary-rgb), 0.25);
+		outline: 2px solid rgba(var(--brand-rgb), 0.25);
 	}
 
 	.stats-grid {
@@ -387,7 +387,7 @@
 		flex-direction: column;
 		justify-content: center;
 		border-radius: 8px;
-		background: var(--bs-tertiary-bg);
+		background: var(--surface-muted);
 	}
 
 	.stats-grid strong {
@@ -395,7 +395,7 @@
 	}
 
 	.stats-grid span {
-		color: var(--bs-secondary-color);
+		color: var(--text-muted);
 		font-size: 0.75rem;
 	}
 
@@ -412,7 +412,7 @@
 		justify-content: space-between;
 		gap: 12px;
 		padding: 8px 10px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 8px;
 		color: inherit;
 		text-decoration: none;
@@ -425,17 +425,17 @@
 
 	.review-option {
 		padding: 8px 10px;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 8px;
 	}
 
 	.correct-option {
-		border-color: var(--bs-success);
+		border-color: #059669;
 		background: rgba(25, 135, 84, 0.08);
 	}
 
 	.user-option {
-		border-color: var(--bs-danger);
+		border-color: #dc2626;
 		background: rgba(220, 53, 69, 0.08);
 	}
 
@@ -445,7 +445,7 @@
 		height: 88px;
 		place-items: center;
 		border-radius: 999px;
-		background: var(--bs-primary);
+		background: var(--color-brand-600);
 		color: #fff;
 		font-size: 1.5rem;
 		font-weight: 700;

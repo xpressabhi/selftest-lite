@@ -98,7 +98,7 @@
 		overflow-x: auto;
 		padding: 0.75rem;
 		border-radius: 0.5rem;
-		background: var(--bs-tertiary-bg, #f8f9fa);
+		background: var(--surface-muted, #f8f9fa);
 	}
 
 	.markdown-content :global(code) {
@@ -108,9 +108,9 @@
 	.markdown-content :global(.mermaid-diagram) {
 		overflow-x: auto;
 		padding: 0.75rem;
-		border: 1px solid var(--bs-border-color);
+		border: 1px solid var(--line);
 		border-radius: 0.5rem;
-		background: var(--bs-body-bg);
+		background: var(--surface);
 	}
 
 	.markdown-content :global(.mermaid-diagram svg) {
