@@ -522,8 +522,8 @@
 
 	.header-icon {
 		display: grid;
-		width: 40px;
-		height: 40px;
+		width: 44px;
+		height: 44px;
 		place-items: center;
 		border: 0;
 		border-radius: 50%;
@@ -698,8 +698,8 @@
 
 	.banner-close {
 		display: grid;
-		min-width: 32px;
-		min-height: 32px;
+		min-width: 44px;
+		min-height: 44px;
 		place-items: center;
 		border: 0;
 		background: transparent;
@@ -793,11 +793,6 @@
 	@media (max-width: 575.98px) {
 		.header-inner {
 			padding-inline: 12px;
-		}
-
-		.header-icon {
-			width: 36px;
-			height: 36px;
 		}
 
 		.pwa-install-hint {

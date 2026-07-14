@@ -64,7 +64,7 @@
 <section class="container py-4">
 	<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
 		<div>
-			<h1 class="h3 fw-bold mb-1">{$t('bookmarks')}</h1>
+			<h1 class="h2 fw-bold mb-1">{$t('bookmarks')}</h1>
 			<p class="text-muted mb-0">{$t('useBookmarksOrChooseMode')}</p>
 		</div>
 		<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>

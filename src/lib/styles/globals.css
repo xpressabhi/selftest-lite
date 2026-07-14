@@ -57,12 +57,12 @@ button, input, select {
 	.rounded-3 { @apply rounded-xl; }
 	.shadow-sm { @apply shadow-sm; }
 	.btn { @apply inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:pointer-events-none disabled:opacity-50; }
-	.btn-sm { @apply min-h-9 px-3 py-1.5 text-xs; }
+	.btn-sm { @apply min-h-11 px-3 py-1.5 text-sm; }
 	.btn-lg { @apply min-h-12 px-5 text-base; }
 	.btn-primary { @apply bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600; }
 	.btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:outline-emerald-600; }
 	.btn-warning { @apply bg-amber-400 text-slate-950 hover:bg-amber-500 focus-visible:outline-amber-500; }
-	.btn-outline-primary { @apply border border-brand-600 text-brand-700 hover:bg-brand-50 focus-visible:outline-brand-600; }
+	.btn-outline-primary { @apply border border-brand-600 text-brand-700 hover:bg-brand-50 focus-visible:outline-brand-600 dark:text-brand-500 dark:hover:bg-slate-800; }
 	.btn-outline-secondary { @apply border border-slate-300 text-slate-700 hover:bg-slate-100 focus-visible:outline-slate-500 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800; }
 	.btn-outline-danger { @apply border border-red-600 text-red-700 hover:bg-red-50 focus-visible:outline-red-600 dark:border-red-400 dark:text-red-300 dark:hover:bg-red-950/40; }
 	.form-label { @apply block text-sm font-medium; }
