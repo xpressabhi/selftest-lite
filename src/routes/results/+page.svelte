@@ -211,7 +211,7 @@
 
 		<div class="row g-3 mb-4">
 			<div class="col-md-6">
-				<section class="bg-body border rounded-3 p-3 h-100">
+				<section class="result-panel bg-body border rounded-3 p-3">
 					<div class="d-flex align-items-center justify-content-between gap-3">
 						<div>
 							<h2 class="h6 fw-bold mb-1">{$t('streaks')}</h2>
@@ -228,7 +228,7 @@
 				</section>
 			</div>
 			<div class="col-md-6">
-				<section class="bg-body border rounded-3 p-3 h-100">
+				<section class="result-panel bg-body border rounded-3 p-3">
 					<h2 class="h6 fw-bold">{$t('yourProgress')}</h2>
 					<div class="stats-grid">
 						<div><strong>{stats?.totalTests || 0}</strong><span>{$t('quizzes')}</span></div>
@@ -243,7 +243,7 @@
 		{#if achievements.some((item) => item.unlocked) || topicMastery.length > 0}
 			<div class="row g-3 mb-4">
 				<section class="col-lg-6">
-					<div class="bg-body border rounded-3 p-3 h-100">
+					<div class="result-panel bg-body border rounded-3 p-3">
 						<h2 class="h6 fw-bold">{$t('achievements')}</h2>
 						<div class="d-flex flex-wrap gap-2">
 							{#each achievements.filter((item) => item.unlocked).slice(0, 6) as achievement (achievement.id)}
@@ -253,7 +253,7 @@
 					</div>
 				</section>
 				<section class="col-lg-6">
-					<div class="bg-body border rounded-3 p-3 h-100">
+					<div class="result-panel bg-body border rounded-3 p-3">
 						<h2 class="h6 fw-bold">{$t('topicMasteryTitle')}</h2>
 						{#each topicMastery as item (item.id)}
 							<div class="d-flex justify-content-between gap-3 border-bottom py-2">
@@ -357,6 +357,10 @@
 		max-width: 860px;
 	}
 
+	.result-panel {
+		height: 100%;
+	}
+
 	.week-strip {
 		display: grid;
 		grid-template-columns: repeat(7, 1fr);
@@ -457,6 +461,12 @@
 	@media print {
 		.no-print {
 			display: none !important;
+		}
+	}
+
+	@media (max-width: 767.98px) {
+		.result-panel {
+			height: auto;
 		}
 	}
 </style>
