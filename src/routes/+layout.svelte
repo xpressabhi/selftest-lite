@@ -38,7 +38,7 @@
 
 	onMount(() => {
 		initializePreferences();
-		if ('serviceWorker' in navigator) {
+		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')
 				.then(() => {
@@ -429,8 +429,8 @@
 <style>
 	.app-shell {
 		min-height: 100vh;
-		background: var(--bg-primary, #f8fafc);
-		color: var(--text-primary, #111827);
+		background: var(--surface-muted);
+		color: var(--text);
 	}
 
 	.skip-link {
@@ -543,6 +543,10 @@
 	}
 
 	.data-saver-control {
+		display: none;
+	}
+
+	.desktop-only {
 		display: none;
 	}
 

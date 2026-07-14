@@ -91,7 +91,7 @@
 		</section>
 	{/if}
 
-	<label class="form-label w-100 mb-3" style="max-width: 520px;">
+	<label class="form-label w-full mb-3" style="max-width: 520px;">
 		<span class="fw-semibold">{$t('searchTests')}</span>
 		<input class="form-control mt-1" bind:value={search} placeholder={$t('searchByTopic')} />
 	</label>

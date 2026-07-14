@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { loadDictionary } from './locales';
 import { emitLocalStorageChange } from './storage';
 
 const LANGUAGE_KEY = 'selftest_language';
@@ -33,8 +34,7 @@ export function initializePreferences() {
 	const resolvedLanguage = ['english', 'hindi'].includes(savedLanguage)
 		? savedLanguage
 		: getSystemLanguage();
-	language.set(resolvedLanguage);
-	document.documentElement.setAttribute('lang', resolvedLanguage === 'hindi' ? 'hi' : 'en');
+	void setLanguage(resolvedLanguage, { persist: false });
 
 	const savedTheme = window.localStorage.getItem(THEME_KEY) || 'system';
 	themePreference.set(savedTheme);
@@ -51,15 +51,20 @@ export function initializePreferences() {
 	document.documentElement.classList.toggle('reduce-motion', resolvedDataSaver);
 }
 
-export function setLanguage(nextLanguage) {
+export async function setLanguage(nextLanguage, { persist = true } = {}) {
 	if (!['english', 'hindi'].includes(nextLanguage)) {
 		return;
 	}
+	await loadDictionary(nextLanguage);
 	language.set(nextLanguage);
 	if (typeof window !== 'undefined') {
-		window.localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+		if (persist) {
+			window.localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+		}
 		document.documentElement.setAttribute('lang', nextLanguage === 'hindi' ? 'hi' : 'en');
-		emitLocalStorageChange(LANGUAGE_KEY);
+		if (persist) {
+			emitLocalStorageChange(LANGUAGE_KEY);
+		}
 	}
 }
 

@@ -1,16 +1,10 @@
 import { derived } from 'svelte/store';
-import en from '../locales/english.json';
-import hi from '../locales/hindi.json';
 import { language } from './preferences';
-
-const dictionaries = {
-	english: en,
-	hindi: hi,
-};
+import { getDictionary } from './locales';
 
 export function translate(key, currentLanguage = 'english', replacements = {}) {
-	const dictionary = dictionaries[currentLanguage] || dictionaries.english;
-	const fallbackDictionary = dictionaries.english;
+	const dictionary = getDictionary(currentLanguage);
+	const fallbackDictionary = getDictionary('english');
 	let value = dictionary[key] || fallbackDictionary[key] || key;
 
 	for (const [name, replacement] of Object.entries(replacements)) {

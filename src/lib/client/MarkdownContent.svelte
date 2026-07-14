@@ -1,10 +1,11 @@
 <script>
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { isDataSaverActive } from './preferences';
 
 	let { content = '' } = $props();
 	let html = $state('');
 	let containerElement = $state();
+	let mermaidObserver;
 
 	function escapeHtml(value) {
 		return String(value || '')
@@ -32,7 +33,7 @@
 	async function renderMarkdown(value) {
 		if (needsRichRenderer(value || '')) {
 			if (hasMath(value || '')) {
-				await import('katex/dist/katex.min.css');
+				await import('$lib/styles/katex.css');
 			}
 			const { renderRichMarkdown } = await import('./markdownRenderer.js');
 			html = await renderRichMarkdown(value);
@@ -53,6 +54,12 @@
 		if (mermaidBlocks.length === 0) {
 			return;
 		}
+		mermaidObserver?.disconnect();
+		const render = async () => {
+			mermaidObserver?.disconnect();
+			if ($isDataSaverActive) {
+				return;
+			}
 		const mermaidModule = await import('mermaid');
 		const mermaid = mermaidModule.default;
 		mermaid.initialize({
@@ -74,10 +81,30 @@
 				}
 			}),
 		);
+		};
+
+		if (!('IntersectionObserver' in window)) {
+			await render();
+			return;
+		}
+
+		mermaidObserver = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					void render();
+				}
+			},
+			{ rootMargin: '240px 0px' },
+		);
+		mermaidObserver.observe(containerElement);
 	}
 
 	$effect(() => {
 		renderMarkdown(content);
+	});
+
+	onDestroy(() => {
+		mermaidObserver?.disconnect();
 	});
 </script>
 

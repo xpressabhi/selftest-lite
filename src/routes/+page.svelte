@@ -423,7 +423,7 @@
 			</div>
 
 			{#if activeMode === TEST_MODES.QUIZ_PRACTICE}
-				<label class="form-label w-100">
+				<label class="form-label w-full">
 					<span class="fw-semibold">{$t('whatToLearn')}</span>
 					<input class="form-control mt-1" bind:value={topic} placeholder={$t('placeholderTopic')} />
 				</label>
@@ -509,7 +509,7 @@
 					{/each}
 				</div>
 				{#if selectedExam}
-					<label class="form-label w-100">
+					<label class="form-label w-full">
 						<span class="fw-semibold">{$t('optionalTopicNotes')}</span>
 						<input class="form-control mt-1" bind:value={topic} placeholder={$t('fullExamInstructionPlaceholder')} />
 					</label>
@@ -549,7 +549,7 @@
 				<div class="alert alert-danger mt-3 mb-0">{error}</div>
 			{/if}
 
-			<button class="btn btn-primary btn-lg w-100 mt-3" disabled={status === 'loading' || !canGenerate}>
+			<button class="btn btn-primary btn-lg w-full mt-3" disabled={status === 'loading' || !canGenerate}>
 				{status === 'loading'
 					? $t('generating')
 					: activeMode === TEST_MODES.FULL_EXAM

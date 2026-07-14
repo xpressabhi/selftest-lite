@@ -12,8 +12,8 @@
 		<h1 class="h2 fw-bold">{$t('aboutHeroTitle')}</h1>
 		<p class="lead text-muted">{$t('aboutHeroBody')}</p>
 		<div class="d-flex flex-wrap gap-2 mb-4">
-			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{$t('aboutBadgeFree')}</span>
-			<span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-800">{$t('aboutBadgePrivacy')}</span>
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-100">{$t('aboutBadgeFree')}</span>
+			<span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-slate-700 dark:text-slate-100">{$t('aboutBadgePrivacy')}</span>
 		</div>
 
 		<section class="mb-4">
