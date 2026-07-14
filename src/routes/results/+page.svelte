@@ -357,6 +357,10 @@
 		max-width: 860px;
 	}
 
+	.result-summary h1 {
+		font-size: clamp(1.75rem, 7vw, 2.25rem);
+	}
+
 	.result-panel {
 		height: 100%;
 	}
