@@ -1,5 +1,6 @@
 import { Pool } from '@neondatabase/serverless';
 import { createHash } from 'crypto';
+import { env } from '$env/dynamic/private';
 
 let poolInstance = null;
 let schemaReadyPromise = null;
@@ -14,7 +15,7 @@ function normalizeExamId(value) {
 
 function getPool() {
 	if (!poolInstance) {
-		const connectionString = process.env.DATABASE_URL;
+		const connectionString = env.DATABASE_URL;
 		if (!connectionString) {
 			throw new Error('DATABASE_URL is not configured');
 		}

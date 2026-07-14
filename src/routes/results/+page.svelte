@@ -182,7 +182,10 @@
 		<a class="btn btn-primary" href="/history">{$t('history')}</a>
 	{:else if questionPaper}
 		<div class="result-summary bg-body border rounded-3 p-4 shadow-sm mb-4">
-			<p class="text-muted small mb-1">{$t('score')}</p>
+			<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+				<p class="text-muted small mb-0">{$t('score')}</p>
+				<span class="badge text-bg-primary">{$t('testId')}: {questionPaper.id}</span>
+			</div>
 			<h1 class="display-6 fw-bold mb-2">{questionPaper.topic}</h1>
 			<div class="d-flex flex-wrap align-items-center gap-3">
 				<div class="score-circle">{percentage}%</div>

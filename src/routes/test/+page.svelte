@@ -118,9 +118,12 @@
 	{:else if questionPaper}
 		<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
 			<div>
-				<p class="text-muted small mb-1">
-					{$t('question')} {currentQuestionIndex + 1} {$t('of')} {questionPaper.questions.length}
-				</p>
+				<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+					<p class="text-muted small mb-0">
+						{$t('question')} {currentQuestionIndex + 1} {$t('of')} {questionPaper.questions.length}
+					</p>
+					<span class="badge text-bg-primary">{$t('testId')}: {questionPaper.id}</span>
+				</div>
 				<h1 class="h4 fw-bold mb-0">{questionPaper.topic}</h1>
 			</div>
 			<div class="d-flex flex-wrap gap-2">

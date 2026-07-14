@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
+import { env } from '$env/dynamic/private';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { generateExplanationPrompt } from '$lib/server/prompt';
 import { getClientKey, logApiEvent } from '$lib/server/storage';
@@ -56,7 +57,7 @@ export async function POST({ request }) {
 		}
 
 		const { topic, question, answer, language } = await request.json();
-		const apiKey = process.env.GEMINI_API_KEY;
+		const apiKey = env.GEMINI_API_KEY;
 
 		if (!topic || !question || !answer) {
 			return json(

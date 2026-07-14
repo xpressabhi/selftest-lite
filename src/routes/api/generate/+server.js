@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
+import { env } from '$env/dynamic/private';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { generatePrompt } from '$lib/server/prompt';
 import * as z from 'zod';
@@ -359,7 +360,7 @@ export async function POST({ request }) {
 				})) || [],
 		);
 
-		const apiKey = process.env.GEMINI_API_KEY;
+		const apiKey = env.GEMINI_API_KEY;
 		if (!apiKey) {
 			return json(
 				{ error: 'Gemini API key is not configured' },
