@@ -73,7 +73,7 @@ export async function POST({ request }) {
 			);
 		}
 
-		const ai = new GoogleGenAI(apiKey);
+		const ai = new GoogleGenAI({ apiKey });
 
 		const prompt = generateExplanationPrompt({
 			topic,

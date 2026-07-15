@@ -246,7 +246,7 @@
 			return data;
 		} catch (caughtError) {
 			if (caughtError.name === 'AbortError') {
-				throw new Error($t('generationTimedOutRetry'));
+				throw new Error($t('generationTimedOutRetry'), { cause: caughtError });
 			}
 			if (attempt >= MAX_RETRIES) {
 				throw caughtError;
