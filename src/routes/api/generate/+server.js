@@ -11,6 +11,7 @@ import {
 	logApiEvent,
 } from '$lib/server/storage';
 import { paperSchema } from '$lib/server/quizSchema';
+import { normalizeMathText } from '$lib/shared/latex';
 import {
 	validateGenerateRequest,
 	validateGeneratedPaper,
@@ -46,9 +47,9 @@ function assertWithinDeadline(deadlineMs) {
 
 function sanitizeQuestion(question) {
 	return {
-		question: question.question,
-		options: question.options,
-		answer: question.answer,
+		question: normalizeMathText(question.question),
+		options: question.options.map((option) => normalizeMathText(option)),
+		answer: normalizeMathText(question.answer),
 	};
 }
 
@@ -194,7 +195,7 @@ async function generatePaper({
 	}
 
 	return {
-		topic: resolvedPaperTopic || resolvedTopic || 'Generated Test',
+		topic: normalizeMathText(resolvedPaperTopic || resolvedTopic || 'Generated Test'),
 		questions: generatedQuestions,
 	};
 }

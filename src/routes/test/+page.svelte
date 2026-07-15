@@ -143,7 +143,9 @@
 					</p>
 					<span class="badge text-bg-primary">{$t('testId')}: {questionPaper.id}</span>
 				</div>
-				<h1 class="h4 fw-bold mb-0">{questionPaper.topic}</h1>
+				<h1 class="h4 fw-bold mb-0">
+					<MarkdownContent content={questionPaper.topic} tag="span" />
+				</h1>
 			</div>
 			<div class="d-flex flex-wrap gap-2">
 				<button class="btn btn-outline-secondary" type="button" onclick={() => (showQuestionPanel = !showQuestionPanel)}>

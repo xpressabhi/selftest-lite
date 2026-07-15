@@ -73,6 +73,7 @@ export function generatePrompt({
     - Use **bold** for emphasis
     - Use *italic* for terms
     - Use LaTeX for math: $x^2$
+    - When LaTeX appears inside JSON strings, escape its backslashes so commands survive JSON parsing (for example, output $2NaHCO_3 \\\\rightarrow Na_2CO_3$ in the JSON source)
     - Use proper symbols: °C, km², π
     
     TOPIC INFORMATION:

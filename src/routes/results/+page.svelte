@@ -186,7 +186,9 @@
 				<p class="text-muted small mb-0">{$t('score')}</p>
 				<span class="badge text-bg-primary">{$t('testId')}: {questionPaper.id}</span>
 			</div>
-			<h1 class="display-6 fw-bold mb-2">{questionPaper.topic}</h1>
+			<h1 class="display-6 fw-bold mb-2">
+				<MarkdownContent content={questionPaper.topic} tag="span" />
+			</h1>
 			<div class="d-flex flex-wrap align-items-center gap-3">
 				<div class="score-circle">{percentage}%</div>
 				<div>

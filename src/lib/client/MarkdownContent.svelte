@@ -1,8 +1,9 @@
 <script>
-	import { onDestroy, tick } from 'svelte';
-	import { isDataSaverActive } from './preferences';
+import { onDestroy, tick } from 'svelte';
+import { isDataSaverActive } from './preferences';
+import { normalizeMathText } from '$lib/shared/latex';
 
-	let { content = '' } = $props();
+	let { content = '', tag = 'div' } = $props();
 	let html = $state('');
 	let containerElement = $state();
 	let mermaidObserver;
@@ -31,17 +32,18 @@
 	}
 
 	async function renderMarkdown(value) {
-		if (needsRichRenderer(value || '')) {
-			if (hasMath(value || '')) {
+		const normalizedValue = normalizeMathText(value || '');
+		if (needsRichRenderer(normalizedValue)) {
+			if (hasMath(normalizedValue)) {
 				await import('$lib/styles/katex.css');
 			}
 			const { renderRichMarkdown } = await import('./markdownRenderer.js');
-			html = await renderRichMarkdown(value);
+			html = await renderRichMarkdown(normalizedValue);
 		} else {
-			html = escapeHtml(value).replaceAll('\n', '<br>');
+			html = escapeHtml(normalizedValue).replaceAll('\n', '<br>');
 		}
 		await tick();
-		if (hasMermaid(value || '')) {
+		if (hasMermaid(normalizedValue)) {
 			renderMermaid();
 		}
 	}
@@ -108,9 +110,9 @@
 	});
 </script>
 
-<div class="markdown-content" bind:this={containerElement}>
+<svelte:element this={tag} class="markdown-content" bind:this={containerElement}>
 	{@html html}
-</div>
+</svelte:element>
 
 <style>
 	.markdown-content :global(:first-child) {
