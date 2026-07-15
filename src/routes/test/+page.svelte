@@ -90,6 +90,25 @@
 		goto(`/results?id=${questionPaper.id}`);
 	}
 
+	async function shareTest() {
+		if (!questionPaper) {
+			return;
+		}
+
+		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
+		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
+		if (navigator.share) {
+			await navigator.share({
+				title,
+				text: title,
+				url,
+			});
+			return;
+		}
+		await navigator.clipboard.writeText(url);
+		alert($t('shareLinkCopied'));
+	}
+
 	function nextQuestion() {
 		currentQuestionIndex = Math.min(
 			currentQuestionIndex + 1,
@@ -129,6 +148,9 @@
 			<div class="d-flex flex-wrap gap-2">
 				<button class="btn btn-outline-secondary" type="button" onclick={() => (showQuestionPanel = !showQuestionPanel)}>
 					{$t('questionsHeading')}
+				</button>
+				<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
+					{$t('share')}
 				</button>
 				<button class="btn btn-success" type="button" onclick={submitTest}>
 					{$t('submitTest')}
