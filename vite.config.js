@@ -33,7 +33,8 @@ export default defineConfig({
 					{
 						urlPattern: ({ url }) =>
 							url.origin === self.location.origin &&
-							!url.pathname.startsWith('/api/'),
+							!url.pathname.startsWith('/api/') &&
+							!url.pathname.startsWith('/_vercel/'),
 						handler: 'NetworkFirst',
 						options: {
 							cacheName: 'pages',
