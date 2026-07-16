@@ -18,9 +18,70 @@
 		<link rel="manifest" href="/manifest.json" />
 		<link rel="icon" href="/icons/192.png" />
 		<link rel="apple-touch-icon" href="/icons/192.png" />
+		<style>
+			#boot-screen {
+				position: fixed;
+				inset: 0;
+				z-index: 2147483647;
+				display: grid;
+				place-content: center;
+				gap: 12px;
+				background: #f8fafc;
+				color: #111827;
+				font: 700 1.25rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+				text-align: center;
+				opacity: 1;
+				transition: opacity 180ms ease, visibility 180ms ease;
+			}
+
+			#boot-screen.is-hidden {
+				visibility: hidden;
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			#boot-screen .boot-mark {
+				font-size: 2.5rem;
+				line-height: 1;
+			}
+
+			#boot-screen .boot-spinner {
+				width: 24px;
+				height: 24px;
+				margin: 4px auto 0;
+				border: 3px solid rgba(79, 70, 229, 0.2);
+				border-top-color: #4f46e5;
+				border-radius: 50%;
+				animation: boot-spin 700ms linear infinite;
+			}
+
+			@keyframes boot-spin {
+			to { transform: rotate(360deg); }
+			}
+
+			@media (prefers-color-scheme: dark) {
+				#boot-screen {
+					background: #111827;
+					color: #f8fafc;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				#boot-screen { transition: none; }
+				#boot-screen .boot-spinner { animation: none; }
+			}
+		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<div id="boot-screen" aria-hidden="true">
+			<span class="boot-mark">▤</span>
+			<span>selftest.in</span>
+			<span class="boot-spinner"></span>
+		</div>
 		<div style="display: contents">%sveltekit.body%</div>
+		<script>
+			window.setTimeout(() => document.getElementById('boot-screen')?.classList.add('is-hidden'), 10000);
+		</script>
 	</body>
 </html>

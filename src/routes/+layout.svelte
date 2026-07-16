@@ -49,7 +49,17 @@
 		document.head.appendChild(script);
 	}
 
+	function dismissBootScreen() {
+		const bootScreen = document.getElementById('boot-screen');
+		if (!bootScreen) {
+			return;
+		}
+		bootScreen.classList.add('is-hidden');
+		window.setTimeout(() => bootScreen.remove(), 220);
+	}
+
 	onMount(() => {
+		dismissBootScreen();
 		initializePreferences();
 		const adsenseTimer = window.setTimeout(loadAdSense, 3000);
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
