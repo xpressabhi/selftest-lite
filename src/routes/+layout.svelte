@@ -36,8 +36,22 @@
 	let searchResults = $state([]);
 	let searchStatus = $state('idle');
 
+	function loadAdSense() {
+		if (document.querySelector('script[data-selftest-adsense]')) {
+			return;
+		}
+		const script = document.createElement('script');
+		script.async = true;
+		script.crossOrigin = 'anonymous';
+		script.dataset.selftestAdsense = 'true';
+		script.src =
+			'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7214001284506571';
+		document.head.appendChild(script);
+	}
+
 	onMount(() => {
 		initializePreferences();
+		const adsenseTimer = window.setTimeout(loadAdSense, 3000);
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')
@@ -103,6 +117,7 @@
 			window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 			window.removeEventListener('appinstalled', handleAppInstalled);
 			connection?.removeEventListener?.('change', updateNetworkState);
+			window.clearTimeout(adsenseTimer);
 			window.clearTimeout(toastTimer);
 		};
 	});
@@ -272,7 +287,7 @@
 	<a class="skip-link" href="#main-content">{$t('skipToMainContent')}</a>
 	<header class="app-header border-bottom bg-body">
 		<nav class="header-inner" aria-label={$t('mainNavigation')}>
-			<a class="brand-link" href="/" aria-label={$t('selftestHome')}>
+			<a class="brand-link" href="/">
 				<span class="brand-mark" aria-hidden="true">▤</span>
 				<span>selftest.in</span>
 			</a>
@@ -614,6 +629,12 @@
 	.create-tab {
 		color: var(--color-brand-600) !important;
 		font-weight: 700;
+	}
+
+	:global(.dark) .bottom-nav a.active,
+	:global(.dark) .bottom-nav button:focus-visible,
+	:global(.dark) .create-tab {
+		color: var(--color-brand-100) !important;
 	}
 
 	.search-backdrop {
