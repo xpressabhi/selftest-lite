@@ -153,8 +153,8 @@
 	}
 
 	async function shareResult() {
-		const url = `${window.location.origin}/results?id=${encodeURIComponent(questionPaper.id)}`;
-		const title = `${questionPaper.topic} - ${questionPaper.score}/${questionPaper.totalQuestions}`;
+		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
+		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
 		if (navigator.share) {
 			await navigator.share({
 				title,
