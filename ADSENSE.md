@@ -4,7 +4,7 @@ This file lists steps completed to prepare the site for Google AdSense review an
 
 Completed changes
 - Added content pages: `/about`, `/privacy`, `/terms`, `/contact`, `/faq`, `/blog`, and a sample blog post.
-- Added `public/robots.txt` and `public/sitemap.xml` for indexing.
+- Added `static/robots.txt` and `static/sitemap.xml` for indexing.
 - Updated navbar to link content pages for easy navigation.
 - Added basic SEO meta tags in `src/app.html` and `src/routes/+layout.svelte` (viewport, canonical, favicon).
 

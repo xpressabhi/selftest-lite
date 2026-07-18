@@ -7,7 +7,15 @@ export default defineConfig({
 		sveltekit(),
 		VitePWA({
 			registerType: 'autoUpdate',
-			includeAssets: ['icons/152.png', 'icons/192.png', 'icons/512.png', 'ads.txt'],
+			includeAssets: [
+				'icons/favicon.ico',
+				'icons/favicon-16x16.png',
+				'icons/favicon-32x32.png',
+				'icons/apple-touch-icon.png',
+				'icons/192.png',
+				'icons/512.png',
+				'ads.txt',
+			],
 			manifest: false,
 			workbox: {
 				cleanupOutdatedCaches: true,

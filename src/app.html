@@ -16,8 +16,10 @@
 		<meta name="format-detection" content="telephone=no" />
 		<meta name="google-adsense-account" content="ca-pub-7214001284506571" />
 		<link rel="manifest" href="/manifest.json" />
-		<link rel="icon" href="/icons/192.png" />
-		<link rel="apple-touch-icon" href="/icons/192.png" />
+		<link rel="icon" href="/icons/favicon.ico" sizes="any" />
+		<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+		<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
 		<style>
 			#boot-screen {
 				position: fixed;
@@ -41,8 +43,11 @@
 			}
 
 			#boot-screen .boot-mark {
-				font-size: 2.5rem;
+				display: block;
+				width: 96px;
+				height: 96px;
 				line-height: 1;
+				object-fit: contain;
 			}
 
 			#boot-screen .boot-spinner {
@@ -75,7 +80,7 @@
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div id="boot-screen" aria-hidden="true">
-			<span class="boot-mark">▤</span>
+			<img class="boot-mark" src="/icons/192.png" alt="" width="96" height="96" />
 			<span>selftest.in</span>
 			<span class="boot-spinner"></span>
 		</div>

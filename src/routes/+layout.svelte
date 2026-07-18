@@ -298,7 +298,7 @@
 	<header class="app-header border-bottom bg-body">
 		<nav class="header-inner" aria-label={$t('mainNavigation')}>
 			<a class="brand-link" href="/">
-				<span class="brand-mark" aria-hidden="true">▤</span>
+				<img class="brand-mark" src="/icons/192.png" alt="" width="32" height="32" />
 				<span>selftest.in</span>
 			</a>
 
@@ -504,8 +504,9 @@
 	}
 
 	.brand-mark {
-		color: var(--color-brand-600);
-		font-size: 1.35rem;
+		width: 32px;
+		height: 32px;
+		object-fit: contain;
 		line-height: 1;
 	}
 
