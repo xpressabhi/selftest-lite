@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
+	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { t } from '$lib/client/i18n';
 	import {
 		buildReviewQueue,
@@ -331,20 +332,23 @@
 						<span class="fw-semibold">{$t('correctAnswer')}:</span>
 						<span class="text-success"><MarkdownContent content={question.answer} /></span>
 					</p>
-					{#if question.explanation}
-						<div class="alert alert-light border mb-0">
-							<MarkdownContent content={question.explanation} />
-						</div>
-					{:else}
-						<button
-							class="btn btn-sm btn-outline-primary"
-							type="button"
-							disabled={loadingExplanation[index]}
-							onclick={() => fetchExplanation(index, question)}
-						>
-							{loadingExplanation[index] ? $t('generatingExplanation') : $t('generateExplanation')}
-						</button>
-					{/if}
+					<AnimatedHeight class="explanation-region" aria-live="polite">
+						{#if question.explanation}
+							<div class="alert alert-light border mb-0">
+								<MarkdownContent content={question.explanation} />
+							</div>
+						{:else}
+							<button
+								class="btn btn-sm btn-outline-primary"
+								class:explanation-loading={loadingExplanation[index]}
+								type="button"
+								disabled={loadingExplanation[index]}
+								onclick={() => fetchExplanation(index, question)}
+							>
+								{loadingExplanation[index] ? $t('generatingExplanation') : $t('generateExplanation')}
+							</button>
+						{/if}
+					</AnimatedHeight>
 					{#if explanationError[index]}
 						<div class="text-danger small mt-2">{explanationError[index]}</div>
 					{/if}
@@ -434,6 +438,30 @@
 	.answer-options {
 		display: grid;
 		gap: 6px;
+	}
+
+	:global(.explanation-region) {
+		width: 100%;
+	}
+
+	:global(.explanation-loading) {
+		position: relative;
+		overflow: hidden;
+	}
+
+	:global(.explanation-loading)::after {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+		content: '';
+		transform: translateX(-100%);
+		animation: explanation-shimmer 1.2s ease-in-out infinite;
+	}
+
+	@keyframes explanation-shimmer {
+		to {
+			transform: translateX(100%);
+		}
 	}
 
 	.review-option {

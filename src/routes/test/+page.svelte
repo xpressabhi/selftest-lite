@@ -3,6 +3,8 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { t } from '$lib/client/i18n';
+	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
+	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import {
@@ -23,10 +25,48 @@
 	let error = $state('');
 	let startedAt = $state(Date.now());
 	let showQuestionPanel = $state(false);
+	let navigationDirection = $state('forward');
+	let questionCardHost = $state();
+	let questionCardWidth = $state(0);
+	let questionCardEstimate = $state(null);
 
 	let answeredCount = $derived(Object.keys(answers).length);
 	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
 	let unansweredCount = $derived(Math.max(0, totalQuestions - answeredCount));
+
+	$effect(() => {
+		if (!questionCardHost) {
+			return;
+		}
+
+		const observer = new ResizeObserver(([entry]) => {
+			questionCardWidth = Math.round(entry.contentRect.width);
+		});
+		questionCardWidth = Math.round(questionCardHost.getBoundingClientRect().width);
+		observer.observe(questionCardHost);
+
+		return () => observer.disconnect();
+	});
+
+	$effect(() => {
+		const question = questionPaper?.questions?.[currentQuestionIndex];
+		if (!question || questionCardWidth <= 0) {
+			questionCardEstimate = null;
+			return;
+		}
+
+		let cancelled = false;
+		questionCardEstimate = null;
+		void estimateQuestionCardHeight(question, questionCardWidth).then((height) => {
+			if (!cancelled) {
+				questionCardEstimate = height;
+			}
+		});
+
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	$effect(() => {
 		if (questionPaper?.id) {
@@ -110,14 +150,21 @@
 	}
 
 	function nextQuestion() {
-		currentQuestionIndex = Math.min(
-			currentQuestionIndex + 1,
-			(questionPaper?.questions?.length || 1) - 1,
+		selectQuestion(
+			Math.min(currentQuestionIndex + 1, (questionPaper?.questions?.length || 1) - 1),
 		);
 	}
 
 	function previousQuestion() {
-		currentQuestionIndex = Math.max(currentQuestionIndex - 1, 0);
+		selectQuestion(Math.max(currentQuestionIndex - 1, 0));
+	}
+
+	function selectQuestion(nextIndex) {
+		if (nextIndex === currentQuestionIndex) {
+			return;
+		}
+		navigationDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
+		currentQuestionIndex = nextIndex;
 	}
 </script>
 
@@ -183,24 +230,37 @@
 		</div>
 
 		{@const question = questionPaper.questions[currentQuestionIndex]}
-		<article class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm">
-			<div class="h5 lh-base mb-3">
-				<MarkdownContent content={question.question} />
-			</div>
-			<div class="d-grid gap-2">
-				{#each question.options || [] as option (option)}
-					<button
-						class="btn option-button text-start"
-						class:btn-primary={answers[currentQuestionIndex] === option}
-						class:btn-outline-secondary={answers[currentQuestionIndex] !== option}
-						type="button"
-						onclick={() => setAnswer(currentQuestionIndex, option)}
+		<div class="test-card-frame" bind:this={questionCardHost}>
+			<AnimatedHeight
+				class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
+				estimatedHeight={questionCardEstimate}
+			>
+				{#key currentQuestionIndex}
+					<div
+						class="question-content"
+						class:question-content-forward={navigationDirection === 'forward'}
+						class:question-content-backward={navigationDirection === 'backward'}
 					>
-						<MarkdownContent content={option} />
-					</button>
-				{/each}
-			</div>
-		</article>
+						<div class="h5 lh-base mb-3">
+							<MarkdownContent content={question.question} />
+						</div>
+						<div class="d-grid gap-2">
+							{#each question.options || [] as option (option)}
+								<button
+									class="btn option-button text-start"
+									class:btn-primary={answers[currentQuestionIndex] === option}
+									class:btn-outline-secondary={answers[currentQuestionIndex] !== option}
+									type="button"
+									onclick={() => setAnswer(currentQuestionIndex, option)}
+								>
+									<MarkdownContent content={option} />
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/key}
+			</AnimatedHeight>
+		</div>
 
 		{#if showQuestionPanel}
 			<div class="question-panel bg-body border rounded-3 p-3 mt-3">
@@ -219,7 +279,7 @@
 							aria-label={`Go to question ${index + 1}`}
 							type="button"
 							onclick={() => {
-								currentQuestionIndex = index;
+								selectQuestion(index);
 								showQuestionPanel = false;
 							}}
 						>
@@ -247,7 +307,7 @@
 						class:active={index === currentQuestionIndex}
 						aria-label={`Go to question ${index + 1}`}
 						type="button"
-						onclick={() => (currentQuestionIndex = index)}
+						onclick={() => selectQuestion(index)}
 					>
 						{index + 1}
 					</button>
@@ -266,9 +326,43 @@
 </section>
 
 <style>
-	.test-card {
+	:global(.test-card) {
+		width: 100%;
+	}
+
+	.test-card-frame {
 		max-width: 860px;
 		margin: 0 auto;
+	}
+
+	.question-content-forward {
+		animation: question-content-forward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	.question-content-backward {
+		animation: question-content-backward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	@keyframes question-content-forward {
+		from {
+			opacity: 0;
+			transform: translate3d(16px, 0, 0);
+		}
+		to {
+			opacity: 1;
+			transform: translate3d(0, 0, 0);
+		}
+	}
+
+	@keyframes question-content-backward {
+		from {
+			opacity: 0;
+			transform: translate3d(-16px, 0, 0);
+		}
+		to {
+			opacity: 1;
+			transform: translate3d(0, 0, 0);
+		}
 	}
 
 	.option-button {
