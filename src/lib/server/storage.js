@@ -257,12 +257,14 @@ export async function findReusableFullExamRecord({
 export async function listTestRecords({
 	search = '',
 	limit = 10,
+	offset = 0,
 	language = 'all',
 	examType = 'all',
 } = {}) {
 	await ensureStorageSchema();
 
 	const cappedLimit = Math.min(Math.max(Number(limit) || 10, 1), 10);
+	const normalizedOffset = Math.max(Number(offset) || 0, 0);
 	const trimmedSearch = search.trim();
 	const normalizedLanguage = String(language || '')
 		.trim()
@@ -300,6 +302,7 @@ export async function listTestRecords({
 	}
 
 	queryParams.push(cappedLimit);
+	queryParams.push(normalizedOffset);
 	const whereSql =
 		whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
@@ -316,7 +319,8 @@ export async function listTestRecords({
 		 FROM ai_test
 		 ${whereSql}
 		 ORDER BY created_at DESC
-		 LIMIT $${queryParams.length}`,
+		 LIMIT $${queryParams.length - 1}
+		 OFFSET $${queryParams.length}`,
 		queryParams,
 	);
 

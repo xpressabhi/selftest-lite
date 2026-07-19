@@ -11,18 +11,25 @@ export async function GET({ url }) {
 		const id = searchParams.get('id');
 		const search = searchParams.get('q') || '';
 		const limit = searchParams.get('limit') || '10';
+		const offset = searchParams.get('offset') || '0';
 		const language = searchParams.get('language') || 'all';
 		const examType = searchParams.get('examType') || 'all';
 
 		if (!id) {
+			const requestedLimit = Math.min(Math.max(Number(limit) || 10, 1), 10);
 			const tests = await listTestRecords({
 				search,
-				limit: Number(limit),
+				limit: Math.min(requestedLimit + 1, 10),
+				offset: Number(offset),
 				language,
 				examType,
 			});
+			const hasMore = tests.length > requestedLimit;
 
-			return json({ tests });
+			return json({
+				tests: hasMore ? tests.slice(0, requestedLimit) : tests,
+				hasMore,
+			});
 		}
 
 		const testRecord = await getTestRecordById(id);
