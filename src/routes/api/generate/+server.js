@@ -25,6 +25,7 @@ import {
 
 const MODEL_NAME = 'gemini-3.5-flash-lite';
 const BATCH_SIZE = 25;
+const MAX_BATCH_VALIDATION_ATTEMPTS = 2;
 const GENERATION_TIMEOUT_MS = 180000;
 
 class GenerationTimeoutError extends Error {
@@ -45,11 +46,49 @@ function assertWithinDeadline(deadlineMs) {
 	}
 }
 
+function canonicalizeText(value) {
+	return normalizeMathText(value).replace(/\s+/gu, ' ').trim();
+}
+
+function normalizeGeneratedPaper(questionPaper) {
+	if (!questionPaper || !Array.isArray(questionPaper.questions)) {
+		return questionPaper;
+	}
+
+	return {
+		...questionPaper,
+		topic: normalizeMathText(questionPaper.topic).trim(),
+		questions: questionPaper.questions.map((question) => {
+			if (!question || typeof question !== 'object') {
+				return question;
+			}
+
+			const options = Array.isArray(question.options)
+				? question.options.map((option) => normalizeMathText(option).trim())
+				: question.options;
+			const normalizedAnswer = normalizeMathText(question.answer).trim();
+			const matchingOption = Array.isArray(options)
+				? options.find(
+						(option) =>
+							canonicalizeText(option) === canonicalizeText(normalizedAnswer),
+					)
+				: null;
+
+			return {
+				...question,
+				question: normalizeMathText(question.question).trim(),
+				options,
+				answer: matchingOption || normalizedAnswer,
+			};
+		}),
+	};
+}
+
 function sanitizeQuestion(question) {
 	return {
-		question: normalizeMathText(question.question),
-		options: question.options.map((option) => normalizeMathText(option)),
-		answer: normalizeMathText(question.answer),
+		question: normalizeMathText(question.question).trim(),
+		options: question.options.map((option) => normalizeMathText(option).trim()),
+		answer: normalizeMathText(question.answer).trim(),
 	};
 }
 
@@ -161,27 +200,56 @@ async function generatePaper({
 			})),
 		];
 
-		const batchPaper = await generateQuestionBatch({
-			ai,
-			topic: resolvedTopic,
-			numQuestions: batchQuestions,
-			difficulty,
-			testType,
-			topicContext: batchContext,
-			examName,
-			syllabusFocus,
-			previousQuestions: cumulativePrevious,
-			language,
-			testMode,
-			objectiveOnly,
-			deadlineMs,
-		});
+		let batchPaper;
+		let lastValidationError;
+		for (
+			let attempt = 0;
+			attempt < MAX_BATCH_VALIDATION_ATTEMPTS;
+			attempt += 1
+		) {
+			const retryContext =
+				attempt > 0
+					? 'The previous draft failed validation. For every question, copy the answer exactly from one complete option string and verify every answer matches an option before returning JSON.'
+					: null;
+			const candidatePaper = normalizeGeneratedPaper(
+				await generateQuestionBatch({
+					ai,
+					topic: resolvedTopic,
+					numQuestions: batchQuestions,
+					difficulty,
+					testType,
+					topicContext: [batchContext, retryContext]
+						.filter(Boolean)
+						.join('\n'),
+					examName,
+					syllabusFocus,
+					previousQuestions: cumulativePrevious,
+					language,
+					testMode,
+					objectiveOnly,
+					deadlineMs,
+				}),
+			);
 
-		validateGeneratedPaper({
-			questionPaper: batchPaper,
-			testType,
-			numQuestions: batchQuestions,
-		});
+			try {
+				validateGeneratedPaper({
+					questionPaper: candidatePaper,
+					testType,
+					numQuestions: batchQuestions,
+				});
+				batchPaper = candidatePaper;
+				break;
+			} catch (validationError) {
+				lastValidationError = validationError;
+				if (attempt === MAX_BATCH_VALIDATION_ATTEMPTS - 1) {
+					throw validationError;
+				}
+			}
+		}
+
+		if (!batchPaper) {
+			throw lastValidationError || new Error('Failed to validate generated batch');
+		}
 		if (!resolvedPaperTopic && batchPaper.topic) {
 			resolvedPaperTopic = batchPaper.topic;
 		}

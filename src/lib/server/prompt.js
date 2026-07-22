@@ -45,7 +45,7 @@ export function generatePrompt({
     2. Use double quotes for all strings
     3. Multiple choice questions must have exactly 4 options
     4. True/False questions must have exactly 2 options using localized equivalents of true/false
-    5. Each answer must match exactly one of the options
+    5. Copy each answer exactly from one complete option string, character-for-character
     6. Questions must match the specified difficulty level
     7. Do not repeat previous questions
     8. ${
@@ -59,6 +59,7 @@ export function generatePrompt({
 				: 'Generate a concise quiz-practice style output.'
 		}
     10. Do not include explanation fields for questions. Explanations are generated later on demand.
+    11. Before returning, verify that every answer is exactly equal to one of its options.
     
     CONTENT FORMATTING:
     For code questions (especially when testType is 'coding'):
