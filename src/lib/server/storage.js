@@ -227,8 +227,8 @@ export async function findReusableFullExamRecord({
 	whereClauses.push(
 		`jsonb_array_length(
 			CASE
-				WHEN jsonb_typeof(t.test->'questions') = 'array'
-					THEN t.test->'questions'
+				WHEN jsonb_typeof((t.test::jsonb)->'questions') = 'array'
+					THEN (t.test::jsonb)->'questions'
 				ELSE '[]'::jsonb
 			END
 		) > 0`,

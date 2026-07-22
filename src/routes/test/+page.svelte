@@ -245,7 +245,7 @@
 							<MarkdownContent content={question.question} />
 						</div>
 						<div class="d-grid gap-2">
-							{#each question.options || [] as option (option)}
+							{#each question.options || [] as option, optionIndex (optionIndex)}
 								<button
 									class="btn option-button text-start"
 									class:btn-primary={answers[currentQuestionIndex] === option}
@@ -271,11 +271,11 @@
 					</button>
 				</div>
 				<div class="question-grid">
-					{#each questionPaper.questions as navigatorQuestion, index (navigatorQuestion.question)}
+					{#each questionPaper.questions as navigatorQuestion, index (index)}
 						<button
 							class="question-dot"
 							class:answered={answers[index]}
-							class:active={index === currentQuestionIndex}
+							class:active={navigatorQuestion === questionPaper.questions[currentQuestionIndex]}
 							aria-label={`Go to question ${index + 1}`}
 							type="button"
 							onclick={() => {
@@ -300,11 +300,11 @@
 				{$t('tourPrevious')}
 			</button>
 			<div class="d-flex flex-wrap justify-content-center gap-1 compact-dots">
-				{#each questionPaper.questions as navigatorQuestion, index (navigatorQuestion.question)}
+				{#each questionPaper.questions as navigatorQuestion, index (index)}
 					<button
 						class="question-dot"
 						class:answered={answers[index]}
-						class:active={index === currentQuestionIndex}
+						class:active={navigatorQuestion === questionPaper.questions[currentQuestionIndex]}
 						aria-label={`Go to question ${index + 1}`}
 						type="button"
 						onclick={() => selectQuestion(index)}

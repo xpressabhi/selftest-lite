@@ -180,7 +180,14 @@
 		</div>
 	{:else if error}
 		<div class="alert alert-warning">{error}</div>
-		<a class="btn btn-primary" href="/history">{$t('history')}</a>
+		<div class="d-flex flex-wrap gap-2">
+			{#if questionPaper?.id && !questionPaper.userAnswers}
+				<a class="btn btn-primary" href={`/test?id=${encodeURIComponent(questionPaper.id)}`}>
+					{$t('backToTest')}
+				</a>
+			{/if}
+			<a class="btn btn-outline-primary" href="/history">{$t('history')}</a>
+		</div>
 	{:else if questionPaper}
 		<div class="result-summary bg-body border rounded-3 p-4 shadow-sm mb-4">
 			<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
@@ -317,7 +324,7 @@
 					{#if question.options?.length}
 						<div class="answer-options mb-3">
 							<div class="small fw-semibold text-muted mb-1">{$t('options')}</div>
-							{#each question.options as option (option)}
+							{#each question.options as option, optionIndex (optionIndex)}
 								<div
 									class="review-option"
 									class:correct-option={option === question.answer}
