@@ -11,7 +11,7 @@ import {
 	isApiTimeoutError,
 } from '$lib/shared/apiLimitError';
 
-const EXPLANATION_MODEL = 'gemini-3.1-flash-lite-preview';
+const EXPLANATION_MODEL = 'gemini-3.5-flash-lite';
 const EXPLANATION_TIMEOUT_MS = 45000;
 
 class ExplanationTimeoutError extends Error {

@@ -23,7 +23,7 @@ import {
 	isApiTimeoutError,
 } from '$lib/shared/apiLimitError';
 
-const MODEL_NAME = 'gemini-3.1-flash-lite-preview';
+const MODEL_NAME = 'gemini-3.5-flash-lite';
 const BATCH_SIZE = 25;
 const GENERATION_TIMEOUT_MS = 180000;
 
@@ -195,7 +195,9 @@ async function generatePaper({
 	}
 
 	return {
-		topic: normalizeMathText(resolvedPaperTopic || resolvedTopic || 'Generated Test'),
+		topic: normalizeMathText(
+			resolvedPaperTopic || resolvedTopic || 'Generated Test',
+		),
 		questions: generatedQuestions,
 	};
 }
@@ -239,8 +241,7 @@ export async function POST({ request }) {
 			return json({ error: validationError }, { status: 400 });
 		}
 
-		const resolvedTopic =
-			topic || (examName ? `${examName} mock paper` : '');
+		const resolvedTopic = topic || (examName ? `${examName} mock paper` : '');
 
 		if (testMode === 'full-exam' && examId) {
 			const locallyAttemptedTestIds = previousTests
@@ -253,10 +254,13 @@ export async function POST({ request }) {
 						return false;
 					}
 					const requestParams = test.requestParams || {};
-					const sameExam = String(requestParams.examId || '') === String(examId);
+					const sameExam =
+						String(requestParams.examId || '') === String(examId);
 					const isFullExam = requestParams.testMode === 'full-exam';
-					const isSubmitted =
-						Object.prototype.hasOwnProperty.call(test, 'userAnswers');
+					const isSubmitted = Object.prototype.hasOwnProperty.call(
+						test,
+						'userAnswers',
+					);
 					return sameExam && isFullExam && isSubmitted;
 				})
 				.map((test) => Number(test.id));
@@ -268,8 +272,8 @@ export async function POST({ request }) {
 			});
 			const reusablePaper =
 				reusableRecord?.test &&
-					typeof reusableRecord.test === 'object' &&
-					!Array.isArray(reusableRecord.test)
+				typeof reusableRecord.test === 'object' &&
+				!Array.isArray(reusableRecord.test)
 					? reusableRecord.test
 					: null;
 
