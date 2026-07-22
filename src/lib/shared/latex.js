@@ -26,10 +26,11 @@ export function normalizeMathText(value) {
 
 export function prepareMathTextForRendering(value) {
 	const normalizedValue = normalizeMathText(value);
+	const repairedValue = normalizeUnbracedFunctionSuperscripts(normalizedValue);
 
-	if (/\$\$?/.test(normalizedValue) || !BARE_MATH_PATTERN.test(normalizedValue)) {
-		return normalizedValue;
+	if (/\$\$?/.test(repairedValue) || !BARE_MATH_PATTERN.test(repairedValue)) {
+		return repairedValue;
 	}
 
-	return `$${normalizedValue}$`;
+	return `$${repairedValue}$`;
 }

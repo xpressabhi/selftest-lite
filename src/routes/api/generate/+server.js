@@ -14,6 +14,7 @@ import { paperSchema } from '$lib/server/quizSchema';
 import { normalizeMathText } from '$lib/shared/latex';
 import {
 	validateGenerateRequest,
+	repairGeneratedPaper,
 	validateGeneratedPaper,
 } from '$lib/server/quizValidation';
 import {
@@ -25,7 +26,7 @@ import {
 
 const MODEL_NAME = 'gemini-3.5-flash-lite';
 const BATCH_SIZE = 25;
-const MAX_BATCH_VALIDATION_ATTEMPTS = 2;
+const MAX_BATCH_VALIDATION_ATTEMPTS = 3;
 const GENERATION_TIMEOUT_MS = 180000;
 
 class GenerationTimeoutError extends Error {
@@ -92,6 +93,12 @@ function sanitizeQuestion(question) {
 	};
 }
 
+function parseGeneratedJson(text) {
+	const trimmedText = text.trim();
+	const fencedJson = trimmedText.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/iu);
+	return JSON.parse(fencedJson ? fencedJson[1] : trimmedText);
+}
+
 async function generateQuestionBatch({
 	ai,
 	topic,
@@ -149,8 +156,7 @@ async function generateQuestionBatch({
 			}),
 		]);
 
-		const cleanedText = response.text.trim();
-		return JSON.parse(cleanedText);
+		return parseGeneratedJson(response.text);
 	} finally {
 		if (timeoutHandle) {
 			clearTimeout(timeoutHandle);
@@ -209,37 +215,47 @@ async function generatePaper({
 		) {
 			const retryContext =
 				attempt > 0
-					? 'The previous draft failed validation. For every question, copy the answer exactly from one complete option string and verify every answer matches an option before returning JSON.'
+					? `The previous draft failed validation (${lastValidationError?.message || 'quality checks'}). Regenerate any affected questions. For every question, solve it independently, copy the answer exactly from one complete option string, verify it is the only correct option, remove duplicates, and ensure every LaTeX expression is valid KaTeX before returning JSON.`
 					: null;
-			const candidatePaper = normalizeGeneratedPaper(
-				await generateQuestionBatch({
-					ai,
-					topic: resolvedTopic,
-					numQuestions: batchQuestions,
-					difficulty,
-					testType,
-					topicContext: [batchContext, retryContext]
-						.filter(Boolean)
-						.join('\n'),
-					examName,
-					syllabusFocus,
-					previousQuestions: cumulativePrevious,
-					language,
-					testMode,
-					objectiveOnly,
-					deadlineMs,
-				}),
-			);
-
 			try {
-				validateGeneratedPaper({
+				const candidatePaper = normalizeGeneratedPaper(
+					await generateQuestionBatch({
+						ai,
+						topic: resolvedTopic,
+						numQuestions: batchQuestions,
+						difficulty,
+						testType,
+						topicContext: [batchContext, retryContext]
+							.filter(Boolean)
+							.join('\n'),
+						examName,
+						syllabusFocus,
+						previousQuestions: cumulativePrevious,
+						language,
+						testMode,
+						objectiveOnly,
+						deadlineMs,
+					}),
+				);
+				const repairedPaper = repairGeneratedPaper({
 					questionPaper: candidatePaper,
+					fallbackTopic: resolvedTopic,
+				});
+
+				validateGeneratedPaper({
+					questionPaper: repairedPaper,
 					testType,
 					numQuestions: batchQuestions,
 				});
-				batchPaper = candidatePaper;
+				batchPaper = repairedPaper;
 				break;
 			} catch (validationError) {
+				if (
+					isApiLimitExceededError(validationError) ||
+					isApiTimeoutError(validationError)
+				) {
+					throw validationError;
+				}
 				lastValidationError = validationError;
 				if (attempt === MAX_BATCH_VALIDATION_ATTEMPTS - 1) {
 					throw validationError;

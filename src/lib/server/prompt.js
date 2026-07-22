@@ -60,6 +60,10 @@ export function generatePrompt({
 		}
     10. Do not include explanation fields for questions. Explanations are generated later on demand.
     11. Before returning, verify that every answer is exactly equal to one of its options.
+    12. Do a silent final quality-control pass before returning the JSON. Re-check every question from scratch: solve it independently, confirm that the keyed answer is factually correct, confirm that only one option is correct, and replace any ambiguous, contradictory, duplicated, or incorrectly keyed question with a new one.
+    13. In the same final pass, verify the exact question count, required keys, option count, selected language, difficulty, test type, syllabus coverage, and non-overlap with previous questions.
+    14. Validate every markdown/code/math string before returning. Check that JSON is parseable, all strings use valid escaping, code blocks are closed, LaTeX delimiters are balanced, and every LaTeX expression is valid KaTeX. If anything fails this check, silently repair or regenerate that question before responding.
+    15. Never return a draft for inspection. Return the quiz only after all of these checks pass.
     
     CONTENT FORMATTING:
     For code questions (especially when testType is 'coding'):
@@ -75,6 +79,8 @@ export function generatePrompt({
     - Use *italic* for terms
     - Use LaTeX for math: $x^2$
     - When LaTeX appears inside JSON strings, escape its backslashes so commands survive JSON parsing (for example, output $2NaHCO_3 \\\\rightarrow Na_2CO_3$ in the JSON source)
+    - Every LaTeX expression must be valid KaTeX. Group multi-character superscripts and function arguments, for example use $x^{\\ln x}$ rather than $x^\\ln x$.
+    - Do not output malformed or unclosed LaTeX delimiters; use plain Unicode symbols when a formula is not needed.
     - Use proper symbols: °C, km², π
     
     TOPIC INFORMATION:
@@ -181,6 +187,15 @@ export function generatePrompt({
           - Use proper unicode for symbols (Ω, μ, λ, θ)
           - Use LaTeX for complex formulas ($H_2SO_4$)
           
+          FINAL SELF-CHECK (do not describe this process in the response):
+          - Parse the complete response as JSON before sending it.
+          - Count the questions and options; fix the structure if either count is wrong.
+          - Solve every question independently and ensure its answer is the only defensible correct option.
+          - Copy the final answer character-for-character from its option after all edits.
+          - Check for duplicate or near-duplicate questions, accidental contradictions, unsupported claims, and ambiguity.
+          - Check markdown, code fences, Unicode, and every LaTeX expression for valid rendering.
+          - If a question fails any check, regenerate that question internally and check it again.
+
           Remember: Must Provide ONLY the VALID JSON response.
           Do not include any text outside of the JSON object.
           Do not include explanation fields in question objects.
