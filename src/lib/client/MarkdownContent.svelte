@@ -18,7 +18,7 @@ import { prepareMathTextForRendering } from '$lib/shared/latex';
 	}
 
 	function needsRichRenderer(value) {
-		return /(^|\n)\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>|```)|\*\*|__|~~|`|\[[^\]]+\]\([^)]*\)|\$\$?|\|.+\|/m.test(
+		return /(^|\n)\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>|```)|\*\*|(?<!\*)\*(?!\s)[^*\n]+?(?<!\s)\*(?!\*)|__|~~|`|\[[^\]]+\]\([^)]*\)|\$\$?|\|.+\|/m.test(
 			value,
 		);
 	}

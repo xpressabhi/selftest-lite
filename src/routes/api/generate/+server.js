@@ -24,7 +24,7 @@ import {
 	isApiTimeoutError,
 } from '$lib/shared/apiLimitError';
 
-const MODEL_NAME = 'gemini-3.5-flash-lite';
+const MODEL_NAME = 'gemini-flash-lite-latest';
 const BATCH_SIZE = 25;
 const MAX_BATCH_VALIDATION_ATTEMPTS = 3;
 const GENERATION_TIMEOUT_MS = 180000;
@@ -264,7 +264,9 @@ async function generatePaper({
 		}
 
 		if (!batchPaper) {
-			throw lastValidationError || new Error('Failed to validate generated batch');
+			throw (
+				lastValidationError || new Error('Failed to validate generated batch')
+			);
 		}
 		if (!resolvedPaperTopic && batchPaper.topic) {
 			resolvedPaperTopic = batchPaper.topic;
