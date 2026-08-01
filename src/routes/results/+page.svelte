@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
-	import { t } from '$lib/client/i18n';
+	import { localizedApiError, t } from '$lib/client/i18n';
 	import {
 		buildReviewQueue,
 		buildTopicMasteryItems,
@@ -43,14 +43,14 @@
 		try {
 			questionPaper = await resolveTestRecord(testId);
 			if (!questionPaper) {
-				error = 'Result not found.';
+				error = $t('resultNotFound');
 				return;
 			}
 			if (!questionPaper.userAnswers) {
-				error = 'This test has not been submitted yet.';
+				error = $t('testNotSubmitted');
 			}
 		} catch (caughtError) {
-			error = caughtError.message || 'Failed to load result.';
+			error = caughtError.message || $t('failedToLoadResult');
 		} finally {
 			refreshLearningPanels();
 			loading = false;
@@ -123,7 +123,7 @@
 			});
 			const data = await response.json().catch(() => ({}));
 			if (!response.ok) {
-				throw new Error(data?.error || 'Unable to fetch explanation.');
+				throw new Error(localizedApiError(data, $t, response.status));
 			}
 
 			const questions = questionPaper.questions.map((item, questionIndex) =>
@@ -204,7 +204,7 @@
 						{questionPaper.score} / {questionPaper.totalQuestions}
 					</div>
 					<p class="text-muted mb-0">
-						{$t('timeSpent')}: {Math.round((questionPaper.timeTaken || 0) / 60)} min
+						{$t('timeSpent')}: {Math.round((questionPaper.timeTaken || 0) / 60)} {$t('minuteShort')}
 					</p>
 				</div>
 			</div>
@@ -257,7 +257,7 @@
 						<h2 class="h6 fw-bold">{$t('achievements')}</h2>
 						<div class="d-flex flex-wrap gap-2">
 							{#each achievements.filter((item) => item.unlocked).slice(0, 6) as achievement (achievement.id)}
-								<span class="badge text-bg-success achievement-badge">{achievement.title}</span>
+								<span class="badge text-bg-success achievement-badge">{$t(`achievement_${achievement.id}_title`)}</span>
 							{/each}
 						</div>
 					</div>

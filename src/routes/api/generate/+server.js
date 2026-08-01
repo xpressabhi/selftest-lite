@@ -1,18 +1,21 @@
 import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
 import { env } from '$env/dynamic/private';
-import { rateLimiter } from '$lib/server/rateLimiter';
+import { DEFAULT_RATE_LIMIT, rateLimiter } from '$lib/server/rateLimiter';
 import { generatePrompt } from '$lib/server/prompt';
 import * as z from 'zod';
 import {
 	createTestRecord,
 	findReusableFullExamRecord,
 	getClientKey,
+	getTestRecordsByIds,
 	logApiEvent,
 } from '$lib/server/storage';
 import { paperSchema } from '$lib/server/quizSchema';
 import { normalizeMathText } from '$lib/shared/latex';
 import {
+	parseRequestBody,
+	sanitizePreviousTestIds,
 	validateGenerateRequest,
 	repairGeneratedPaper,
 	validateGeneratedPaper,
@@ -302,14 +305,15 @@ export async function POST({ request }) {
 			examName = null,
 			examStream = null,
 			syllabusFocus = [],
-			previousTests = [],
+			previousTestIds = [],
+			attemptedTestIds = [],
 			testType = 'multiple-choice',
 			numQuestions = 10,
 			difficulty = 'intermediate',
 			language = 'english',
 			objectiveOnly = false,
 			durationMinutes = null,
-		} = await request.json();
+		} = await parseRequestBody(request);
 
 		const validationError = validateGenerateRequest({
 			topic,
@@ -324,32 +328,72 @@ export async function POST({ request }) {
 			difficulty,
 		});
 		if (validationError) {
-			return json({ error: validationError }, { status: 400 });
+			return json(
+				{ error: validationError.message, code: validationError.code },
+				{ status: 400 },
+			);
 		}
 
 		const resolvedTopic = topic || (examName ? `${examName} mock paper` : '');
+		const normalizedPreviousTestIds = sanitizePreviousTestIds(previousTestIds);
+		const normalizedAttemptedTestIds = new Set(
+			sanitizePreviousTestIds(attemptedTestIds),
+		);
+
+		const rateLimit = await rateLimiter(request, { bucket: '/api/generate' });
+		if (rateLimit.limited) {
+			await logApiEvent({
+				route: '/api/generate',
+				action: 'generate_quiz',
+				clientKey,
+				statusCode: 429,
+				durationMs: Date.now() - startedAt,
+				metadata: {
+					topic: resolvedTopic || null,
+					testMode,
+					examName,
+					testType,
+					numQuestions,
+					difficulty,
+					language,
+				},
+			});
+
+			return json(
+				{
+					error: 'Rate limit exceeded. Please try again later.',
+					code: API_LIMIT_ERROR_CODE,
+					resetTime: new Date(rateLimit.resetTime).toISOString(),
+					remaining: rateLimit.remaining,
+				},
+				{
+					status: 429,
+					headers: {
+						'X-RateLimit-Limit': String(DEFAULT_RATE_LIMIT),
+						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+					},
+				},
+			);
+		}
+
+		const previousTestRecords = await getTestRecordsByIds(
+			normalizedPreviousTestIds,
+		);
 
 		if (testMode === 'full-exam' && examId) {
-			const locallyAttemptedTestIds = previousTests
-				.filter((test) => {
-					if (!test || typeof test !== 'object') {
+			const locallyAttemptedTestIds = previousTestRecords
+				.filter((record) => {
+					if (!normalizedAttemptedTestIds.has(Number(record.id))) {
 						return false;
 					}
-					const normalizedTestId = Number(test.id);
-					if (!Number.isInteger(normalizedTestId) || normalizedTestId <= 0) {
-						return false;
-					}
-					const requestParams = test.requestParams || {};
+					const requestParams = record.test?.requestParams || {};
 					const sameExam =
 						String(requestParams.examId || '') === String(examId);
 					const isFullExam = requestParams.testMode === 'full-exam';
-					const isSubmitted = Object.prototype.hasOwnProperty.call(
-						test,
-						'userAnswers',
-					);
-					return sameExam && isFullExam && isSubmitted;
+					return sameExam && isFullExam;
 				})
-				.map((test) => Number(test.id));
+				.map((record) => Number(record.id));
 
 			const reusableRecord = await findReusableFullExamRecord({
 				examId,
@@ -388,43 +432,6 @@ export async function POST({ request }) {
 			}
 		}
 
-		const rateLimit = await rateLimiter(request, { bucket: '/api/generate' });
-		if (rateLimit.limited) {
-			await logApiEvent({
-				route: '/api/generate',
-				action: 'generate_quiz',
-				clientKey,
-				statusCode: 429,
-				durationMs: Date.now() - startedAt,
-				metadata: {
-					topic: resolvedTopic || null,
-					testMode,
-					examName,
-					testType,
-					numQuestions,
-					difficulty,
-					language,
-				},
-			});
-
-			return json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: API_LIMIT_ERROR_CODE,
-					resetTime: new Date(rateLimit.resetTime).toISOString(),
-					remaining: rateLimit.remaining,
-				},
-				{
-					status: 429,
-					headers: {
-						'X-RateLimit-Limit': '10',
-						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
-					},
-				},
-			);
-		}
-
 		const topicContext = [
 			testMode === 'full-exam'
 				? 'Full-length exam mode enabled. Generate objective-style questions.'
@@ -443,9 +450,9 @@ export async function POST({ request }) {
 			.filter(Boolean)
 			.join('\n');
 
-		const previousQuestions = previousTests.flatMap(
-			(test) =>
-				test.questions?.map((q) => ({
+		const previousQuestions = previousTestRecords.flatMap(
+			(record) =>
+				record.test?.questions?.map((q) => ({
 					question: q.question,
 					answer: q.answer,
 				})) || [],
@@ -576,6 +583,18 @@ export async function POST({ request }) {
 		}
 	} catch (error) {
 		console.error(error);
+		if (error?.code === 'REQUEST_TOO_LARGE') {
+			return json(
+				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
+				{ status: 413 },
+			);
+		}
+		if (error?.code === 'INVALID_REQUEST_BODY') {
+			return json(
+				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
+				{ status: 400 },
+			);
+		}
 		const isLimitError = isApiLimitExceededError(error);
 		const isTimeoutError = isApiTimeoutError(error);
 		const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;

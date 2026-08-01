@@ -1,5 +1,15 @@
 import {
+	MAX_ANSWER_TEXT_LENGTH,
+	MAX_OPTION_TEXT_LENGTH,
+	MAX_PREVIOUS_TESTS,
+	MAX_QUESTION_TEXT_LENGTH,
 	MAX_QUESTIONS,
+	MAX_REQUEST_BODY_BYTES,
+	MAX_SELECTED_TOPICS,
+	MAX_SYLLABUS_FOCUS,
+	MAX_TEST_QUESTIONS,
+	MAX_TOPIC_LENGTH,
+	MAX_TOPIC_LIST_ITEM_LENGTH,
 	MIN_QUESTIONS,
 	VALID_DIFFICULTIES,
 	VALID_LANGUAGES,
@@ -9,6 +19,39 @@ import katex from 'katex';
 import { normalizeMathText } from '$lib/shared/latex';
 
 const MATH_SEGMENT_PATTERN = /(\$\$?)([\s\S]*?)\1/g;
+
+export class RequestBodyTooLargeError extends Error {
+	constructor() {
+		super('Request body exceeds the maximum allowed size');
+		this.name = 'RequestBodyTooLargeError';
+		this.code = 'REQUEST_TOO_LARGE';
+	}
+}
+
+export class InvalidRequestBodyError extends Error {
+	constructor() {
+		super('Request body must be valid JSON');
+		this.name = 'InvalidRequestBodyError';
+		this.code = 'INVALID_REQUEST_BODY';
+	}
+}
+
+/**
+ * Reads and parses the JSON request body while enforcing a size cap on the
+ * raw text before parsing, so callers cannot force a large parse on the
+ * server.
+ */
+export async function parseRequestBody(request) {
+	const rawBody = await request.text();
+	if (rawBody.length > MAX_REQUEST_BODY_BYTES) {
+		throw new RequestBodyTooLargeError();
+	}
+	try {
+		return JSON.parse(rawBody);
+	} catch {
+		throw new InvalidRequestBodyError();
+	}
+}
 
 function validateMathSyntax(value, label) {
 	for (const match of String(value ?? '').matchAll(MATH_SEGMENT_PATTERN)) {
@@ -94,6 +137,25 @@ export function repairGeneratedPaper({ questionPaper, fallbackTopic = '' }) {
 	};
 }
 
+function createValidationError(code, message) {
+	return { code, message };
+}
+
+/**
+ * Normalizes the client-supplied test ID lists: keeps only positive integers
+ * and caps the count so direct API callers cannot request an unbounded number
+ * of records.
+ */
+export function sanitizePreviousTestIds(value) {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	return value
+		.map((entry) => Number(entry))
+		.filter((entry) => Number.isInteger(entry) && entry > 0)
+		.slice(0, MAX_PREVIOUS_TESTS);
+}
+
 export function validateGenerateRequest({
 	topic,
 	selectedTopics = [],
@@ -112,35 +174,139 @@ export function validateGenerateRequest({
 		syllabusFocus.length > 0;
 
 	if (testMode !== 'full-exam' && !hasContext) {
-		return 'Topic, selected topics, or syllabus focus is required';
+		return createValidationError(
+			'MISSING_TOPIC_CONTEXT',
+			'Topic, selected topics, or syllabus focus is required',
+		);
 	}
 
 	if (testMode === 'full-exam' && !examName) {
-		return 'Exam selection is required for full exam mode';
+		return createValidationError(
+			'EXAM_REQUIRED',
+			'Exam selection is required for full exam mode',
+		);
 	}
 
 	if (testMode === 'full-exam' && !objectiveOnly) {
-		return 'Full exam mode currently supports objective papers only';
+		return createValidationError(
+			'OBJECTIVE_ONLY_REQUIRED',
+			'Full exam mode currently supports objective papers only',
+		);
+	}
+
+	if (String(topic || '').length > MAX_TOPIC_LENGTH) {
+		return createValidationError('TOPIC_TOO_LONG', 'Topic is too long');
+	}
+
+	if (selectedTopics.length > MAX_SELECTED_TOPICS) {
+		return createValidationError(
+			'TOO_MANY_SELECTED_TOPICS',
+			`Too many selected topics. Maximum is ${MAX_SELECTED_TOPICS}`,
+		);
+	}
+
+	if (
+		selectedTopics.some(
+			(item) => String(item || '').length > MAX_TOPIC_LIST_ITEM_LENGTH,
+		)
+	) {
+		return createValidationError(
+			'SELECTED_TOPIC_TOO_LONG',
+			'A selected topic is too long',
+		);
+	}
+
+	if (syllabusFocus.length > MAX_SYLLABUS_FOCUS) {
+		return createValidationError(
+			'TOO_MANY_SYLLABUS_FOCUS',
+			`Too many syllabus focus items. Maximum is ${MAX_SYLLABUS_FOCUS}`,
+		);
+	}
+
+	if (
+		syllabusFocus.some(
+			(item) => String(item || '').length > MAX_TOPIC_LIST_ITEM_LENGTH,
+		)
+	) {
+		return createValidationError(
+			'SYLLABUS_FOCUS_TOO_LONG',
+			'A syllabus focus item is too long',
+		);
 	}
 
 	if (!VALID_LANGUAGES.includes(String(language).toLowerCase())) {
-		return 'Invalid language selection';
+		return createValidationError('INVALID_LANGUAGE', 'Invalid language selection');
 	}
 
 	if (testMode === 'full-exam' && testType !== 'multiple-choice') {
-		return 'Full exam mode supports multiple-choice objective format';
+		return createValidationError(
+			'MCQ_ONLY_FULL_EXAM',
+			'Full exam mode supports multiple-choice objective format',
+		);
 	}
 
 	if (!VALID_TEST_TYPES.includes(testType)) {
-		return 'Invalid test type';
+		return createValidationError('INVALID_TEST_TYPE', 'Invalid test type');
 	}
 
 	if (numQuestions < MIN_QUESTIONS || numQuestions > MAX_QUESTIONS) {
-		return `Number of questions must be between ${MIN_QUESTIONS} and ${MAX_QUESTIONS}`;
+		return createValidationError(
+			'INVALID_QUESTION_COUNT',
+			`Number of questions must be between ${MIN_QUESTIONS} and ${MAX_QUESTIONS}`,
+		);
 	}
 
 	if (!VALID_DIFFICULTIES.includes(difficulty)) {
-		return 'Invalid difficulty level';
+		return createValidationError('INVALID_DIFFICULTY', 'Invalid difficulty level');
+	}
+
+	return null;
+}
+
+export function validateTestRecordPayload(test) {
+	if (!test || typeof test !== 'object' || Array.isArray(test)) {
+		return createValidationError(
+			'INVALID_TEST_DATA',
+			'Test data must be an object',
+		);
+	}
+
+	if (!Array.isArray(test.questions) || test.questions.length < 1) {
+		return createValidationError(
+			'INVALID_TEST_DATA',
+			'Test data must include at least one question',
+		);
+	}
+
+	if (test.questions.length > MAX_TEST_QUESTIONS) {
+		return createValidationError(
+			'INVALID_TEST_DATA',
+			`Test data cannot contain more than ${MAX_TEST_QUESTIONS} questions`,
+		);
+	}
+
+	if (String(test.topic || '').length > MAX_TOPIC_LENGTH) {
+		return createValidationError('INVALID_TEST_DATA', 'Topic is too long');
+	}
+
+	for (const question of test.questions) {
+		if (!question || typeof question !== 'object') {
+			return createValidationError('INVALID_TEST_DATA', 'Invalid question entry');
+		}
+		if (String(question.question || '').length > MAX_QUESTION_TEXT_LENGTH) {
+			return createValidationError('INVALID_TEST_DATA', 'Question text is too long');
+		}
+		if (String(question.answer || '').length > MAX_ANSWER_TEXT_LENGTH) {
+			return createValidationError('INVALID_TEST_DATA', 'Answer text is too long');
+		}
+		if (
+			Array.isArray(question.options) &&
+			question.options.some(
+				(option) => String(option || '').length > MAX_OPTION_TEXT_LENGTH,
+			)
+		) {
+			return createValidationError('INVALID_TEST_DATA', 'Option text is too long');
+		}
 	}
 
 	return null;

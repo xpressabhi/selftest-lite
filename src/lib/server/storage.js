@@ -184,6 +184,31 @@ export async function getTestRecordById(id) {
 	return result.rows[0] || null;
 }
 
+export async function getTestRecordsByIds(ids) {
+	await ensureStorageSchema();
+
+	const normalizedIds = Array.isArray(ids)
+		? ids
+				.map((value) => Number(value))
+				.filter((value) => Number.isInteger(value) && value > 0)
+		: [];
+
+	if (normalizedIds.length === 0) {
+		return [];
+	}
+
+	const result = await query(
+		`SELECT
+			id,
+			test
+		 FROM ai_test
+		 WHERE id = ANY($1::bigint[])`,
+		[normalizedIds],
+	);
+
+	return result.rows;
+}
+
 export async function findReusableFullExamRecord({
 	examId,
 	language,

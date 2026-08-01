@@ -8,6 +8,8 @@ import {
 const DEFAULT_RATE_LIMIT = 10; // requests
 const DEFAULT_WINDOW_MS = 60 * 1000; // 1 minute
 
+export { DEFAULT_RATE_LIMIT, DEFAULT_WINDOW_MS };
+
 export async function rateLimiter(request, options = {}) {
 	const {
 		limit = DEFAULT_RATE_LIMIT,
@@ -20,20 +22,21 @@ export async function rateLimiter(request, options = {}) {
 
 		const clientKey = getClientKey(request);
 
-		await query(
-			`INSERT INTO api_rate_limit_events (client_key, route)
-			 VALUES ($1, $2)`,
-			[clientKey, bucket],
-		);
-
+		// Insert and count in a single statement so concurrent requests cannot
+		// slip between an INSERT and a separate COUNT (the INSERT is visible
+		// to the COUNT CTE within the same statement).
 		const result = await query(
-			`WITH window_hits AS (
+			`WITH inserted AS (
+				INSERT INTO api_rate_limit_events (client_key, route)
+				VALUES ($1, $2)
+				RETURNING client_key
+			),
+			window_hits AS (
 				SELECT created_at
 				FROM api_rate_limit_events
 				WHERE client_key = $1
 					AND route = $2
 					AND created_at >= NOW() - ($3::text || ' milliseconds')::interval
-				ORDER BY created_at ASC
 			)
 			SELECT
 				COUNT(*)::INTEGER AS hit_count,

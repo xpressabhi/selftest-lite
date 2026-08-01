@@ -1,7 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { t } from '$lib/client/i18n';
+	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
 	import {
 		getBookmarkedExamIds,
@@ -224,10 +224,15 @@
 		};
 	}
 
-	async function postGenerate(requestParams, attempt) {
+	async function postGenerate(requestParams) {
 		const controller = new AbortController();
 		const timeoutId = window.setTimeout(() => controller.abort(), GENERATION_TIMEOUT_MS);
 		try {
+			const historyEntries = getHistory().slice(0, 10);
+			const isStoredTest = (entry) => {
+				const id = Number(entry.id);
+				return Number.isInteger(id) && id > 0;
+			};
 			const response = await fetch('/api/generate', {
 				method: 'POST',
 				headers: {
@@ -235,21 +240,22 @@
 				},
 				body: JSON.stringify({
 					...requestParams,
-					previousTests: getHistory().slice(0, 10),
+					previousTestIds: historyEntries.filter(isStoredTest).map((entry) => Number(entry.id)),
+					attemptedTestIds: historyEntries
+						.filter((entry) => entry.userAnswers)
+						.filter(isStoredTest)
+						.map((entry) => Number(entry.id)),
 				}),
 				signal: controller.signal,
 			});
 			const data = await response.json().catch(() => ({}));
 			if (!response.ok) {
-				throw new Error(data?.error || $t('failedToGenerateQuiz'));
+				throw new Error(localizedApiError(data, $t, response.status));
 			}
 			return data;
 		} catch (caughtError) {
 			if (caughtError.name === 'AbortError') {
 				throw new Error($t('generationTimedOutRetry'), { cause: caughtError });
-			}
-			if (attempt >= MAX_RETRIES) {
-				throw caughtError;
 			}
 			throw caughtError;
 		} finally {
@@ -271,7 +277,7 @@
 				if (attempt > 1) {
 					retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
 				}
-				const data = await postGenerate(requestParams, attempt);
+				const data = await postGenerate(requestParams);
 				saveCurrentPaper(data);
 				await goto(`/test?id=${data.id}`);
 				return;
@@ -329,7 +335,7 @@
 <section class="container py-4 py-md-5">
 	<div class="mx-auto home-wrap">
 		<div class="text-center mb-4">
-			<p class="text-uppercase text-muted small fw-semibold mb-2">AI practice for Indian exams</p>
+			<p class="text-uppercase text-muted small fw-semibold mb-2">{$t('aiPracticeForIndianExams')}</p>
 			<h1 class="h2 fw-bold mb-2">{$t('createQuiz')}</h1>
 			<p class="text-muted mb-0">
 				{activeMode === TEST_MODES.FULL_EXAM ? $t('configureAndGenerate') : $t('useBookmarksOrChooseMode')}
@@ -480,7 +486,7 @@
 				<div class="row g-3 mb-3">
 					<label class="form-label col-md-7">
 						<span class="fw-semibold">{$t('searchExamStreamSyllabus')}</span>
-						<input class="form-control mt-1" bind:value={examSearchQuery} placeholder="SSC, railway, police, polity" />
+						<input class="form-control mt-1" bind:value={examSearchQuery} placeholder={$t('examSearchPlaceholder')} />
 					</label>
 					<label class="form-label col-md-3">
 						<span class="fw-semibold">{$t('filterByGroup')}</span>

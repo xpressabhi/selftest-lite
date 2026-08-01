@@ -5,14 +5,14 @@ const ACHIEVEMENTS_KEY = 'selftest_achievements';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const ACHIEVEMENTS = [
-	{ id: 'first_quiz', title: 'First Steps', description: 'Complete your first quiz' },
-	{ id: 'five_quizzes', title: 'Getting Serious', description: 'Complete 5 quizzes' },
-	{ id: 'ten_quizzes', title: 'Quiz Master', description: 'Complete 10 quizzes' },
-	{ id: 'perfect_score', title: 'Perfectionist', description: 'Get a perfect 100% score' },
-	{ id: 'hundred_questions', title: 'Centurion', description: 'Answer 100 questions total' },
-	{ id: 'five_topics', title: 'Renaissance', description: 'Take quizzes on 5 different topics' },
-	{ id: 'streak_3', title: 'On Fire', description: 'Reach a 3-day streak' },
-	{ id: 'streak_7', title: 'Week Warrior', description: 'Reach a 7-day streak' },
+	{ id: 'first_quiz' },
+	{ id: 'five_quizzes' },
+	{ id: 'ten_quizzes' },
+	{ id: 'perfect_score' },
+	{ id: 'hundred_questions' },
+	{ id: 'five_topics' },
+	{ id: 'streak_3' },
+	{ id: 'streak_7' },
 ];
 
 function todayString(offsetDays = 0) {
