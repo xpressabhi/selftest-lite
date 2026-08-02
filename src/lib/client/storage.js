@@ -248,6 +248,42 @@ export async function resolveTestRecord(testId) {
 	return resolved;
 }
 
+export function getAttemptResultKey(testId) {
+	return `${STORAGE_KEYS.ATTEMPT_RESULTS}_${testId || 'current'}`;
+}
+
+export function saveAttemptResult(testId, result) {
+	if (!testId || !result || typeof result !== 'object') {
+		return;
+	}
+	writeJson(getAttemptResultKey(testId), result);
+}
+
+export function getAttemptResult(testId) {
+	if (!testId) {
+		return null;
+	}
+	return readJson(getAttemptResultKey(testId), null);
+}
+
+export async function submitTestAnswers({ id, answers = {}, timeTaken = 0 }) {
+	const response = await fetch('/api/test/submit', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ id, answers, timeTaken }),
+	});
+	const data = await response.json().catch(() => ({}));
+	if (!response.ok) {
+		const error = new Error(data.error || 'Failed to submit answers');
+		error.status = response.status;
+		error.data = data;
+		throw error;
+	}
+	return data;
+}
+
 export function writeTrackedStorageSnapshot(snapshot) {
 	if (typeof window === 'undefined' || !snapshot || typeof snapshot !== 'object') {
 		return [];

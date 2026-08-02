@@ -14,6 +14,7 @@
 	} from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import {
+		getAttemptResult,
 		getHistory,
 		isQuestionBookmarked,
 		resolveTestRecord,
@@ -41,13 +42,50 @@
 	onMount(async () => {
 		const testId = page.url.searchParams.get('id');
 		try {
-			questionPaper = await resolveTestRecord(testId);
-			if (!questionPaper) {
+			let resolved = await resolveTestRecord(testId);
+			if (!resolved) {
 				error = $t('resultNotFound');
 				return;
 			}
+
+			const attemptResult = getAttemptResult(testId);
+			if (attemptResult?.results) {
+				const resultByIndex = new Map(
+					attemptResult.results.map((item) => [item.index, item]),
+				);
+				resolved = {
+					...resolved,
+					...attemptResult,
+					userAnswers:
+						resolved.userAnswers ||
+						Object.fromEntries(
+							attemptResult.results.map((item) => [item.index, item.yourAnswer]),
+						),
+					questions: resolved.questions.map((question, index) => {
+						const graded = resultByIndex.get(index);
+						if (!graded) {
+							return question;
+						}
+						return {
+							...question,
+							answer: graded.correctAnswer,
+							correct: graded.correct,
+						};
+					}),
+				};
+			}
+
+			questionPaper = resolved;
 			if (!questionPaper.userAnswers) {
 				error = $t('testNotSubmitted');
+			} else if (
+				questionPaper.questions.some(
+					(question) =>
+						question.correct === undefined &&
+						typeof question.answer !== 'string',
+				)
+			) {
+				error = $t('resultNotAvailable');
 			}
 		} catch (caughtError) {
 			error = caughtError.message || $t('failedToLoadResult');
@@ -296,14 +334,14 @@
 		<div class="d-grid gap-3">
 			{#each questionPaper.questions as question, index (`${index}-${question.question}`)}
 				{@const userAnswer = questionPaper.userAnswers?.[index]}
-				{@const isCorrect = userAnswer === question.answer}
+				{@const isCorrect = question.correct ?? (userAnswer === question.answer)}
 				<article class="bg-body border rounded-3 p-3 shadow-sm">
 					<div class="d-flex align-items-start justify-content-between gap-3">
 						<div class="h6 lh-base mb-2">
 							<span>{index + 1}. </span><MarkdownContent content={question.question} />
 						</div>
-						<span class:badge={true} class:bg-success={isCorrect} class:bg-danger={!isCorrect}>
-							{isCorrect ? $t('correct') : $t('reviewAnswers')}
+						<span class="badge" class:bg-success={isCorrect} class:bg-danger={!isCorrect}>
+							{isCorrect ? $t('correct') : $t('incorrect')}
 						</span>
 					</div>
 					<button

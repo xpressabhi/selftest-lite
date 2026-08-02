@@ -20,6 +20,7 @@ import {
 	repairGeneratedPaper,
 	validateGeneratedPaper,
 } from '$lib/server/quizValidation';
+import { stripAnswerKey } from '$lib/server/paperRedaction';
 import {
 	API_LIMIT_ERROR_CODE,
 	isApiLimitExceededError,
@@ -344,9 +345,10 @@ export async function POST({ request }) {
 		if (rateLimit.limited) {
 			await logApiEvent({
 				route: '/api/generate',
-				action: 'generate_quiz',
-				clientKey,
-				statusCode: 429,
+			action: 'generate_quiz',
+			clientKey,
+			request,
+			statusCode: 429,
 				durationMs: Date.now() - startedAt,
 				metadata: {
 					topic: resolvedTopic || null,
@@ -410,9 +412,10 @@ export async function POST({ request }) {
 			if (reusableRecord?.id && reusablePaper) {
 				await logApiEvent({
 					route: '/api/generate',
-					action: 'reuse_exam_paper',
-					clientKey,
-					statusCode: 200,
+				action: 'reuse_exam_paper',
+				clientKey,
+				request,
+				statusCode: 200,
 					durationMs: Date.now() - startedAt,
 					metadata: {
 						testMode,
@@ -425,7 +428,7 @@ export async function POST({ request }) {
 				});
 
 				return json({
-					...reusablePaper,
+					...stripAnswerKey(reusablePaper),
 					id: reusableRecord.id,
 					reusedExisting: true,
 				});
@@ -519,6 +522,7 @@ export async function POST({ request }) {
 				route: '/api/generate',
 				action: 'generate_quiz',
 				clientKey,
+				request,
 				statusCode: 200,
 				durationMs: Date.now() - startedAt,
 				metadata: {
@@ -535,7 +539,7 @@ export async function POST({ request }) {
 			});
 
 			return json({
-				...storedPaper,
+				...stripAnswerKey(storedPaper),
 				id: testId,
 			});
 		} catch (parseError) {
@@ -558,6 +562,7 @@ export async function POST({ request }) {
 				route: '/api/generate',
 				action: 'generate_quiz',
 				clientKey,
+				request,
 				statusCode,
 				durationMs: Date.now() - startedAt,
 				errorMessage: parseError.message,
@@ -611,12 +616,13 @@ export async function POST({ request }) {
 
 		await logApiEvent({
 			route: '/api/generate',
-			action: 'generate_quiz',
-			clientKey,
-			statusCode,
-			durationMs: Date.now() - startedAt,
-			errorMessage: error.message,
-		});
+		action: 'generate_quiz',
+		clientKey,
+		request,
+		statusCode,
+		durationMs: Date.now() - startedAt,
+		errorMessage: error.message,
+	});
 
 		return json(
 			{

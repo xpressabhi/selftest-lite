@@ -79,6 +79,22 @@ export async function ensureStorageSchema() {
 			`);
 
 		await query(`
+			CREATE TABLE IF NOT EXISTS ai_test_attempts (
+				id BIGSERIAL PRIMARY KEY,
+				test_id BIGINT NOT NULL REFERENCES ai_test(id) ON DELETE CASCADE,
+				score INTEGER NOT NULL,
+				total_questions INTEGER NOT NULL,
+				time_taken INTEGER NOT NULL,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_ai_test_attempts_test_time
+			ON ai_test_attempts (test_id, created_at DESC)
+		`);
+
+		await query(`
 			CREATE TABLE IF NOT EXISTS api_rate_limit_events (
 				id BIGSERIAL PRIMARY KEY,
 				client_key TEXT NOT NULL,
@@ -104,6 +120,22 @@ export async function ensureStorageSchema() {
 				metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			)
+		`);
+
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS user_agent TEXT
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS ip_country TEXT
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS ip_city TEXT
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS ip_region TEXT
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS ip_timezone TEXT
 		`);
 
 		await query(`
@@ -166,6 +198,11 @@ export async function createTestRecord(test, requestParams = {}) {
 export async function getTestRecordById(id) {
 	await ensureStorageSchema();
 
+	const normalizedId = Number(id);
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return null;
+	}
+
 	const result = await query(
 		`SELECT
 			id,
@@ -178,10 +215,28 @@ export async function getTestRecordById(id) {
 			num_questions
 		 FROM ai_test
 		 WHERE id = $1`,
-		[id],
+		[normalizedId],
 	);
 
 	return result.rows[0] || null;
+}
+
+export async function createTestAttempt({
+	testId,
+	score,
+	totalQuestions,
+	timeTaken,
+}) {
+	await ensureStorageSchema();
+
+	const result = await query(
+		`INSERT INTO ai_test_attempts (test_id, score, total_questions, time_taken)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id`,
+		[testId, score, totalQuestions, timeTaken],
+	);
+
+	return result.rows[0]?.id;
 }
 
 export async function getTestRecordsByIds(ids) {
@@ -352,6 +407,32 @@ export async function listTestRecords({
 	return result.rows;
 }
 
+function extractClientContext(request) {
+	if (
+		!request ||
+		typeof request.headers?.get !== 'function'
+	) {
+		return {
+			userAgent: null,
+			ipCountry: null,
+			ipCity: null,
+			ipRegion: null,
+			ipTimezone: null,
+		};
+	}
+	const header = (name, maxLength) => {
+		const value = request.headers.get(name);
+		return value ? value.slice(0, maxLength) : null;
+	};
+	return {
+		userAgent: header('user-agent', 300),
+		ipCountry: header('x-vercel-ip-country', 16),
+		ipCity: header('x-vercel-ip-city', 64),
+		ipRegion: header('x-vercel-ip-country-region', 64),
+		ipTimezone: header('x-vercel-ip-timezone', 64),
+	};
+}
+
 export async function logApiEvent({
 	route,
 	action = null,
@@ -360,13 +441,16 @@ export async function logApiEvent({
 	durationMs = null,
 	errorMessage = null,
 	metadata = {},
+	request = null,
 }) {
 	try {
 		await ensureStorageSchema();
+		const { userAgent, ipCountry, ipCity, ipRegion, ipTimezone } =
+			extractClientContext(request);
 		await query(
 			`INSERT INTO api_request_events
-			 (route, action, client_key, status_code, duration_ms, error_message, metadata)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
+			 (route, action, client_key, status_code, duration_ms, error_message, metadata, user_agent, ip_country, ip_city, ip_region, ip_timezone)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12)`,
 			[
 				route,
 				action,
@@ -375,6 +459,11 @@ export async function logApiEvent({
 				durationMs,
 				errorMessage,
 				JSON.stringify(metadata || {}),
+				userAgent,
+				ipCountry,
+				ipCity,
+				ipRegion,
+				ipTimezone,
 			],
 		);
 	} catch (error) {
@@ -388,4 +477,115 @@ export async function cleanupOldRateLimitEvents() {
 		`DELETE FROM api_rate_limit_events
 		 WHERE created_at < NOW() - INTERVAL '2 days'`,
 	);
+}
+
+export async function getAdminStats({ recentLimit = 50 } = {}) {
+	await ensureStorageSchema();
+
+	const cappedRecentLimit = Math.min(Math.max(Number(recentLimit) || 50, 1), 200);
+	const [
+		totalsResult,
+		byRouteResult,
+		byStatusResult,
+		hourlyResult,
+		byCountryResult,
+		topAgentsResult,
+		rateLimitedResult,
+		recentResult,
+	] = await Promise.all([
+		query(
+			`SELECT
+				COUNT(*)::INTEGER AS total,
+				COUNT(*) FILTER (WHERE status_code >= 400)::INTEGER AS errors,
+				COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms,
+				MIN(created_at) AS first_event,
+				MAX(created_at) AS last_event
+			 FROM api_request_events`,
+		),
+		query(
+			`SELECT
+				route,
+				COUNT(*)::INTEGER AS requests,
+				COUNT(*) FILTER (WHERE status_code >= 400)::INTEGER AS errors,
+				COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms
+			 FROM api_request_events
+			 GROUP BY route
+			 ORDER BY requests DESC`,
+		),
+		query(
+			`SELECT
+				status_code,
+				COUNT(*)::INTEGER AS requests
+			 FROM api_request_events
+			 GROUP BY status_code
+			 ORDER BY requests DESC`,
+		),
+		query(
+			`SELECT
+				date_trunc('hour', created_at) AS bucket,
+				COUNT(*)::INTEGER AS requests
+			 FROM api_request_events
+			 WHERE created_at >= NOW() - INTERVAL '24 hours'
+			 GROUP BY bucket
+			 ORDER BY bucket`,
+		),
+		query(
+			`SELECT
+				COALESCE(NULLIF(ip_country, ''), 'unknown') AS country,
+				COUNT(*)::INTEGER AS requests
+			 FROM api_request_events
+			 GROUP BY country
+			 ORDER BY requests DESC
+			 LIMIT 20`,
+		),
+		query(
+			`SELECT
+				user_agent,
+				COUNT(*)::INTEGER AS requests
+			 FROM api_request_events
+			 WHERE user_agent IS NOT NULL AND user_agent <> ''
+			 GROUP BY user_agent
+			 ORDER BY requests DESC
+			 LIMIT 15`,
+		),
+		query(
+			`SELECT
+				route,
+				COUNT(*)::INTEGER AS events
+			 FROM api_rate_limit_events
+			 WHERE created_at >= NOW() - INTERVAL '24 hours'
+			 GROUP BY route
+			 ORDER BY events DESC`,
+		),
+		query(
+			`SELECT
+				id,
+				route,
+				action,
+				status_code,
+				duration_ms,
+				error_message,
+				client_key,
+				ip_country,
+				ip_city,
+				ip_timezone,
+				user_agent,
+				created_at
+			 FROM api_request_events
+			 ORDER BY id DESC
+			 LIMIT $1`,
+			[cappedRecentLimit],
+		),
+	]);
+
+	return {
+		totals: totalsResult.rows[0] || null,
+		byRoute: byRouteResult.rows,
+		byStatus: byStatusResult.rows,
+		hourly: hourlyResult.rows,
+		byCountry: byCountryResult.rows,
+		topAgents: topAgentsResult.rows,
+		rateLimited: rateLimitedResult.rows,
+		recent: recentResult.rows,
+	};
 }

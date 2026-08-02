@@ -39,9 +39,10 @@ export async function POST({ request }) {
 		if (rateLimit.limited) {
 			await logApiEvent({
 				route: '/api/explain',
-				action: 'explain_answer',
-				clientKey,
-				statusCode: 429,
+			action: 'explain_answer',
+			clientKey,
+			request,
+			statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
 
@@ -146,6 +147,7 @@ export async function POST({ request }) {
 			route: '/api/explain',
 			action: 'explain_answer',
 			clientKey,
+			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			metadata: {
@@ -182,6 +184,7 @@ export async function POST({ request }) {
 			route: '/api/explain',
 			action: 'explain_answer',
 			clientKey,
+			request,
 			statusCode,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,

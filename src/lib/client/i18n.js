@@ -46,6 +46,8 @@ const API_ERROR_MESSAGE_KEYS = {
 	TEST_DATA_REQUIRED: 'testDataRequired',
 	TEST_FETCH_ERROR: 'errorFetchingTest',
 	TEST_CREATE_ERROR: 'errorCreatingTest',
+	INVALID_TEST_ID: 'errorInvalidTestId',
+	INVALID_ANSWERS: 'errorInvalidAnswers',
 };
 
 const API_ERROR_MESSAGE_REPLACEMENTS = {

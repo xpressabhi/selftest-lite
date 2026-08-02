@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { t } from '$lib/client/i18n';
+	import { localizedApiError, t } from '$lib/client/i18n';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
@@ -13,7 +13,9 @@
 		getHistory,
 		readDraftAnswers,
 		resolveTestRecord,
+		saveAttemptResult,
 		saveUnsubmittedTest,
+		submitTestAnswers,
 		upsertHistory,
 		writeDraftAnswers,
 	} from '$lib/client/storage';
@@ -23,6 +25,7 @@
 	let currentQuestionIndex = $state(0);
 	let loading = $state(true);
 	let error = $state('');
+	let submitting = $state(false);
 	let startedAt = $state(Date.now());
 	let showQuestionPanel = $state(false);
 	let navigationDirection = $state('forward');
@@ -103,31 +106,80 @@
 		};
 	}
 
-	function submitTest() {
-		if (!questionPaper) {
-			return;
-		}
-		if (unansweredCount > 0 && !confirm(`${$t('unansweredWarning')} ${unansweredCount} ${$t('unansweredQuestions')}. ${$t('submitNow')}?`)) {
-			return;
-		}
-		const score = questionPaper.questions.filter(
-			(question, index) => answers[index] === question.answer,
-		).length;
-		const submittedPaper = {
-			...questionPaper,
-			userAnswers: answers,
-			score,
-			totalQuestions: questionPaper.questions.length,
-			timeTaken: Math.round((Date.now() - startedAt) / 1000),
-			timestamp: Date.now(),
+	function gradeLocally(paper, userAnswers, timeTaken) {
+		const results = paper.questions.map((question, index) => {
+			const yourAnswer = userAnswers[index] ?? null;
+			const correctAnswer =
+				typeof question?.answer === 'string' ? question.answer : null;
+			return {
+				index,
+				correct:
+					yourAnswer !== null && yourAnswer === correctAnswer,
+				yourAnswer,
+				correctAnswer,
+			};
+		});
+		return {
+			score: results.filter((result) => result.correct).length,
+			totalQuestions: results.length,
+			timeTaken,
+			results,
 		};
-		clearDraftAnswers(questionPaper.id);
-		clearUnsubmittedTest(questionPaper.id);
-		upsertHistory(submittedPaper);
-		const nextHistory = [submittedPaper, ...getHistory().filter((entry) => String(entry.id) !== String(submittedPaper.id))];
-		const streak = recordStreakActivity();
-		unlockAchievements(nextHistory, streak);
-		goto(`/results?id=${questionPaper.id}`);
+	}
+
+	async function submitTest() {
+		if (!questionPaper || submitting) {
+			return;
+		}
+		if (
+			unansweredCount > 0 &&
+			!confirm(
+				`${$t('unansweredWarning')} ${unansweredCount} ${$t('unansweredQuestions')}. ${$t('submitNow')}?`,
+			)
+		) {
+			return;
+		}
+		submitting = true;
+		error = '';
+		const finalAnswers = { ...answers };
+		const timeTaken = Math.round((Date.now() - startedAt) / 1000);
+		try {
+			const hasLocalAnswerKey = questionPaper.questions.some(
+				(question) => typeof question?.answer === 'string' && question.answer.length > 0,
+			);
+			const gradedResult = hasLocalAnswerKey
+				? gradeLocally(questionPaper, finalAnswers, timeTaken)
+				: await submitTestAnswers({
+						id: questionPaper.id,
+						answers: finalAnswers,
+						timeTaken,
+					});
+			saveAttemptResult(questionPaper.id, gradedResult);
+			const submittedPaper = {
+				...questionPaper,
+				userAnswers: finalAnswers,
+				score: gradedResult.score,
+				totalQuestions: gradedResult.totalQuestions,
+				timeTaken,
+				timestamp: Date.now(),
+			};
+			clearDraftAnswers(questionPaper.id);
+			clearUnsubmittedTest(questionPaper.id);
+			upsertHistory(submittedPaper);
+			const nextHistory = [
+				submittedPaper,
+				...getHistory().filter((entry) => String(entry.id) !== String(submittedPaper.id)),
+			];
+			const streak = recordStreakActivity();
+			unlockAchievements(nextHistory, streak);
+			goto(`/results?id=${questionPaper.id}`);
+		} catch (caughtError) {
+			const localized = caughtError?.data
+				? localizedApiError(caughtError.data, $t, caughtError.status)
+				: '';
+			error = localized || caughtError.message || $t('submitFailed');
+			submitting = false;
+		}
 	}
 
 	async function shareTest() {
@@ -201,11 +253,15 @@
 				<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
 					{$t('share')}
 				</button>
-				<button class="btn btn-success" type="button" onclick={submitTest}>
-					{$t('submitTest')}
+				<button class="btn btn-success" type="button" disabled={submitting} onclick={submitTest}>
+					{submitting ? $t('submittingAnswers') : $t('submitTest')}
 				</button>
 			</div>
 		</div>
+
+		{#if error}
+			<div class="alert alert-danger" role="alert">{error}</div>
+		{/if}
 
 		<div class="submit-summary bg-body border rounded-3 p-3 mb-3">
 			<div>
