@@ -345,10 +345,10 @@ export async function POST({ request }) {
 		if (rateLimit.limited) {
 			await logApiEvent({
 				route: '/api/generate',
-			action: 'generate_quiz',
-			clientKey,
-			request,
-			statusCode: 429,
+				action: 'generate_quiz',
+				clientKey,
+				request,
+				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 				metadata: {
 					topic: resolvedTopic || null,
@@ -412,10 +412,10 @@ export async function POST({ request }) {
 			if (reusableRecord?.id && reusablePaper) {
 				await logApiEvent({
 					route: '/api/generate',
-				action: 'reuse_exam_paper',
-				clientKey,
-				request,
-				statusCode: 200,
+					action: 'reuse_exam_paper',
+					clientKey,
+					request,
+					statusCode: 200,
 					durationMs: Date.now() - startedAt,
 					metadata: {
 						testMode,
@@ -616,13 +616,13 @@ export async function POST({ request }) {
 
 		await logApiEvent({
 			route: '/api/generate',
-		action: 'generate_quiz',
-		clientKey,
-		request,
-		statusCode,
-		durationMs: Date.now() - startedAt,
-		errorMessage: error.message,
-	});
+			action: 'generate_quiz',
+			clientKey,
+			request,
+			statusCode,
+			durationMs: Date.now() - startedAt,
+			errorMessage: error.message,
+		});
 
 		return json(
 			{
