@@ -32,6 +32,7 @@
 	const SEARCH_PAGE_SIZE = 5;
 	const RECENT_TTL_MS = 60_000;
 	const RECENT_PREFETCH_DELAY_MS = 2000;
+	const HERO_SCROLL_THRESHOLD = 100;
 
 	let activeMode = $state(TEST_MODES.QUIZ_PRACTICE);
 	let topic = $state('');
@@ -61,6 +62,7 @@
 	let resultsOffset = 0;
 	let hasMoreResults = $state(false);
 	let loadingMore = $state(false);
+	let heroCollapsed = $state(false);
 	let recentCache = null;
 	let searchTimer;
 	let searchAbort = null;
@@ -93,6 +95,12 @@
 		activeMode === TEST_MODES.FULL_EXAM
 			? Boolean(selectedExamId)
 			: topic.trim().length > 0 || selectedTopics.length > 0,
+	);
+	let isFormDirty = $derived(
+		topic.trim().length > 0 ||
+			selectedTopics.length > 0 ||
+			selectedExamId !== '' ||
+			selectedSyllabusFocus.length > 0,
 	);
 
 	onMount(() => {
@@ -174,6 +182,52 @@
 		if ($isDataSaverActive && activeMode === TEST_MODES.QUIZ_PRACTICE && numQuestions > 5) {
 			numQuestions = 5;
 		}
+	});
+
+	$effect(() => {
+		if (searchOpen || status === 'loading' || isFormDirty || error) {
+			heroCollapsed = true;
+			return;
+		}
+		if (typeof window !== 'undefined' && window.scrollY <= HERO_SCROLL_THRESHOLD) {
+			heroCollapsed = false;
+		}
+	});
+
+	$effect(() => {
+		if (typeof window === 'undefined' || typeof document === 'undefined') {
+			return;
+		}
+		const handleHeroScroll = () => {
+			if (window.scrollY > HERO_SCROLL_THRESHOLD) {
+				heroCollapsed = true;
+				return;
+			}
+			if (!searchOpen && status !== 'loading' && !isFormDirty && !error) {
+				heroCollapsed = false;
+			}
+		};
+		const handleHeroInteraction = (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+			if (
+				target.closest('.home-wrap') &&
+				!target.closest('.search-home-wrap') &&
+				!target.closest('.hero-block')
+			) {
+				heroCollapsed = true;
+			}
+		};
+		window.addEventListener('scroll', handleHeroScroll, { passive: true });
+		window.addEventListener('focusin', handleHeroInteraction);
+		window.addEventListener('pointerdown', handleHeroInteraction);
+		return () => {
+			window.removeEventListener('scroll', handleHeroScroll);
+			window.removeEventListener('focusin', handleHeroInteraction);
+			window.removeEventListener('pointerdown', handleHeroInteraction);
+		};
 	});
 
 	function normalizeQuizTestType(value) {
@@ -591,7 +645,7 @@
 
 <section class="container py-4 py-md-5">
 	<div class="mx-auto home-wrap">
-		<div class="text-center mb-4">
+		<div class="text-center mb-4 hero-block" class:hero-collapsed={heroCollapsed} aria-hidden={heroCollapsed}>
 			<p class="text-uppercase text-muted small fw-semibold mb-2">{$t('aiPracticeForIndianExams')}</p>
 			<h1 class="h2 fw-bold mb-2">{$t('createQuiz')}</h1>
 			<p class="text-muted mb-0">
@@ -859,6 +913,20 @@
 <style>
 	.home-wrap {
 		max-width: 860px;
+	}
+
+	.hero-block {
+		max-height: 240px;
+		overflow: hidden;
+		opacity: 1;
+		transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.35s ease;
+	}
+
+	.hero-block.hero-collapsed {
+		max-height: 0;
+		margin-bottom: 0;
+		opacity: 0;
+		pointer-events: none;
 	}
 
 	.search-home-form {
