@@ -353,6 +353,7 @@
   "unableLoadTests": "Unable to load tests right now.",
   "copied": "Copied!",
   "testId": "Test ID",
+  "testProgressLabel": "Test progress",
   "enableSoundEffects": "Enable sound effects",
   "disableSoundEffects": "Disable sound effects",
   "soundOn": "Sound On",

@@ -278,7 +278,14 @@
 			</div>
 		</div>
 
-		<div class="progress mb-3" role="progressbar">
+		<div
+			class="progress mb-3"
+			role="progressbar"
+			aria-label={$t('testProgressLabel')}
+			aria-valuemin="0"
+			aria-valuemax={questionPaper.questions.length}
+			aria-valuenow={Object.keys(answers).length}
+		>
 			<div
 				class="progress-bar"
 				style={`width: ${((Object.keys(answers).length || 0) / questionPaper.questions.length) * 100}%`}

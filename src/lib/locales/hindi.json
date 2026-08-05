@@ -353,6 +353,7 @@
   "unableLoadTests": "अभी टेस्ट लोड नहीं हो पा रहे हैं।",
   "copied": "कॉपी हो गया!",
   "testId": "टेस्ट आईडी",
+  "testProgressLabel": "टेस्ट प्रगति",
   "enableSoundEffects": "ध्वनि प्रभाव चालू करें",
   "disableSoundEffects": "ध्वनि प्रभाव बंद करें",
   "soundOn": "ध्वनि चालू",
