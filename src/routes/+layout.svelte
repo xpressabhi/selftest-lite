@@ -151,6 +151,25 @@
 		}
 	});
 
+	$effect(() => {
+		if (!showInstallHint) {
+			return;
+		}
+		const timer = window.setTimeout(() => {
+			showInstallHint = false;
+		}, 10000);
+		const hideOnScroll = () => {
+			if (window.scrollY > 150) {
+				showInstallHint = false;
+			}
+		};
+		window.addEventListener('scroll', hideOnScroll, { passive: true });
+		return () => {
+			window.clearTimeout(timer);
+			window.removeEventListener('scroll', hideOnScroll);
+		};
+	});
+
 	function dismissInstallHint() {
 		showInstallHint = false;
 		showInstallGuide = false;
