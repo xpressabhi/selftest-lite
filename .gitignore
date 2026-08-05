@@ -46,3 +46,4 @@ npm_output.log
 # test artifacts
 /coverage
 /playwright-report
+/.playwright-mcp

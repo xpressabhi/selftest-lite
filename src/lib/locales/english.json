@@ -120,6 +120,7 @@
   "searchPastTests": "Search past tests",
   "closeSearch": "Close search",
   "searchByTopic": "Search by topic...",
+  "searchByTopicOrId": "Search by topic or Test ID...",
   "matchingTests": "Matching tests",
   "recentTests": "Recent tests",
   "noTestsFound": "No tests found.",

@@ -1,6 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
 	import {
@@ -12,7 +13,11 @@
 		saveBookmarkedQuizPresets,
 		saveCurrentPaper,
 	} from '$lib/client/storage';
-	import { STORAGE_KEYS } from '$lib/client/constants';
+	import {
+		FOCUS_SEARCH_EVENT,
+		LOCAL_STORAGE_CHANGE_EVENT,
+		STORAGE_KEYS,
+	} from '$lib/client/constants';
 	import { TOPIC_CATEGORIES } from '$lib/shared/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 
@@ -23,9 +28,12 @@
 	const EXAM_GROUP_FILTERS = ['all', 'A', 'B', 'C', 'D'];
 	const MAX_RETRIES = 3;
 	const GENERATION_TIMEOUT_MS = 180000;
+	const SEARCH_DEBOUNCE_MS = 350;
+	const SEARCH_PAGE_SIZE = 5;
+	const RECENT_TTL_MS = 60_000;
+	const RECENT_PREFETCH_DELAY_MS = 2000;
 
 	let activeMode = $state(TEST_MODES.QUIZ_PRACTICE);
-	let testId = $state('');
 	let topic = $state('');
 	let numQuestions = $state(10);
 	let paperLanguage = $state('english');
@@ -45,6 +53,17 @@
 	let retryLabel = $state('');
 	let isOffline = $state(false);
 	let unsubmittedTest = $state(null);
+	let searchInput = $state(null);
+	let searchQuery = $state('');
+	let searchOpen = $state(false);
+	let searchResults = $state([]);
+	let searchStatus = $state('idle');
+	let resultsOffset = 0;
+	let hasMoreResults = $state(false);
+	let loadingMore = $state(false);
+	let recentCache = null;
+	let searchTimer;
+	let searchAbort = null;
 
 	let selectedExam = $derived(getIndianExamById(selectedExamId));
 	let bookmarkedExams = $derived(
@@ -104,9 +123,44 @@
 		updateNetwork();
 		window.addEventListener('online', updateNetwork);
 		window.addEventListener('offline', updateNetwork);
+
+		const prefetchTimer = window.setTimeout(() => {
+			if (!get(isDataSaverActive) && navigator.onLine) {
+				void fetchSearchList('', 0, false);
+			}
+		}, RECENT_PREFETCH_DELAY_MS);
+
+		const handlePrefetchInvalidation = (event) => {
+			const keys = event.detail?.keys || [];
+			if (
+				keys.includes(STORAGE_KEYS.TEST_HISTORY) ||
+				keys.includes(STORAGE_KEYS.QUESTION_PAPER)
+			) {
+				recentCache = null;
+			}
+		};
+		window.addEventListener(LOCAL_STORAGE_CHANGE_EVENT, handlePrefetchInvalidation);
+
+		const handleFocusSearch = () => {
+			focusSearchInput();
+		};
+		window.addEventListener(FOCUS_SEARCH_EVENT, handleFocusSearch);
+
+		if (new URL(window.location.href).searchParams.get('focus') === 'search') {
+			window.history.replaceState(null, '', window.location.pathname);
+			window.setTimeout(() => focusSearchInput(), 50);
+		}
+
 		return () => {
 			window.removeEventListener('online', updateNetwork);
 			window.removeEventListener('offline', updateNetwork);
+			window.clearTimeout(prefetchTimer);
+			window.removeEventListener(LOCAL_STORAGE_CHANGE_EVENT, handlePrefetchInvalidation);
+			window.removeEventListener(FOCUS_SEARCH_EVENT, handleFocusSearch);
+			searchAbort?.abort();
+			if (searchTimer) {
+				window.clearTimeout(searchTimer);
+			}
 		};
 	});
 
@@ -319,13 +373,216 @@
 		await runGeneration(getQuizRequestParams(preset));
 	}
 
-	function goToTestId(event) {
-		event.preventDefault();
-		const normalized = testId.trim();
-		if (normalized) {
-			goto(`/test?id=${encodeURIComponent(normalized)}`);
+	function isSearchableQuery(q) {
+		return q.length >= 4 || /^\d+$/.test(q);
+	}
+
+	function getFreshRecent() {
+		if (!recentCache) {
+			return null;
+		}
+		return Date.now() - recentCache.fetchedAt <= RECENT_TTL_MS ? recentCache : null;
+	}
+
+	function focusSearchInput() {
+		searchInput?.focus();
+	}
+
+	function openSearchPanel() {
+		searchOpen = true;
+		const q = searchQuery.trim();
+		if (!isSearchableQuery(q)) {
+			const cached = getFreshRecent();
+			if (cached) {
+				searchResults = cached.tests;
+				hasMoreResults = cached.hasMore;
+				resultsOffset = cached.tests.length;
+				searchStatus = 'done';
+			} else if (searchStatus !== 'loading') {
+				searchStatus = 'loading';
+				void fetchSearchList('', 0, false);
+			}
 		}
 	}
+
+	function closeSearchPanel() {
+		if (!searchOpen) {
+			return;
+		}
+		searchOpen = false;
+		searchAbort?.abort();
+		searchAbort = null;
+		if (searchTimer) {
+			window.clearTimeout(searchTimer);
+			searchTimer = undefined;
+		}
+		searchResults = [];
+		hasMoreResults = false;
+		loadingMore = false;
+		resultsOffset = 0;
+		searchStatus = 'idle';
+	}
+
+	async function fetchSearchList(q, offset, append) {
+		const controller = new AbortController();
+		searchAbort?.abort();
+		searchAbort = controller;
+		if (append) {
+			loadingMore = true;
+		} else {
+			searchStatus = 'loading';
+		}
+
+		try {
+			const response = await fetch(
+				`/api/test?q=${encodeURIComponent(q)}&limit=${SEARCH_PAGE_SIZE}&offset=${offset}`,
+				{ signal: controller.signal },
+			);
+			const payload = await response.json().catch(() => null);
+			if (searchAbort !== controller) {
+				return;
+			}
+			const tests = response.ok && Array.isArray(payload?.tests) ? payload.tests : [];
+			const hasMore = response.ok && payload?.hasMore === true;
+
+			if (!append && !q) {
+				recentCache = {
+					tests,
+					hasMore,
+					fetchedAt: Date.now(),
+				};
+			}
+
+			if (!searchOpen || searchQuery.trim() !== q) {
+				return;
+			}
+
+			let next = append ? [...searchResults, ...tests] : [...tests];
+			if (!append && /^\d+$/.test(q)) {
+				const exactIndex = next.findIndex((test) => String(test.id) === q);
+				if (exactIndex > 0) {
+					const [exact] = next.splice(exactIndex, 1);
+					next.unshift(exact);
+				}
+			}
+			searchResults = next;
+			resultsOffset = offset + tests.length;
+			hasMoreResults = hasMore;
+			searchStatus = 'done';
+			if (append) {
+				loadingMore = false;
+			}
+		} catch (error) {
+			if (error?.name === 'AbortError' || searchAbort !== controller) {
+				return;
+			}
+			if (!searchOpen || searchQuery.trim() !== q) {
+				return;
+			}
+			if (!append) {
+				searchResults = [];
+				hasMoreResults = false;
+			}
+			searchStatus = 'done';
+			if (append) {
+				loadingMore = false;
+			}
+		}
+	}
+
+	function submitSearch(event) {
+		event.preventDefault();
+		const q = searchQuery.trim();
+		if (!q) {
+			searchOpen = true;
+			openSearchPanel();
+			focusSearchInput();
+			return;
+		}
+		const exact = /^\d+$/.test(q)
+			? searchResults.find((test) => String(test.id) === q)
+			: null;
+		if (exact) {
+			void goto(`/test?id=${exact.id}`);
+			return;
+		}
+		if (searchStatus === 'done' && searchResults.length === 1) {
+			void goto(`/test?id=${searchResults[0].id}`);
+			return;
+		}
+		searchOpen = true;
+		focusSearchInput();
+	}
+
+	function handleSearchKeydown(event) {
+		if (event.key === 'Escape') {
+			closeSearchPanel();
+		}
+	}
+
+	function handleResultsScroll(event) {
+		if (!searchOpen || searchStatus !== 'done' || !hasMoreResults || loadingMore) {
+			return;
+		}
+		const container = event.currentTarget;
+		if (container.scrollTop + container.clientHeight < container.scrollHeight - 48) {
+			return;
+		}
+		const q = searchQuery.trim();
+		void fetchSearchList(isSearchableQuery(q) ? q : '', resultsOffset, true);
+	}
+
+	$effect(() => {
+		const q = searchQuery.trim();
+		if (!searchOpen) {
+			return;
+		}
+
+		if (!isSearchableQuery(q)) {
+			const cached = getFreshRecent();
+			if (cached) {
+				searchResults = cached.tests;
+				hasMoreResults = cached.hasMore;
+				resultsOffset = cached.tests.length;
+				searchStatus = 'done';
+			} else if (searchStatus !== 'loading') {
+				searchStatus = 'loading';
+				void fetchSearchList('', 0, false);
+			}
+			return;
+		}
+
+		searchStatus = 'loading';
+		searchResults = [];
+		resultsOffset = 0;
+		hasMoreResults = false;
+		const timer = window.setTimeout(() => {
+			void fetchSearchList(q, 0, false);
+		}, SEARCH_DEBOUNCE_MS);
+		return () => window.clearTimeout(timer);
+	});
+
+	$effect(() => {
+		if (!searchOpen || searchStatus !== 'done' || !hasMoreResults || loadingMore) {
+			return;
+		}
+		const box = document.querySelector('.search-home-results');
+		if (!box || box.scrollHeight > box.clientHeight + 4) {
+			return;
+		}
+		const q = searchQuery.trim();
+		void fetchSearchList(q.length >= 4 ? q : '', resultsOffset, true);
+	});
+
+	$effect(() => {
+		if (typeof document === 'undefined') {
+			return;
+		}
+		document.body.style.overflow = searchOpen ? 'hidden' : '';
+		return () => {
+			document.body.style.overflow = '';
+		};
+	});
 </script>
 
 <svelte:head>
@@ -342,18 +599,51 @@
 			</p>
 		</div>
 
-		<form class="resume-form bg-body border rounded-3 p-3 mb-3" onsubmit={goToTestId}>
-			<label class="form-label fw-semibold" for="test-id">{$t('haveTestIdTitle')}</label>
-			<div class="input-group">
-				<input
-					id="test-id"
-					class="form-control"
-					bind:value={testId}
-					placeholder={$t('enterTestId')}
-				/>
-				<button class="btn btn-outline-primary" type="submit">{$t('go')}</button>
-			</div>
-		</form>
+		<div class="search-home-wrap mb-3">
+			<form class="search-home-form bg-body border rounded-3 p-3" onsubmit={submitSearch}>
+				<label class="form-label fw-semibold" for="global-test-search">{$t('searchPastTests')}</label>
+				<div class="input-group">
+					<input
+						id="global-test-search"
+						class="form-control"
+						bind:this={searchInput}
+						bind:value={searchQuery}
+						onfocus={openSearchPanel}
+						onkeydown={handleSearchKeydown}
+						placeholder={$t('searchByTopicOrId')}
+						autocomplete="off"
+					/>
+					<button class="btn btn-primary" type="submit">{$t('searchTests')}</button>
+				</div>
+				{#if searchOpen}
+					<div class="search-home-backdrop" role="presentation" onclick={closeSearchPanel}></div>
+					<div class="search-home-results" onscroll={handleResultsScroll}>
+						{#if searchStatus === 'loading'}
+							<p class="text-muted small mb-0 px-2 py-1">{$t('loading')}</p>
+						{:else if searchStatus === 'done'}
+							<p class="text-muted small mb-1 px-2 py-1">
+								{isSearchableQuery(searchQuery.trim()) ? $t('matchingTests') : $t('recentTests')}
+							</p>
+							{#if searchResults.length === 0}
+								<p class="text-muted small mb-0 px-2 py-1">{$t('noTestsFound')}</p>
+							{:else}
+								{#each searchResults as test (test.id)}
+									<a class="result-item" href={`/test?id=${test.id}`} onclick={closeSearchPanel}>
+										<strong>{test.topic || $t('untitledTest')}</strong>
+										<span class="result-meta">
+											{test.test_mode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')} · {$t('testId')}: {test.id}
+										</span>
+									</a>
+								{/each}
+								{#if loadingMore}
+									<p class="text-muted small mb-0 px-2 py-1">{$t('loading')}</p>
+								{/if}
+							{/if}
+						{/if}
+					</div>
+				{/if}
+			</form>
+		</div>
 
 		{#if unsubmittedTest?.id}
 			<div class="alert alert-warning d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
@@ -569,6 +859,50 @@
 <style>
 	.home-wrap {
 		max-width: 860px;
+	}
+
+	.search-home-form {
+		position: relative;
+	}
+
+	.search-home-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 1180;
+		background: transparent;
+	}
+
+	.search-home-results {
+		position: absolute;
+		top: calc(100% + 8px);
+		left: 0;
+		right: 0;
+		z-index: 1200;
+		max-height: min(60vh, 420px);
+		overflow: auto;
+		padding: 8px;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--surface);
+		box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+	}
+
+	.result-item {
+		display: grid;
+		gap: 2px;
+		padding: 10px 12px;
+		border-radius: 8px;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.result-item:hover {
+		background: var(--surface-muted);
+	}
+
+	.result-meta {
+		color: var(--text-muted);
+		font-size: 0.82rem;
 	}
 
 	.mode-switch {

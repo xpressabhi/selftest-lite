@@ -363,7 +363,7 @@ export async function listTestRecords({
 	if (trimmedSearch) {
 		queryParams.push(`%${trimmedSearch}%`);
 		whereClauses.push(
-			`COALESCE(topic, test->>'topic', '') ILIKE $${queryParams.length}`,
+			`(COALESCE(topic, test->>'topic', '') ILIKE $${queryParams.length} OR CAST(id AS TEXT) ILIKE $${queryParams.length})`,
 		);
 	}
 

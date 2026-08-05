@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { t } from '$lib/client/i18n';
 	import {
@@ -11,7 +12,7 @@
 		setThemePreference,
 		themePreference,
 	} from '$lib/client/preferences';
-	import { STORAGE_KEYS } from '$lib/client/constants';
+	import { FOCUS_SEARCH_EVENT, STORAGE_KEYS } from '$lib/client/constants';
 	import '$lib/styles/globals.css';
 
 	let { children } = $props();
@@ -31,25 +32,6 @@
 	let pullDistance = $state(0);
 	let isRefreshing = $state(false);
 	let isMenuOpen = $state(false);
-	let isSearchOpen = $state(false);
-	let searchQuery = $state('');
-	let searchResults = $state([]);
-	let recentSearchResults = $state([]);
-	let recentSearchLoaded = $state(false);
-	let recentSearchHasMore = $state(false);
-	let hasMoreSearchResults = $state(false);
-	let isLoadingMore = $state(false);
-	let searchStatus = $state('idle');
-	let searchDebounceTimer;
-	let searchRequestId = 0;
-	let recentRequestId = 0;
-	let searchAbortController = null;
-	let recentAbortController = null;
-	let searchSessionId = 0;
-	let searchOffset = 0;
-	let recentSearchOffset = 0;
-	const searchDebounceMs = 350;
-	const searchPageSize = 5;
 
 	function loadAdSense() {
 		if (document.querySelector('script[data-selftest-adsense]')) {
@@ -229,227 +211,11 @@
 
 	function openSearch() {
 		isMenuOpen = false;
-		cancelSearchWork();
-		searchSessionId += 1;
-		isSearchOpen = true;
-		searchQuery = '';
-		recentSearchResults = [];
-		recentSearchLoaded = false;
-		recentSearchHasMore = false;
-		hasMoreSearchResults = false;
-		isLoadingMore = false;
-		searchOffset = 0;
-		recentSearchOffset = 0;
-		searchResults = [];
-		searchStatus = 'loading';
-		void fetchTests('', 0, false, searchSessionId);
-	}
-
-	function closeSearch() {
-		cancelSearchWork();
-		searchSessionId += 1;
-		isSearchOpen = false;
-		searchQuery = '';
-		searchResults = [];
-		hasMoreSearchResults = false;
-		isLoadingMore = false;
-		searchStatus = 'idle';
-	}
-
-	function cancelSearchWork() {
-		if (searchDebounceTimer) {
-			window.clearTimeout(searchDebounceTimer);
-			searchDebounceTimer = undefined;
-		}
-		searchAbortController?.abort();
-		recentAbortController?.abort();
-		searchAbortController = null;
-		recentAbortController = null;
-	}
-
-	async function fetchTests(query, offset, append, sessionId) {
-		const requestId = query ? ++searchRequestId : ++recentRequestId;
-		const controller = new AbortController();
-		if (query) {
-			searchAbortController?.abort();
-			searchAbortController = controller;
+		if (page.url.pathname === '/') {
+			window.dispatchEvent(new CustomEvent(FOCUS_SEARCH_EVENT));
 		} else {
-			recentAbortController?.abort();
-			recentAbortController = controller;
+			void goto('/?focus=search');
 		}
-		if (append) {
-			isLoadingMore = true;
-		} else {
-			searchStatus = 'loading';
-		}
-
-		try {
-			const response = await fetch(
-				`/api/test?q=${encodeURIComponent(query)}&limit=${searchPageSize}&offset=${offset}`,
-				{
-				signal: controller.signal,
-				},
-			);
-			const payload = await response.json();
-			const tests = response.ok && Array.isArray(payload.tests) ? payload.tests : [];
-			const hasMore = response.ok && payload.hasMore === true;
-			const currentQuery = searchQuery.trim();
-			if (!isSearchOpen || sessionId !== searchSessionId) {
-				return;
-			}
-
-			if (!query) {
-				if (requestId !== recentRequestId) {
-					return;
-				}
-				const nextRecentResults = append
-					? [...recentSearchResults, ...tests]
-					: tests;
-				recentSearchResults = nextRecentResults;
-				recentSearchLoaded = true;
-				recentSearchHasMore = hasMore;
-				recentSearchOffset = offset + tests.length;
-				if (currentQuery.length < 4) {
-					searchResults = nextRecentResults;
-					hasMoreSearchResults = hasMore;
-					searchStatus = 'done';
-				}
-				if (append) {
-					isLoadingMore = false;
-				}
-				return;
-			}
-
-			if (requestId !== searchRequestId || currentQuery !== query) {
-				return;
-			}
-			searchResults = append ? [...searchResults, ...tests] : tests;
-			searchOffset = offset + tests.length;
-			hasMoreSearchResults = hasMore;
-			searchStatus = 'done';
-			if (append) {
-				isLoadingMore = false;
-			}
-		} catch (error) {
-			if (error?.name === 'AbortError') {
-				return;
-			}
-			if (!isSearchOpen || sessionId !== searchSessionId) {
-				return;
-			}
-			if (!query) {
-				if (requestId !== recentRequestId) {
-					return;
-				}
-				recentSearchLoaded = true;
-				recentSearchHasMore = false;
-				if (searchQuery.trim().length < 4) {
-					if (!append) {
-						searchResults = [];
-					}
-					hasMoreSearchResults = false;
-					searchStatus = 'done';
-				}
-				if (append) {
-					isLoadingMore = false;
-				}
-				return;
-			}
-			if (requestId !== searchRequestId || searchQuery.trim() !== query) {
-				return;
-			}
-			if (!append) {
-				searchResults = [];
-			}
-			hasMoreSearchResults = false;
-			searchStatus = 'done';
-			if (append) {
-				isLoadingMore = false;
-			}
-		}
-	}
-
-	function submitSearch(event) {
-		event.preventDefault();
-		const normalizedQuery = searchQuery.trim();
-		if (normalizedQuery.length < 4) {
-			searchResults = recentSearchResults;
-			hasMoreSearchResults = recentSearchHasMore;
-			if (recentSearchLoaded) {
-				searchStatus = 'done';
-			}
-			return;
-		}
-
-		if (searchDebounceTimer) {
-			window.clearTimeout(searchDebounceTimer);
-			searchDebounceTimer = undefined;
-		}
-		searchRequestId += 1;
-		searchAbortController?.abort();
-		searchResults = [];
-		searchOffset = 0;
-		hasMoreSearchResults = false;
-		searchStatus = 'loading';
-		void fetchTests(normalizedQuery, 0, false, searchSessionId);
-	}
-
-	$effect(() => {
-		const normalizedQuery = searchQuery.trim();
-		if (!isSearchOpen) {
-			return;
-		}
-
-		if (normalizedQuery.length < 4) {
-			if (searchDebounceTimer) {
-				window.clearTimeout(searchDebounceTimer);
-				searchDebounceTimer = undefined;
-			}
-			searchRequestId += 1;
-			searchAbortController?.abort();
-			searchResults = recentSearchResults;
-			hasMoreSearchResults = recentSearchHasMore;
-			if (recentSearchLoaded) {
-				searchStatus = 'done';
-			}
-			return;
-		}
-
-		if (searchDebounceTimer) {
-			window.clearTimeout(searchDebounceTimer);
-		}
-		searchRequestId += 1;
-		searchAbortController?.abort();
-		searchOffset = 0;
-		hasMoreSearchResults = false;
-		searchResults = [];
-		searchStatus = 'loading';
-		searchDebounceTimer = window.setTimeout(() => {
-			void fetchTests(normalizedQuery, 0, false, searchSessionId);
-		}, searchDebounceMs);
-
-		return () => {
-			if (searchDebounceTimer) {
-				window.clearTimeout(searchDebounceTimer);
-				searchDebounceTimer = undefined;
-			}
-		};
-	});
-
-	function handleSearchScroll(event) {
-		if (!isSearchOpen || searchStatus !== 'done' || !hasMoreSearchResults || isLoadingMore) {
-			return;
-		}
-
-		const container = event.currentTarget;
-		if (container.scrollTop + container.clientHeight < container.scrollHeight - 48) {
-			return;
-		}
-
-		const normalizedQuery = searchQuery.trim();
-		const query = normalizedQuery.length >= 4 ? normalizedQuery : '';
-		const offset = query ? searchOffset : recentSearchOffset;
-		void fetchTests(query, offset, true, searchSessionId);
 	}
 </script>
 
@@ -621,46 +387,6 @@
 		<a class:active={activePath === '/history'} href="/history"><span aria-hidden="true">◷</span>{$t('historyTab')}</a>
 		<button type="button" onclick={openSearch}><span aria-hidden="true">⌕</span>{$t('searchTab')}</button>
 	</nav>
-
-	{#if isSearchOpen}
-		<div class="search-backdrop" role="presentation" onclick={closeSearch}></div>
-		<dialog open class="search-panel" aria-label={$t('searchPastTests')} onscroll={handleSearchScroll}>
-			<div class="search-panel-heading">
-				<h2 class="h5 mb-0">{$t('searchPastTests')}</h2>
-				<button class="header-icon" type="button" aria-label={$t('closeSearch')} onclick={closeSearch}>×</button>
-			</div>
-			<form onsubmit={submitSearch}>
-				<label class="visually-hidden" for="global-test-search">{$t('searchByTopic')}</label>
-				<div class="input-group">
-					<input id="global-test-search" class="form-control" bind:value={searchQuery} placeholder={$t('searchByTopic')} />
-					<button class="btn btn-primary" type="submit">{$t('searchTests')}</button>
-				</div>
-			</form>
-			{#if searchStatus === 'loading'}
-				<p class="text-muted small mb-0">{$t('loading')}</p>
-			{:else if searchStatus === 'done'}
-				<div class="search-results">
-					<p class="text-muted small mb-0">
-						{searchQuery.trim().length >= 4 ? $t('matchingTests') : $t('recentTests')}
-					</p>
-					{#if searchResults.length === 0}
-						<p class="text-muted mb-0">{$t('noTestsFound')}</p>
-					{:else}
-						{#each searchResults as test (test.id)}
-							<a href={`/test?id=${test.id}`} onclick={closeSearch}>
-								<strong>{test.topic || $t('untitledTest')}</strong>
-								<span>{test.test_mode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')}</span>
-								<span>{$t('testId')}: {test.id}</span>
-							</a>
-						{/each}
-						{#if isLoadingMore}
-							<p class="text-muted small mb-0">{$t('loading')}</p>
-						{/if}
-					{/if}
-				</div>
-			{/if}
-		</dialog>
-	{/if}
 
 	{#if toast}
 		<div class={`toast-lite ${toast.type}`} role="status">{toast.message}</div>
@@ -862,62 +588,6 @@
 	:global(.dark) .bottom-nav button:focus-visible,
 	:global(.dark) .create-tab {
 		color: var(--color-brand-100) !important;
-	}
-
-	.search-backdrop {
-		position: fixed;
-		inset: 0;
-		z-index: 1090;
-		background: rgba(15, 23, 42, 0.48);
-	}
-
-	.search-panel {
-		position: fixed;
-		top: 74px;
-		left: 50%;
-		z-index: 1100;
-		width: min(560px, calc(100vw - 24px));
-		max-height: min(70vh, 620px);
-		overflow: auto;
-		padding: 18px;
-		border: 1px solid var(--line);
-		border-radius: 16px;
-		background: var(--surface);
-		box-shadow: 0 20px 60px rgba(15, 23, 42, 0.26);
-		translate: -50% 0;
-		margin: 0;
-	}
-
-	.search-panel-heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 14px;
-	}
-
-	.search-results {
-		display: grid;
-		gap: 8px;
-		margin-top: 14px;
-	}
-
-	.search-results a {
-		display: grid;
-		gap: 2px;
-		padding: 11px 12px;
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.search-results a:hover {
-		border-color: var(--color-brand-600);
-	}
-
-	.search-results span {
-		color: var(--text-muted);
-		font-size: 0.82rem;
 	}
 
 	.connection-banner {

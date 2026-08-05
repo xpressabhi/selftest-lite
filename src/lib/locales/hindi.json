@@ -120,6 +120,7 @@
   "searchPastTests": "पिछले टेस्ट खोजें",
   "closeSearch": "खोज बंद करें",
   "searchByTopic": "विषय से खोजें...",
+  "searchByTopicOrId": "विषय या टेस्ट आईडी से खोजें...",
   "matchingTests": "मिलते-जुलते टेस्ट",
   "recentTests": "हाल के टेस्ट",
   "noTestsFound": "कोई टेस्ट नहीं मिला।",
