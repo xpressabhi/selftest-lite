@@ -376,14 +376,21 @@
 					</button>
 				{/each}
 			</div>
-			<button
-				class="btn btn-outline-primary"
-				type="button"
-				disabled={currentQuestionIndex === questionPaper.questions.length - 1}
-				onclick={nextQuestion}
-			>
-				{$t('tourNext')}
-			</button>
+			<div class="d-flex align-items-center gap-2">
+				<button
+					class="btn btn-outline-primary"
+					type="button"
+					disabled={currentQuestionIndex === questionPaper.questions.length - 1}
+					onclick={nextQuestion}
+				>
+					{$t('tourNext')}
+				</button>
+				{#if currentQuestionIndex === questionPaper.questions.length - 1}
+					<button class="btn btn-success mobile-only" type="button" disabled={submitting} onclick={submitTest}>
+						{submitting ? $t('submittingAnswers') : $t('submitTest')}
+					</button>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </section>
@@ -484,6 +491,12 @@
 	@media (max-width: 575.98px) {
 		.compact-dots {
 			display: none !important;
+		}
+	}
+
+	@media (min-width: 768px) {
+		.mobile-only {
+			display: none;
 		}
 	}
 </style>
