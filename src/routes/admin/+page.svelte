@@ -9,10 +9,31 @@
 	let password = $state('');
 	let error = $state('');
 	let stats = $state(null);
+	let featureUsage = $state(null);
+	let featureDays = $state(30);
 
 	onMount(() => {
 		void loadStats();
+		void loadFeatureUsage();
 	});
+
+	async function loadFeatureUsage() {
+		try {
+			const response = await fetch(`/api/admin/feature-usage?days=${featureDays}`, { cache: 'no-store' });
+			if (response.status === 401) {
+				authed = false;
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				throw new Error(data.error || 'Failed to load feature usage');
+			}
+			featureUsage = data;
+		} catch (caughtError) {
+			console.error(caughtError);
+			featureUsage = null;
+		}
+	}
 
 	async function loadStats() {
 		checking = true;
@@ -70,6 +91,7 @@
 		await fetch('/api/admin/logout', { method: 'POST' });
 		authed = false;
 		stats = null;
+		featureUsage = null;
 	}
 
 	function formatTime(value) {
@@ -102,6 +124,11 @@
 			hour: '2-digit',
 			minute: '2-digit',
 		});
+	}
+
+	function dayLabel(value) {
+		const date = new Date(value);
+		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
 </script>
 
@@ -305,6 +332,143 @@
 					<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
 				{/if}
 			</div>
+
+			<div class="bg-body border rounded-3 p-3 mb-4">
+				<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+					<h2 class="h6 fw-bold mb-0">{$t('adminFeatureUsage')}</h2>
+					<div class="d-flex align-items-center gap-2">
+						<select
+							class="form-select form-select-sm"
+							bind:value={featureDays}
+							onchange={() => void loadFeatureUsage()}
+						>
+							<option value="7">7 {$t('adminDaysShort')}</option>
+							<option value="30">30 {$t('adminDaysShort')}</option>
+							<option value="90">90 {$t('adminDaysShort')}</option>
+						</select>
+						<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void loadFeatureUsage()}>
+							{$t('adminRefresh')}
+						</button>
+					</div>
+				</div>
+
+				{#if featureUsage}
+					<div class="stat-cards mb-4">
+						<div class="bg-body border rounded-3 p-3">
+							<strong>{featureUsage.totals?.total || 0}</strong>
+							<span>{$t('adminFeatureEvents')}</span>
+						</div>
+						<div class="bg-body border rounded-3 p-3">
+							<strong>{featureUsage.totals?.sessions || 0}</strong>
+							<span>{$t('adminFeatureSessions')}</span>
+						</div>
+						<div class="bg-body border rounded-3 p-3">
+							<strong>{featureUsage.totals?.events_per_session || 0}</strong>
+							<span>{$t('adminFeaturePerSession')}</span>
+						</div>
+						<div class="bg-body border rounded-3 p-3">
+							<strong>{featureUsage.byEvent?.length || 0}</strong>
+							<span>{$t('adminFeatureDistinct')}</span>
+						</div>
+					</div>
+
+					<div class="row g-3 mb-4">
+						<section class="col-lg-6">
+							<div class="bg-body border rounded-3 p-3 h-100">
+								<h3 class="h6 fw-bold mb-2">{$t('adminFeatureRanking')}</h3>
+								{#each featureUsage.byEvent || [] as item (item.event)}
+									{@const maxCount = featureUsage.byEvent?.[0]?.count || 1}
+									<div class="mb-2">
+										<div class="d-flex justify-content-between gap-2 small mb-1">
+											<span class="mono text-truncate">{item.event}</span>
+											<span class="text-nowrap">
+												<strong>{item.count}</strong>
+												<span class="text-muted">({item.pct ?? 0}%)</span>
+											</span>
+										</div>
+										<div class="feature-bar">
+											<div class="feature-bar-fill" style={`width: ${Math.max((item.count / maxCount) * 100, 2)}%`}></div>
+										</div>
+									</div>
+								{/each}
+								{#if !(featureUsage.byEvent?.length)}
+									<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
+								{/if}
+							</div>
+						</section>
+						<section class="col-lg-6">
+							<div class="bg-body border rounded-3 p-3 h-100">
+								<h3 class="h6 fw-bold mb-2">{$t('adminFeatureTrend')}</h3>
+								{#if featureUsage.trend?.length}
+									{@const maxTrend = Math.max(...featureUsage.trend.map((item) => item.events), 1)}
+									<div class="hour-chart">
+										{#each featureUsage.trend as item (item.day)}
+											<div class="hour-bar" title={`${dayLabel(item.day)} — ${item.events} (${item.sessions} sessions)`}>
+												<div
+													class="hour-bar-fill"
+													style={`height: ${Math.max((item.events / maxTrend) * 100, 3)}%`}
+												></div>
+												<span class="hour-bar-label">{item.sessions}</span>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
+								{/if}
+							</div>
+						</section>
+					</div>
+
+					<div class="row g-3 mb-4">
+						<section class="col-lg-6">
+							<div class="bg-body border rounded-3 p-3 h-100">
+								<h3 class="h6 fw-bold mb-2">{$t('adminFeatureByPage')}</h3>
+								{#each featureUsage.byPage || [] as item (item.page)}
+									<div class="d-flex justify-content-between align-items-center border-bottom py-2">
+										<span class="mono text-truncate pe-2">{item.page}</span>
+										<strong>{item.events}</strong>
+									</div>
+								{/each}
+								{#if !(featureUsage.byPage?.length)}
+									<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
+								{/if}
+							</div>
+						</section>
+						<section class="col-lg-6">
+							<div class="bg-body border rounded-3 p-3 h-100">
+								<h3 class="h6 fw-bold mb-2">{$t('adminFeatureGenerateBreakdown')}</h3>
+								<div class="table-responsive">
+									<table class="admin-table">
+										<thead>
+											<tr>
+												<th>{$t('adminFeatureMode')}</th>
+												<th>{$t('adminFeatureDifficulty')}</th>
+												<th>{$t('adminFeatureLanguage')}</th>
+												<th>{$t('adminFeatureCount')}</th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each featureUsage.generateBreakdown || [] as item (`${item.mode}-${item.difficulty}-${item.language}`)}
+												<tr>
+													<td class="mono">{item.mode}</td>
+													<td class="mono">{item.difficulty}</td>
+													<td class="mono">{item.language}</td>
+													<td>{item.count}</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+								{#if !(featureUsage.generateBreakdown?.length)}
+									<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
+								{/if}
+							</div>
+						</section>
+					</div>
+				{:else}
+					<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </section>
@@ -370,6 +534,19 @@
 	.hour-bar-label {
 		color: var(--text-muted);
 		font-size: 0.65rem;
+	}
+
+	.feature-bar {
+		height: 8px;
+		overflow: hidden;
+		border-radius: 4px;
+		background: color-mix(in srgb, var(--line) 60%, transparent);
+	}
+
+	.feature-bar-fill {
+		height: 100%;
+		border-radius: 4px;
+		background: var(--color-brand-600);
 	}
 
 	.admin-table {

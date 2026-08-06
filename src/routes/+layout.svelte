@@ -13,6 +13,7 @@
 		themePreference,
 	} from '$lib/client/preferences';
 	import { FOCUS_SEARCH_EVENT, STORAGE_KEYS } from '$lib/client/constants';
+	import { startTelemetry, track } from '$lib/client/telemetry';
 	import '$lib/styles/globals.css';
 
 	let { children } = $props();
@@ -58,6 +59,7 @@
 	onMount(() => {
 		dismissBootScreen();
 		initializePreferences();
+		startTelemetry();
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')
@@ -93,6 +95,7 @@
 		const handleBeforeInstallPrompt = (event) => {
 			event.preventDefault();
 			deferredInstallPrompt = event;
+			track('pwa:install-prompt');
 			const dismissedAt = Number(
 				window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
 			);
@@ -103,6 +106,7 @@
 		const handleAppInstalled = () => {
 			deferredInstallPrompt = null;
 			showInstallHint = false;
+			track('pwa:install-accepted');
 			window.localStorage.removeItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT);
 		};
 
@@ -128,6 +132,10 @@
 	});
 
 	let activePath = $derived(page.url.pathname);
+
+	$effect(() => {
+		track('page:view', { route: page.url.pathname });
+	});
 
 	$effect(() => {
 		if (isSlowConnection && !isOffline && !slowBannerDismissed) {
@@ -171,6 +179,7 @@
 	function dismissInstallHint() {
 		showInstallHint = false;
 		showInstallGuide = false;
+		track('pwa:install-dismissed');
 		window.localStorage.setItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT, String(Date.now()));
 	}
 
@@ -219,11 +228,21 @@
 	}
 
 	function toggleLanguage() {
-		setLanguage($language === 'english' ? 'hindi' : 'english');
+		const next = $language === 'english' ? 'hindi' : 'english';
+		track('settings:language-toggle', { language: next });
+		setLanguage(next);
 	}
 
 	function toggleTheme() {
-		setThemePreference($themePreference === 'dark' ? 'light' : 'dark');
+		const next = $themePreference === 'dark' ? 'light' : 'dark';
+		track('settings:theme-toggle', { theme: next });
+		setThemePreference(next);
+	}
+
+	function toggleDataSaver() {
+		const next = !$isDataSaverActive;
+		track('settings:data-saver-toggle', { enabled: next });
+		setDataSaver(next);
 	}
 
 	function openSearch() {
@@ -309,7 +328,7 @@
 					type="button"
 					aria-label={$t('dataSaver')}
 					title={$t('dataSaver')}
-					onclick={() => setDataSaver(!$isDataSaverActive)}
+					onclick={toggleDataSaver}
 				>
 					<span aria-hidden="true">⌁</span>
 				</button>

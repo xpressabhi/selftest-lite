@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { LOCAL_STORAGE_CHANGE_EVENT, STORAGE_KEYS } from '$lib/client/constants';
 	import { t } from '$lib/client/i18n';
+	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
 	import { getHistory, saveHistory } from '$lib/client/storage';
 
@@ -23,10 +24,12 @@
 			return;
 		}
 		saveHistory([]);
+		track('history:clear');
 		refreshHistory();
 	}
 
 	onMount(() => {
+		track('history:view');
 		refreshHistory();
 		const handleStorage = (event) => {
 			if (!event.key || event.key === STORAGE_KEYS.TEST_HISTORY) {
@@ -93,7 +96,12 @@
 
 	<label class="form-label w-full mb-3" style="max-width: 520px;">
 		<span class="fw-semibold">{$t('searchTests')}</span>
-		<input class="form-control mt-1" bind:value={search} placeholder={$t('searchByTopic')} />
+		<input
+			class="form-control mt-1"
+			bind:value={search}
+			placeholder={$t('searchByTopic')}
+			oninput={() => trackDebounced('history:search', { q: search.trim().slice(0, 64) })}
+		/>
 	</label>
 
 	{#if filteredHistory.length === 0}
@@ -106,6 +114,7 @@
 				<a
 					class="list-group-item list-group-item-action d-flex align-items-center justify-content-between gap-3"
 					href={entry.userAnswers ? `/results?id=${entry.id}` : `/test?id=${entry.id}`}
+					onclick={() => track('history:open-test', { id: entry.id, status: entry.userAnswers ? 'submitted' : 'unsubmitted' })}
 				>
 					<div>
 						<div class="fw-semibold">{entry.topic || $t('testNotFound')}</div>

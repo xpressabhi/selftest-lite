@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
+	import { track } from '$lib/client/telemetry';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
@@ -92,6 +93,11 @@
 			answers = readDraftAnswers(questionPaper.id);
 			saveUnsubmittedTest(questionPaper);
 			startedAt = Date.now();
+			track('test:start', {
+				id: questionPaper.id,
+				mode: questionPaper.testMode || '',
+				language: questionPaper.language || '',
+			});
 		} catch (caughtError) {
 			error = caughtError.message || $t('testNotFound');
 		} finally {
@@ -104,6 +110,7 @@
 			...answers,
 			[index]: option,
 		};
+		track('test:answer', { q: index });
 	}
 
 	function gradeLocally(paper, userAnswers, timeTaken) {
@@ -141,6 +148,7 @@
 		}
 		submitting = true;
 		error = '';
+		track('test:submit');
 		const finalAnswers = { ...answers };
 		const timeTaken = Math.round((Date.now() - startedAt) / 1000);
 		try {
@@ -174,6 +182,7 @@
 			unlockAchievements(nextHistory, streak);
 			goto(`/results?id=${questionPaper.id}`);
 		} catch (caughtError) {
+			track('test:submit-fail');
 			const localized = caughtError?.data
 				? localizedApiError(caughtError.data, $t, caughtError.status)
 				: '';
@@ -186,6 +195,7 @@
 		if (!questionPaper) {
 			return;
 		}
+		track('test:share');
 
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
@@ -202,12 +212,14 @@
 	}
 
 	function nextQuestion() {
+		track('test:next', { from: currentQuestionIndex });
 		selectQuestion(
 			Math.min(currentQuestionIndex + 1, (questionPaper?.questions?.length || 1) - 1),
 		);
 	}
 
 	function previousQuestion() {
+		track('test:prev', { from: currentQuestionIndex });
 		selectQuestion(Math.max(currentQuestionIndex - 1, 0));
 	}
 
@@ -215,6 +227,7 @@
 		if (nextIndex === currentQuestionIndex) {
 			return;
 		}
+		track('test:jump', { to: nextIndex });
 		navigationDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
 		currentQuestionIndex = nextIndex;
 	}
@@ -247,7 +260,14 @@
 				</h1>
 			</div>
 			<div class="d-flex flex-wrap gap-2">
-				<button class="btn btn-outline-secondary" type="button" onclick={() => (showQuestionPanel = !showQuestionPanel)}>
+				<button
+					class="btn btn-outline-secondary"
+					type="button"
+					onclick={() => {
+						showQuestionPanel = !showQuestionPanel;
+						track('test:panel-toggle');
+					}}
+				>
 					{$t('questionsHeading')}
 				</button>
 				<button class="btn btn-outline-primary" type="button" onclick={shareTest}>

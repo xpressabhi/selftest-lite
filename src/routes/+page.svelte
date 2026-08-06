@@ -4,6 +4,7 @@
 	import { get } from 'svelte/store';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
+	import { track, trackDebounced } from '$lib/client/telemetry';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
@@ -235,22 +236,26 @@
 	}
 
 	function toggleExamBookmark(examId) {
-		bookmarkedExamIds = bookmarkedExamIds.includes(examId)
-			? bookmarkedExamIds.filter((id) => id !== examId)
-			: [examId, ...bookmarkedExamIds].slice(0, 20);
+		const isAdding = !bookmarkedExamIds.includes(examId);
+		bookmarkedExamIds = isAdding
+			? [examId, ...bookmarkedExamIds].slice(0, 20)
+			: bookmarkedExamIds.filter((id) => id !== examId);
 		saveBookmarkedExamIds(bookmarkedExamIds);
+		track(isAdding ? 'bookmark:add-exam' : 'bookmark:remove-exam', { examId });
 	}
 
 	function toggleSelectedTopic(topicName) {
 		selectedTopics = selectedTopics.includes(topicName)
 			? selectedTopics.filter((item) => item !== topicName)
 			: [...selectedTopics, topicName];
+		track('setup:topic-toggle', { topic: topicName });
 	}
 
 	function toggleSyllabusFocus(topicName) {
 		selectedSyllabusFocus = selectedSyllabusFocus.includes(topicName)
 			? selectedSyllabusFocus.filter((item) => item !== topicName)
 			: [...selectedSyllabusFocus, topicName];
+		track('setup:syllabus-toggle', { topic: topicName });
 	}
 
 	function saveCurrentQuizPreset() {
@@ -287,6 +292,7 @@
 		};
 		bookmarkedQuizPresets = [preset, ...bookmarkedQuizPresets].slice(0, 20);
 		saveBookmarkedQuizPresets(bookmarkedQuizPresets);
+		track('generate:save-preset');
 		error = '';
 	}
 
@@ -380,17 +386,26 @@
 		error = '';
 		retryLabel = '';
 
+		track('generate:start', {
+			mode: requestParams.testMode || activeMode,
+			difficulty: requestParams.difficulty || difficulty,
+			language: requestParams.language || paperLanguage,
+			testType: requestParams.testType || testType,
+		});
+
 		for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
 			try {
 				if (attempt > 1) {
 					retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
 				}
 				const data = await postGenerate(requestParams);
+				track('generate:success', { mode: requestParams.testMode || activeMode });
 				saveCurrentPaper(data);
 				await goto(`/test?id=${data.id}`);
 				return;
 			} catch (caughtError) {
 				if (attempt === MAX_RETRIES) {
+					track('generate:fail', { attempt });
 					error = caughtError.message || $t('errorFailedGenerateAfterAttempts');
 				} else {
 					await new Promise((resolve) => window.setTimeout(resolve, 600 * attempt));
@@ -419,11 +434,13 @@
 	async function quickStartExam(examId) {
 		const exam = getIndianExamById(examId);
 		if (exam) {
+			track('generate:quick-start-exam', { examId });
 			await runGeneration(getExamRequestParams(exam, exam.syllabus || [], ''));
 		}
 	}
 
 	async function quickStartPreset(preset) {
+		track('generate:quick-start-preset', { presetId: preset.id });
 		await runGeneration(getQuizRequestParams(preset));
 	}
 
@@ -444,6 +461,7 @@
 
 	function openSearchPanel() {
 		searchOpen = true;
+		track('search:open');
 		const q = searchQuery.trim();
 		if (!isSearchableQuery(q)) {
 			const cached = getFreshRecent();
@@ -464,6 +482,7 @@
 			return;
 		}
 		searchOpen = false;
+		track('search:close');
 		searchAbort?.abort();
 		searchAbort = null;
 		if (searchTimer) {
@@ -553,6 +572,7 @@
 			focusSearchInput();
 			return;
 		}
+		track('search:submit', { q: q.slice(0, 64) });
 		const exact = /^\d+$/.test(q)
 			? searchResults.find((test) => String(test.id) === q)
 			: null;
@@ -582,6 +602,7 @@
 		if (container.scrollTop + container.clientHeight < container.scrollHeight - 48) {
 			return;
 		}
+		track('search:scroll-more');
 		const q = searchQuery.trim();
 		void fetchSearchList(isSearchableQuery(q) ? q : '', resultsOffset, true);
 	}
@@ -591,7 +612,7 @@
 		if (!searchOpen) {
 			return;
 		}
-
+		trackDebounced('search:keystroke', { q: q.slice(0, 64) });
 		if (!isSearchableQuery(q)) {
 			const cached = getFreshRecent();
 			if (cached) {
@@ -682,7 +703,14 @@
 								<p class="text-muted small mb-0 px-2 py-1">{$t('noTestsFound')}</p>
 							{:else}
 								{#each searchResults as test (test.id)}
-									<a class="result-item" href={`/test?id=${test.id}`} onclick={closeSearchPanel}>
+									<a
+										class="result-item"
+										href={`/test?id=${test.id}`}
+										onclick={() => {
+											track('search:result-click');
+											closeSearchPanel();
+										}}
+									>
 										<strong>{test.topic || $t('untitledTest')}</strong>
 										<span class="result-meta">
 											{test.test_mode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')} · {$t('testId')}: {test.id}
@@ -737,7 +765,10 @@
 				class:btn-primary={activeMode === TEST_MODES.QUIZ_PRACTICE}
 				class:btn-outline-secondary={activeMode !== TEST_MODES.QUIZ_PRACTICE}
 				type="button"
-				onclick={() => (activeMode = TEST_MODES.QUIZ_PRACTICE)}
+				onclick={() => {
+					activeMode = TEST_MODES.QUIZ_PRACTICE;
+					track('setup:mode', { mode: 'quiz-practice' });
+				}}
 			>
 				{$t('quizPractice')}
 			</button>
@@ -746,7 +777,10 @@
 				class:btn-primary={activeMode === TEST_MODES.FULL_EXAM}
 				class:btn-outline-secondary={activeMode !== TEST_MODES.FULL_EXAM}
 				type="button"
-				onclick={() => (activeMode = TEST_MODES.FULL_EXAM)}
+				onclick={() => {
+					activeMode = TEST_MODES.FULL_EXAM;
+					track('setup:mode', { mode: 'full-exam' });
+				}}
 			>
 				{$t('fullExamPaper')}
 			</button>
@@ -756,14 +790,23 @@
 			<div class="row g-3 mb-3">
 				<label class="form-label col-sm-6">
 					<span class="fw-semibold">{$t('paperLanguage')}</span>
-					<select class="form-select mt-1" bind:value={paperLanguage}>
+					<select
+						class="form-select mt-1"
+						bind:value={paperLanguage}
+						onchange={() => track('setup:language', { language: paperLanguage })}
+					>
 						<option value="english">{$t('englishLabel')}</option>
 						<option value="hindi">{$t('hindiLabel')}</option>
 					</select>
 				</label>
 				<label class="form-label col-sm-6">
 					<span class="fw-semibold">{$t('difficultyHeading')}</span>
-					<select class="form-select mt-1" bind:value={difficulty} disabled={activeMode === TEST_MODES.FULL_EXAM}>
+					<select
+						class="form-select mt-1"
+						bind:value={difficulty}
+						disabled={activeMode === TEST_MODES.FULL_EXAM}
+						onchange={() => track('setup:difficulty', { difficulty })}
+					>
 						<option value="beginner">{$t('beginner')}</option>
 						<option value="intermediate">{$t('intermediate')}</option>
 						<option value="advanced">{$t('advanced')}</option>
@@ -775,16 +818,32 @@
 			{#if activeMode === TEST_MODES.QUIZ_PRACTICE}
 				<label class="form-label w-full">
 					<span class="fw-semibold">{$t('whatToLearn')}</span>
-					<input class="form-control mt-1" bind:value={topic} placeholder={$t('placeholderTopic')} />
+					<input
+						class="form-control mt-1"
+						bind:value={topic}
+						placeholder={$t('placeholderTopic')}
+						oninput={() => trackDebounced('setup:topic-input', { topic: topic.trim().slice(0, 64) })}
+					/>
 				</label>
 				<div class="row g-3">
 					<label class="form-label col-sm-6">
 						<span class="fw-semibold">{$t('questionsLabel')}</span>
-						<input class="form-control mt-1" type="number" min="1" max="50" bind:value={numQuestions} />
+						<input
+							class="form-control mt-1"
+							type="number"
+							min="1"
+							max="50"
+							bind:value={numQuestions}
+							onchange={() => track('setup:questions-count', { count: Number(numQuestions) })}
+						/>
 					</label>
 					<label class="form-label col-sm-6">
 						<span class="fw-semibold">{$t('formatHeading')}</span>
-						<select class="form-select mt-1" bind:value={testType}>
+						<select
+							class="form-select mt-1"
+							bind:value={testType}
+							onchange={() => track('setup:test-type', { type: testType })}
+						>
 							<option value="multiple-choice">{$t('multipleChoice')}</option>
 							<option value="true-false">{$t('trueFalse')}</option>
 							<option value="coding">{$t('codingProblems')}</option>
@@ -806,7 +865,10 @@
 								class:btn-secondary={selectedCategory === category}
 								class:btn-outline-secondary={selectedCategory !== category}
 								type="button"
-								onclick={() => (selectedCategory = selectedCategory === category ? '' : category)}
+								onclick={() => {
+									selectedCategory = selectedCategory === category ? '' : category;
+									track('setup:category', { category });
+								}}
 							>
 								{category}
 							</button>
@@ -830,11 +892,21 @@
 				<div class="row g-3 mb-3">
 					<label class="form-label col-md-7">
 						<span class="fw-semibold">{$t('searchExamStreamSyllabus')}</span>
-						<input class="form-control mt-1" bind:value={examSearchQuery} placeholder={$t('examSearchPlaceholder')} />
+						<input
+							class="form-control mt-1"
+							bind:value={examSearchQuery}
+							placeholder={$t('examSearchPlaceholder')}
+							oninput={() =>
+								trackDebounced('setup:exam-search', { q: examSearchQuery.trim().slice(0, 64) })}
+						/>
 					</label>
 					<label class="form-label col-md-3">
 						<span class="fw-semibold">{$t('filterByGroup')}</span>
-						<select class="form-select mt-1" bind:value={examGroupFilter}>
+						<select
+							class="form-select mt-1"
+							bind:value={examGroupFilter}
+							onchange={() => track('setup:exam-group-filter', { group: examGroupFilter })}
+						>
 							{#each EXAM_GROUP_FILTERS as group (group)}
 								<option value={group}>{group === 'all' ? $t('allGroups') : `${$t('group')} ${group}`}</option>
 							{/each}
@@ -848,7 +920,14 @@
 				<div class="exam-list border rounded-3 mb-3">
 					{#each visibleExams.slice(0, 24) as exam (exam.id)}
 						<div class="exam-row" class:selected={selectedExamId === exam.id}>
-							<button class="exam-main" type="button" onclick={() => (selectedExamId = exam.id)}>
+							<button
+								class="exam-main"
+								type="button"
+								onclick={() => {
+									selectedExamId = exam.id;
+									track('setup:exam-select', { examId: exam.id });
+								}}
+							>
 								<span class="fw-semibold">{exam.name}</span>
 								<span class="small text-muted">{exam.stream} · {$t('questionShort')} {exam.defaultNumQuestions || exam.fullLengthQuestions} · {exam.durationMinutes} {$t('minuteShort')}</span>
 							</button>
@@ -861,7 +940,12 @@
 				{#if selectedExam}
 					<label class="form-label w-full">
 						<span class="fw-semibold">{$t('optionalTopicNotes')}</span>
-						<input class="form-control mt-1" bind:value={topic} placeholder={$t('fullExamInstructionPlaceholder')} />
+						<input
+							class="form-control mt-1"
+							bind:value={topic}
+							placeholder={$t('fullExamInstructionPlaceholder')}
+							oninput={() => trackDebounced('setup:topic-input', { topic: topic.trim().slice(0, 64) })}
+						/>
 					</label>
 					<div class="mt-2">
 						<div class="fw-semibold mb-2">{$t('syllabusFocus')}</div>

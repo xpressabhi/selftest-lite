@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { t } from '$lib/client/i18n';
+	import { track } from '$lib/client/telemetry';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
@@ -24,6 +25,7 @@
 	);
 
 	onMount(() => {
+		track('bookmarks:view');
 		examIds = getBookmarkedExamIds();
 		presets = getBookmarkedQuizPresets();
 		questionBookmarks = getQuestionBookmarks();
@@ -35,6 +37,7 @@
 		}
 		examIds = examIds.filter((id) => id !== examId);
 		saveBookmarkedExamIds(examIds);
+		track('bookmark:remove-exam', { examId });
 	}
 
 	function removePreset(presetId) {
@@ -43,6 +46,7 @@
 		}
 		presets = presets.filter((preset) => preset.id !== presetId);
 		saveBookmarkedQuizPresets(presets);
+		track('bookmark:remove-preset', { presetId });
 	}
 
 	function removeQuestionBookmark(bookmark) {
@@ -53,6 +57,7 @@
 			(item) => item.question !== bookmark.question || item.answer !== bookmark.answer,
 		);
 		saveQuestionBookmarks(questionBookmarks);
+		track('bookmark:remove-question');
 	}
 </script>
 

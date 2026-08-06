@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
+	import { track } from '$lib/client/telemetry';
 	import {
 		buildReviewQueue,
 		buildTopicMasteryItems,
@@ -90,6 +91,7 @@
 		} catch (caughtError) {
 			error = caughtError.message || $t('failedToLoadResult');
 		} finally {
+			track('results:view', { id: testId });
 			refreshLearningPanels();
 			loading = false;
 		}
@@ -117,6 +119,7 @@
 			testId: questionPaper.id,
 			topic: questionPaper.topic,
 		});
+		track('results:bookmark-question', { q: question.question?.slice(0, 40) });
 		refreshLearningPanels();
 	}
 
@@ -136,6 +139,7 @@
 		if (loadingExplanation[index] || question.explanation) {
 			return;
 		}
+		track('results:explain', { q: index });
 
 		loadingExplanation = {
 			...loadingExplanation,
@@ -178,6 +182,7 @@
 			};
 			upsertHistory(questionPaper);
 		} catch (caughtError) {
+			track('results:explain-fail', { q: index });
 			explanationError = {
 				...explanationError,
 				[index]: caughtError.message,
@@ -191,6 +196,7 @@
 	}
 
 	async function shareResult() {
+		track('results:share');
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
 		if (navigator.share) {
@@ -247,7 +253,7 @@
 				</div>
 			</div>
 			<div class="d-flex flex-wrap gap-2 mt-3 no-print">
-				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => window.print()}>
+				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => { window.print(); track('results:print'); }}>
 					{$t('print')}
 				</button>
 				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>

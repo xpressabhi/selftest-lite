@@ -142,6 +142,26 @@ export async function ensureStorageSchema() {
 			CREATE INDEX IF NOT EXISTS idx_api_request_events_route_time
 			ON api_request_events (route, created_at DESC)
 		`);
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS feature_events (
+				id BIGSERIAL PRIMARY KEY,
+				event TEXT NOT NULL,
+				page TEXT,
+				props JSONB NOT NULL DEFAULT '{}'::jsonb,
+				session_id TEXT,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_feature_events_event_time
+			ON feature_events (event, created_at DESC)
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_feature_events_created
+			ON feature_events (created_at)
+		`);
 	})().catch((error) => {
 		schemaReadyPromise = null;
 		throw error;
@@ -587,5 +607,93 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 		topAgents: topAgentsResult.rows,
 		rateLimited: rateLimitedResult.rows,
 		recent: recentResult.rows,
+	};
+}
+
+export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
+	await ensureStorageSchema();
+
+	const cappedDays = Math.min(Math.max(Number(days) || 30, 1), 90);
+	const cappedLimit = Math.min(Math.max(Number(limit) || 60, 1), 200);
+
+	const [
+		totalsResult,
+		byEventResult,
+		byPageResult,
+		trendResult,
+		generateBreakdownResult,
+	] = await Promise.all([
+		query(
+			`SELECT
+				COUNT(*)::INTEGER AS total,
+				COUNT(DISTINCT session_id)::INTEGER AS sessions,
+				MIN(created_at) AS first_at,
+				MAX(created_at) AS last_at,
+				COALESCE(ROUND(COUNT(*)::NUMERIC / NULLIF(COUNT(DISTINCT session_id), 0), 1), 0) AS events_per_session
+			 FROM feature_events
+			 WHERE created_at >= NOW() - ($1::text || ' days')::interval`,
+			[cappedDays],
+		),
+		query(
+			`SELECT
+				event,
+				COUNT(*)::INTEGER AS count
+			 FROM feature_events
+			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
+			 GROUP BY event
+			 ORDER BY count DESC
+			 LIMIT $2`,
+			[cappedDays, cappedLimit],
+		),
+		query(
+			`SELECT
+				COALESCE(NULLIF(page, ''), '(unknown)') AS page,
+				COUNT(*)::INTEGER AS events
+			 FROM feature_events
+			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
+			 GROUP BY page
+			 ORDER BY events DESC
+			 LIMIT 25`,
+			[cappedDays],
+		),
+		query(
+			`SELECT
+				date_trunc('day', created_at) AS day,
+				COUNT(*)::INTEGER AS events,
+				COUNT(DISTINCT session_id)::INTEGER AS sessions
+			 FROM feature_events
+			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
+			 GROUP BY day
+			 ORDER BY day`,
+			[cappedDays],
+		),
+		query(
+			`SELECT
+				COALESCE(props->>'mode', '(none)') AS mode,
+				COALESCE(props->>'difficulty', '(none)') AS difficulty,
+				COALESCE(props->>'language', '(none)') AS language,
+				COUNT(*)::INTEGER AS count
+			 FROM feature_events
+			 WHERE event IN ('generate:start', 'generate:success')
+				AND created_at >= NOW() - ($1::text || ' days')::interval
+			 GROUP BY mode, difficulty, language
+			 ORDER BY count DESC
+			 LIMIT 30`,
+			[cappedDays],
+		),
+	]);
+
+	const byEvent = byEventResult.rows;
+	const total = totalsResult.rows?.[0]?.total || 0;
+	for (const row of byEvent) {
+		row.pct = total > 0 ? Number(((row.count / total) * 100).toFixed(1)) : 0;
+	}
+
+	return {
+		totals: totalsResult.rows[0] || null,
+		byEvent,
+		byPage: byPageResult.rows,
+		trend: trendResult.rows,
+		generateBreakdown: generateBreakdownResult.rows,
 	};
 }
