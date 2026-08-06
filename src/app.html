@@ -75,12 +75,15 @@
 				#boot-screen { transition: none; }
 				#boot-screen .boot-spinner { animation: none; }
 			}
+
+			html.reduce-motion #boot-screen { transition: none; }
+			html.reduce-motion #boot-screen .boot-spinner { animation: none; }
 		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div id="boot-screen" aria-hidden="true">
-			<img class="boot-mark" src="/icons/192.png" alt="" width="96" height="96" />
+			<img class="boot-mark" src="/icons/96.png" alt="" width="96" height="96" />
 			<span>selftest.in</span>
 			<span class="boot-spinner"></span>
 		</div>

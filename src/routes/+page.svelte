@@ -654,8 +654,7 @@
 		</div>
 
 		<div class="search-home-wrap mb-3">
-			<form class="search-home-form bg-body border rounded-3 p-3" onsubmit={submitSearch}>
-				<label class="form-label fw-semibold" for="global-test-search">{$t('searchPastTests')}</label>
+			<form class="search-home-form bg-body p-2" onsubmit={submitSearch}>
 				<div class="input-group">
 					<input
 						id="global-test-search"
@@ -665,6 +664,7 @@
 						onfocus={openSearchPanel}
 						onkeydown={handleSearchKeydown}
 						placeholder={$t('searchByTopicOrId')}
+						aria-label={$t('searchPastTests')}
 						autocomplete="off"
 					/>
 					<button class="btn btn-primary" type="submit">{$t('searchTests')}</button>
