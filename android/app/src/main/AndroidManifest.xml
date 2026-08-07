@@ -22,6 +22,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Android App Links: selftest.in/test?id=1234 opens the app directly -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="selftest.in" />
+                <data android:scheme="https" android:host="www.selftest.in" />
+            </intent-filter>
+
         </activity>
 
         <provider

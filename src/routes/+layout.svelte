@@ -13,6 +13,7 @@
 		themePreference,
 	} from '$lib/client/preferences';
 	import { FOCUS_SEARCH_EVENT, STORAGE_KEYS } from '$lib/client/constants';
+	import { initDeepLinks } from '$lib/client/deepLink';
 	import { startTelemetry, track } from '$lib/client/telemetry';
 	import '$lib/styles/globals.css';
 
@@ -60,6 +61,7 @@
 		dismissBootScreen();
 		initializePreferences();
 		startTelemetry();
+		void initDeepLinks();
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')

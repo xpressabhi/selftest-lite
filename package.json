@@ -17,6 +17,7 @@
 		"apk:release": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleRelease"
 	},
 	"dependencies": {
+		"@capacitor/app": "^8.1.1",
 		"@capacitor/core": "^8.4.2",
 		"@chenglou/pretext": "^0.0.8",
 		"@google/genai": "^2.11.0",
