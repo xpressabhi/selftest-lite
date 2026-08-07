@@ -35,6 +35,18 @@ async function fetchJson(url, options = {}) {
 	return data;
 }
 
+/**
+ * Best-effort, ordered post-login sync. Locally-graded attempts must be
+ * pushed (POST) BEFORE server history is pulled (GET); firing them
+ * concurrently can let the GET resolve before the POST is persisted, so the
+ * freshly pushed attempts would be missing from the hydrated history.
+ */
+async function syncAfterLogin() {
+	await flushPendingAttempts().catch(() => {});
+	await hydrateHistoryFromServer().catch(() => {});
+	await hydrateUserState().catch(() => {});
+}
+
 export async function refreshSession() {
 	isAuthLoading.set(true);
 	try {
@@ -43,7 +55,7 @@ export async function refreshSession() {
 		user.set(resolvedUser);
 		if (resolvedUser) {
 			// Pull server-side history so pre-login work is immediately visible.
-			hydrateHistoryFromServer().catch(() => {});
+			void syncAfterLogin();
 		}
 		return resolvedUser;
 	} catch (error) {
@@ -67,9 +79,7 @@ export async function loginWithGoogleCredential(credential) {
 	if (resolvedUser) {
 		// Attribute pre-login attempts stored locally to the new account and
 		// pull server history + bookmarks so everything is immediately visible.
-		flushPendingAttempts().catch(() => {});
-		hydrateHistoryFromServer().catch(() => {});
-		hydrateUserState().catch(() => {});
+		await syncAfterLogin();
 	}
 	return resolvedUser;
 }
