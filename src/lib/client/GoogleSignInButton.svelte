@@ -106,6 +106,7 @@
 		// mode GSI uses `login_uri` (defaults to the current page URL when
 		// omitted), so we pin it to a dedicated server endpoint that must be
 		// registered as an authorized redirect URI in Google Cloud Console.
+		// The URI must be absolute — Google rejects relative login_uris.
 		const useRedirectMode = isNativeApp;
 
 		window.google.accounts.id.initialize({
@@ -116,7 +117,7 @@
 			...(useRedirectMode
 				? {
 						ux_mode: 'redirect',
-						login_uri: '/auth/redirect',
+						login_uri: window.location.origin + '/auth/redirect',
 					}
 				: {}),
 		});
