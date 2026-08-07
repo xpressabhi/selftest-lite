@@ -4,9 +4,10 @@
 	import { t } from '$lib/client/i18n';
 	import { language } from '$lib/client/preferences';
 	import { isNativeApp } from '$lib/client/auth';
+	import { resolveGoogleClientId } from '$lib/shared/googleAuth';
 
 	const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
-	const googleClientId = env.PUBLIC_GOOGLE_CLIENT_ID;
+	const googleClientId = resolveGoogleClientId(env.PUBLIC_GOOGLE_CLIENT_ID);
 
 	let { onCredential, disabled = false } = $props();
 	let buttonRef = $state(null);
@@ -112,8 +113,10 @@
 			...(useRedirectMode
 				? {
 						ux_mode: 'redirect',
-						redirect_uri:
-							window.location.origin + window.location.pathname,
+						// Pinned to the root so only ONE redirect URI needs to be
+						// registered in Google Cloud Console. The layout's
+						// handleAuthRedirect() consumes #id_token on any page.
+						redirect_uri: window.location.origin + '/',
 					}
 				: {}),
 		});

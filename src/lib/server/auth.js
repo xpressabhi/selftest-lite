@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { ensureStorageSchema, query } from './storage';
+import { resolveGoogleClientId } from '$lib/shared/googleAuth';
 
 export const SESSION_COOKIE_NAME = 'selftest_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -12,11 +13,10 @@ function hashSessionToken(rawSessionToken) {
 }
 
 function getGoogleClientId() {
-	const clientId = env.GOOGLE_CLIENT_ID || env.PUBLIC_GOOGLE_CLIENT_ID;
-	if (!clientId) {
-		throw new Error('GOOGLE_CLIENT_ID is not configured');
-	}
-	return clientId;
+	// The client id has a built-in fallback (see shared/googleAuth.js) so a
+	// missing env var never breaks sign-in; the audience check below must
+	// always match the id used to render the button.
+	return resolveGoogleClientId(env.GOOGLE_CLIENT_ID || env.PUBLIC_GOOGLE_CLIENT_ID);
 }
 
 function getSessionCookieOptions(expiresAt) {
