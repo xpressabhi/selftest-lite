@@ -9,7 +9,8 @@
 	const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
 	const googleClientId = resolveGoogleClientId(env.PUBLIC_GOOGLE_CLIENT_ID);
 
-	let { onCredential, disabled = false } = $props();
+	let { onCredential, oncredential, disabled = false } = $props();
+	const credentialCallback = onCredential || oncredential || null;
 	let buttonRef = $state(null);
 	let status = $state('idle');
 	let googleScriptPromise = null;
@@ -63,7 +64,13 @@
 		if (!response?.credential) {
 			return;
 		}
-		Promise.resolve(onCredential(response.credential)).catch((error) => {
+		if (typeof credentialCallback !== 'function') {
+			console.error(
+				'GoogleSignInButton: missing onCredential prop — sign-in callback will not run.',
+			);
+			return;
+		}
+		Promise.resolve(credentialCallback(response.credential)).catch((error) => {
 			console.error('Google credential handler failed:', error);
 		});
 	}

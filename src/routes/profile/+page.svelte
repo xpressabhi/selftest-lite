@@ -208,7 +208,7 @@
 					<div class="alert alert-danger small mb-3" role="alert">{signInError}</div>
 				{/if}
 				<div class="d-flex justify-content-center">
-					<GoogleSignInButton oncredential={handleGoogleCredential} disabled={isSigningIn} />
+					<GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSigningIn} />
 				</div>
 				<p class="text-muted small mt-3 mb-0">{$t('signInAnonymousNote')}</p>
 			</div>

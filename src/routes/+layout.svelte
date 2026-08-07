@@ -608,7 +608,7 @@
 				{:else}
 					<div class="d-flex justify-content-center py-2">
 						<GoogleSignInButton
-							oncredential={handleGoogleCredential}
+							onCredential={handleGoogleCredential}
 							disabled={false}
 						/>
 					</div>
