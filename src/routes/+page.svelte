@@ -1,74 +1,64 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { get } from 'svelte/store';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
-	import { track, trackDebounced } from '$lib/client/telemetry';
+	import { track } from '$lib/client/telemetry';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
 		getHistory,
 		getUnsubmittedTest,
 		saveBookmarkedExamIds,
-		saveBookmarkedQuizPresets,
 		saveCurrentPaper,
 	} from '$lib/client/storage';
 	import {
-		FOCUS_SEARCH_EVENT,
-		LOCAL_STORAGE_CHANGE_EVENT,
 		STORAGE_KEYS,
 	} from '$lib/client/constants';
-	import { TOPIC_CATEGORIES } from '$lib/shared/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
+	import SmartIntentInput from '$lib/client/SmartIntentInput.svelte';
+	import PreviewCard from '$lib/client/PreviewCard.svelte';
+	import WelcomeBlock from '$lib/client/WelcomeBlock.svelte';
+	import QuickStart from '$lib/client/QuickStart.svelte';
+	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
+	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
 
-	const TEST_MODES = {
-		FULL_EXAM: 'full-exam',
-		QUIZ_PRACTICE: 'quiz-practice',
-	};
-	const EXAM_GROUP_FILTERS = ['all', 'A', 'B', 'C', 'D'];
 	const MAX_RETRIES = 3;
 	const GENERATION_TIMEOUT_MS = 180000;
-	const SEARCH_DEBOUNCE_MS = 350;
-	const SEARCH_PAGE_SIZE = 5;
-	const RECENT_TTL_MS = 60_000;
-	const RECENT_PREFETCH_DELAY_MS = 2000;
 	const HERO_SCROLL_THRESHOLD = 100;
-
-	let activeMode = $state(TEST_MODES.QUIZ_PRACTICE);
+	let intentValue = $state('');
 	let topic = $state('');
 	let numQuestions = $state(10);
 	let paperLanguage = $state('english');
 	let difficulty = $state('intermediate');
 	let testType = $state('multiple-choice');
+	let isFullExam = $state(false);
+	let examId = $state('');
 	let selectedCategory = $state('');
 	let selectedTopics = $state([]);
-	let selectedExamId = $state('');
 	let selectedSyllabusFocus = $state([]);
+
 	let examSearchQuery = $state('');
 	let examGroupFilter = $state('all');
 	let showBookmarkedExamsOnly = $state(false);
 	let bookmarkedExamIds = $state([]);
 	let bookmarkedQuizPresets = $state([]);
+
+	let intentStatus = $state('idle');
+	let parsedFromIntent = $state(false);
+	let intentParseFailed = $state(false);
+
 	let status = $state('idle');
 	let error = $state('');
 	let retryLabel = $state('');
 	let isOffline = $state(false);
 	let unsubmittedTest = $state(null);
-	let searchInput = $state(null);
-	let searchQuery = $state('');
-	let searchOpen = $state(false);
-	let searchResults = $state([]);
-	let searchStatus = $state('idle');
-	let resultsOffset = 0;
-	let hasMoreResults = $state(false);
-	let loadingMore = $state(false);
-	let heroCollapsed = $state(false);
-	let recentCache = null;
-	let searchTimer;
-	let searchAbort = null;
 
-	let selectedExam = $derived(getIndianExamById(selectedExamId));
+	let heroCollapsed = $state(false);
+	let isAndroidDevice = $state(false);
+	let isInCapacitorApp = $state(false);
+
+	let selectedExam = $derived(getIndianExamById(examId));
 	let bookmarkedExams = $derived(
 		OBJECTIVE_ONLY_EXAMS.filter((exam) => bookmarkedExamIds.includes(exam.id)),
 	);
@@ -80,37 +70,19 @@
 				.split('/')
 				.map((item) => item.trim());
 			const matchesGroup = examGroupFilter === 'all' || groups.includes(examGroupFilter);
-			if (!matchesGroup) {
-				return false;
-			}
-			if (!query) {
-				return true;
-			}
+			if (!matchesGroup) return false;
+			if (!query) return true;
 			return [exam.name, exam.stream, exam.group, ...(exam.syllabus || [])]
 				.join(' ')
 				.toLowerCase()
 				.includes(query);
 		});
 	});
-	let canGenerate = $derived(
-		activeMode === TEST_MODES.FULL_EXAM
-			? Boolean(selectedExamId)
-			: topic.trim().length > 0 || selectedTopics.length > 0,
-	);
-	let isFormDirty = $derived(
-		topic.trim().length > 0 ||
-			selectedTopics.length > 0 ||
-			selectedExamId !== '' ||
-			selectedSyllabusFocus.length > 0,
-	);
-	let isAndroidDevice = $state(false);
-	let isInCapacitorApp = $state(false);
+	let canGenerate = $derived(topic.trim().length > 0 || selectedTopics.length > 0 || examId !== '');
 
 	onMount(() => {
 		const ua = window.navigator.userAgent || '';
 		isAndroidDevice = /android/i.test(ua);
-		// Capacitor injects its bridge into the WebView of the installed app;
-		// hide the APK download card for users who already have the app.
 		isInCapacitorApp = Boolean(window.Capacitor?.isNativePlatform?.());
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
@@ -119,14 +91,20 @@
 		paperLanguage = ['english', 'hindi'].includes(savedPaperLanguage)
 			? savedPaperLanguage
 			: $language;
-		const examParam = new URL(window.location.href).searchParams.get('exam');
 		const params = new URL(window.location.href).searchParams;
+		const examParam = params.get('exam');
 		if (examParam && getIndianExamById(examParam)) {
-			activeMode = TEST_MODES.FULL_EXAM;
-			selectedExamId = examParam;
+			isFullExam = true;
+			examId = examParam;
+			const exam = getIndianExamById(examParam);
+			if (exam) {
+				topic = `${exam.name} objective exam paper`;
+				numQuestions = Number(exam.defaultNumQuestions || 20);
+				difficulty = exam.defaultDifficulty || 'intermediate';
+			}
 		}
-		if (params.get('mode') === TEST_MODES.QUIZ_PRACTICE) {
-			activeMode = TEST_MODES.QUIZ_PRACTICE;
+		if (params.get('mode') === 'quiz-practice') {
+			isFullExam = false;
 			topic = params.get('topic') || topic;
 			difficulty = params.get('difficulty') || difficulty;
 			testType = params.get('testType') || testType;
@@ -140,43 +118,17 @@
 		window.addEventListener('online', updateNetwork);
 		window.addEventListener('offline', updateNetwork);
 
-		const prefetchTimer = window.setTimeout(() => {
-			if (!get(isDataSaverActive) && navigator.onLine) {
-				void fetchSearchList('', 0, false);
-			}
-		}, RECENT_PREFETCH_DELAY_MS);
-
-		const handlePrefetchInvalidation = (event) => {
-			const keys = event.detail?.keys || [];
-			if (
-				keys.includes(STORAGE_KEYS.TEST_HISTORY) ||
-				keys.includes(STORAGE_KEYS.QUESTION_PAPER)
-			) {
-				recentCache = null;
-			}
-		};
-		window.addEventListener(LOCAL_STORAGE_CHANGE_EVENT, handlePrefetchInvalidation);
-
-		const handleFocusSearch = () => {
-			focusSearchInput();
-		};
-		window.addEventListener(FOCUS_SEARCH_EVENT, handleFocusSearch);
-
 		if (new URL(window.location.href).searchParams.get('focus') === 'search') {
 			window.history.replaceState(null, '', window.location.pathname);
-			window.setTimeout(() => focusSearchInput(), 50);
+			window.setTimeout(() => {
+				const input = document.querySelector('.intent-input');
+				if (input) input.focus();
+			}, 50);
 		}
 
 		return () => {
 			window.removeEventListener('online', updateNetwork);
 			window.removeEventListener('offline', updateNetwork);
-			window.clearTimeout(prefetchTimer);
-			window.removeEventListener(LOCAL_STORAGE_CHANGE_EVENT, handlePrefetchInvalidation);
-			window.removeEventListener(FOCUS_SEARCH_EVENT, handleFocusSearch);
-			searchAbort?.abort();
-			if (searchTimer) {
-				window.clearTimeout(searchTimer);
-			}
 		};
 	});
 
@@ -187,13 +139,13 @@
 	});
 
 	$effect(() => {
-		if ($isDataSaverActive && activeMode === TEST_MODES.QUIZ_PRACTICE && numQuestions > 5) {
+		if ($isDataSaverActive && !isFullExam && numQuestions > 5) {
 			numQuestions = 5;
 		}
 	});
 
 	$effect(() => {
-		if (searchOpen || status === 'loading' || isFormDirty || error) {
+		if (status === 'loading' || topic.trim().length > 0 || selectedTopics.length > 0 || examId !== '' || error) {
 			heroCollapsed = true;
 			return;
 		}
@@ -203,26 +155,22 @@
 	});
 
 	$effect(() => {
-		if (typeof window === 'undefined' || typeof document === 'undefined') {
-			return;
-		}
+		if (typeof window === 'undefined' || typeof document === 'undefined') return;
 		const handleHeroScroll = () => {
 			if (window.scrollY > HERO_SCROLL_THRESHOLD) {
 				heroCollapsed = true;
 				return;
 			}
-			if (!searchOpen && status !== 'loading' && !isFormDirty && !error) {
+			if (status !== 'loading' && topic.trim().length === 0 && selectedTopics.length === 0 && examId === '' && !error) {
 				heroCollapsed = false;
 			}
 		};
 		const handleHeroInteraction = (event) => {
 			const target = event.target;
-			if (!(target instanceof Element)) {
-				return;
-			}
+			if (!(target instanceof Element)) return;
 			if (
 				target.closest('.home-wrap') &&
-				!target.closest('.search-home-wrap') &&
+				!target.closest('.intent-wrap') &&
 				!target.closest('.hero-block')
 			) {
 				heroCollapsed = true;
@@ -238,75 +186,100 @@
 		};
 	});
 
-	function normalizeQuizTestType(value) {
-		return value === 'mixed' ? 'multiple-choice' : value;
+	async function parseIntent(intentText) {
+		if (!intentText || isOffline) return;
+		intentStatus = 'parsing';
+		intentParseFailed = false;
+		track('intent:parse', { intent: intentText.slice(0, 64) });
+		try {
+			const response = await fetch('/api/parse-intent', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ intent: intentText }),
+			});
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				throw new Error(data.error || 'Failed to parse intent');
+			}
+			topic = data.topic || intentText;
+			testType = data.testType || 'multiple-choice';
+			difficulty = data.difficulty || 'intermediate';
+			numQuestions = data.numQuestions || 10;
+			paperLanguage = data.language || 'english';
+			isFullExam = data.isFullExam || false;
+			examId = data.examId || '';
+			parsedFromIntent = true;
+			intentStatus = 'done';
+			track('intent:parsed', { confidence: data.confidence, isFullExam: data.isFullExam });
+		} catch (err) {
+			console.error('Intent parsing error:', err);
+			intentStatus = 'idle';
+			intentParseFailed = true;
+			topic = intentText;
+			parsedFromIntent = false;
+			track('intent:parse-failed');
+		}
 	}
 
-	function toggleExamBookmark(examId) {
-		const isAdding = !bookmarkedExamIds.includes(examId);
+	function handleChipEdit(field, value) {
+		track('preview:edit-chip', { field });
+		if (field === 'difficulty') difficulty = value;
+		if (field === 'testType') testType = value;
+		if (field === 'numQuestions') numQuestions = value;
+		if (field === 'language') paperLanguage = value;
+		if (field === 'examId') {
+			examId = value;
+			isFullExam = true;
+			const exam = getIndianExamById(value);
+			if (exam) {
+				topic = `${exam.name} objective exam paper`;
+				numQuestions = Number(exam.defaultNumQuestions || 20);
+				difficulty = exam.defaultDifficulty || 'intermediate';
+			}
+		}
+		if (field === 'selectedCategory') selectedCategory = value;
+		if (field === 'selectedTopics') {
+			selectedTopics = value;
+			if (value.length > 0) {
+				topic = value.join(', ');
+			}
+		}
+		if (field === 'examSearchQuery') examSearchQuery = value;
+		if (field === 'examGroupFilter') examGroupFilter = value;
+		if (field === 'showBookmarkedExamsOnly') showBookmarkedExamsOnly = value;
+	}
+
+	function handleTopicBrowserChange(field, value) {
+		handleChipEdit(field, value);
+	}
+
+	function handleExamBrowserChange(field, value) {
+		handleChipEdit(field, value);
+	}
+
+	function toggleExamBookmark(examIdToToggle) {
+		const isAdding = !bookmarkedExamIds.includes(examIdToToggle);
 		bookmarkedExamIds = isAdding
-			? [examId, ...bookmarkedExamIds].slice(0, 20)
-			: bookmarkedExamIds.filter((id) => id !== examId);
+			? [examIdToToggle, ...bookmarkedExamIds].slice(0, 20)
+			: bookmarkedExamIds.filter((id) => id !== examIdToToggle);
 		saveBookmarkedExamIds(bookmarkedExamIds);
-		track(isAdding ? 'bookmark:add-exam' : 'bookmark:remove-exam', { examId });
+		track(isAdding ? 'bookmark:add-exam' : 'bookmark:remove-exam', { examId: examIdToToggle });
 	}
 
-	function toggleSelectedTopic(topicName) {
-		selectedTopics = selectedTopics.includes(topicName)
-			? selectedTopics.filter((item) => item !== topicName)
-			: [...selectedTopics, topicName];
-		track('setup:topic-toggle', { topic: topicName });
+	function handleWelcomeDismiss() {
+		track('welcome:dismiss');
 	}
 
-	function toggleSyllabusFocus(topicName) {
-		selectedSyllabusFocus = selectedSyllabusFocus.includes(topicName)
-			? selectedSyllabusFocus.filter((item) => item !== topicName)
-			: [...selectedSyllabusFocus, topicName];
-		track('setup:syllabus-toggle', { topic: topicName });
-	}
-
-	function saveCurrentQuizPreset() {
-		const topicSeed = topic.trim();
-		const normalizedTopics = [...selectedTopics].sort();
-		if (!topicSeed && normalizedTopics.length === 0) {
-			error = $t('errorAddTopicBeforeBookmark');
-			return;
-		}
-		const key = [
-			testType,
-			numQuestions,
-			difficulty,
-			paperLanguage,
-			selectedCategory,
-			normalizedTopics.join('|'),
-			topicSeed,
-		].join('::');
-		if (bookmarkedQuizPresets.some((preset) => preset.key === key)) {
-			error = $t('errorPresetAlreadyBookmarked');
-			return;
-		}
-		const preset = {
-			id: `preset-${Date.now()}`,
-			key,
-			label: `${topicSeed || normalizedTopics[0]} • ${difficulty} • ${numQuestions}Q`,
-			testType,
-			numQuestions,
-			difficulty,
-			language: paperLanguage,
-			category: selectedCategory,
-			selectedTopics: normalizedTopics,
-			topicSeed,
-		};
-		bookmarkedQuizPresets = [preset, ...bookmarkedQuizPresets].slice(0, 20);
-		saveBookmarkedQuizPresets(bookmarkedQuizPresets);
-		track('generate:save-preset');
-		error = '';
+	function handleShowExample() {
+		const example = 'Class 12 chemistry organic reactions for NEET';
+		intentValue = example;
+		void parseIntent(example);
 	}
 
 	function getExamRequestParams(exam, syllabusFocus = selectedSyllabusFocus, customTopic = topic) {
 		const focus = syllabusFocus.length > 0 ? syllabusFocus : exam.syllabus || [];
 		return {
-			testMode: TEST_MODES.FULL_EXAM,
+			testMode: 'full-exam',
 			topic: customTopic.trim() || `${exam.name} objective exam paper`,
 			category: exam.stream || '',
 			selectedTopics: focus,
@@ -325,21 +298,20 @@
 		};
 	}
 
-	function getQuizRequestParams(preset = null) {
-		const presetTopics = Array.isArray(preset?.selectedTopics) ? preset.selectedTopics : selectedTopics;
+	function getQuizRequestParams() {
 		return {
-			testMode: TEST_MODES.QUIZ_PRACTICE,
-			topic: preset?.topicSeed || topic.trim(),
-			category: preset?.category || selectedCategory,
-			selectedTopics: presetTopics,
+			testMode: 'quiz-practice',
+			topic: topic.trim(),
+			category: selectedCategory,
+			selectedTopics: selectedTopics,
 			examId: null,
 			examName: null,
 			examStream: null,
 			syllabusFocus: [],
-			testType: normalizeQuizTestType(preset?.testType || testType),
-			numQuestions: Number(preset?.numQuestions || numQuestions),
-			difficulty: preset?.difficulty || difficulty,
-			language: preset?.language || paperLanguage,
+			testType: testType === 'mixed' ? 'multiple-choice' : testType,
+			numQuestions: Number(numQuestions),
+			difficulty: difficulty,
+			language: paperLanguage,
 			objectiveOnly: false,
 			durationMinutes: null,
 		};
@@ -356,9 +328,7 @@
 			};
 			const response = await fetch('/api/generate', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...requestParams,
 					previousTestIds: historyEntries.filter(isStoredTest).map((entry) => Number(entry.id)),
@@ -394,7 +364,7 @@
 		retryLabel = '';
 
 		track('generate:start', {
-			mode: requestParams.testMode || activeMode,
+			mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
 			difficulty: requestParams.difficulty || difficulty,
 			language: requestParams.language || paperLanguage,
 			testType: requestParams.testType || testType,
@@ -406,7 +376,7 @@
 					retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
 				}
 				const data = await postGenerate(requestParams);
-				track('generate:success', { mode: requestParams.testMode || activeMode });
+				track('generate:success', { mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice') });
 				saveCurrentPaper(data);
 				await goto(`/test?id=${data.id}`);
 				return;
@@ -419,319 +389,79 @@
 				}
 			}
 		}
-
 		status = 'idle';
 		retryLabel = '';
 	}
 
-	async function submitGenerate(event) {
-		event?.preventDefault();
+	async function handleGenerate() {
 		if (!canGenerate) {
-			error =
-				activeMode === TEST_MODES.FULL_EXAM ? $t('errorSelectObjectiveExam') : $t('errorProvideTopic');
+			error = isFullExam ? $t('errorSelectObjectiveExam') : $t('errorProvideTopic');
 			return;
 		}
-		const params =
-			activeMode === TEST_MODES.FULL_EXAM && selectedExam
-				? getExamRequestParams(selectedExam)
-				: getQuizRequestParams();
+		const params = isFullExam && selectedExam
+			? getExamRequestParams(selectedExam)
+			: getQuizRequestParams();
 		await runGeneration(params);
 	}
 
-	async function quickStartExam(examId) {
-		const exam = getIndianExamById(examId);
-		if (exam) {
-			track('generate:quick-start-exam', { examId });
-			await runGeneration(getExamRequestParams(exam, exam.syllabus || [], ''));
-		}
+	async function handleIntentSubmit(intentText) {
+		await parseIntent(intentText);
+	}
+
+	function handleTestNavigate(testId) {
+		void goto(`/test?id=${testId}`);
+	}
+
+	async function quickStartExam(examQuickId) {
+		const exam = getIndianExamById(examQuickId);
+		if (!exam) return;
+		track('generate:quick-start-exam', { examId: examQuickId });
+		await runGeneration(getExamRequestParams(exam, exam.syllabus || [], ''));
 	}
 
 	async function quickStartPreset(preset) {
 		track('generate:quick-start-preset', { presetId: preset.id });
-		await runGeneration(getQuizRequestParams(preset));
-	}
-
-	function isSearchableQuery(q) {
-		return q.length >= 4 || /^\d+$/.test(q);
-	}
-
-	function getFreshRecent() {
-		if (!recentCache) {
-			return null;
-		}
-		return Date.now() - recentCache.fetchedAt <= RECENT_TTL_MS ? recentCache : null;
-	}
-
-	function focusSearchInput() {
-		searchInput?.focus();
-	}
-
-	function openSearchPanel() {
-		searchOpen = true;
-		track('search:open');
-		const q = searchQuery.trim();
-		if (!isSearchableQuery(q)) {
-			const cached = getFreshRecent();
-			if (cached) {
-				searchResults = cached.tests;
-				hasMoreResults = cached.hasMore;
-				resultsOffset = cached.tests.length;
-				searchStatus = 'done';
-			} else if (searchStatus !== 'loading') {
-				searchStatus = 'loading';
-				void fetchSearchList('', 0, false);
-			}
-		}
-	}
-
-	function closeSearchPanel() {
-		if (!searchOpen) {
-			return;
-		}
-		searchOpen = false;
-		track('search:close');
-		searchAbort?.abort();
-		searchAbort = null;
-		if (searchTimer) {
-			window.clearTimeout(searchTimer);
-			searchTimer = undefined;
-		}
-		searchResults = [];
-		hasMoreResults = false;
-		loadingMore = false;
-		resultsOffset = 0;
-		searchStatus = 'idle';
-	}
-
-	async function fetchSearchList(q, offset, append) {
-		const controller = new AbortController();
-		searchAbort?.abort();
-		searchAbort = controller;
-		if (append) {
-			loadingMore = true;
-		} else {
-			searchStatus = 'loading';
-		}
-
-		try {
-			const response = await fetch(
-				`/api/test?q=${encodeURIComponent(q)}&limit=${SEARCH_PAGE_SIZE}&offset=${offset}`,
-				{ signal: controller.signal },
-			);
-			const payload = await response.json().catch(() => null);
-			if (searchAbort !== controller) {
-				return;
-			}
-			const tests = response.ok && Array.isArray(payload?.tests) ? payload.tests : [];
-			const hasMore = response.ok && payload?.hasMore === true;
-
-			if (!append && !q) {
-				recentCache = {
-					tests,
-					hasMore,
-					fetchedAt: Date.now(),
-				};
-			}
-
-			if (!searchOpen || searchQuery.trim() !== q) {
-				return;
-			}
-
-			let next = append ? [...searchResults, ...tests] : [...tests];
-			if (!append && /^\d+$/.test(q)) {
-				const exactIndex = next.findIndex((test) => String(test.id) === q);
-				if (exactIndex > 0) {
-					const [exact] = next.splice(exactIndex, 1);
-					next.unshift(exact);
-				}
-			}
-			searchResults = next;
-			resultsOffset = offset + tests.length;
-			hasMoreResults = hasMore;
-			searchStatus = 'done';
-			if (append) {
-				loadingMore = false;
-			}
-		} catch (error) {
-			if (error?.name === 'AbortError' || searchAbort !== controller) {
-				return;
-			}
-			if (!searchOpen || searchQuery.trim() !== q) {
-				return;
-			}
-			if (!append) {
-				searchResults = [];
-				hasMoreResults = false;
-			}
-			searchStatus = 'done';
-			if (append) {
-				loadingMore = false;
-			}
-		}
-	}
-
-	function submitSearch(event) {
-		event.preventDefault();
-		const q = searchQuery.trim();
-		if (!q) {
-			searchOpen = true;
-			openSearchPanel();
-			focusSearchInput();
-			return;
-		}
-		track('search:submit', { q: q.slice(0, 64) });
-		const exact = /^\d+$/.test(q)
-			? searchResults.find((test) => String(test.id) === q)
-			: null;
-		if (exact) {
-			void goto(`/test?id=${exact.id}`);
-			return;
-		}
-		if (searchStatus === 'done' && searchResults.length === 1) {
-			void goto(`/test?id=${searchResults[0].id}`);
-			return;
-		}
-		searchOpen = true;
-		focusSearchInput();
-	}
-
-	function handleSearchKeydown(event) {
-		if (event.key === 'Escape') {
-			closeSearchPanel();
-		}
-	}
-
-	function handleResultsScroll(event) {
-		if (!searchOpen || searchStatus !== 'done' || !hasMoreResults || loadingMore) {
-			return;
-		}
-		const container = event.currentTarget;
-		if (container.scrollTop + container.clientHeight < container.scrollHeight - 48) {
-			return;
-		}
-		track('search:scroll-more');
-		const q = searchQuery.trim();
-		void fetchSearchList(isSearchableQuery(q) ? q : '', resultsOffset, true);
-	}
-
-	$effect(() => {
-		const q = searchQuery.trim();
-		if (!searchOpen) {
-			return;
-		}
-		trackDebounced('search:keystroke', { q: q.slice(0, 64) });
-		if (!isSearchableQuery(q)) {
-			const cached = getFreshRecent();
-			if (cached) {
-				searchResults = cached.tests;
-				hasMoreResults = cached.hasMore;
-				resultsOffset = cached.tests.length;
-				searchStatus = 'done';
-			} else if (searchStatus !== 'loading') {
-				searchStatus = 'loading';
-				void fetchSearchList('', 0, false);
-			}
-			return;
-		}
-
-		searchStatus = 'loading';
-		searchResults = [];
-		resultsOffset = 0;
-		hasMoreResults = false;
-		const timer = window.setTimeout(() => {
-			void fetchSearchList(q, 0, false);
-		}, SEARCH_DEBOUNCE_MS);
-		return () => window.clearTimeout(timer);
-	});
-
-	$effect(() => {
-		if (!searchOpen || searchStatus !== 'done' || !hasMoreResults || loadingMore) {
-			return;
-		}
-		const box = document.querySelector('.search-home-results');
-		if (!box || box.scrollHeight > box.clientHeight + 4) {
-			return;
-		}
-		const q = searchQuery.trim();
-		void fetchSearchList(q.length >= 4 ? q : '', resultsOffset, true);
-	});
-
-	$effect(() => {
-		if (typeof document === 'undefined') {
-			return;
-		}
-		document.body.style.overflow = searchOpen ? 'hidden' : '';
-		return () => {
-			document.body.style.overflow = '';
+		const quizParams = {
+			testMode: 'quiz-practice',
+			topic: preset.topicSeed || preset.label,
+			category: preset.category || '',
+			selectedTopics: preset.selectedTopics || [],
+			examId: null,
+			examName: null,
+			examStream: null,
+			syllabusFocus: [],
+			testType: preset.testType === 'mixed' ? 'multiple-choice' : preset.testType,
+			numQuestions: Number(preset.numQuestions || 10),
+			difficulty: preset.difficulty || 'intermediate',
+			language: preset.language || 'english',
+			objectiveOnly: false,
+			durationMinutes: null,
 		};
-	});
+		await runGeneration(quizParams);
+	}
+
 </script>
 
 <svelte:head>
 	<title>AI Quiz & Exam Paper Generator for India | selftest.in</title>
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="container py-4 py-md-5" style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)); padding-left: calc(1rem + env(safe-area-inset-left, 0px)); padding-right: calc(1rem + env(safe-area-inset-right, 0px));">
 	<div class="mx-auto home-wrap">
 		<div class="text-center mb-4 hero-block" class:hero-collapsed={heroCollapsed} aria-hidden={heroCollapsed}>
-			<p class="text-uppercase text-muted small fw-semibold mb-2">{$t('aiPracticeForIndianExams')}</p>
-			<h1 class="h2 fw-bold mb-2">{$t('createQuiz')}</h1>
-			<p class="text-muted mb-0">
-				{activeMode === TEST_MODES.FULL_EXAM ? $t('configureAndGenerate') : $t('useBookmarksOrChooseMode')}
-			</p>
+			<p class="hero-tagline">{$t('aiPracticeForIndianExams')}</p>
+			<h1 class="hero-heading">{$t('createQuiz')}</h1>
 		</div>
 
-		<div class="search-home-wrap mb-3">
-			<form class="search-home-form bg-body p-2" onsubmit={submitSearch}>
-				<div class="input-group">
-					<input
-						id="global-test-search"
-						class="form-control"
-						bind:this={searchInput}
-						bind:value={searchQuery}
-						onfocus={openSearchPanel}
-						onkeydown={handleSearchKeydown}
-						placeholder={$t('searchByTopicOrId')}
-						aria-label={$t('searchPastTests')}
-						autocomplete="off"
-					/>
-					<button class="btn btn-primary" type="submit">{$t('searchTests')}</button>
-				</div>
-				{#if searchOpen}
-					<div class="search-home-backdrop" role="presentation" onclick={closeSearchPanel}></div>
-					<div class="search-home-results" onscroll={handleResultsScroll}>
-						{#if searchStatus === 'loading'}
-							<p class="text-muted small mb-0 px-2 py-1">{$t('loading')}</p>
-						{:else if searchStatus === 'done'}
-							<p class="text-muted small mb-1 px-2 py-1">
-								{isSearchableQuery(searchQuery.trim()) ? $t('matchingTests') : $t('recentTests')}
-							</p>
-							{#if searchResults.length === 0}
-								<p class="text-muted small mb-0 px-2 py-1">{$t('noTestsFound')}</p>
-							{:else}
-								{#each searchResults as test (test.id)}
-									<a
-										class="result-item"
-										href={`/test?id=${test.id}`}
-										onclick={() => {
-											track('search:result-click');
-											closeSearchPanel();
-										}}
-									>
-										<strong>{test.topic || $t('untitledTest')}</strong>
-										<span class="result-meta">
-											{test.test_mode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')} · {$t('testId')}: {test.id}
-										</span>
-									</a>
-								{/each}
-								{#if loadingMore}
-									<p class="text-muted small mb-0 px-2 py-1">{$t('loading')}</p>
-								{/if}
-							{/if}
-						{/if}
-					</div>
-				{/if}
-			</form>
+		<div class="intent-section mb-4">
+			<SmartIntentInput
+				bind:value={intentValue}
+				onsubmit={handleIntentSubmit}
+				onnavigate={handleTestNavigate}
+				oninput={() => {}}
+				disabled={status === 'loading'}
+				status={intentStatus}
+			/>
 		</div>
 
 		{#if unsubmittedTest?.id}
@@ -748,256 +478,72 @@
 			</div>
 		{/if}
 
-		{#if bookmarkedExams.length > 0 || bookmarkedQuizPresets.length > 0}
-			<section class="bg-body border rounded-3 p-3 mb-3">
-				<h2 class="h6 fw-bold">{$t('bookmarkedQuickStart')}</h2>
-				<div class="d-flex flex-wrap gap-2">
-					{#each bookmarkedExams as exam (exam.id)}
-						<button class="btn btn-sm btn-outline-primary quick-chip" type="button" onclick={() => quickStartExam(exam.id)} disabled={status === 'loading'}>
-							{exam.name}
-						</button>
-					{/each}
-					{#each bookmarkedQuizPresets as preset (preset.id)}
-						<button class="btn btn-sm btn-outline-secondary quick-chip" type="button" onclick={() => quickStartPreset(preset)} disabled={status === 'loading'}>
-							{preset.label}
-						</button>
-					{/each}
-				</div>
-			</section>
-		{/if}
+		<WelcomeBlock
+			onDismiss={handleWelcomeDismiss}
+			onShowExample={handleShowExample}
+		/>
 
-		<div class="mode-switch bg-body border rounded-3 p-2 mb-3">
-			<button
-				class="btn"
-				class:btn-primary={activeMode === TEST_MODES.QUIZ_PRACTICE}
-				class:btn-outline-secondary={activeMode !== TEST_MODES.QUIZ_PRACTICE}
-				type="button"
-				onclick={() => {
-					activeMode = TEST_MODES.QUIZ_PRACTICE;
-					track('setup:mode', { mode: 'quiz-practice' });
-				}}
-			>
-				{$t('quizPractice')}
-			</button>
-			<button
-				class="btn"
-				class:btn-primary={activeMode === TEST_MODES.FULL_EXAM}
-				class:btn-outline-secondary={activeMode !== TEST_MODES.FULL_EXAM}
-				type="button"
-				onclick={() => {
-					activeMode = TEST_MODES.FULL_EXAM;
-					track('setup:mode', { mode: 'full-exam' });
-				}}
-			>
-				{$t('fullExamPaper')}
-			</button>
+		<QuickStart
+			{bookmarkedExams}
+			{bookmarkedQuizPresets}
+			onQuickStartExam={quickStartExam}
+			onQuickStartPreset={quickStartPreset}
+			disabled={status === 'loading'}
+		/>
+
+		<PreviewCard
+			{topic}
+			{numQuestions}
+			testType={testType}
+			{difficulty}
+			language={paperLanguage}
+			{examId}
+			{isFullExam}
+			parsed={parsedFromIntent}
+			parsingFailed={intentParseFailed}
+			ongenerate={handleGenerate}
+			oneditchip={handleChipEdit}
+			disabled={status === 'loading'}
+			{status}
+		/>
+
+		<div class="manual-section">
+			<p class="manual-divider"><span>{$t('manualConfigHint')}</span></p>
+			<div class="manual-grid">
+				<TopicBrowser
+					{selectedCategory}
+					{selectedTopics}
+					ontopicchange={handleTopicBrowserChange}
+				/>
+				<ExamBrowser
+					examSearchQuery={examSearchQuery}
+					examGroupFilter={examGroupFilter}
+					showBookmarkedExamsOnly={showBookmarkedExamsOnly}
+					bookmarkedExamIds={bookmarkedExamIds}
+					selectedExamId={examId}
+					onexamchange={handleExamBrowserChange}
+					onbookmarktoggle={toggleExamBookmark}
+					visibleExams={visibleExams}
+				/>
+			</div>
 		</div>
 
-		<form class="bg-body border rounded-3 p-3 p-md-4 shadow-sm" onsubmit={submitGenerate}>
-			<div class="row g-3 mb-3">
-				<label class="form-label col-sm-6">
-					<span class="fw-semibold">{$t('paperLanguage')}</span>
-					<select
-						class="form-select mt-1"
-						bind:value={paperLanguage}
-						onchange={() => track('setup:language', { language: paperLanguage })}
-					>
-						<option value="english">{$t('englishLabel')}</option>
-						<option value="hindi">{$t('hindiLabel')}</option>
-					</select>
-				</label>
-				<label class="form-label col-sm-6">
-					<span class="fw-semibold">{$t('difficultyHeading')}</span>
-					<select
-						class="form-select mt-1"
-						bind:value={difficulty}
-						disabled={activeMode === TEST_MODES.FULL_EXAM}
-						onchange={() => track('setup:difficulty', { difficulty })}
-					>
-						<option value="beginner">{$t('beginner')}</option>
-						<option value="intermediate">{$t('intermediate')}</option>
-						<option value="advanced">{$t('advanced')}</option>
-						<option value="expert">{$t('expert')}</option>
-					</select>
-				</label>
+		{#if $isDataSaverActive && !isFullExam}
+			<div class="alert alert-info mt-3 mb-0">
+				{$t('slowConnectionReduced')} {numQuestions} {$t('forFasterLoading')}
 			</div>
-
-			{#if activeMode === TEST_MODES.QUIZ_PRACTICE}
-				<label class="form-label w-full">
-					<span class="fw-semibold">{$t('whatToLearn')}</span>
-					<input
-						class="form-control mt-1"
-						bind:value={topic}
-						placeholder={$t('placeholderTopic')}
-						oninput={() => trackDebounced('setup:topic-input', { topic: topic.trim().slice(0, 64) })}
-					/>
-				</label>
-				<div class="row g-3">
-					<label class="form-label col-sm-6">
-						<span class="fw-semibold">{$t('questionsLabel')}</span>
-						<input
-							class="form-control mt-1"
-							type="number"
-							min="1"
-							max="50"
-							bind:value={numQuestions}
-							onchange={() => track('setup:questions-count', { count: Number(numQuestions) })}
-						/>
-					</label>
-					<label class="form-label col-sm-6">
-						<span class="fw-semibold">{$t('formatHeading')}</span>
-						<select
-							class="form-select mt-1"
-							bind:value={testType}
-							onchange={() => track('setup:test-type', { type: testType })}
-						>
-							<option value="multiple-choice">{$t('multipleChoice')}</option>
-							<option value="true-false">{$t('trueFalse')}</option>
-							<option value="coding">{$t('codingProblems')}</option>
-							<option value="speed-challenge">{$t('speedChallenge')}</option>
-						</select>
-					</label>
-				</div>
-				<div class="mt-3">
-					<div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-						<span class="fw-semibold">{$t('suggestedTopics')}</span>
-						<button class="btn btn-sm btn-outline-secondary" type="button" onclick={saveCurrentQuizPreset}>
-							{$t('bookmarkCurrentPreset')}
-						</button>
-					</div>
-					<div class="d-flex flex-wrap gap-2">
-						{#each Object.entries(TOPIC_CATEGORIES).slice(0, 4) as [category, topics] (category)}
-							<button
-								class="btn btn-sm"
-								class:btn-secondary={selectedCategory === category}
-								class:btn-outline-secondary={selectedCategory !== category}
-								type="button"
-								onclick={() => {
-									selectedCategory = selectedCategory === category ? '' : category;
-									track('setup:category', { category });
-								}}
-							>
-								{category}
-							</button>
-							{#if selectedCategory === category}
-								{#each topics as topicName (topicName)}
-									<button
-										class="btn btn-sm"
-										class:btn-primary={selectedTopics.includes(topicName)}
-										class:btn-outline-primary={!selectedTopics.includes(topicName)}
-										type="button"
-										onclick={() => toggleSelectedTopic(topicName)}
-									>
-										{topicName}
-									</button>
-								{/each}
-							{/if}
-						{/each}
-					</div>
-				</div>
-			{:else}
-				<div class="row g-3 mb-3">
-					<label class="form-label col-md-7">
-						<span class="fw-semibold">{$t('searchExamStreamSyllabus')}</span>
-						<input
-							class="form-control mt-1"
-							bind:value={examSearchQuery}
-							placeholder={$t('examSearchPlaceholder')}
-							oninput={() =>
-								trackDebounced('setup:exam-search', { q: examSearchQuery.trim().slice(0, 64) })}
-						/>
-					</label>
-					<label class="form-label col-md-3">
-						<span class="fw-semibold">{$t('filterByGroup')}</span>
-						<select
-							class="form-select mt-1"
-							bind:value={examGroupFilter}
-							onchange={() => track('setup:exam-group-filter', { group: examGroupFilter })}
-						>
-							{#each EXAM_GROUP_FILTERS as group (group)}
-								<option value={group}>{group === 'all' ? $t('allGroups') : `${$t('group')} ${group}`}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="form-check col-md-2 d-flex align-items-end gap-2 pb-2">
-						<input class="form-check-input" type="checkbox" bind:checked={showBookmarkedExamsOnly} />
-						<span class="form-check-label small">{$t('bookmarkedOnly')}</span>
-					</label>
-				</div>
-				<div class="exam-list border rounded-3 mb-3">
-					{#each visibleExams.slice(0, 24) as exam (exam.id)}
-						<div class="exam-row" class:selected={selectedExamId === exam.id}>
-							<button
-								class="exam-main"
-								type="button"
-								onclick={() => {
-									selectedExamId = exam.id;
-									track('setup:exam-select', { examId: exam.id });
-								}}
-							>
-								<span class="fw-semibold">{exam.name}</span>
-								<span class="small text-muted">{exam.stream} · {$t('questionShort')} {exam.defaultNumQuestions || exam.fullLengthQuestions} · {exam.durationMinutes} {$t('minuteShort')}</span>
-							</button>
-							<button class="bookmark-btn" type="button" aria-label={$t('bookmarkExam')} onclick={() => toggleExamBookmark(exam.id)}>
-								{bookmarkedExamIds.includes(exam.id) ? '★' : '☆'}
-							</button>
-						</div>
-					{/each}
-				</div>
-				{#if selectedExam}
-					<label class="form-label w-full">
-						<span class="fw-semibold">{$t('optionalTopicNotes')}</span>
-						<input
-							class="form-control mt-1"
-							bind:value={topic}
-							placeholder={$t('fullExamInstructionPlaceholder')}
-							oninput={() => trackDebounced('setup:topic-input', { topic: topic.trim().slice(0, 64) })}
-						/>
-					</label>
-					<div class="mt-2">
-						<div class="fw-semibold mb-2">{$t('syllabusFocus')}</div>
-						<div class="d-flex flex-wrap gap-2">
-							{#each selectedExam.syllabus || [] as topicName (topicName)}
-								<button
-									class="btn btn-sm"
-									class:btn-primary={selectedSyllabusFocus.includes(topicName)}
-									class:btn-outline-primary={!selectedSyllabusFocus.includes(topicName)}
-									type="button"
-									onclick={() => toggleSyllabusFocus(topicName)}
-								>
-									{topicName}
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
-			{/if}
-
-			{#if $isDataSaverActive && activeMode === TEST_MODES.QUIZ_PRACTICE}
-				<div class="alert alert-info mt-3 mb-0">
-					{$t('slowConnectionReduced')} {numQuestions} {$t('forFasterLoading')}
-				</div>
-			{:else if $isDataSaverActive && activeMode === TEST_MODES.FULL_EXAM}
-				<div class="alert alert-info mt-3 mb-0">{$t('fullLengthSlowConnection')}</div>
-			{/if}
-			{#if isOffline}
-				<div class="alert alert-warning mt-3 mb-0">{$t('offlineAccessHistory')}</div>
-			{/if}
-			{#if retryLabel}
-				<div class="alert alert-light border mt-3 mb-0">{retryLabel}</div>
-			{/if}
-			{#if error}
-				<div class="alert alert-danger mt-3 mb-0">{error}</div>
-			{/if}
-
-			<button class="btn btn-primary btn-lg w-full mt-3" disabled={status === 'loading' || !canGenerate}>
-				{status === 'loading'
-					? $t('generating')
-					: activeMode === TEST_MODES.FULL_EXAM
-						? $t('generateExamPaper')
-						: $t('generateQuiz')}
-			</button>
-		</form>
+		{:else if $isDataSaverActive && isFullExam}
+			<div class="alert alert-info mt-3 mb-0">{$t('fullLengthSlowConnection')}</div>
+		{/if}
+		{#if isOffline}
+			<div class="alert alert-warning mt-3 mb-0">{$t('offlineAccessHistory')}</div>
+		{/if}
+		{#if retryLabel}
+			<div class="alert alert-light border mt-3 mb-0">{retryLabel}</div>
+		{/if}
+		{#if error}
+			<div class="alert alert-danger mt-3 mb-0">{error}</div>
+		{/if}
 	</div>
 </section>
 
@@ -1025,11 +571,11 @@
 
 <style>
 	.home-wrap {
-		max-width: 860px;
+		max-width: 720px;
 	}
 
 	.hero-block {
-		max-height: 240px;
+		max-height: 160px;
 		overflow: hidden;
 		opacity: 1;
 		transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.35s ease;
@@ -1042,97 +588,64 @@
 		pointer-events: none;
 	}
 
-	.search-home-form {
+	.hero-tagline {
+		font-size: 0.78rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--text-muted);
+		font-weight: 600;
+		margin: 0 0 8px;
+	}
+
+	.hero-heading {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--text);
+		margin: 0;
+	}
+
+	.intent-section {
+		margin-bottom: 20px;
+	}
+
+	.manual-section {
+		margin-top: 16px;
+	}
+
+	.manual-divider {
+		text-align: center;
+		font-size: 0.78rem;
+		color: var(--text-muted);
+		margin: 0 0 4px;
 		position: relative;
 	}
 
-	.search-home-backdrop {
-		position: fixed;
-		inset: 0;
-		z-index: 1180;
-		background: transparent;
+	.manual-divider span {
+		background: var(--bg-body, #f8fafc);
+		padding: 0 12px;
+		position: relative;
+		z-index: 1;
 	}
 
-	.search-home-results {
+	.manual-divider::before {
+		content: '';
 		position: absolute;
-		top: calc(100% + 8px);
 		left: 0;
 		right: 0;
-		z-index: 1200;
-		max-height: min(60vh, 420px);
-		overflow: auto;
-		padding: 8px;
-		border: 1px solid var(--line);
-		border-radius: 12px;
-		background: var(--surface);
-		box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+		top: 50%;
+		height: 1px;
+		background: var(--line);
 	}
 
-	.result-item {
-		display: grid;
-		gap: 2px;
-		padding: 10px 12px;
-		border-radius: 8px;
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.result-item:hover {
-		background: var(--surface-muted);
-	}
-
-	.result-meta {
-		color: var(--text-muted);
-		font-size: 0.82rem;
-	}
-
-	.mode-switch {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 8px;
-	}
-
-	.quick-chip {
-		min-height: 44px;
-	}
-
-	.exam-list {
-		max-height: 360px;
-		overflow: auto;
-	}
-
-	.exam-row {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) 48px;
-		border-bottom: 1px solid var(--line);
-	}
-
-	.exam-row:last-child {
-		border-bottom: 0;
-	}
-
-	.exam-row.selected {
-		background: rgba(var(--brand-rgb), 0.08);
-	}
-
-	.exam-main,
-	.bookmark-btn {
-		min-height: 52px;
-		border: 0;
-		background: transparent;
-		color: inherit;
-	}
-
-	.exam-main {
+	.manual-grid {
 		display: flex;
-		align-items: flex-start;
 		flex-direction: column;
-		justify-content: center;
-		padding: 8px 12px;
-		text-align: left;
+		gap: 0;
 	}
 
-	.bookmark-btn {
-		font-size: 1.3rem;
+	@media (max-width: 480px) {
+		.hero-heading {
+			font-size: 1.25rem;
+		}
 	}
 </style>
