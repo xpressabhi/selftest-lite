@@ -36,6 +36,19 @@ function getPage() {
 	return window.location.pathname;
 }
 
+// Local development must never pollute production telemetry.
+function isLocalhost() {
+	if (typeof window === 'undefined') {
+		return false;
+	}
+	const hostname = window.location.hostname;
+	return (
+		hostname === 'localhost' ||
+		hostname === '127.0.0.1' ||
+		hostname === '::1'
+	);
+}
+
 function sendBatch(events) {
 	if (typeof navigator === 'undefined' || events.length === 0) {
 		return;
@@ -71,7 +84,7 @@ export function flushTelemetry() {
 }
 
 export function track(event, props = {}) {
-	if (typeof window === 'undefined') {
+	if (typeof window === 'undefined' || isLocalhost()) {
 		return;
 	}
 	queue.push({ event, page: getPage(), props, created_at: new Date().toISOString() });
@@ -126,7 +139,7 @@ function trackScrollDepth() {
 }
 
 export function startTelemetry() {
-	if (started || typeof window === 'undefined') {
+	if (started || typeof window === 'undefined' || isLocalhost()) {
 		return;
 	}
 	started = true;
