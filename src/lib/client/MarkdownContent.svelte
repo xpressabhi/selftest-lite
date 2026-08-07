@@ -134,6 +134,13 @@ import { prepareMathTextForRendering } from '$lib/shared/latex';
 		white-space: break-spaces;
 	}
 
+	.markdown-content :global(.katex) {
+		display: inline-block;
+		max-width: 100%;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+
 	.markdown-content :global(.mermaid-diagram) {
 		overflow-x: auto;
 		padding: 0.75rem;

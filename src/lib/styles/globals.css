@@ -99,7 +99,7 @@ button, input, select {
 	/* Layout utilities retained while the page markup is progressively moved to
 	 * direct Tailwind utility strings. */
 	.d-flex { @apply flex; }
-	.d-grid { @apply grid; }
+	.d-grid { @apply grid; grid-template-columns: minmax(0, 1fr); }
 	.flex-wrap { @apply flex-wrap; }
 	.flex-column { @apply flex-col; }
 	.align-items-center { @apply items-center; }
