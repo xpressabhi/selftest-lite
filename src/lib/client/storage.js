@@ -183,6 +183,23 @@ export function clearDraftAnswers(testId) {
 	removeKey(getDraftAnswerKey(testId));
 }
 
+export function getDraftFlagsKey(testId) {
+	return `${STORAGE_KEYS.UNSUBMITTED_TEST}_flags_${testId || 'current'}`;
+}
+
+export function readDraftFlags(testId) {
+	const flags = readJson(getDraftFlagsKey(testId), []);
+	return Array.isArray(flags) ? flags : [];
+}
+
+export function writeDraftFlags(testId, flagged) {
+	writeJson(getDraftFlagsKey(testId), Array.isArray(flagged) ? flagged : []);
+}
+
+export function clearDraftFlags(testId) {
+	removeKey(getDraftFlagsKey(testId));
+}
+
 export function getUnsubmittedTest() {
 	return readJson(STORAGE_KEYS.UNSUBMITTED_TEST, null);
 }

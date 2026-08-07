@@ -23,22 +23,76 @@
 		upsertHistory,
 	} from '$lib/client/storage';
 
-	let questionPaper = null;
-	let loading = true;
-	let error = '';
-	let loadingExplanation = {};
-	let explanationError = {};
-	let stats = null;
-	let streak = null;
-	let weekActivity = [];
-	let achievements = [];
-	let topicMastery = [];
-	let reviewQueue = { today: [], upcoming: [] };
-	let bookmarkedQuestionKeys = [];
+	let questionPaper = $state(null);
+	let loading = $state(true);
+	let error = $state('');
+	let loadingExplanation = $state({});
+	let explanationError = $state({});
+	let stats = $state(null);
+	let streak = $state(null);
+	let weekActivity = $state([]);
+	let achievements = $state([]);
+	let topicMastery = $state([]);
+	let reviewQueue = $state({ today: [], upcoming: [] });
+	let bookmarkedQuestionKeys = $state([]);
+	let filter = $state('all');
+	let expanded = $state({});
+	let expansionInitialized = false;
 
-	$: percentage = questionPaper?.totalQuestions
-		? Math.round((questionPaper.score / questionPaper.totalQuestions) * 100)
-		: 0;
+	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
+	let percentage = $derived(
+		questionPaper?.totalQuestions
+			? Math.round((questionPaper.score / questionPaper.totalQuestions) * 100)
+			: 0,
+	);
+
+	let correctCount = $derived(
+		(questionPaper?.questions || []).filter(
+			(question, index) =>
+				(question.correct ?? (questionPaper.userAnswers?.[index] === question.answer)) === true,
+		).length,
+	);
+	let unansweredCount = $derived(
+		(questionPaper?.questions || []).filter(
+			(question, index) => questionPaper.userAnswers?.[index] == null,
+		).length,
+	);
+	let incorrectCount = $derived(totalQuestions - correctCount - unansweredCount);
+
+	let filteredQuestions = $derived(
+		(questionPaper?.questions || [])
+			.map((question, index) => ({ question, index }))
+			.filter(({ question, index }) => {
+				const isCorrect = question.correct ?? (questionPaper.userAnswers?.[index] === question.answer);
+				if (filter === 'correct') {
+					return isCorrect === true;
+				}
+				if (filter === 'incorrect') {
+					return isCorrect === false;
+				}
+				if (filter === 'unanswered') {
+					return questionPaper.userAnswers?.[index] == null;
+				}
+				return true;
+			}),
+	);
+
+	const RING_RADIUS = 42;
+	const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+	$effect(() => {
+		if (!questionPaper || expansionInitialized) {
+			return;
+		}
+		expansionInitialized = true;
+		const defaults = {};
+		questionPaper.questions.forEach((question, index) => {
+			const isCorrect =
+				question.correct ?? (questionPaper.userAnswers?.[index] === question.answer);
+			defaults[index] = isCorrect !== true;
+		});
+		expanded = defaults;
+	});
 
 	onMount(async () => {
 		const testId = page.url.searchParams.get('id');
@@ -121,6 +175,14 @@
 		});
 		track('results:bookmark-question', { q: question.question?.slice(0, 40) });
 		refreshLearningPanels();
+	}
+
+	function toggleExpanded(index) {
+		expanded = {
+			...expanded,
+			[index]: !expanded[index],
+		};
+		track('results:toggle-question', { q: index });
 	}
 
 	function reviewHref(item) {
@@ -242,7 +304,20 @@
 				<MarkdownContent content={questionPaper.topic} tag="span" />
 			</h1>
 			<div class="d-flex flex-wrap align-items-center gap-3">
-				<div class="score-circle">{percentage}%</div>
+				<div class="score-ring" role="img" aria-label={`${percentage}%`}>
+					<svg viewBox="0 0 100 100" aria-hidden="true">
+						<circle class="ring-track" cx="50" cy="50" r={RING_RADIUS}></circle>
+						<circle
+							class="ring-progress"
+							cx="50"
+							cy="50"
+							r={RING_RADIUS}
+							stroke-dasharray={RING_CIRCUMFERENCE}
+							stroke-dashoffset={RING_CIRCUMFERENCE * (1 - percentage / 100)}
+						></circle>
+					</svg>
+					<span class="score-ring-label">{percentage}%</span>
+				</div>
 				<div>
 					<div class="h4 mb-1">
 						{questionPaper.score} / {questionPaper.totalQuestions}
@@ -261,6 +336,21 @@
 				</button>
 				<a class="btn btn-sm btn-primary" href="/">{$t('startNewQuiz')}</a>
 			</div>
+		</div>
+
+		<div class="filter-bar bg-body border rounded-3 p-2 mb-4" role="group" aria-label={$t('reviewAnswers')}>
+			<button class="filter-chip" class:active={filter === 'all'} type="button" onclick={() => (filter = 'all')}>
+				{$t('filterAll')}<span class="filter-count">{totalQuestions}</span>
+			</button>
+			<button class="filter-chip" class:active={filter === 'correct'} type="button" onclick={() => (filter = 'correct')}>
+				{$t('filterCorrect')}<span class="filter-count">{correctCount}</span>
+			</button>
+			<button class="filter-chip" class:active={filter === 'incorrect'} type="button" onclick={() => (filter = 'incorrect')}>
+				{$t('filterIncorrect')}<span class="filter-count">{incorrectCount}</span>
+			</button>
+			<button class="filter-chip" class:active={filter === 'unanswered'} type="button" onclick={() => (filter = 'unanswered')}>
+				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
+			</button>
 		</div>
 
 		<div class="row g-3 mb-4">
@@ -337,72 +427,91 @@
 			</section>
 		{/if}
 
+		{#if filteredQuestions.length === 0}
+			<div class="bg-body border rounded-3 p-4 mb-4 text-center text-muted">
+				{$t('noFilteredResults')}
+			</div>
+		{/if}
+
 		<div class="d-grid gap-3">
-			{#each questionPaper.questions as question, index (`${index}-${question.question}`)}
+			{#each filteredQuestions as { question, index } (`${index}-${question.question}`)}
 				{@const userAnswer = questionPaper.userAnswers?.[index]}
 				{@const isCorrect = question.correct ?? (userAnswer === question.answer)}
 				<article class="bg-body border rounded-3 p-3 shadow-sm">
-					<div class="d-flex align-items-start justify-content-between gap-3">
-						<div class="h6 lh-base mb-2">
-							<span>{index + 1}. </span><MarkdownContent content={question.question} />
-						</div>
-						<span class="badge" class:bg-success={isCorrect} class:bg-danger={!isCorrect}>
-							{isCorrect ? $t('correct') : $t('incorrect')}
-						</span>
-					</div>
 					<button
-						class="btn btn-sm btn-outline-secondary mb-2 no-print"
+						class="review-card-head"
 						type="button"
-						onclick={() => toggleBookmark(question)}
+						aria-expanded={expanded[index] === true}
+						onclick={() => toggleExpanded(index)}
 					>
-						{bookmarkedQuestionKeys.includes(questionKey(question))
-							? $t('removeQuestionBookmark')
-							: $t('bookmarkQuestion')}
-					</button>
-					<p class="mb-1">
-						<span class="fw-semibold">{$t('yourAnswer')}:</span>
-						<span class:text-success={isCorrect} class:text-danger={!isCorrect}>
-							<MarkdownContent content={userAnswer || $t('notAnswered')} />
+						<span class="review-card-question">
+							<span class="review-card-number">{index + 1}.</span>
+							<MarkdownContent content={question.question} />
 						</span>
-					</p>
-					{#if question.options?.length}
-						<div class="answer-options mb-3">
-							<div class="small fw-semibold text-muted mb-1">{$t('options')}</div>
-							{#each question.options as option, optionIndex (optionIndex)}
-								<div
-									class="review-option"
-									class:correct-option={option === question.answer}
-									class:user-option={option === userAnswer && option !== question.answer}
+						<span class="badge" class:bg-success={isCorrect} class:bg-danger={!isCorrect}>
+							{isCorrect ? $t('correct') : userAnswer == null ? $t('notAnswered') : $t('incorrect')}
+						</span>
+						<span class="review-chevron" class:open={expanded[index] === true} aria-hidden="true">▾</span>
+					</button>
+					<AnimatedHeight class="review-region">
+						{#if expanded[index] === true}
+							<div class="review-card-body">
+								<button
+									class="btn btn-sm btn-outline-secondary mb-2 no-print"
+									type="button"
+									onclick={() => toggleBookmark(question)}
 								>
-									<MarkdownContent content={option} />
-								</div>
-							{/each}
-						</div>
-					{/if}
-					<p class="mb-3">
-						<span class="fw-semibold">{$t('correctAnswer')}:</span>
-						<span class="text-success"><MarkdownContent content={question.answer} /></span>
-					</p>
-					<AnimatedHeight class="explanation-region" aria-live="polite">
-						{#if question.explanation}
-							<div class="alert alert-light border mb-0">
-								<MarkdownContent content={question.explanation} />
+									{bookmarkedQuestionKeys.includes(questionKey(question))
+										? $t('removeQuestionBookmark')
+										: $t('bookmarkQuestion')}
+								</button>
+								<p class="mb-1">
+									<span class="fw-semibold">{$t('yourAnswer')}:</span>
+									<span class:text-success={isCorrect} class:text-danger={!isCorrect}>
+										<MarkdownContent content={userAnswer || $t('notAnswered')} />
+									</span>
+								</p>
+								{#if question.options?.length}
+									<div class="answer-options mb-3">
+										<div class="small fw-semibold text-muted mb-1">{$t('options')}</div>
+										{#each question.options as option, optionIndex (optionIndex)}
+											<div
+												class="review-option"
+												class:correct-option={option === question.answer}
+												class:user-option={option === userAnswer && option !== question.answer}
+											>
+												<MarkdownContent content={option} />
+											</div>
+										{/each}
+									</div>
+								{/if}
+								<p class="mb-3">
+									<span class="fw-semibold">{$t('correctAnswer')}:</span>
+									<span class="text-success"><MarkdownContent content={question.answer} /></span>
+								</p>
+								<AnimatedHeight class="explanation-region" aria-live="polite">
+									{#if question.explanation}
+										<div class="alert alert-light border mb-0">
+											<MarkdownContent content={question.explanation} />
+										</div>
+									{:else}
+										<button
+											class="btn btn-sm btn-outline-primary"
+											class:explanation-loading={loadingExplanation[index]}
+											type="button"
+											disabled={loadingExplanation[index]}
+											onclick={() => fetchExplanation(index, question)}
+										>
+											{loadingExplanation[index] ? $t('generatingExplanation') : $t('generateExplanation')}
+										</button>
+									{/if}
+								</AnimatedHeight>
+								{#if explanationError[index]}
+									<div class="text-danger small mt-2">{explanationError[index]}</div>
+								{/if}
 							</div>
-						{:else}
-							<button
-								class="btn btn-sm btn-outline-primary"
-								class:explanation-loading={loadingExplanation[index]}
-								type="button"
-								disabled={loadingExplanation[index]}
-								onclick={() => fetchExplanation(index, question)}
-							>
-								{loadingExplanation[index] ? $t('generatingExplanation') : $t('generateExplanation')}
-							</button>
 						{/if}
 					</AnimatedHeight>
-					{#if explanationError[index]}
-						<div class="text-danger small mt-2">{explanationError[index]}</div>
-					{/if}
 				</article>
 			{/each}
 		</div>
@@ -532,16 +641,140 @@
 		background: rgba(220, 53, 69, 0.08);
 	}
 
-	.score-circle {
-		display: grid;
-		width: 88px;
-		height: 88px;
-		place-items: center;
+	.filter-bar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		max-width: 860px;
+	}
+
+	.filter-chip {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		gap: 8px;
+		padding: 0 14px;
+		border: 1px solid var(--line);
 		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text-muted);
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.filter-chip:hover,
+	.filter-chip:focus-visible {
+		border-color: var(--color-brand-500);
+		outline: none;
+	}
+
+	.filter-chip.active {
+		border-color: var(--color-brand-600);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
+		color: var(--color-brand-600);
+	}
+
+	.filter-count {
+		display: grid;
+		min-width: 22px;
+		height: 22px;
+		place-items: center;
+		padding: 0 6px;
+		border-radius: 999px;
+		background: var(--surface-muted);
+		font-size: 0.72rem;
+	}
+
+	.filter-chip.active .filter-count {
 		background: var(--color-brand-600);
 		color: #fff;
-		font-size: 1.5rem;
+	}
+
+	.score-ring {
+		position: relative;
+		width: 96px;
+		height: 96px;
+	}
+
+	.score-ring svg {
+		width: 100%;
+		height: 100%;
+		transform: rotate(-90deg);
+	}
+
+	.ring-track {
+		fill: none;
+		stroke: var(--surface-muted);
+		stroke-width: 8;
+	}
+
+	.ring-progress {
+		fill: none;
+		stroke: var(--color-brand-600);
+		stroke-width: 8;
+		stroke-linecap: round;
+		transition: stroke-dashoffset 500ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.score-ring-label {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-size: 1.35rem;
 		font-weight: 700;
+	}
+
+	.review-card-head {
+		display: flex;
+		width: 100%;
+		min-height: 44px;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		text-align: left;
+	}
+
+	.review-card-head:hover .review-card-question,
+	.review-card-head:focus-visible .review-card-question {
+		color: var(--color-brand-600);
+	}
+
+	.review-card-head:focus-visible {
+		outline: none;
+	}
+
+	.review-card-question {
+		flex: 1 1 auto;
+		font-weight: 600;
+		line-height: 1.5;
+	}
+
+	.review-card-number {
+		color: var(--text-muted);
+		font-weight: 600;
+	}
+
+	.review-chevron {
+		margin-top: 2px;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		transition: transform 180ms ease;
+	}
+
+	.review-chevron.open {
+		transform: rotate(180deg);
+	}
+
+	:global(.review-region) {
+		width: 100%;
+	}
+
+	.review-card-body {
+		padding-top: 12px;
 	}
 
 	@media print {
@@ -553,6 +786,13 @@
 	@media (max-width: 767.98px) {
 		.result-panel {
 			height: auto;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ring-progress,
+		.review-chevron {
+			transition: none;
 		}
 	}
 </style>

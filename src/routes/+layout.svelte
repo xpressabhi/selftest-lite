@@ -196,6 +196,7 @@
 	});
 
 	let activePath = $derived(page.url.pathname);
+	let isImmersive = $derived(page.url.pathname === '/test');
 
 	$effect(() => {
 		track('page:view', { route: page.url.pathname });
@@ -266,7 +267,7 @@
 	}
 
 	function handleTouchStart(event) {
-		if (window.scrollY > 0 || event.touches.length !== 1) {
+		if (isImmersive || window.scrollY > 0 || event.touches.length !== 1) {
 			pullStartY = 0;
 			return;
 		}
@@ -274,7 +275,7 @@
 	}
 
 	function handleTouchMove(event) {
-		if (!pullStartY || window.scrollY > 0) {
+		if (isImmersive || !pullStartY || window.scrollY > 0) {
 			return;
 		}
 		const distance = event.touches[0].clientY - pullStartY;
@@ -380,9 +381,10 @@
 	</script>
 </svelte:head>
 
-<div class="app-shell">
+<div class="app-shell" class:immersive-mode={isImmersive}>
 	<a class="skip-link" href="#main-content">{$t('skipToMainContent')}</a>
-	<header class="app-header border-bottom bg-body">
+	{#if !isImmersive}
+		<header class="app-header border-bottom bg-body">
 		<nav class="header-inner" aria-label={$t('mainNavigation')}>
 			<a class="brand-link" href="/">
 				<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
@@ -458,8 +460,7 @@
 		</nav>
 
 		{#if isMenuOpen}
-			<nav class="mobile-menu" aria-label={$t('navigationMenu')}>
-				{#if $user}
+			<nav class="mobile-menu" aria-label={$t('navigationMenu')}>				{#if $user}
 					<div class="menu-user">
 						<span class="menu-user-initial">{(($user.name || $user.email || '?')).charAt(0).toUpperCase()}</span>
 						<span class="menu-user-name">{$user.name || $user.email}</span>
@@ -490,6 +491,7 @@
 			</nav>
 		{/if}
 	</header>
+	{/if}
 
 	{#if isOffline}
 		<div class="connection-banner offline-banner" role="alert">
@@ -504,7 +506,7 @@
 		</div>
 	{/if}
 
-	{#if showInstallHint && !isStandalone && !isAndroidOS}
+	{#if showInstallHint && !isStandalone && !isAndroidOS && !isImmersive}
 		<section class="pwa-install-hint" role="status" aria-live="polite">
 			<div>
 				<div class="fw-semibold">{$t('installAppPromptTitle')}</div>
@@ -559,14 +561,17 @@
 		{@render children()}
 	</main>
 
-	<nav class="bottom-nav border-top bg-body" aria-label={$t('mobileNavigation')}>
+	{#if !isImmersive}
+		<nav class="bottom-nav border-top bg-body" aria-label={$t('mobileNavigation')}>
 		<a class:active={activePath === '/'} href="/"><span aria-hidden="true">⌂</span>{$t('homeTab')}</a>
 		<a class:active={activePath === '/bookmarks'} href="/bookmarks"><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a>
 		<a class="create-tab" href="/"><span aria-hidden="true">＋</span>{$t('createTab')}</a>
 		<a class:active={activePath === '/history'} href="/history"><span aria-hidden="true">◷</span>{$t('historyTab')}</a>
 	</nav>
+	{/if}
 
-	<footer class="site-footer border-top bg-body">
+	{#if !isImmersive}
+		<footer class="site-footer border-top bg-body">
 		<div class="footer-inner">
 			<a class="brand-link" href="/">
 				<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
@@ -584,6 +589,7 @@
 			<p class="footer-copy small text-muted">© {new Date().getFullYear()} selftest.in — {$t('allRightsReserved')}</p>
 		</div>
 	</footer>
+	{/if}
 
 	{#if toast}
 		<div class={`toast-lite ${toast.type}`} role="status">{toast.message}</div>
@@ -816,6 +822,17 @@
 	.mobile-main {
 		min-height: calc(100vh - 58px);
 		padding-bottom: calc(80px + env(safe-area-inset-bottom));
+	}
+
+	.immersive-mode .mobile-main {
+		min-height: 100vh;
+		padding-bottom: 0;
+	}
+
+	.immersive-mode .app-header,
+	.immersive-mode .bottom-nav,
+	.immersive-mode .site-footer {
+		display: none;
 	}
 
 	.site-footer {

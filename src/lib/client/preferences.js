@@ -5,10 +5,12 @@ import { emitLocalStorageChange } from './storage';
 const LANGUAGE_KEY = 'selftest_language';
 const THEME_KEY = 'selftest_theme';
 const DATA_SAVER_KEY = 'dataSaverMode';
+const AUTO_ADVANCE_KEY = 'selftest_autoAdvance';
 
 export const language = writable('english');
 export const themePreference = writable('system');
 export const isDataSaverActive = writable(false);
+export const autoAdvance = writable(true);
 
 function getSystemLanguage() {
 	if (typeof navigator === 'undefined') {
@@ -49,6 +51,9 @@ export function initializePreferences() {
 	isDataSaverActive.set(resolvedDataSaver);
 	document.documentElement.classList.toggle('data-saver', resolvedDataSaver);
 	document.documentElement.classList.toggle('reduce-motion', resolvedDataSaver);
+
+	const savedAutoAdvance = window.localStorage.getItem(AUTO_ADVANCE_KEY);
+	autoAdvance.set(savedAutoAdvance === null ? true : savedAutoAdvance === 'true');
 }
 
 export async function setLanguage(nextLanguage, { persist = true } = {}) {
@@ -98,5 +103,14 @@ export function setDataSaver(nextValue) {
 		document.documentElement.classList.toggle('data-saver', enabled);
 		document.documentElement.classList.toggle('reduce-motion', enabled);
 		emitLocalStorageChange(DATA_SAVER_KEY);
+	}
+}
+
+export function setAutoAdvance(nextValue) {
+	const enabled = Boolean(nextValue);
+	autoAdvance.set(enabled);
+	if (typeof window !== 'undefined') {
+		window.localStorage.setItem(AUTO_ADVANCE_KEY, String(enabled));
+		emitLocalStorageChange(AUTO_ADVANCE_KEY);
 	}
 }
