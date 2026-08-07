@@ -104,10 +104,14 @@
 			selectedSyllabusFocus.length > 0,
 	);
 	let isAndroidDevice = $state(false);
+	let isInCapacitorApp = $state(false);
 
 	onMount(() => {
 		const ua = window.navigator.userAgent || '';
 		isAndroidDevice = /android/i.test(ua);
+		// Capacitor injects its bridge into the WebView of the installed app;
+		// hide the APK download card for users who already have the app.
+		isInCapacitorApp = Boolean(window.Capacitor?.isNativePlatform?.());
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
@@ -997,7 +1001,7 @@
 	</div>
 </section>
 
-{#if isAndroidDevice}
+{#if isAndroidDevice && !isInCapacitorApp}
 	<section class="container pb-4">
 		<div class="mx-auto home-wrap">
 			<div class="bg-body border rounded-3 p-3 p-md-4 text-center">
