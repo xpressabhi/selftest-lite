@@ -27,6 +27,9 @@
 	let showInstallHint = $state(false);
 	let showInstallGuide = $state(false);
 	let isStandalone = $state(false);
+	let isAndroidOS = $state(false);
+	let isIOS = $state(false);
+	let iosBrowser = $state('safari');
 	let isInstalling = $state(false);
 	let toast = $state(null);
 	let toastTimer;
@@ -98,6 +101,11 @@
 			event.preventDefault();
 			deferredInstallPrompt = event;
 			track('pwa:install-prompt');
+			// Android installs via the APK download card, not the PWA prompt —
+			// never show both to avoid confusing users.
+			if (isAndroidOS) {
+				return;
+			}
 			const dismissedAt = Number(
 				window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
 			);
@@ -114,6 +122,37 @@
 
 		updateNetworkState();
 		updateStandaloneState();
+
+		// One install path per platform: Android gets the APK download card
+		// (home page), iOS and desktop keep the PWA install prompt/steps.
+		const platformUa = window.navigator.userAgent || '';
+		isAndroidOS = /android/i.test(platformUa);
+		isIOS =
+			/iphone|ipad|ipod/i.test(platformUa) ||
+			(window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+		if (isIOS) {
+			// Safari has no CriOS/FxiOS/EdgiOS marker in its UA; anything else
+			// gets the generic steps.
+			if (/crios/i.test(platformUa)) {
+				iosBrowser = 'chrome';
+			} else if (/fxios|edgios/i.test(platformUa)) {
+				iosBrowser = 'other';
+			} else {
+				iosBrowser = 'safari';
+			}
+		}
+		if (isIOS && !isStandalone) {
+			const dismissedAt = Number(
+				window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
+			);
+			const dismissedRecently =
+				Number.isFinite(dismissedAt) && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000;
+			if (!dismissedRecently) {
+				track('pwa:install-prompt');
+				showInstallHint = true;
+			}
+		}
+
 		window.addEventListener('online', updateNetworkState);
 		window.addEventListener('offline', updateNetworkState);
 		window.addEventListener('resize', updateStandaloneState);
@@ -377,16 +416,30 @@
 		</div>
 	{/if}
 
-	{#if showInstallHint && !isStandalone}
+	{#if showInstallHint && !isStandalone && !isAndroidOS}
 		<section class="pwa-install-hint" role="status" aria-live="polite">
 			<div>
 				<div class="fw-semibold">{$t('installAppPromptTitle')}</div>
 				<div class="small text-muted">{$t('installAppPromptBody')}</div>
 				{#if showInstallGuide}
 					<ol class="small mt-2 mb-0">
-						<li>{$t('installGuideAndroidStep1')}</li>
-						<li>{$t('installGuideAndroidStep2')}</li>
-						<li>{$t('installGuideAndroidStep3')}</li>
+						{#if isIOS && iosBrowser === 'chrome'}
+							<li>{$t('installGuideIosChromeStep1')}</li>
+							<li>{$t('installGuideIosChromeStep2')}</li>
+							<li>{$t('installGuideIosChromeStep3')}</li>
+						{:else if isIOS && iosBrowser === 'safari'}
+							<li>{$t('installGuideIosSafariStep1')}</li>
+							<li>{$t('installGuideIosSafariStep2')}</li>
+							<li>{$t('installGuideIosSafariStep3')}</li>
+						{:else if isIOS}
+							<li>{$t('installGuideIosStep1')}</li>
+							<li>{$t('installGuideIosStep2')}</li>
+							<li>{$t('installGuideIosStep3')}</li>
+						{:else}
+							<li>{$t('installGuideAndroidStep1')}</li>
+							<li>{$t('installGuideAndroidStep2')}</li>
+							<li>{$t('installGuideAndroidStep3')}</li>
+						{/if}
 					</ol>
 				{/if}
 			</div>

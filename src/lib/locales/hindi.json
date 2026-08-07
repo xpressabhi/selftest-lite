@@ -284,9 +284,9 @@
   "installNow": "इंस्टॉल करें",
   "openInstallGuide": "इंस्टॉल कैसे करें",
   "installGuideTitle": "त्वरित इंस्टॉल स्टेप्स",
-  "installGuideIosStep1": "इस साइट को Safari में खोलें।",
-  "installGuideIosStep2": "Share (ऊपर तीर वाला बॉक्स) पर टैप करें।",
-  "installGuideIosStep3": "Add to Home Screen चुनें, फिर Add करें।",
+  "installGuideIosStep1": "अपने ब्राउज़र में Share बटन पर टैप करें।",
+  "installGuideIosStep2": "Add to Home Screen चुनें।",
+  "installGuideIosStep3": "Add पर टैप करें और होम स्क्रीन से Selftest खोलें।",
   "installGuideIosInAppStep1": "इन-ऐप ब्राउज़र मेनू पर टैप करें।",
   "installGuideIosInAppStep2": "Open in Safari चुनें।",
   "installGuideIosInAppStep3": "Safari में Share पर टैप करें, फिर Add to Home Screen चुनें।",
@@ -602,5 +602,11 @@
   "androidAppBody": "तेज़, ऐप-जैसे अनुभव के लिए अपने एंड्रॉइड डिवाइस पर Selftest ऐप इंस्टॉल करें।",
   "androidAppDownload": "APK डाउनलोड करें",
   "androidAppInstallHint": "एंड्रॉइड अज्ञात स्रोतों से ऐप इंस्टॉल करने की अनुमति मांग सकता है।",
-  "androidAppAllowUnknownSources": "इसे अनुमति दें।"
+  "androidAppAllowUnknownSources": "इसे अनुमति दें।",
+  "installGuideIosSafariStep1": "Safari में, नीचे की टूलबार के बीच में Share बटन पर टैप करें।",
+  "installGuideIosSafariStep2": "Add to Home Screen चुनें।",
+  "installGuideIosSafariStep3": "Add पर टैप करें और होम स्क्रीन से Selftest खोलें।",
+  "installGuideIosChromeStep1": "Chrome में, एड्रेस बार के दाईं ओर Share बटन पर टैप करें।",
+  "installGuideIosChromeStep2": "Add to Home Screen चुनें।",
+  "installGuideIosChromeStep3": "Add पर टैप करें और होम स्क्रीन से Selftest खोलें।"
 }

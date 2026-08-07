@@ -284,9 +284,9 @@
   "installNow": "Install",
   "openInstallGuide": "How to install",
   "installGuideTitle": "Quick install steps",
-  "installGuideIosStep1": "Open this site in Safari.",
-  "installGuideIosStep2": "Tap Share (square with up arrow).",
-  "installGuideIosStep3": "Tap Add to Home Screen, then Add.",
+  "installGuideIosStep1": "Tap the Share button in your browser.",
+  "installGuideIosStep2": "Choose Add to Home Screen.",
+  "installGuideIosStep3": "Tap Add, then open Selftest from your home screen.",
   "installGuideIosInAppStep1": "Tap the in-app browser menu.",
   "installGuideIosInAppStep2": "Choose Open in Safari.",
   "installGuideIosInAppStep3": "In Safari, tap Share and then Add to Home Screen.",
@@ -602,5 +602,11 @@
   "androidAppBody": "Install the Selftest app on your Android device for a faster, app-like experience.",
   "androidAppDownload": "Download APK",
   "androidAppInstallHint": "Android may ask for permission to install apps from unknown sources.",
-  "androidAppAllowUnknownSources": "Allow it."
+  "androidAppAllowUnknownSources": "Allow it.",
+  "installGuideIosSafariStep1": "In Safari, tap the Share button in the middle of the bottom toolbar.",
+  "installGuideIosSafariStep2": "Choose Add to Home Screen.",
+  "installGuideIosSafariStep3": "Tap Add, then open Selftest from your home screen.",
+  "installGuideIosChromeStep1": "In Chrome, tap the Share button to the right of the address bar.",
+  "installGuideIosChromeStep2": "Choose Add to Home Screen.",
+  "installGuideIosChromeStep3": "Tap Add, then open Selftest from your home screen."
 }
