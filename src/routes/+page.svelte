@@ -103,8 +103,11 @@
 			selectedExamId !== '' ||
 			selectedSyllabusFocus.length > 0,
 	);
+	let isAndroidDevice = $state(false);
 
 	onMount(() => {
+		const ua = window.navigator.userAgent || '';
+		isAndroidDevice = /android/i.test(ua);
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
@@ -993,6 +996,28 @@
 		</form>
 	</div>
 </section>
+
+{#if isAndroidDevice}
+	<section class="container pb-4">
+		<div class="mx-auto home-wrap">
+			<div class="bg-body border rounded-3 p-3 p-md-4 text-center">
+				<h2 class="h6 fw-bold mb-1">{$t('androidAppTitle')}</h2>
+				<p class="text-muted small mb-3">{$t('androidAppBody')}</p>
+				<a
+					class="btn btn-primary"
+					href="/apk/selftest.apk"
+					download="selftest.apk"
+					onclick={() => track('apk:download')}
+				>
+					{$t('androidAppDownload')}
+				</a>
+				<p class="text-muted small mt-3 mb-0">
+					{$t('androidAppInstallHint')} <span class="fw-semibold">{$t('androidAppAllowUnknownSources')}</span>
+				</p>
+			</div>
+		</div>
+	</section>
+{/if}
 
 <style>
 	.home-wrap {

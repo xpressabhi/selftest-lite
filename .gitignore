@@ -47,3 +47,7 @@ npm_output.log
 /coverage
 /playwright-report
 /.playwright-mcp
+
+# capacitor local web assets
+/dist
+/www

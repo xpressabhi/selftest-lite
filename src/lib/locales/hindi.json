@@ -597,5 +597,10 @@
   "adminFeatureDistinct": "अलग इवेंट्स",
   "adminFeatureMode": "मोड",
   "adminFeatureDifficulty": "कठिनाई",
-  "adminFeatureLanguage": "भाषा"
+  "adminFeatureLanguage": "भाषा",
+  "androidAppTitle": "एंड्रॉइड ऐप",
+  "androidAppBody": "तेज़, ऐप-जैसे अनुभव के लिए अपने एंड्रॉइड डिवाइस पर Selftest ऐप इंस्टॉल करें।",
+  "androidAppDownload": "APK डाउनलोड करें",
+  "androidAppInstallHint": "एंड्रॉइड अज्ञात स्रोतों से ऐप इंस्टॉल करने की अनुमति मांग सकता है।",
+  "androidAppAllowUnknownSources": "इसे अनुमति दें।"
 }

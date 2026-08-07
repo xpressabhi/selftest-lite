@@ -10,9 +10,14 @@
 		"start": "vite preview",
 		"lint": "eslint .",
 		"check": "svelte-kit sync && vite build",
-		"test": "vitest run"
+		"test": "vitest run",
+		"cap:sync": "cap sync android",
+		"cap:open": "cap open android",
+		"apk:debug": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug",
+		"apk:release": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleRelease"
 	},
 	"dependencies": {
+		"@capacitor/core": "^8.4.2",
 		"@chenglou/pretext": "^0.0.8",
 		"@google/genai": "^2.11.0",
 		"@neondatabase/serverless": "^1.1.0",
@@ -30,6 +35,8 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@capacitor/android": "^8.4.2",
+		"@capacitor/cli": "^8.4.2",
 		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.69.3",
@@ -39,6 +46,7 @@
 		"eslint-plugin-svelte": "^3.20.0",
 		"globals": "^17.7.0",
 		"postcss": "^8.5.19",
+		"sharp": "^0.35.3",
 		"svelte": "^5.56.5",
 		"tailwindcss": "^4.3.2",
 		"vite": "^8.1.4",

@@ -597,5 +597,10 @@
   "adminFeatureDistinct": "Distinct events",
   "adminFeatureMode": "Mode",
   "adminFeatureDifficulty": "Difficulty",
-  "adminFeatureLanguage": "Language"
+  "adminFeatureLanguage": "Language",
+  "androidAppTitle": "Android App",
+  "androidAppBody": "Install the Selftest app on your Android device for a faster, app-like experience.",
+  "androidAppDownload": "Download APK",
+  "androidAppInstallHint": "Android may ask for permission to install apps from unknown sources.",
+  "androidAppAllowUnknownSources": "Allow it."
 }

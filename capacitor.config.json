@@ -1,0 +1,9 @@
+{
+	"appId": "com.selftest.app",
+	"appName": "Selftest",
+	"webDir": "dist",
+	"server": {
+		"url": "https://selftest.in",
+		"allowNavigation": ["selftest.in", "www.selftest.in", "*.selftest.in"]
+	}
+}

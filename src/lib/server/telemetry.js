@@ -65,6 +65,8 @@ export const TELEMETRY_EVENTS = new Set([
 	'pwa:install-prompt',
 	'pwa:install-accepted',
 	'pwa:install-dismissed',
+	// APK distribution
+	'apk:download',
 	// Scroll depth
 	'scroll:depth',
 ]);
