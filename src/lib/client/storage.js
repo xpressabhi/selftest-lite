@@ -3,6 +3,7 @@ import {
 	LOCAL_STORAGE_SYNC_EVENT,
 	STORAGE_KEYS,
 } from './constants';
+import { getClientHeaders } from './identity';
 
 export function emitLocalStorageChange(keys = []) {
 	if (typeof window === 'undefined') {
@@ -221,6 +222,7 @@ export async function resolveTestRecord(testId) {
 
 	const response = await fetch(`/api/test?id=${encodeURIComponent(testId)}`, {
 		cache: 'no-store',
+		headers: getClientHeaders(),
 	});
 	if (!response.ok) {
 		return null;
@@ -269,9 +271,7 @@ export function getAttemptResult(testId) {
 export async function submitTestAnswers({ id, answers = {}, timeTaken = 0 }) {
 	const response = await fetch('/api/test/submit', {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
+		headers: getClientHeaders(),
 		body: JSON.stringify({ id, answers, timeTaken }),
 	});
 	const data = await response.json().catch(() => ({}));

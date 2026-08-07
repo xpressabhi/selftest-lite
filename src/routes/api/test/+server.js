@@ -1,10 +1,12 @@
 import { json } from '@sveltejs/kit';
 import {
 	getClientKey,
+	getMyAttemptForIdentity,
 	getTestRecordById,
 	listTestRecords,
 	logApiEvent,
 } from '$lib/server/storage';
+import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
 
@@ -18,9 +20,11 @@ function rateLimitHeaders(rateLimit) {
 	};
 }
 
-export async function GET({ request, url }) {
+export async function GET({ request, url, cookies }) {
 	const startedAt = Date.now();
 	const clientKey = getClientKey(request);
+	const user = await getAuthenticatedUser(cookies);
+	const clientId = getClientIdFromRequest(request);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -105,19 +109,36 @@ export async function GET({ request, url }) {
 			);
 		}
 
+		const myAttempt = await getMyAttemptForIdentity(
+			testRecord.id,
+			{ userId: user?.id, clientId },
+		);
+		let mappedAttempt = null;
+		if (myAttempt) {
+			mappedAttempt = {
+				score: myAttempt.score,
+				totalQuestions: myAttempt.total_questions,
+				timeTaken: myAttempt.time_taken,
+				submittedAt: myAttempt.submitted_at,
+				userAnswers: myAttempt.user_answers || {},
+			};
+		}
+
 		await logApiEvent({
 			route: '/api/test:get',
 			action: 'fetch_test',
 			clientKey,
+			clientId,
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
+			userId: user?.id || null,
 			metadata: { testId: id },
 		});
 
 		return json({
 			...stripAnswerKey(testRecord),
-			myAttempt: null,
+			myAttempt: mappedAttempt,
 		});
 	} catch (error) {
 		console.error('Database error:', error);

@@ -5,9 +5,12 @@
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
 	import { getHistory, saveHistory } from '$lib/client/storage';
+	import { flushPendingAttempts, getPendingAttemptCount, hydrateHistoryFromServer } from '$lib/client/sync';
 
 	let history = [];
 	let search = '';
+	let isHydrating = false;
+	let pendingCount = 0;
 
 	$: filteredHistory = history.filter((entry) =>
 		`${entry.topic || ''}`.toLowerCase().includes(search.trim().toLowerCase()),
@@ -17,6 +20,7 @@
 
 	function refreshHistory() {
 		history = getHistory();
+		pendingCount = getPendingAttemptCount();
 	}
 
 	function clearHistory() {
@@ -31,6 +35,19 @@
 	onMount(() => {
 		track('history:view');
 		refreshHistory();
+		async function hydrate() {
+			isHydrating = true;
+			try {
+				await Promise.all([
+					hydrateHistoryFromServer(),
+					flushPendingAttempts(),
+				]);
+			} finally {
+				isHydrating = false;
+				refreshHistory();
+			}
+		}
+		void hydrate();
 		const handleStorage = (event) => {
 			if (!event.key || event.key === STORAGE_KEYS.TEST_HISTORY) {
 				refreshHistory();
@@ -61,11 +78,18 @@
 			<h1 class="h2 fw-bold mb-1">{$t('history')}</h1>
 			<p class="text-muted mb-0">{$t('recentTests')}</p>
 		</div>
-		{#if history.length > 0}
-			<button class="btn btn-sm btn-outline-danger" type="button" onclick={clearHistory}>
-				{$t('clear')}
-			</button>
-		{/if}
+		<div class="d-flex align-items-center gap-2">
+			{#if pendingCount > 0}
+				<span class="badge bg-warning text-dark">{$t('syncingActivity')} ({pendingCount})</span>
+			{:else if isHydrating}
+				<span class="badge bg-secondary">{$t('syncingActivity')}</span>
+			{/if}
+			{#if history.length > 0}
+				<button class="btn btn-sm btn-outline-danger" type="button" onclick={clearHistory}>
+					{$t('clear')}
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	{#if stats.totalTests > 0}

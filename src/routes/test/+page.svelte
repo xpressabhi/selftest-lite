@@ -20,6 +20,7 @@
 		upsertHistory,
 		writeDraftAnswers,
 	} from '$lib/client/storage';
+	import { pushAttempt } from '$lib/client/sync';
 
 	let questionPaper = $state(null);
 	let answers = $state({});
@@ -174,6 +175,17 @@
 			clearDraftAnswers(questionPaper.id);
 			clearUnsubmittedTest(questionPaper.id);
 			upsertHistory(submittedPaper);
+			// Locally-graded attempts never hit /api/test/submit; push them to
+			// the server (best-effort, offline-safe) so history survives across
+			// devices and survives sign-in via client_id attribution.
+			pushAttempt({
+				testId: questionPaper.id,
+				userAnswers: finalAnswers,
+				score: gradedResult.score,
+				totalQuestions: gradedResult.totalQuestions,
+				timeTaken,
+				submittedAt: new Date().toISOString(),
+			});
 			const nextHistory = [
 				submittedPaper,
 				...getHistory().filter((entry) => String(entry.id) !== String(submittedPaper.id)),

@@ -1,10 +1,15 @@
 import { json } from '@sveltejs/kit';
+import {
+	getAuthenticatedUser,
+	getClientIdFromRequest,
+	normalizeClientId,
+} from '$lib/server/auth';
 import { recordTelemetryEvents, validateTelemetryPayload } from '$lib/server/telemetry';
 import { rateLimiter } from '$lib/server/rateLimiter';
 
 const TELEMETRY_RATE_LIMIT = 120;
 
-export async function POST({ request }) {
+export async function POST({ request, cookies }) {
 	const rateLimit = await rateLimiter(request, {
 		bucket: '/api/telemetry',
 		limit: TELEMETRY_RATE_LIMIT,
@@ -32,8 +37,15 @@ export async function POST({ request }) {
 		return json({ error: validated.error, code: 'INVALID_TELEMETRY' }, { status: validated.status });
 	}
 
+	const user = await getAuthenticatedUser(cookies);
+	const clientId =
+		normalizeClientId(validated.clientId) || getClientIdFromRequest(request);
+
 	try {
-		await recordTelemetryEvents(validated.events);
+		await recordTelemetryEvents(validated.events, {
+			clientId,
+			userId: user?.id || null,
+		});
 	} catch (error) {
 		console.error(error);
 		// Telemetry must never break the app: report failure to the client

@@ -5,6 +5,7 @@ import {
 	getTestRecordById,
 	logApiEvent,
 } from '$lib/server/storage';
+import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { parseRequestBody } from '$lib/server/quizValidation';
 import { MAX_ANSWER_TEXT_LENGTH } from '$lib/server/quizConfig';
@@ -13,9 +14,11 @@ import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 const SUBMIT_RATE_LIMIT = 10;
 const MAX_TIME_TAKEN_SECONDS = 6 * 60 * 60;
 
-export async function POST({ request }) {
+export async function POST({ request, cookies }) {
 	const startedAt = Date.now();
 	const clientKey = getClientKey(request);
+	const user = await getAuthenticatedUser(cookies);
+	const clientId = getClientIdFromRequest(request);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -120,6 +123,10 @@ export async function POST({ request }) {
 			Math.max(Number(timeTaken) || 0, 0),
 			MAX_TIME_TAKEN_SECONDS,
 		);
+		const answeredMap = {};
+		for (const [index, value] of gradedAnswers) {
+			answeredMap[index] = value;
+		}
 
 		try {
 			await createTestAttempt({
@@ -127,6 +134,9 @@ export async function POST({ request }) {
 				score,
 				totalQuestions: results.length,
 				timeTaken: Math.round(normalizedTimeTaken),
+				userId: user?.id || null,
+				clientId,
+				userAnswers: answeredMap,
 			});
 		} catch (attemptError) {
 			// Grading must succeed even if attempt persistence fails.
@@ -137,9 +147,11 @@ export async function POST({ request }) {
 			route: '/api/test:submit',
 			action: 'submit_test',
 			clientKey,
+			clientId,
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
+			userId: user?.id || null,
 			metadata: {
 				testId,
 				score,
@@ -174,9 +186,11 @@ export async function POST({ request }) {
 			route: '/api/test:submit',
 			action: 'submit_test',
 			clientKey,
+			clientId,
 			request,
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
+			userId: user?.id || null,
 			errorMessage: error.message,
 		});
 

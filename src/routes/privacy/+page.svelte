@@ -7,6 +7,8 @@
 		['privacySection3Title', 'privacySection3Body'],
 		['privacySection4Title', 'privacySection4Body'],
 		['privacySection5Title', 'privacySection5Body'],
+		['privacySection6Title', 'privacySection6Body'],
+		['privacySection7Title', 'privacySection7Body'],
 	];
 </script>
 

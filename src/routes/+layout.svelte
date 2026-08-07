@@ -15,6 +15,16 @@
 	import { FOCUS_SEARCH_EVENT, STORAGE_KEYS } from '$lib/client/constants';
 	import { initDeepLinks } from '$lib/client/deepLink';
 	import { startTelemetry, track } from '$lib/client/telemetry';
+	import {
+		handleAuthRedirect,
+		isAuthLoading,
+		loginWithGoogleCredential,
+		logout,
+		refreshSession,
+		user,
+	} from '$lib/client/auth';
+	import { flushPendingAttempts, startStateSync } from '$lib/client/sync';
+	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import '$lib/styles/globals.css';
 
 	let { children } = $props();
@@ -37,6 +47,9 @@
 	let pullDistance = $state(0);
 	let isRefreshing = $state(false);
 	let isMenuOpen = $state(false);
+	let showSignInModal = $state(false);
+	let showUserMenu = $state(false);
+	let isSigningIn = $state(false);
 
 	// AdSense is intentionally NOT loaded: adsbygoogle.js is ~1.4MB (the heaviest
 	// payload on the site) and there are no ad units placed yet. Re-enable only
@@ -65,6 +78,15 @@
 		initializePreferences();
 		startTelemetry();
 		void initDeepLinks();
+		refreshSession();
+		void handleAuthRedirect();
+		flushPendingAttempts().catch(() => {});
+		const stopStateSync = startStateSync();
+
+		const handleOnlineFlush = () => {
+			flushPendingAttempts().catch(() => {});
+		};
+		window.addEventListener('online', handleOnlineFlush);
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')
@@ -162,8 +184,10 @@
 		connection?.addEventListener?.('change', updateNetworkState);
 
 		return () => {
+			stopStateSync();
 			window.removeEventListener('online', updateNetworkState);
 			window.removeEventListener('offline', updateNetworkState);
+			window.removeEventListener('online', handleOnlineFlush);
 			window.removeEventListener('resize', updateStandaloneState);
 			window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 			window.removeEventListener('appinstalled', handleAppInstalled);
@@ -294,6 +318,27 @@
 			void goto('/?focus=search');
 		}
 	}
+
+	async function handleGoogleCredential(credential) {
+		isSigningIn = true;
+		try {
+			await loginWithGoogleCredential(credential);
+			showSignInModal = false;
+			showUserMenu = false;
+			track('auth:google-sign-in');
+		} catch (error) {
+			console.error('Google sign-in failed:', error);
+			toast = { type: 'error', message: $t('signInFailed') };
+		} finally {
+			isSigningIn = false;
+		}
+	}
+
+	async function handleSignOut() {
+		await logout();
+		showUserMenu = false;
+		track('auth:sign-out');
+	}
 </script>
 
 <svelte:head>
@@ -385,6 +430,40 @@
 				<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
 					<span aria-hidden="true">◷</span>
 				</a>
+				{#if $user}
+					<div class="user-menu-wrap">
+						<button
+							class="user-chip"
+							type="button"
+							aria-label={$t('signedInAs')}
+							aria-expanded={showUserMenu}
+							onclick={() => {
+								showUserMenu = !showUserMenu;
+								isMenuOpen = false;
+							}}
+						>
+							{#if $user.pictureUrl}
+								<img src={$user.pictureUrl} alt="" width="28" height="28" referrerpolicy="no-referrer" />
+							{:else}
+								<span class="user-initial">{($user.name || $user.email || '?').charAt(0).toUpperCase()}</span>
+							{/if}
+						</button>
+						{#if showUserMenu}
+							<div class="user-menu">
+								<div class="user-menu-header">
+									<div class="fw-semibold">{($user.name || $user.email).slice(0, 40)}</div>
+									<div class="small text-muted">{$t('signedInAs')}</div>
+								</div>
+								<a href="/history" onclick={() => (showUserMenu = false)}>◷ {$t('history')}</a>
+								<button type="button" onclick={handleSignOut}>⏻ {$t('signOut')}</button>
+							</div>
+						{/if}
+					</div>
+				{:else if !$isAuthLoading}
+					<button class="header-icon sign-in-control" type="button" aria-label={$t('signIn')} onclick={() => (showSignInModal = true)}>
+						<span aria-hidden="true">▣</span>
+					</button>
+				{/if}
 				<button class="header-icon menu-control" type="button" aria-label={$t('toggleMenu')} onclick={() => (isMenuOpen = !isMenuOpen)}>
 					<span aria-hidden="true">☰</span>
 				</button>
@@ -393,6 +472,21 @@
 
 		{#if isMenuOpen}
 			<nav class="mobile-menu" aria-label={$t('navigationMenu')}>
+				{#if $user}
+					<a href="/history" onclick={() => (isMenuOpen = false)}>
+						◷ {$t('history')}
+						<span class="small text-muted">({$user.name || $user.email})</span>
+					</a>
+					<button type="button" onclick={() => {
+						isMenuOpen = false;
+						void handleSignOut();
+					}}>⏻ {$t('signOut')}</button>
+				{:else if !$isAuthLoading}
+					<button type="button" onclick={() => {
+						isMenuOpen = false;
+						showSignInModal = true;
+					}}>▣ {$t('signIn')}</button>
+				{/if}
 				<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
 				<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
 				<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
@@ -481,6 +575,35 @@
 
 	{#if toast}
 		<div class={`toast-lite ${toast.type}`} role="status">{toast.message}</div>
+	{/if}
+
+	{#if showSignInModal}
+		<div class="modal-backdrop" role="presentation" onclick={() => (showSignInModal = false)}>
+			<div
+				class="sign-in-modal"
+				role="dialog"
+				aria-modal="true"
+				aria-label={$t('signInTitle')}
+				onclick={(event) => event.stopPropagation()}
+			>
+				<button class="modal-close" type="button" aria-label={$t('close')} onclick={() => (showSignInModal = false)}>
+					×
+				</button>
+				<div class="h5 fw-bold mb-1">{$t('signInTitle')}</div>
+				<p class="text-muted small">{$t('signInBody')}</p>
+				{#if isSigningIn}
+					<div class="text-center py-3 text-muted">{$t('signingIn')}</div>
+				{:else}
+					<div class="d-flex justify-content-center py-2">
+						<GoogleSignInButton
+							oncredential={handleGoogleCredential}
+							disabled={false}
+						/>
+					</div>
+				{/if}
+				<p class="small text-muted mt-2 mb-0">{$t('signInAnonymousNote')}</p>
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -745,6 +868,123 @@
 		background: #111827;
 		color: #fff;
 		box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+	}
+
+	.user-menu-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+
+	.user-chip {
+		display: grid;
+		width: 44px;
+		height: 44px;
+		place-items: center;
+		border: 1px solid var(--line);
+		border-radius: 50%;
+		background: var(--surface);
+		overflow: hidden;
+		padding: 0;
+	}
+
+	.user-chip img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		border-radius: 50%;
+	}
+
+	.user-initial {
+		display: grid;
+		width: 100%;
+		height: 100%;
+		place-items: center;
+		background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
+		color: var(--color-brand-600);
+		font-weight: 700;
+	}
+
+	.user-menu {
+		position: absolute;
+		top: calc(100% + 8px);
+		right: 0;
+		z-index: 1080;
+		min-width: 220px;
+		padding: 8px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--surface);
+		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+	}
+
+	.user-menu-header {
+		padding: 6px 10px 10px;
+		border-bottom: 1px solid var(--line);
+		margin-bottom: 6px;
+	}
+
+	.user-menu a,
+	.user-menu button {
+		display: flex;
+		width: 100%;
+		min-height: 44px;
+		align-items: center;
+		gap: 8px;
+		padding: 10px;
+		border: 0;
+		border-radius: 8px;
+		background: transparent;
+		color: inherit;
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-align: left;
+		text-decoration: none;
+	}
+
+	.user-menu a:hover,
+	.user-menu button:hover {
+		background: color-mix(in srgb, var(--color-brand-600) 10%, transparent);
+	}
+
+	.sign-in-control {
+		color: var(--color-brand-600);
+	}
+
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 1120;
+		display: grid;
+		place-items: center;
+		padding: 20px;
+		background: rgba(15, 23, 42, 0.55);
+	}
+
+	.sign-in-modal {
+		position: relative;
+		width: 100%;
+		max-width: 400px;
+		padding: 22px 20px 18px;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--surface);
+		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+		text-align: center;
+	}
+
+	.modal-close {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		display: grid;
+		width: 44px;
+		height: 44px;
+		place-items: center;
+		border: 0;
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 1.4rem;
+		line-height: 1;
 	}
 
 	.pull-indicator {

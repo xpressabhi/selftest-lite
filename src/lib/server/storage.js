@@ -45,6 +45,19 @@ export function getClientKey(request) {
 		.slice(0, 40);
 }
 
+/**
+ * Converts a possibly-null user id into a positive integer or null.
+ * NOTE: Number(null) is 0, so a bare Number() check would map "no user"
+ * to user 0 and trip foreign keys.
+ */
+export function normalizeUserIdValue(value) {
+	if (value === null || value === undefined || value === '') {
+		return null;
+	}
+	const normalized = Number(value);
+	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
+}
+
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
 		return schemaReadyPromise;
@@ -68,6 +81,7 @@ export async function ensureStorageSchema() {
 			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS exam_id TEXT`);
 			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS objective_only BOOLEAN`);
 			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS duration_minutes INTEGER`);
+			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS created_by_user_id BIGINT`);
 
 			await query(`
 				CREATE INDEX IF NOT EXISTS idx_ai_test_created_at
@@ -90,8 +104,144 @@ export async function ensureStorageSchema() {
 		`);
 
 		await query(`
+			ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS user_id BIGINT
+		`);
+		await query(`
+			ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS client_id TEXT
+		`);
+		await query(`
+			ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS user_answers JSONB
+		`);
+
+		await query(`
 			CREATE INDEX IF NOT EXISTS idx_ai_test_attempts_test_time
 			ON ai_test_attempts (test_id, created_at DESC)
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_ai_test_attempts_user_time
+			ON ai_test_attempts (user_id, created_at DESC)
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_ai_test_attempts_client_time
+			ON ai_test_attempts (client_id, created_at DESC)
+		`);
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS app_user (
+				id BIGSERIAL PRIMARY KEY,
+				google_sub TEXT NOT NULL UNIQUE,
+				email TEXT NOT NULL UNIQUE,
+				name TEXT NOT NULL,
+				picture_url TEXT,
+				locale TEXT,
+				last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_app_user_email
+			ON app_user (email)
+		`);
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS app_user_session (
+				id BIGSERIAL PRIMARY KEY,
+				user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+				session_token_hash TEXT NOT NULL UNIQUE,
+				expires_at TIMESTAMPTZ NOT NULL,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_app_user_session_user_id
+			ON app_user_session (user_id, expires_at DESC)
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_app_user_session_expires_at
+			ON app_user_session (expires_at)
+		`);
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS app_user_state (
+				id BIGSERIAL PRIMARY KEY,
+				user_id BIGINT REFERENCES app_user(id) ON DELETE CASCADE,
+				client_id TEXT,
+				state_key TEXT NOT NULL,
+				value JSONB NOT NULL,
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		// Migrate the legacy Next.js-era table shape (one JSONB storage blob
+		// per user_id, no state_key/client_id) into the per-key table. The old
+		// blob contains the same selftest_* keys as strings, so bookmarks and
+		// presets saved before the SvelteKit migration are preserved.
+		const stateShapeResult = await query(
+			`SELECT column_name
+			 FROM information_schema.columns
+			 WHERE table_name = 'app_user_state'
+				AND column_name IN ('state_key', 'client_id', 'storage')`,
+		);
+		const stateColumns = stateShapeResult.rows.map((row) => row.column_name);
+		const isLegacyStateShape =
+			stateColumns.includes('storage') && !stateColumns.includes('state_key');
+		if (isLegacyStateShape) {
+			try {
+				await query(`ALTER TABLE app_user_state RENAME TO app_user_state_legacy`);
+				await query(`
+					CREATE TABLE app_user_state (
+						id BIGSERIAL PRIMARY KEY,
+						user_id BIGINT REFERENCES app_user(id) ON DELETE CASCADE,
+						client_id TEXT,
+						state_key TEXT NOT NULL,
+						value JSONB NOT NULL,
+						updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+					)
+				`);
+
+				const legacyRows = await query(
+					`SELECT user_id, storage FROM app_user_state_legacy WHERE user_id IS NOT NULL`,
+				);
+				for (const legacyRow of legacyRows) {
+					const blob = legacyRow.storage;
+					if (!blob || typeof blob !== 'object') {
+						continue;
+					}
+					for (const stateKey of [
+						'selftest_bookmarked_exams',
+						'selftest_bookmarked_quiz_presets',
+						'selftest_bookmarks',
+					]) {
+						const rawValue = blob[stateKey];
+						if (typeof rawValue !== 'string') {
+							continue;
+						}
+						await query(
+							`INSERT INTO app_user_state (user_id, state_key, value)
+							 VALUES ($1, $2, $3::jsonb)`,
+							[legacyRow.user_id, stateKey, rawValue],
+						).catch(() => {
+							// Best-effort migration of legacy rows.
+						});
+					}
+				}
+				await query(`DROP TABLE app_user_state_legacy`);
+				console.log('Migrated legacy app_user_state rows to per-key schema');
+			} catch (error) {
+				console.error('Failed to migrate legacy app_user_state:', error);
+			}
+		}
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_app_user_state_user
+			ON app_user_state (user_id, state_key, updated_at DESC)
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_app_user_state_client
+			ON app_user_state (client_id, state_key, updated_at DESC)
 		`);
 
 		await query(`
@@ -137,6 +287,16 @@ export async function ensureStorageSchema() {
 		await query(`
 			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS ip_timezone TEXT
 		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS user_id BIGINT
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS client_id TEXT
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_api_request_events_user
+			ON api_request_events (user_id, created_at DESC)
+		`);
 
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_api_request_events_route_time
@@ -152,6 +312,21 @@ export async function ensureStorageSchema() {
 				session_id TEXT,
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			)
+		`);
+
+		await query(`
+			ALTER TABLE feature_events ADD COLUMN IF NOT EXISTS client_id TEXT
+		`);
+		await query(`
+			ALTER TABLE feature_events ADD COLUMN IF NOT EXISTS user_id BIGINT
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_feature_events_client
+			ON feature_events (client_id, created_at DESC)
+		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_feature_events_user
+			ON feature_events (user_id, created_at DESC)
 		`);
 
 		await query(`
@@ -192,11 +367,12 @@ export async function createTestRecord(test, requestParams = {}) {
 			: Array.isArray(test?.questions)
 				? test.questions.length
 				: null;
+	const createdByUserId = normalizeUserIdValue(requestParams.createdByUserId);
 
 	const result = await query(
 		`INSERT INTO ai_test
-		 (test, topic, test_type, difficulty, language, num_questions, test_mode, exam_id, objective_only, duration_minutes)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		 (test, topic, test_type, difficulty, language, num_questions, test_mode, exam_id, objective_only, duration_minutes, created_by_user_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		 RETURNING id`,
 		[
 			JSON.stringify(test),
@@ -209,6 +385,7 @@ export async function createTestRecord(test, requestParams = {}) {
 			examId,
 			objectiveOnly,
 			durationMinutes,
+			createdByUserId,
 		],
 	);
 
@@ -246,17 +423,346 @@ export async function createTestAttempt({
 	score,
 	totalQuestions,
 	timeTaken,
+	userId = null,
+	clientId = null,
+	userAnswers = null,
 }) {
 	await ensureStorageSchema();
 
+	const normalizedUserId = normalizeUserIdValue(userId);
+	const normalizedClientId =
+		typeof clientId === 'string' && clientId.length <= 64 ? clientId : null;
+	const normalizedUserAnswers =
+		userAnswers && typeof userAnswers === 'object' && !Array.isArray(userAnswers)
+			? JSON.stringify(userAnswers)
+			: null;
+
 	const result = await query(
-		`INSERT INTO ai_test_attempts (test_id, score, total_questions, time_taken)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO ai_test_attempts
+		 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
 		 RETURNING id`,
-		[testId, score, totalQuestions, timeTaken],
+		[
+			testId,
+			normalizedUserId,
+			normalizedClientId,
+			normalizedUserAnswers,
+			score,
+			totalQuestions,
+			timeTaken,
+		],
 	);
 
 	return result.rows[0]?.id;
+}
+
+function normalizeAttemptIdentity({ userId = null, clientId = null } = {}) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	const normalizedClientId =
+		typeof clientId === 'string' && clientId.trim().length >= 8
+			? clientId.trim().slice(0, 64)
+			: null;
+	return { userId: normalizedUserId, clientId: normalizedClientId };
+}
+
+/**
+ * Finds the current user's attempt for a test. Prefers a logged-in user_id,
+ * then falls back to the anonymous client_id on the same device.
+ */
+export async function getMyAttemptForIdentity(testId, identity = {}) {
+	await ensureStorageSchema();
+
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if (!userId && !clientId) {
+		return null;
+	}
+
+	const result = await query(
+		`SELECT
+			a.score,
+			a.total_questions,
+			a.time_taken,
+			a.user_answers,
+			a.created_at AS submitted_at
+		 FROM ai_test_attempts a
+		 WHERE a.test_id = $1
+			AND (a.user_id = $2 OR a.client_id = $3)
+		 ORDER BY a.created_at DESC
+		 LIMIT 1`,
+		[testId, userId, clientId],
+	);
+
+	return result.rows[0] || null;
+}
+
+/**
+ * Lists a user's (or anonymous device's) submissions with test summaries.
+ */
+export async function listAttemptsForIdentity(identity = {}, { limit = 100 } = {}) {
+	await ensureStorageSchema();
+
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if (!userId && !clientId) {
+		return [];
+	}
+
+	const cappedLimit = Math.min(Math.max(Number(limit) || 100, 1), 200);
+	const whereClauses = [];
+	const queryParams = [];
+
+	if (userId) {
+		queryParams.push(userId);
+		whereClauses.push(`a.user_id = $${queryParams.length}`);
+	}
+	if (clientId) {
+		queryParams.push(clientId);
+		whereClauses.push(`a.client_id = $${queryParams.length}`);
+	}
+
+	queryParams.push(cappedLimit);
+	const result = await query(
+		`SELECT
+			a.test_id,
+			a.score,
+			a.total_questions,
+			a.time_taken,
+			a.user_answers,
+			a.created_at AS submitted_at,
+			t.test,
+			t.topic,
+			t.test_type,
+			t.difficulty,
+			t.language,
+			t.num_questions
+		 FROM ai_test_attempts a
+		 INNER JOIN ai_test t ON t.id = a.test_id
+		 WHERE ${whereClauses.join(' OR ')}
+		 ORDER BY a.created_at DESC
+		 LIMIT $${queryParams.length}`,
+		queryParams,
+	);
+
+	return result.rows;
+}
+
+/**
+ * Upserts attempts pushed from the client (offline replay / pre-login
+ * history). Dedupes on the same (identity, test, submitted_at) combination so
+ * replays never create duplicates.
+ */
+export async function upsertUserTestAttempts(identity, attempts = []) {
+	await ensureStorageSchema();
+
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if ((!userId && !clientId) || !Array.isArray(attempts) || attempts.length === 0) {
+		return 0;
+	}
+
+	let insertedCount = 0;
+	for (const attempt of attempts.slice(0, 200)) {
+		const testId = Number(attempt?.testId);
+		if (!Number.isInteger(testId) || testId <= 0) {
+			continue;
+		}
+
+		const submittedAtRaw = attempt?.submittedAt
+			? new Date(attempt.submittedAt)
+			: new Date();
+		const submittedAt = Number.isNaN(submittedAtRaw.getTime())
+			? new Date()
+			: submittedAtRaw;
+
+		const userAnswers =
+			attempt?.userAnswers &&
+			typeof attempt.userAnswers === 'object' &&
+			!Array.isArray(attempt.userAnswers)
+				? JSON.stringify(attempt.userAnswers)
+				: null;
+		const score = Number.isFinite(Number(attempt?.score))
+			? Math.max(0, Number(attempt.score))
+			: null;
+		const totalQuestions = Number.isFinite(Number(attempt?.totalQuestions))
+			? Math.max(0, Number(attempt.totalQuestions))
+			: null;
+		const timeTaken = Number.isFinite(Number(attempt?.timeTaken))
+			? Math.max(0, Number(attempt.timeTaken))
+			: null;
+
+		if (score === null || totalQuestions === null) {
+			continue;
+		}
+
+		const dedupeResult = await query(
+			`SELECT 1
+			 FROM ai_test_attempts
+			 WHERE test_id = $1
+				AND created_at = $2
+				AND score = $3
+				AND (user_id IS NOT DISTINCT FROM $4)
+				AND (client_id IS NOT DISTINCT FROM $5)
+			 LIMIT 1`,
+			[testId, submittedAt.toISOString(), score, userId, clientId],
+		);
+		if (dedupeResult.rows.length > 0) {
+			continue;
+		}
+
+		const result = await query(
+			`INSERT INTO ai_test_attempts
+			 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			[
+				testId,
+				userId,
+				clientId,
+				userAnswers,
+				score,
+				totalQuestions,
+				timeTaken,
+				submittedAt.toISOString(),
+			],
+		);
+		insertedCount += result.rowCount || 0;
+	}
+
+	return insertedCount;
+}
+
+/**
+ * Reads all synced state rows for an identity (user_id or client_id).
+ * Returns { stateKey: value } with the newest row winning per key.
+ */
+export async function getStateForIdentity(identity = {}) {
+	await ensureStorageSchema();
+
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if (!userId && !clientId) {
+		return {};
+	}
+
+	const whereClauses = [];
+	const queryParams = [];
+	if (userId) {
+		queryParams.push(userId);
+		whereClauses.push(`user_id = $${queryParams.length}`);
+	}
+	if (clientId) {
+		queryParams.push(clientId);
+		whereClauses.push(`client_id = $${queryParams.length}`);
+	}
+
+	const result = await query(
+		`SELECT state_key, value, updated_at
+		 FROM app_user_state
+		 WHERE ${whereClauses.join(' OR ')}
+		 ORDER BY state_key, updated_at DESC`,
+		queryParams,
+	);
+
+	const storage = {};
+	for (const row of result.rows) {
+		if (row.state_key in storage) {
+			continue; // newest row for this key already recorded
+		}
+		storage[row.state_key] = row.value;
+	}
+	return storage;
+}
+
+/**
+ * Upserts one state key for an identity. Prefers updating an existing row so
+ * the same (identity, key) never accumulates duplicates; a residual dedupe
+ * also runs after login backfills. A row belongs to the identity when it is
+ * user-owned (user_id matches) or anonymous on the same device (user_id is
+ * NULL and client_id matches) — never by a bare NULL user_id, which would
+ * hijack rows owned by other anonymous clients.
+ */
+export async function upsertStateForIdentity(identity, stateKey, value) {
+	await ensureStorageSchema();
+
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if ((!userId && !clientId) || typeof stateKey !== 'string') {
+		return false;
+	}
+
+	const updateResult = await query(
+		`UPDATE app_user_state
+		 SET user_id = $1, client_id = $2, value = $4, updated_at = NOW()
+		 WHERE state_key = $3
+			AND (user_id = $1 OR (user_id IS NULL AND client_id = $2))`,
+		[userId, clientId, stateKey, value],
+	);
+	if (updateResult.rowCount > 0) {
+		return true;
+	}
+
+	const insertResult = await query(
+		`INSERT INTO app_user_state (user_id, client_id, state_key, value)
+		 VALUES ($1, $2, $3, $4)`,
+		[userId, clientId, stateKey, value],
+	);
+	return (insertResult.rowCount || 0) > 0;
+}
+
+/**
+ * After a successful login, attributes all anonymous activity carrying the
+ * same client_id to the newly authenticated user.
+ */
+export async function backfillUserIdentity(userId, clientId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId || !clientId) {
+		return 0;
+	}
+
+	await ensureStorageSchema();
+
+	let totalBackfilled = 0;
+	for (const table of ['ai_test_attempts', 'feature_events', 'api_request_events']) {
+		try {
+			const result = await query(
+				`UPDATE ${table}
+				 SET user_id = $1
+				 WHERE client_id = $2 AND user_id IS NULL`,
+				[normalizedUserId, clientId],
+			);
+			totalBackfilled += result.rowCount || 0;
+		} catch (error) {
+			console.error(`Failed to backfill user identity for ${table}:`, error);
+		}
+	}
+
+	await query(
+		`UPDATE ai_test
+		 SET created_by_user_id = $1
+		 WHERE created_by_user_id IS NULL
+			AND test->'requestParams'->>'clientId' = $2`,
+		[normalizedUserId, clientId],
+	).catch((error) => {
+		console.error('Failed to backfill ai_test creator:', error);
+	});
+
+	try {
+		await query(
+			`UPDATE app_user_state
+			 SET user_id = $1, client_id = NULL
+			 WHERE client_id = $2 AND user_id IS NULL`,
+			[normalizedUserId, clientId],
+		);
+		// A user row may already exist for a key (earlier login on another
+		// device): keep the newest row per (user_id, state_key).
+		await query(
+			`DELETE FROM app_user_state a
+			 USING app_user_state b
+			 WHERE a.user_id = b.user_id
+				AND a.state_key = b.state_key
+				AND a.id <> b.id
+				AND (a.updated_at < b.updated_at OR (a.updated_at = b.updated_at AND a.id > b.id))`,
+		);
+	} catch (error) {
+		console.error('Failed to backfill user state:', error);
+	}
+
+	return totalBackfilled;
 }
 
 export async function getTestRecordsByIds(ids) {
@@ -457,24 +963,30 @@ export async function logApiEvent({
 	route,
 	action = null,
 	clientKey = null,
+	clientId = null,
 	statusCode = null,
 	durationMs = null,
 	errorMessage = null,
 	metadata = {},
 	request = null,
+	userId = null,
 }) {
 	try {
 		await ensureStorageSchema();
 		const { userAgent, ipCountry, ipCity, ipRegion, ipTimezone } =
 			extractClientContext(request);
+		const normalizedUserId = normalizeUserIdValue(userId);
+		const normalizedClientId =
+			typeof clientId === 'string' && clientId.length <= 64 ? clientId : null;
 		await query(
 			`INSERT INTO api_request_events
-			 (route, action, client_key, status_code, duration_ms, error_message, metadata, user_agent, ip_country, ip_city, ip_region, ip_timezone)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12)`,
+			 (route, action, client_key, client_id, status_code, duration_ms, error_message, metadata, user_agent, ip_country, ip_city, ip_region, ip_timezone, user_id)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12, $13, $14)`,
 			[
 				route,
 				action,
 				clientKey,
+				normalizedClientId,
 				statusCode,
 				durationMs,
 				errorMessage,
@@ -484,6 +996,7 @@ export async function logApiEvent({
 				ipCity,
 				ipRegion,
 				ipTimezone,
+				normalizedUserId,
 			],
 		);
 	} catch (error) {

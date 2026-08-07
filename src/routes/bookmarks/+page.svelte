@@ -12,6 +12,7 @@
 		saveQuestionBookmarks,
 	} from '$lib/client/storage';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import { hydrateUserState } from '$lib/client/sync';
 	import { getIndianExamById } from '$lib/data/indianExams';
 
 	let examIds = $state([]);
@@ -29,6 +30,12 @@
 		examIds = getBookmarkedExamIds();
 		presets = getBookmarkedQuizPresets();
 		questionBookmarks = getQuestionBookmarks();
+		// Pull bookmarks saved on other devices / before login.
+		void hydrateUserState().then(() => {
+			examIds = getBookmarkedExamIds();
+			presets = getBookmarkedQuizPresets();
+			questionBookmarks = getQuestionBookmarks();
+		});
 	});
 
 	function removeExam(examId) {

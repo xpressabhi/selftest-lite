@@ -1,4 +1,4 @@
-import { ensureStorageSchema, query } from './storage';
+import { ensureStorageSchema, normalizeUserIdValue, query } from './storage';
 
 export const TELEMETRY_EVENTS = new Set([
 	// Page views
@@ -67,6 +67,11 @@ export const TELEMETRY_EVENTS = new Set([
 	'pwa:install-dismissed',
 	// APK distribution
 	'apk:download',
+	// Auth
+	'auth:google-sign-in',
+	'auth:sign-out',
+	'auth:view',
+	'auth:failed',
 	// Scroll depth
 	'scroll:depth',
 ]);
@@ -101,6 +106,12 @@ export function validateTelemetryPayload(body) {
 	const sessionId =
 		typeof body.sessionId === 'string' && body.sessionId.length <= MAX_SESSION_LENGTH
 			? body.sessionId
+			: null;
+	const clientId =
+		typeof body.clientId === 'string' &&
+		body.clientId.length >= 8 &&
+		body.clientId.length <= MAX_SESSION_LENGTH
+			? body.clientId
 			: null;
 
 	const events = [];
@@ -137,15 +148,21 @@ export function validateTelemetryPayload(body) {
 		return { error: 'No valid events', status: 400 };
 	}
 
-	return { events };
+	return { events, clientId };
 }
 
-export async function recordTelemetryEvents(events) {
+export async function recordTelemetryEvents(events, identity = {}) {
 	if (!Array.isArray(events) || events.length === 0) {
 		return 0;
 	}
 
 	await ensureStorageSchema();
+
+	const clientId =
+		typeof identity.clientId === 'string' && identity.clientId.length <= 64
+			? identity.clientId
+			: null;
+	const userId = normalizeUserIdValue(identity.userId);
 
 	const nowIso = new Date().toISOString();
 	const values = [];
@@ -153,12 +170,22 @@ export async function recordTelemetryEvents(events) {
 	let placeholderIndex = 1;
 
 	for (const event of events) {
-		values.push(`($${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++})`);
-		params.push(event.event, event.page || null, JSON.stringify(event.props || {}), event.sessionId || null, event.created_at || nowIso);
+		values.push(
+			`($${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++})`,
+		);
+		params.push(
+			event.event,
+			event.page || null,
+			JSON.stringify(event.props || {}),
+			event.sessionId || null,
+			event.created_at || nowIso,
+			clientId,
+			userId,
+		);
 	}
 
 	const result = await query(
-		`INSERT INTO feature_events (event, page, props, session_id, created_at)
+		`INSERT INTO feature_events (event, page, props, session_id, created_at, client_id, user_id)
 		 VALUES ${values.join(', ')}`,
 		params,
 	);

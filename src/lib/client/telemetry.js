@@ -1,7 +1,11 @@
 // Lightweight, anonymous, batch-flushed feature telemetry.
 // Events queue in memory and flush every 30s, at 20+ events, or on page
 // unload (sendBeacon). Nothing is persisted to localStorage: a lost batch
-// on crash is acceptable for feature-usage signals.
+// on crash is acceptable for feature-usage signals. Each batch carries the
+// stable anonymous client id (see identity.js) so activity can be attributed
+// to a visitor even before login.
+
+import { getClientId } from './identity';
 
 const FLUSH_INTERVAL_MS = 30_000;
 const MAX_QUEUE_BEFORE_FLUSH = 20;
@@ -36,7 +40,7 @@ function sendBatch(events) {
 	if (typeof navigator === 'undefined' || events.length === 0) {
 		return;
 	}
-	const payload = JSON.stringify({ sessionId: getSessionId(), events });
+	const payload = JSON.stringify({ sessionId: getSessionId(), clientId: getClientId(), events });
 	const url = '/api/telemetry';
 	try {
 		if (navigator.sendBeacon) {

@@ -11,6 +11,7 @@ import {
 	getTestRecordsByIds,
 	logApiEvent,
 } from '$lib/server/storage';
+import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { paperSchema } from '$lib/server/quizSchema';
 import { normalizeMathText } from '$lib/shared/latex';
 import {
@@ -292,9 +293,11 @@ async function generatePaper({
 	};
 }
 
-export async function POST({ request }) {
+export async function POST({ request, cookies }) {
 	const startedAt = Date.now();
 	const clientKey = getClientKey(request);
+	const user = await getAuthenticatedUser(cookies);
+	const clientId = getClientIdFromRequest(request);
 
 	try {
 		const {
@@ -506,6 +509,7 @@ export async function POST({ request }) {
 					language,
 					objectiveOnly,
 					durationMinutes,
+					clientId,
 				},
 			};
 
@@ -516,6 +520,7 @@ export async function POST({ request }) {
 				numQuestions,
 				difficulty,
 				language,
+				createdByUserId: user?.id || null,
 			});
 
 			await logApiEvent({
