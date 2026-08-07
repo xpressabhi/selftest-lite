@@ -102,7 +102,10 @@
 		container.innerHTML = '';
 
 		// The Capacitor Android app loads this site in a WebView where popup
-		// sign-in is unreliable; full-page redirect works there.
+		// sign-in is unreliable; full-page redirect works there. In redirect
+		// mode GSI uses `login_uri` (defaults to the current page URL when
+		// omitted), so we pin it to a dedicated server endpoint that must be
+		// registered as an authorized redirect URI in Google Cloud Console.
 		const useRedirectMode = isNativeApp;
 
 		window.google.accounts.id.initialize({
@@ -113,10 +116,7 @@
 			...(useRedirectMode
 				? {
 						ux_mode: 'redirect',
-						// Pinned to the root so only ONE redirect URI needs to be
-						// registered in Google Cloud Console. The layout's
-						// handleAuthRedirect() consumes #id_token on any page.
-						redirect_uri: window.location.origin + '/',
+						login_uri: '/auth/redirect',
 					}
 				: {}),
 		});

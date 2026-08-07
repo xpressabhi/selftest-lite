@@ -43,6 +43,7 @@
 	let lastUserId = $state(null);
 	let saving = $state(false);
 	let isSigningIn = $state(false);
+	let signInError = $state('');
 	let savedToast = $state(false);
 	let examQuery = $state('');
 	let subjectInput = $state('');
@@ -134,6 +135,7 @@
 
 	async function handleGoogleCredential(credential) {
 		isSigningIn = true;
+		signInError = '';
 		try {
 			await loginWithGoogleCredential(credential);
 			track('auth:google-sign-in');
@@ -147,6 +149,7 @@
 			}
 		} catch (error) {
 			console.error('Google sign-in failed:', error);
+			signInError = error?.message || $t('signInFailed');
 		} finally {
 			isSigningIn = false;
 		}
@@ -201,6 +204,9 @@
 		{#if !$user}
 			<div class="card p-4 text-center">
 				<p class="text-muted mb-3">{$t('profilePageSignInHint')}</p>
+				{#if signInError}
+					<div class="alert alert-danger small mb-3" role="alert">{signInError}</div>
+				{/if}
 				<div class="d-flex justify-content-center">
 					<GoogleSignInButton oncredential={handleGoogleCredential} disabled={isSigningIn} />
 				</div>
