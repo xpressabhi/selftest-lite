@@ -34,6 +34,7 @@
 	let loading = $state(true);
 	let error = $state('');
 	let submitting = $state(false);
+	let testStarted = $state(false);
 	let startedAt = $state(Date.now());
 	let showReviewSheet = $state(false);
 	let showExitModal = $state(false);
@@ -47,6 +48,16 @@
 	let answeredCount = $derived(Object.keys(answers).length);
 	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
 	let flaggedCount = $derived(flagged.length);
+	let hasDraftAnswers = $derived(Object.keys(answers).length > 0);
+	let testMode = $derived(
+		questionPaper?.testMode || questionPaper?.requestParams?.testMode || 'quiz-practice',
+	);
+	let testDifficulty = $derived(
+		questionPaper?.difficulty || questionPaper?.requestParams?.difficulty || '',
+	);
+	let testLanguage = $derived(
+		questionPaper?.language || questionPaper?.requestParams?.language || 'english',
+	);
 	let positionPercent = $derived(
 		totalQuestions > 0 ? Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100) : 0,
 	);
@@ -113,18 +124,26 @@
 			answers = readDraftAnswers(questionPaper.id);
 			flagged = readDraftFlags(questionPaper.id);
 			saveUnsubmittedTest(questionPaper);
-			startedAt = Date.now();
-			track('test:start', {
-				id: questionPaper.id,
-				mode: questionPaper.testMode || '',
-				language: questionPaper.language || '',
-			});
 		} catch (caughtError) {
 			error = caughtError.message || $t('testNotFound');
 		} finally {
 			loading = false;
 		}
 	});
+
+	function startTest() {
+		if (!questionPaper || testStarted) {
+			return;
+		}
+		startedAt = Date.now();
+		showOverflowMenu = false;
+		track('test:start', {
+			id: questionPaper.id,
+			mode: questionPaper.testMode || '',
+			language: questionPaper.language || '',
+		});
+		testStarted = true;
+	}
 
 	function setAnswer(index, option) {
 		const isClearing = answers[index] === option;
@@ -323,30 +342,66 @@
 				<MarkdownContent content={questionPaper.topic} tag="span" />
 			</h1>
 			<div class="test-header-actions">
-				<button
-					class="test-overflow-btn"
-					type="button"
-					aria-label={$t('menu')}
-					aria-expanded={showOverflowMenu}
-					onclick={() => (showOverflowMenu = !showOverflowMenu)}
-				>
-					⋯
-				</button>
-				{#if showOverflowMenu}
-					<div class="test-overflow-menu">
-						<button type="button" onclick={shareTest}>{$t('share')}</button>
-						<label class="overflow-switch">
-							<input
-								type="checkbox"
-								checked={$autoAdvance}
-								onchange={(event) => setAutoAdvance(event.currentTarget.checked)}
-							/>
-							<span>{$t('autoAdvance')}</span>
-						</label>
-					</div>
+				{#if testStarted}
+					<button
+						class="test-overflow-btn"
+						type="button"
+						aria-label={$t('menu')}
+						aria-expanded={showOverflowMenu}
+						onclick={() => (showOverflowMenu = !showOverflowMenu)}
+					>
+						⋯
+					</button>
+					{#if showOverflowMenu}
+						<div class="test-overflow-menu">
+							<label class="overflow-switch">
+								<input
+									type="checkbox"
+									checked={$autoAdvance}
+									onchange={(event) => setAutoAdvance(event.currentTarget.checked)}
+								/>
+								<span>{$t('autoAdvance')}</span>
+							</label>
+						</div>
+					{/if}
 				{/if}
 			</div>
 		</header>
+
+		{#if !testStarted}
+			<main class="test-summary-wrap">
+				<div class="test-summary-card">
+					<span class="test-summary-badge" aria-hidden="true">📝</span>
+					<h2 class="test-summary-title">{$t('testSummaryTitle')}</h2>
+					<p class="test-summary-topic">
+						<MarkdownContent content={questionPaper.topic} tag="span" />
+					</p>
+					<div class="test-summary-meta">
+						<span class="test-meta-chip">
+							{$t('questionsCountFormat', { count: totalQuestions })}
+						</span>
+						<span class="test-meta-chip">
+							{testMode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')}
+						</span>
+						{#if testDifficulty}
+							<span class="test-meta-chip">{$t(testDifficulty) || testDifficulty}</span>
+						{/if}
+						<span class="test-meta-chip">
+							{testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}
+						</span>
+					</div>
+					<p class="test-summary-body">{$t('testSummaryBody')}</p>
+					<div class="test-summary-actions">
+						<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
+							{$t('share')}
+						</button>
+						<button class="btn btn-primary" type="button" onclick={startTest}>
+							{hasDraftAnswers ? $t('continueTest') : $t('startTest')}
+						</button>
+					</div>
+				</div>
+			</main>
+		{:else}
 		<div class="test-progress-track" aria-hidden="true">
 			<div class="test-progress-fill" style={`width: ${positionPercent}%`}></div>
 		</div>
@@ -453,6 +508,7 @@
 				</div>
 			</div>
 		</footer>
+		{/if}
 
 		{#if showReviewSheet}
 			<ReviewSheet
@@ -645,6 +701,108 @@
 
 	.test-error {
 		margin: 12px 12px 0;
+	}
+
+	.test-summary-wrap {
+		display: flex;
+		flex: 1 1 auto;
+		align-items: center;
+		justify-content: center;
+		padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+	}
+
+	.test-summary-card {
+		width: 100%;
+		max-width: 480px;
+		padding: 28px 22px;
+		border: 1px solid var(--line);
+		border-radius: 18px;
+		background: var(--surface);
+		box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+		text-align: center;
+	}
+
+	.test-summary-badge {
+		display: grid;
+		width: 56px;
+		height: 56px;
+		margin: 0 auto 12px;
+		place-items: center;
+		border-radius: 16px;
+		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
+		font-size: 1.6rem;
+	}
+
+	.test-summary-title {
+		margin: 0 0 8px;
+		font-size: 1.15rem;
+		font-weight: 700;
+	}
+
+	.test-summary-topic {
+		margin: 0 0 14px;
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text-muted);
+		line-height: 1.5;
+	}
+
+	.test-summary-topic :global(*) {
+		color: var(--text-muted);
+	}
+
+	.test-summary-meta {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 8px;
+		margin-bottom: 16px;
+	}
+
+	.test-meta-chip {
+		display: inline-flex;
+		min-height: 32px;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 12px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface-muted);
+		color: var(--text);
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+
+	.test-summary-body {
+		margin: 0 0 20px;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		line-height: 1.55;
+	}
+
+	.test-summary-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 10px;
+	}
+
+	.test-summary-actions .btn {
+		min-height: 48px;
+		padding-inline: 24px;
+		font-weight: 600;
+	}
+
+	.test-summary-actions .btn-outline-primary {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	@media (min-width: 640px) {
+		.test-summary-card {
+			padding-inline: 36px;
+		}
 	}
 
 	.test-main {
