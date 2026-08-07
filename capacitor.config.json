@@ -3,7 +3,7 @@
 	"appName": "Selftest",
 	"webDir": "dist",
 	"server": {
-		"url": "https://selftest.in",
+		"url": "https://www.selftest.in",
 		"allowNavigation": ["selftest.in", "www.selftest.in", "*.selftest.in"]
 	}
 }
