@@ -21,7 +21,21 @@
 		{ value: 'class-11', label: 'Class 11' },
 		{ value: 'class-12', label: 'Class 12' },
 		{ value: 'college', label: $t('profileWizardClassCollege') },
+		{ value: 'working-professional', label: $t('profileWizardClassProfessional') },
 		{ value: 'other', label: $t('profileWizardClassOther') },
+	]);
+
+	const PROFESSION_OPTIONS = $derived([
+		{ value: 'software-engineering', label: $t('professionSoftwareEngineering') },
+		{ value: 'engineering-non-it', label: $t('professionEngineeringNonIt') },
+		{ value: 'banking-finance', label: $t('professionBankingFinance') },
+		{ value: 'healthcare', label: $t('professionHealthcare') },
+		{ value: 'teaching', label: $t('professionTeaching') },
+		{ value: 'government', label: $t('professionGovernment') },
+		{ value: 'law', label: $t('professionLaw') },
+		{ value: 'business', label: $t('professionBusiness') },
+		{ value: 'marketing-sales', label: $t('professionMarketingSales') },
+		{ value: 'other', label: $t('professionOther') },
 	]);
 
 	const SUBJECT_SUGGESTIONS = [
@@ -37,6 +51,17 @@
 		'Reasoning',
 		'Quantitative Aptitude',
 		'General Awareness',
+	];
+
+	const PROFESSIONAL_SUBJECT_SUGGESTIONS = [
+		'Computer Science',
+		'Quantitative Aptitude',
+		'Reasoning',
+		'English',
+		'General Awareness',
+		'Data Structures & Algorithms',
+		'System Design',
+		'Business Communication',
 	];
 
 	let loaded = $state(false);
@@ -234,6 +259,21 @@
 								{/each}
 							</select>
 						</div>
+						{#if draft.class === 'working-professional'}
+							<div class="col-12 col-sm-6">
+								<label class="form-label fw-semibold" for="profile-profession">{$t('profileWizardProfessionTitle')}</label>
+								<select
+									id="profile-profession"
+									class="form-select"
+									bind:value={draft.profession}
+								>
+									<option value="">{$t('profileWizardLanguageDefault')}</option>
+									{#each PROFESSION_OPTIONS as option (option.value)}
+										<option value={option.value}>{option.label}</option>
+									{/each}
+								</select>
+							</div>
+						{/if}
 						<div class="col-12 col-sm-6">
 							<label class="form-label fw-semibold" for="profile-exam">{$t('profileWizardExamTitle')}</label>
 							<input
@@ -268,7 +308,7 @@
 						<div class="col-12">
 							<span class="form-label fw-semibold d-block">{$t('profileWizardSubjectsTitle')}</span>
 							<div class="chip-grid">
-								{#each SUBJECT_SUGGESTIONS as subject (subject)}
+								{#each (draft.class === 'working-professional' ? PROFESSIONAL_SUBJECT_SUGGESTIONS : SUBJECT_SUGGESTIONS) as subject (subject)}
 									<button
 										type="button"
 										class="chip"

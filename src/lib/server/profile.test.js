@@ -245,6 +245,17 @@ describe('buildProfileContext', () => {
 		expect(context).not.toContain('email');
 	});
 
+	it('includes profession for working professionals', () => {
+		const profile = baseProfile({
+			class: 'working-professional',
+			profession: 'banking-finance',
+			preferences: { language: null, difficultyComfort: null, personalized: true },
+		});
+		const context = buildProfileContext({ profile, signals: null, resolvedDifficulty: null });
+		expect(context).toContain('Working Professional');
+		expect(context).toContain('Banking & Finance');
+	});
+
 	it('omits warm-up rules at beginner', () => {
 		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'beginner', personalized: true } });
 		const context = buildProfileContext({
@@ -273,6 +284,17 @@ describe('buildStudentContext', () => {
 		expect(context).toContain('NEET');
 		expect(context).toContain('hindi');
 		expect(context).toContain('advanced');
+	});
+
+	it('lists profession for working professionals', () => {
+		const profile = baseProfile({
+			class: 'working-professional',
+			profession: 'software-engineering',
+			preferences: { language: null, difficultyComfort: null, personalized: true },
+		});
+		const context = buildStudentContext(profile);
+		expect(context).toContain('Working Professional');
+		expect(context).toContain('Software Engineer / IT');
 	});
 });
 

@@ -18,7 +18,21 @@
 		{ value: 'class-11', label: 'Class 11' },
 		{ value: 'class-12', label: 'Class 12' },
 		{ value: 'college', label: $t('profileWizardClassCollege') },
+		{ value: 'working-professional', label: $t('profileWizardClassProfessional') },
 		{ value: 'other', label: $t('profileWizardClassOther') },
+	]);
+
+	const PROFESSION_OPTIONS = $derived([
+		{ value: 'software-engineering', label: $t('professionSoftwareEngineering') },
+		{ value: 'engineering-non-it', label: $t('professionEngineeringNonIt') },
+		{ value: 'banking-finance', label: $t('professionBankingFinance') },
+		{ value: 'healthcare', label: $t('professionHealthcare') },
+		{ value: 'teaching', label: $t('professionTeaching') },
+		{ value: 'government', label: $t('professionGovernment') },
+		{ value: 'law', label: $t('professionLaw') },
+		{ value: 'business', label: $t('professionBusiness') },
+		{ value: 'marketing-sales', label: $t('professionMarketingSales') },
+		{ value: 'other', label: $t('professionOther') },
 	]);
 
 	const SUBJECT_SUGGESTIONS = [
@@ -34,6 +48,17 @@
 		'Reasoning',
 		'Quantitative Aptitude',
 		'General Awareness',
+	];
+
+	const PROFESSIONAL_SUBJECT_SUGGESTIONS = [
+		'Computer Science',
+		'Quantitative Aptitude',
+		'Reasoning',
+		'English',
+		'General Awareness',
+		'Data Structures & Algorithms',
+		'System Design',
+		'Business Communication',
 	];
 
 	let draft = $state(
@@ -179,6 +204,22 @@
 						</button>
 					{/each}
 				</div>
+				{#if draft.class === 'working-professional'}
+					<h3 class="wizard-section-title">{$t('profileWizardProfessionTitle')}</h3>
+					<p class="wizard-hint">{$t('profileWizardProfessionHint')}</p>
+					<div class="chip-grid">
+						{#each PROFESSION_OPTIONS as option (option.value)}
+							<button
+								type="button"
+								class="chip"
+								class:selected={draft.profession === option.value}
+								onclick={() => (draft.profession = option.value)}
+							>
+								{option.label}
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<h3 class="wizard-section-title">{$t('profileWizardExamTitle')}</h3>
 				<p class="wizard-hint">{$t('profileWizardExamHint')}</p>
 				<input
@@ -215,7 +256,7 @@
 				<h3 class="wizard-section-title">{$t('profileWizardSubjectsTitle')}</h3>
 				<p class="wizard-hint">{$t('profileWizardSubjectsHint')}</p>
 				<div class="chip-grid">
-					{#each SUBJECT_SUGGESTIONS as subject (subject)}
+					{#each (draft.class === 'working-professional' ? PROFESSIONAL_SUBJECT_SUGGESTIONS : SUBJECT_SUGGESTIONS) as subject (subject)}
 						<button
 							type="button"
 							class="chip"

@@ -13,6 +13,20 @@ export const VALID_CLASSES = [
 	'class-11',
 	'class-12',
 	'college',
+	'working-professional',
+	'other',
+];
+
+export const VALID_PROFESSIONS = [
+	'software-engineering',
+	'engineering-non-it',
+	'banking-finance',
+	'healthcare',
+	'teaching',
+	'government',
+	'law',
+	'business',
+	'marketing-sales',
 	'other',
 ];
 
@@ -36,6 +50,7 @@ export function createDefaultProfile() {
 		version: PROFILE_VERSION,
 		setupComplete: false,
 		class: null,
+		profession: null,
 		examTarget: null,
 		subjects: [],
 		preferences: {
@@ -136,6 +151,12 @@ export function normalizeProfile(value) {
 		class:
 			typeof value.class === 'string' && VALID_CLASSES.includes(value.class)
 				? value.class
+				: null,
+		profession:
+			value.class === 'working-professional' &&
+			typeof value.profession === 'string' &&
+			VALID_PROFESSIONS.includes(value.profession)
+				? value.profession
 				: null,
 		examTarget: normalizeExamTarget(value.examTarget),
 		subjects: trimList(value.subjects, MAX_SUBJECTS),

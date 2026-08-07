@@ -25,6 +25,20 @@ const CLASS_LABELS = {
 	'class-11': 'Class 11',
 	'class-12': 'Class 12',
 	college: 'College',
+	'working-professional': 'Working Professional',
+	other: 'Other',
+};
+
+const PROFESSION_LABELS = {
+	'software-engineering': 'Software Engineer / IT',
+	'engineering-non-it': 'Engineering (non-IT)',
+	'banking-finance': 'Banking & Finance',
+	healthcare: 'Healthcare / Medical',
+	teaching: 'Teaching / Education',
+	government: 'Government / Public Sector',
+	law: 'Law / Legal',
+	business: 'Business / Self-employed',
+	'marketing-sales': 'Marketing / Sales',
 	other: 'Other',
 };
 
@@ -312,6 +326,10 @@ function classLabel(profile) {
 	return profile?.class ? CLASS_LABELS[profile.class] || null : null;
 }
 
+function professionLabel(profile) {
+	return profile?.profession ? PROFESSION_LABELS[profile.profession] || null : null;
+}
+
 /**
  * Builds the PII-free user context block injected into the generation
  * prompt. Returns null when there is nothing to say (no profile or not
@@ -332,6 +350,10 @@ export function buildProfileContext({
 	const className = classLabel(profile);
 	if (className) {
 		lines.push(`- Student level: ${className}`);
+	}
+	const professionName = professionLabel(profile);
+	if (professionName) {
+		lines.push(`- Profession: ${professionName}`);
 	}
 	if (profile?.examTarget?.name) {
 		lines.push(`- Exam target: ${profile.examTarget.name}`);
@@ -406,6 +428,10 @@ export function buildStudentContext(profile = null) {
 	const className = classLabel(profile);
 	if (className) {
 		parts.push(`class: ${className}`);
+	}
+	const professionName = professionLabel(profile);
+	if (professionName) {
+		parts.push(`profession: ${professionName}`);
 	}
 	if (profile?.examTarget?.name) {
 		parts.push(`exam target: ${profile.examTarget.name}`);
