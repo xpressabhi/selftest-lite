@@ -391,6 +391,7 @@
 						</span>
 					</div>
 					<p class="test-summary-body">{$t('testSummaryBody')}</p>
+					<p class="test-summary-id">{$t('testId')}: {questionPaper.id}</p>
 					<div class="test-summary-actions">
 						<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
 							{$t('share')}
@@ -778,6 +779,15 @@
 		color: var(--text-muted);
 		font-size: 0.9rem;
 		line-height: 1.55;
+	}
+
+	.test-summary-id {
+		margin: -10px 0 18px;
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.test-summary-actions {
