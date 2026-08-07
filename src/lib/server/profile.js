@@ -365,19 +365,18 @@ export function buildProfileContext({
 		lines.push(`- Resolved difficulty: ${resolvedDifficulty}`);
 	}
 
-	const focusTopics = mergeFocusTopics({
-		declared: profile?.declaredFocus || [],
-		weak: signals?.weakTopics || [],
-	});
-	if (focusTopics.length > 0) {
-		lines.push(`- Focus topics: ${focusTopics.join(', ')}`);
-	}
-
 	const matched = matchTopicSignal(signals, topicKeywords);
 	const weakTopics = (signals?.weakTopics || []).slice(0, MAX_WEAK_TOPICS_IN_CONTEXT);
 	const relevantWeak = matched
 		? weakTopics.filter((signal) => topicKey(signal.topic) === topicKey(matched.topic))
-		: weakTopics;
+		: [];
+	const focusTopics = mergeFocusTopics({
+		declared: profile?.declaredFocus || [],
+		weak: relevantWeak,
+	});
+	if (focusTopics.length > 0) {
+		lines.push(`- Focus topics: ${focusTopics.join(', ')}`);
+	}
 	if (relevantWeak.length > 0) {
 		const detail = relevantWeak
 			.map(
@@ -400,7 +399,7 @@ export function buildProfileContext({
 	}
 	if (focusTopics.length > 0) {
 		rules.push(
-			`Weight questions toward the listed focus topics, including several practice questions from the practice areas.`,
+			`Focus topics are hints WITHIN the requested Topic only. Never switch away from the requested Topic: generate the quiz about the requested Topic and weight some questions toward these focus topics. If a focus or practice topic is unrelated to the requested Topic, ignore it.`,
 		);
 	}
 	if (profile?.examTarget?.name || className) {

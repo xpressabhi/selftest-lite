@@ -178,7 +178,7 @@ export function generatePrompt({
           
           IMPORTANT: Generate questions that are different from the previously asked questions listed below.
           
-          Topic:
+          Topic (generate questions ONLY about this topic; never substitute any other subject, language, or topic):
           ---
           ${topic}
           ---

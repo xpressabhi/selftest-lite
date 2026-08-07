@@ -266,6 +266,46 @@ describe('buildProfileContext', () => {
 		});
 		expect(context).not.toContain('warm-up');
 	});
+
+	it('does not inject weak topics unrelated to the requested topic', () => {
+		const profile = baseProfile({ preferences: { language: null, difficultyComfort: null, personalized: true } });
+		const signals = {
+			weakTopics: [{ topic: 'Python tuples', accuracy: 0.3333, attempts: 2 }],
+			strongTopics: [],
+			overallAccuracy: 0.375,
+			testsTaken: 3,
+			lastDifficulty: 'advanced',
+		};
+		const context = buildProfileContext({
+			profile,
+			signals,
+			resolvedDifficulty: 'advanced',
+			topicKeywords: ['javascript'],
+		});
+		expect(context).not.toContain('Python tuples');
+		expect(context).not.toContain('Practice areas');
+		expect(context).not.toContain('Weight questions');
+		expect(context).toContain('Resolved difficulty: advanced');
+	});
+
+	it('keeps weak topics related to the requested topic', () => {
+		const profile = baseProfile({ preferences: { language: null, difficultyComfort: null, personalized: true } });
+		const signals = {
+			weakTopics: [{ topic: 'Python tuples', accuracy: 0.3333, attempts: 2 }],
+			strongTopics: [],
+			overallAccuracy: 0.375,
+			testsTaken: 3,
+			lastDifficulty: 'advanced',
+		};
+		const context = buildProfileContext({
+			profile,
+			signals,
+			resolvedDifficulty: 'advanced',
+			topicKeywords: ['python'],
+		});
+		expect(context).toContain('Python tuples');
+		expect(context).toContain('Practice areas to include');
+	});
 });
 
 describe('buildStudentContext', () => {
