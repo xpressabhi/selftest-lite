@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { t } from '$lib/client/i18n';
-	import { user } from '$lib/client/auth';
+	import { loginWithGoogleCredential, user } from '$lib/client/auth';
+	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
@@ -40,7 +40,9 @@
 	];
 
 	let loaded = $state(false);
+	let lastUserId = $state(null);
 	let saving = $state(false);
+	let isSigningIn = $state(false);
 	let savedToast = $state(false);
 	let examQuery = $state('');
 	let subjectInput = $state('');
@@ -75,17 +77,21 @@
 	});
 
 	$effect(() => {
-		if ($user && !loaded) {
-			void fetchProfile().then((nextProfile) => {
-				if (nextProfile) {
-					draft = structuredClone(nextProfile);
-					if (nextProfile.examTarget?.name) {
-						examQuery = nextProfile.examTarget.name;
-					}
-				}
-				loaded = true;
-			});
+		const userId = $user?.id || null;
+		if (userId === lastUserId) {
+			return;
 		}
+		lastUserId = userId;
+		void fetchProfile().then((nextProfile) => {
+			if (nextProfile) {
+				draft = structuredClone(nextProfile);
+				if (nextProfile.examTarget?.name) {
+					examQuery = nextProfile.examTarget.name;
+				}
+			}
+			loaded = true;
+		});
+		void fetchProfileInsights();
 	});
 
 	function toggleInList(listKey, value) {
@@ -124,6 +130,26 @@
 	function clearExam() {
 		draft.examTarget = null;
 		examQuery = '';
+	}
+
+	async function handleGoogleCredential(credential) {
+		isSigningIn = true;
+		try {
+			await loginWithGoogleCredential(credential);
+			track('auth:google-sign-in');
+			const nextProfile = await fetchProfile();
+			await fetchProfileInsights();
+			if (nextProfile) {
+				draft = structuredClone(nextProfile);
+				if (nextProfile.examTarget?.name) {
+					examQuery = nextProfile.examTarget.name;
+				}
+			}
+		} catch (error) {
+			console.error('Google sign-in failed:', error);
+		} finally {
+			isSigningIn = false;
+		}
 	}
 
 	async function handleSave() {
@@ -176,10 +202,9 @@
 			<div class="card p-4 text-center">
 				<p class="text-muted mb-3">{$t('profilePageSignInHint')}</p>
 				<div class="d-flex justify-content-center">
-					<button type="button" class="btn btn-primary" onclick={() => goto('/')}>
-						{$t('signIn')}
-					</button>
+					<GoogleSignInButton oncredential={handleGoogleCredential} disabled={isSigningIn} />
 				</div>
+				<p class="text-muted small mt-3 mb-0">{$t('signInAnonymousNote')}</p>
 			</div>
 		{:else if loaded}
 			<div class="d-flex flex-column gap-3">
