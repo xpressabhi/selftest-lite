@@ -22,10 +22,20 @@
 	import QuickStart from '$lib/client/QuickStart.svelte';
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
+	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
+	import { user } from '$lib/client/auth';
+	import {
+		fetchProfile,
+		fetchProfileInsights,
+		profile as profileStore,
+		profileInsights,
+	} from '$lib/client/profile';
 
 	const MAX_RETRIES = 3;
 	const GENERATION_TIMEOUT_MS = 180000;
 	const HERO_SCROLL_THRESHOLD = 100;
+	const PROFILE_WIZARD_DISMISS_KEY = 'selftest_profile_wizard_dismissed_at';
+	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
 	let topic = $state('');
 	let numQuestions = $state(10);
@@ -53,10 +63,24 @@
 	let retryLabel = $state('');
 	let isOffline = $state(false);
 	let unsubmittedTest = $state(null);
+	let difficultyTouched = $state(false);
+	let showProfileWizard = $state(false);
+	let profileLoaded = $state(false);
 
 	let heroCollapsed = $state(false);
 	let isAndroidDevice = $state(false);
 	let isInCapacitorApp = $state(false);
+
+	const currentProfile = $derived($profileStore);
+	const insights = $derived($profileInsights);
+	const tailoredSummary = $derived(
+		$user && insights?.tailoredSummary ? insights.tailoredSummary : null,
+	);
+	const profileReadyForWizard = $derived(
+		$user &&
+			(currentProfile === null || !currentProfile.setupComplete) &&
+			(currentProfile === null || currentProfile.preferences?.personalized !== false),
+	);
 
 	let selectedExam = $derived(getIndianExamById(examId));
 	let bookmarkedExams = $derived(
@@ -126,7 +150,49 @@
 			}, 50);
 		}
 
+		const applyProfilePrefill = (insightsData) => {
+			if (
+				!insightsData?.suggestedDifficulty ||
+				difficultyTouched ||
+				isFullExam
+			) {
+				return;
+			}
+			difficulty = insightsData.suggestedDifficulty;
+		};
+
+		const loadProfileState = async () => {
+			const profileData = await fetchProfile();
+			const insightsData = await fetchProfileInsights();
+			applyProfilePrefill(insightsData);
+			const needsSetup =
+				!profileData || !profileData.setupComplete;
+			if (needsSetup && (!profileData || profileData.preferences?.personalized !== false)) {
+				const dismissedAtRaw = window.localStorage.getItem(PROFILE_WIZARD_DISMISS_KEY);
+				const dismissedAt = Number(dismissedAtRaw || 0);
+				const stale =
+					!Number.isFinite(dismissedAt) ||
+					Date.now() - dismissedAt > PROFILE_WIZARD_REPROMPT_DAYS * 24 * 60 * 60 * 1000;
+				if (stale) {
+					showProfileWizard = true;
+				}
+			}
+		};
+		if ($user) {
+			void loadProfileState();
+		}
+		const unsubscribeUser = user.subscribe((currentUser) => {
+			if (currentUser && !profileLoaded) {
+				profileLoaded = true;
+				void loadProfileState();
+			}
+			if (!currentUser) {
+				profileLoaded = false;
+			}
+		});
+
 		return () => {
+			unsubscribeUser();
 			window.removeEventListener('online', updateNetwork);
 			window.removeEventListener('offline', updateNetwork);
 		};
@@ -223,13 +289,17 @@
 
 	function handleChipEdit(field, value) {
 		track('preview:edit-chip', { field });
-		if (field === 'difficulty') difficulty = value;
+		if (field === 'difficulty') {
+			difficulty = value;
+			difficultyTouched = true;
+		}
 		if (field === 'testType') testType = value;
 		if (field === 'numQuestions') numQuestions = value;
 		if (field === 'language') paperLanguage = value;
 		if (field === 'examId') {
 			examId = value;
 			isFullExam = true;
+			difficultyTouched = true;
 			const exam = getIndianExamById(value);
 			if (exam) {
 				topic = `${exam.name} objective exam paper`;
@@ -311,6 +381,7 @@
 			testType: testType === 'mixed' ? 'multiple-choice' : testType,
 			numQuestions: Number(numQuestions),
 			difficulty: difficulty,
+			difficultyExplicit: difficultyTouched,
 			language: paperLanguage,
 			objectiveOnly: false,
 			durationMinutes: null,
@@ -406,6 +477,18 @@
 
 	async function handleIntentSubmit(intentText) {
 		await parseIntent(intentText);
+	}
+
+	function handleWizardClose() {
+		showProfileWizard = false;
+		if (typeof window !== 'undefined') {
+			window.localStorage.setItem(PROFILE_WIZARD_DISMISS_KEY, String(Date.now()));
+		}
+	}
+
+	async function handleWizardFinish() {
+		showProfileWizard = false;
+		await fetchProfileInsights();
 	}
 
 	function handleTestNavigate(testId) {
@@ -507,6 +590,16 @@
 			{status}
 		/>
 
+		{#if tailoredSummary}
+			<div class="tailored-chip">
+				<span class="tailored-badge" aria-hidden="true">🎯</span>
+				<span class="small">
+					<strong>{$t('profileChipLabel')}:</strong> {tailoredSummary}
+				</span>
+				<a class="tailored-edit" href="/profile">{$t('profileChipEdit')}</a>
+			</div>
+		{/if}
+
 		<div class="manual-section">
 			<p class="manual-divider"><span>{$t('manualConfigHint')}</span></p>
 			<div class="manual-grid">
@@ -567,6 +660,14 @@
 			</div>
 		</div>
 	</section>
+{/if}
+
+{#if showProfileWizard && profileReadyForWizard}
+	<ProfileWizard
+		initial={currentProfile}
+		onclose={handleWizardClose}
+		onafterfinish={handleWizardFinish}
+	/>
 {/if}
 
 <style>
@@ -641,6 +742,36 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0;
+	}
+
+	.tailored-chip {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 10px;
+		padding: 10px 12px;
+		border: 1px solid color-mix(in srgb, var(--color-brand-600) 30%, transparent);
+		border-radius: 12px;
+		background: color-mix(in srgb, var(--color-brand-600) 8%, transparent);
+		color: var(--text);
+	}
+
+	.tailored-badge {
+		flex: 0 0 auto;
+	}
+
+	.tailored-chip .small {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.tailored-edit {
+		flex: 0 0 auto;
+		padding: 8px 0 8px 8px;
+		color: var(--color-brand-600);
+		font-size: 0.8rem;
+		font-weight: 700;
+		text-decoration: none;
 	}
 
 	@media (max-width: 480px) {

@@ -111,7 +111,31 @@ const MERGE_STRATEGIES = {
 };
 
 /**
- * Merges a remote server snapshot into the local snapshot. Collection keys
+ * Parses a state value that may be a JSON string (localStorage / old rows)
+ * or an already-parsed JSONB object/array (server rows). Returns null when
+ * unusable.
+ */
+function parseStateValue(value) {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return value;
+	}
+	if (typeof value === 'string') {
+		try {
+			return JSON.parse(value);
+		} catch {
+			return null;
+		}
+	}
+	return null;
+}
+
+/** Merges a remote server snapshot into the local snapshot. Collection keys
  * (bookmarks, presets) are unioned and deduped; anything else keeps the
  * local value. Returns a new snapshot object of stringified JSON values.
  */
@@ -121,18 +145,8 @@ export function mergeStateSnapshots(remote, local) {
 	const remoteValues = isPlainObject(remote) ? remote : {};
 
 	for (const key of SYNCED_STATE_KEYS) {
-		let localValue;
-		try {
-			localValue = localValues[key] !== undefined ? JSON.parse(localValues[key]) : null;
-		} catch {
-			localValue = null;
-		}
-		let remoteValue;
-		try {
-			remoteValue = remoteValues[key] !== undefined ? JSON.parse(remoteValues[key]) : null;
-		} catch {
-			remoteValue = null;
-		}
+		const localValue = parseStateValue(localValues[key]);
+		const remoteValue = parseStateValue(remoteValues[key]);
 
 		const strategy = MERGE_STRATEGIES[key];
 		const merged = strategy

@@ -15,7 +15,7 @@ import {
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { paperSchema } from '$lib/server/quizSchema';
 import { normalizeMathText } from '$lib/shared/latex';
-import { PROFILE_STATE_KEY, isPersonalized, normalizeProfile } from '$lib/shared/userProfile';
+import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
 import {
 	buildProfileContext,
 	buildTailoredSummary,
@@ -412,14 +412,7 @@ export async function POST({ request, cookies }) {
 		if (user?.id || clientId) {
 			try {
 				const storage = await getStateForIdentity({ userId: user?.id, clientId });
-				let profile = null;
-				if (typeof storage?.[PROFILE_STATE_KEY] === 'string') {
-					try {
-						profile = normalizeProfile(JSON.parse(storage[PROFILE_STATE_KEY]));
-					} catch {
-						profile = null;
-					}
-				}
+				const profile = parseProfileStateValue(storage?.[PROFILE_STATE_KEY]);
 				if (isPersonalized(profile)) {
 					personalized = true;
 					const signals = await computeLearnerSignals({ userId: user?.id, clientId });

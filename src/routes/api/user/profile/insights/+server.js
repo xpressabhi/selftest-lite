@@ -7,7 +7,7 @@ import {
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
-import { PROFILE_STATE_KEY, isPersonalized, normalizeProfile } from '$lib/shared/userProfile';
+import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
 import {
 	buildTailoredSummary,
 	computeLearnerSignals,
@@ -56,14 +56,7 @@ export async function GET({ request, cookies }) {
 		}
 
 		const storage = await getStateForIdentity({ userId: user?.id, clientId });
-		let profile = null;
-		if (typeof storage?.[PROFILE_STATE_KEY] === 'string') {
-			try {
-				profile = normalizeProfile(JSON.parse(storage[PROFILE_STATE_KEY]));
-			} catch {
-				profile = null;
-			}
-		}
+		const profile = parseProfileStateValue(storage?.[PROFILE_STATE_KEY]);
 
 		const signals = await computeLearnerSignals({ userId: user?.id, clientId });
 		const focusTopics = isPersonalized(profile)

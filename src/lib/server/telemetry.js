@@ -72,6 +72,10 @@ export const TELEMETRY_EVENTS = new Set([
 	'auth:sign-out',
 	'auth:view',
 	'auth:failed',
+	// Profile / personalization
+	'profile:save',
+	'profile:reset',
+	'profile:opt-out',
 	// Scroll depth
 	'scroll:depth',
 ]);

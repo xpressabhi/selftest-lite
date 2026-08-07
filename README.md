@@ -9,6 +9,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 - **Explanations**: per-question explanations on demand.
 - **Exam support**: syllabus-focused practice for Indian exams, with reusable full-exam papers to avoid repetition.
 - **Local-first history**: tests and answers cached in the browser; generated papers persisted to PostgreSQL.
+- **Personalized tests**: a learner profile (class, exam target, subjects, preferences, focus topics) plus behavior-driven weak-topic detection tailors difficulty and content per user — with a visible override, opt-out, and full transparency.
 - **Markdown + math rendering**: KaTeX math, physics/chemistry symbols (Ω, μ, CO₂), and diagrams.
 - **PWA**: installable, offline-capable, with slow-connection data-saver mode.
 - **Admin dashboard**: usage analytics behind a password-protected admin area.
@@ -74,7 +75,7 @@ npm run test     # vitest unit tests
 
 | Endpoint | Method | Description |
 | --- | --- | --- |
-| `/api/generate` | POST | Generate a quiz/exam paper from topic, difficulty, language, etc. |
+| `/api/generate` | POST | Generate a quiz/exam paper from topic, difficulty, language, etc. (personalized when a profile exists; response includes `personalized` + `tailoredSummary`) |
 | `/api/explain` | POST | Generate an explanation for a question/answer |
 | `/api/test?id=` | GET | Fetch a stored test paper (includes `myAttempt` for the current user/device) |
 | `/api/test/submit` | POST | Submit answers, grade, and store an attempt (attributed to user or anonymous `client_id`) |
@@ -82,7 +83,9 @@ npm run test     # vitest unit tests
 | `/api/auth/me` | GET | Resolve the current session (slides expiry) |
 | `/api/auth/logout` | POST | Revoke the session |
 | `/api/user/history` | GET/POST | Pull/push server-saved submissions for the current identity |
-| `/api/user/state` | GET/POST | Pull/push synced bookmarks & quiz presets for the current identity |
+| `/api/user/state` | GET/POST | Pull/push synced bookmarks, quiz presets & user profile for the current identity |
+| `/api/user/profile` | GET/POST/DELETE | Read/save/reset the learner profile (class, exam target, subjects, preferences, focus topics) |
+| `/api/user/profile/insights` | GET | Computed learner signals: weak/strong topics, accuracy, suggested difficulty |
 | `/api/admin/login` / `/api/admin/logout` | POST | Admin session management |
 | `/api/admin/stats` | GET | Usage analytics (admin only) |
 

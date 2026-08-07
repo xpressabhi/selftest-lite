@@ -217,6 +217,61 @@ describe('userState (mergeStateSnapshots)', () => {
 		const merged = mergeStateSnapshots(remote, local);
 		expect(JSON.parse(merged[EXAMS])).toEqual(['a']);
 	});
+
+	it('merges remote values that arrive as parsed objects (server JSONB)', () => {
+		const remote = { [EXAMS]: ['a', 'b'] };
+		const local = { [EXAMS]: JSON.stringify(['b', 'c']) };
+		const merged = mergeStateSnapshots(remote, local);
+		expect(JSON.parse(merged[EXAMS])).toEqual(['b', 'c', 'a']);
+	});
+
+	it('keeps the profile with the newer updatedAt', () => {
+		const PROFILE = 'selftest_user_profile';
+		const remote = {
+			[PROFILE]: {
+				version: 1,
+				setupComplete: true,
+				class: 'class-10',
+				preferences: { personalized: true },
+				updatedAt: '2026-08-07T12:00:00.000Z',
+			},
+		};
+		const local = {
+			[PROFILE]: JSON.stringify({
+				version: 1,
+				setupComplete: true,
+				class: 'class-12',
+				preferences: { personalized: true },
+				updatedAt: '2026-08-07T10:00:00.000Z',
+			}),
+		};
+		const merged = mergeStateSnapshots(remote, local);
+		expect(JSON.parse(merged[PROFILE]).class).toBe('class-10');
+	});
+
+	it('keeps the profile with the newer updatedAt (local wins)', () => {
+		const PROFILE = 'selftest_user_profile';
+		const remote = {
+			[PROFILE]: {
+				version: 1,
+				setupComplete: true,
+				class: 'class-10',
+				preferences: { personalized: true },
+				updatedAt: '2026-08-07T10:00:00.000Z',
+			},
+		};
+		const local = {
+			[PROFILE]: JSON.stringify({
+				version: 1,
+				setupComplete: true,
+				class: 'class-12',
+				preferences: { personalized: true },
+				updatedAt: '2026-08-07T12:00:00.000Z',
+			}),
+		};
+		const merged = mergeStateSnapshots(remote, local);
+		expect(JSON.parse(merged[PROFILE]).class).toBe('class-12');
+	});
 });
 
 describe('userState (validateStateValue)', () => {

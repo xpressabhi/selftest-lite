@@ -4,7 +4,7 @@ import { env } from '$env/dynamic/private';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
-import { PROFILE_STATE_KEY, normalizeProfile } from '$lib/shared/userProfile';
+import { PROFILE_STATE_KEY, parseProfileStateValue } from '$lib/shared/userProfile';
 import { buildStudentContext } from '$lib/server/profile';
 import {
 	API_LIMIT_ERROR_CODE,
@@ -129,14 +129,7 @@ export async function POST({ request, cookies }) {
 		if (user?.id || clientId) {
 			try {
 				const storage = await getStateForIdentity({ userId: user?.id, clientId });
-				let profile = null;
-				if (typeof storage?.[PROFILE_STATE_KEY] === 'string') {
-					try {
-						profile = normalizeProfile(JSON.parse(storage[PROFILE_STATE_KEY]));
-					} catch {
-						profile = null;
-					}
-				}
+				const profile = parseProfileStateValue(storage?.[PROFILE_STATE_KEY]);
 				studentContext = buildStudentContext(profile);
 			} catch (profileError) {
 				console.error('Failed to load student context:', profileError);

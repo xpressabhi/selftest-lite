@@ -471,6 +471,9 @@
 				<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
 				<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
 				<div class="menu-section-label">{$t('menuSectionActions')}</div>
+				{#if $user}
+					<a href="/profile" onclick={() => (isMenuOpen = false)}>☺ {$t('profileMenuLabel')}</a>
+				{/if}
 				<a href="/history" onclick={() => (isMenuOpen = false)}>◷ {$t('history')}</a>
 				<button type="button" class:active={$isDataSaverActive} onclick={toggleDataSaver}>⌁ {$t('dataSaver')}</button>
 				{#if $user}

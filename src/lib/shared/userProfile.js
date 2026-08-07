@@ -149,3 +149,19 @@ export function normalizeProfile(value) {
 export function isPersonalized(profile) {
 	return isPlainObject(profile) && profile.preferences?.personalized !== false;
 }
+
+/**
+ * Parses a stored profile value that may be a JSON string (localStorage) or
+ * an already-parsed JSONB object (server rows). Returns null when unusable.
+ */
+export function parseProfileStateValue(value) {
+	let parsed = value;
+	if (typeof parsed === 'string') {
+		try {
+			parsed = JSON.parse(parsed);
+		} catch {
+			return null;
+		}
+	}
+	return normalizeProfile(parsed);
+}

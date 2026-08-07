@@ -9,7 +9,7 @@ import {
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
-import { PROFILE_STATE_KEY, normalizeProfile } from '$lib/shared/userProfile';
+import { PROFILE_STATE_KEY, normalizeProfile, parseProfileStateValue } from '$lib/shared/userProfile';
 
 const PROFILE_GET_RATE_LIMIT = 60;
 const PROFILE_POST_RATE_LIMIT = 30;
@@ -28,15 +28,7 @@ function rateLimitedResponse(rateLimit) {
 }
 
 async function loadProfile(storage) {
-	const profileValue = storage?.[PROFILE_STATE_KEY];
-	if (typeof profileValue !== 'string') {
-		return null;
-	}
-	try {
-		return normalizeProfile(JSON.parse(profileValue));
-	} catch {
-		return null;
-	}
+	return parseProfileStateValue(storage?.[PROFILE_STATE_KEY]);
 }
 
 export async function GET({ request, cookies }) {
