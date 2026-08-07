@@ -28,9 +28,13 @@ export function prepareMathTextForRendering(value) {
 	const normalizedValue = normalizeMathText(value);
 	const repairedValue = normalizeUnbracedFunctionSuperscripts(normalizedValue);
 
-	if (/\$\$?/.test(repairedValue) || !BARE_MATH_PATTERN.test(repairedValue)) {
+	if (/\$\$?/.test(repairedValue) || !BARE_MATH_PATTERN.test(stripCodeSpans(repairedValue))) {
 		return repairedValue;
 	}
 
 	return `$${repairedValue}$`;
+}
+
+function stripCodeSpans(value) {
+	return String(value ?? '').replace(/`{1,3}[\s\S]*?`{1,3}/g, '');
 }

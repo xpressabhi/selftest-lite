@@ -39,4 +39,19 @@ describe('prepareMathTextForRendering', () => {
 		expect(prepareMathTextForRendering('$E = mc^2$')).toBe('$E = mc^2$');
 		expect(prepareMathTextForRendering('$$E = mc^2$$')).toBe('$$E = mc^2$$');
 	});
+
+	it('does not wrap bare math that appears only inside code spans', () => {
+		expect(prepareMathTextForRendering('Literal syntax uses the `BUILD_TUPLE` opcode.')).toBe(
+			'Literal syntax uses the `BUILD_TUPLE` opcode.',
+		);
+		expect(prepareMathTextForRendering('`snake_case_var` is an identifier')).toBe(
+			'`snake_case_var` is an identifier',
+		);
+		expect(prepareMathTextForRendering('```\nBUILD_TUPLE\n```')).toBe('```\nBUILD_TUPLE\n```');
+	});
+
+	it('still wraps bare math outside code spans', () => {
+		expect(prepareMathTextForRendering('E = mc^2')).toBe('$E = mc^2$');
+		expect(prepareMathTextForRendering('x_1 = 5')).toBe('$x_1 = 5$');
+	});
 });
