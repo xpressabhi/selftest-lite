@@ -137,8 +137,25 @@ button, input, select {
 	.gap-2 { @apply gap-2; } .gap-3 { @apply gap-4; }
 	.row { @apply grid grid-cols-1; }
 	.g-3 { @apply gap-4; }
-	.col-6 { @apply col-span-1; }
-	@media (min-width: 576px) { .flex-sm-row { @apply flex-row; } .align-items-sm-center { @apply items-center; } .col-sm-6 { @apply col-span-1; } .py-md-5 { @apply py-10; } .p-md-4 { @apply p-6; } }
-	@media (min-width: 768px) { .row { @apply grid-cols-2; } .col-md-3 { @apply col-span-1; } .col-md-4 { @apply col-span-1; } .col-md-6 { @apply col-span-1; } .col-md-7 { @apply col-span-1; } .py-md-5 { @apply py-10; } .p-md-4 { @apply p-6; } }
-	@media (min-width: 1024px) { .col-lg-4 { @apply col-span-1; } .col-lg-6 { @apply col-span-1; } }
+	@media (min-width: 576px) { .flex-sm-row { @apply flex-row; } .align-items-sm-center { @apply items-center; } .py-md-5 { @apply py-10; } .p-md-4 { @apply p-6; } }
+	@media (min-width: 768px) { .row { @apply grid-cols-2; } .py-md-5 { @apply py-10; } .p-md-4 { @apply p-6; } }
+}
+
+/* Legacy Bootstrap-style grid columns. These must live in the utilities layer:
+ * Tailwind v4 auto-generates `col-6` and `col-12` as grid-column-start
+ * utilities, which would otherwise pin every column to grid line 6/12 and
+ * break every row that uses them. Defining them here, after Tailwind's
+ * own utilities, restores the intended 1-col (mobile) / 2-col (md+) layout. */
+@layer utilities {
+	.col-6 { grid-column: span 1 / span 1; }
+	.col-12 { grid-column: 1 / -1; }
+	@media (min-width: 576px) {
+		.col-sm-6 { grid-column: span 1 / span 1; }
+	}
+	@media (min-width: 768px) {
+		.col-md-3, .col-md-4, .col-md-6, .col-md-7 { grid-column: span 1 / span 1; }
+	}
+	@media (min-width: 1024px) {
+		.col-lg-4, .col-lg-6 { grid-column: span 1 / span 1; }
+	}
 }
