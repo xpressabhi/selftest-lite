@@ -6,6 +6,7 @@ export const SYNCED_STATE_KEYS = [
 	'selftest_bookmarked_exams',
 	'selftest_bookmarked_quiz_presets',
 	'selftest_bookmarks',
+	'selftest_user_profile',
 ];
 
 export const MAX_STATE_VALUE_BYTES = 96 * 1024;
@@ -15,6 +16,7 @@ export const STATE_CAPS = {
 	selftest_bookmarked_exams: 20,
 	selftest_bookmarked_quiz_presets: 20,
 	selftest_bookmarks: 300,
+	selftest_user_profile: 1,
 };
 
 export function isSyncedStateKey(key) {
@@ -82,10 +84,30 @@ function mergeQuestionBookmarks(remote, local) {
 	return merged.slice(0, STATE_CAPS.selftest_bookmarks);
 }
 
+function parseUpdatedAt(profile) {
+	if (!isPlainObject(profile) || typeof profile.updatedAt !== 'string') {
+		return 0;
+	}
+	const timestamp = new Date(profile.updatedAt).getTime();
+	return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+// The profile is a single evolving object: the newer write wins (by
+// updatedAt), falling back to whichever side exists.
+function mergeProfile(remote, local) {
+	const hasRemote = isPlainObject(remote);
+	const hasLocal = isPlainObject(local);
+	if (hasRemote && hasLocal) {
+		return parseUpdatedAt(remote) >= parseUpdatedAt(local) ? remote : local;
+	}
+	return hasRemote ? remote : hasLocal ? local : null;
+}
+
 const MERGE_STRATEGIES = {
 	selftest_bookmarked_exams: mergeExams,
 	selftest_bookmarked_quiz_presets: mergePresets,
 	selftest_bookmarks: mergeQuestionBookmarks,
+	selftest_user_profile: mergeProfile,
 };
 
 /**

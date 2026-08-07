@@ -696,12 +696,34 @@ export async function upsertStateForIdentity(identity, stateKey, value) {
 		return true;
 	}
 
-	const insertResult = await query(
+	const insertResult = 	await query(
 		`INSERT INTO app_user_state (user_id, client_id, state_key, value)
 		 VALUES ($1, $2, $3, $4)`,
 		[userId, clientId, stateKey, value],
 	);
 	return (insertResult.rowCount || 0) > 0;
+}
+
+/**
+ * Deletes one state key for an identity. Like upsertStateForIdentity, a row
+ * belongs to the identity when it is user-owned or anonymous on the same
+ * device. Returns true when a row was removed.
+ */
+export async function deleteStateForIdentity(identity, stateKey) {
+	await ensureStorageSchema();
+
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if ((!userId && !clientId) || typeof stateKey !== 'string') {
+		return false;
+	}
+
+	const result = await query(
+		`DELETE FROM app_user_state
+		 WHERE state_key = $1
+			AND (user_id = $2 OR (user_id IS NULL AND client_id = $3))`,
+		[stateKey, userId, clientId],
+	);
+	return (result.rowCount || 0) > 0;
 }
 
 /**

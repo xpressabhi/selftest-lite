@@ -2,7 +2,10 @@ import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
 import { env } from '$env/dynamic/private';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
+import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/storage';
+import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { PROFILE_STATE_KEY, normalizeProfile } from '$lib/shared/userProfile';
+import { buildStudentContext } from '$lib/server/profile';
 import {
 	API_LIMIT_ERROR_CODE,
 	isApiLimitExceededError,
@@ -73,9 +76,11 @@ function parseGeneratedJson(text) {
 	return JSON.parse(fencedJson ? fencedJson[1] : trimmedText);
 }
 
-export async function POST({ request }) {
+export async function POST({ request, cookies }) {
 	const startedAt = Date.now();
 	const clientKey = getClientKey(request);
+	const user = await getAuthenticatedUser(cookies);
+	const clientId = getClientIdFromRequest(request);
 
 	try {
 		let body;
@@ -120,6 +125,24 @@ export async function POST({ request }) {
 
 		const ai = new GoogleGenAI({ apiKey });
 
+		let studentContext = null;
+		if (user?.id || clientId) {
+			try {
+				const storage = await getStateForIdentity({ userId: user?.id, clientId });
+				let profile = null;
+				if (typeof storage?.[PROFILE_STATE_KEY] === 'string') {
+					try {
+						profile = normalizeProfile(JSON.parse(storage[PROFILE_STATE_KEY]));
+					} catch {
+						profile = null;
+					}
+				}
+				studentContext = buildStudentContext(profile);
+			} catch (profileError) {
+				console.error('Failed to load student context:', profileError);
+			}
+		}
+
 		try {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), PARSE_TIMEOUT_MS);
@@ -127,7 +150,9 @@ export async function POST({ request }) {
 			const aiResponse = await Promise.race([
 				ai.models.generateContent({
 					model: MODEL_NAME,
-					contents: `${PARSE_PROMPT}\n\nUser intent: "${intent}"`,
+					contents: `${PARSE_PROMPT}\n\n${
+						studentContext ? `${studentContext}\n\n` : ''
+					}User intent: "${intent}"`,
 					config: {
 						responseMimeType: 'application/json',
 						responseJsonSchema: z.toJSONSchema(responseSchema),
@@ -152,13 +177,16 @@ export async function POST({ request }) {
 				route: '/api/parse-intent',
 				action: 'parse_intent',
 				clientKey,
+				clientId,
 				request,
 				statusCode: 200,
 				durationMs: Date.now() - startedAt,
+				userId: user?.id || null,
 				metadata: {
 					intent: intent.slice(0, 200),
 					confidence: validated.confidence,
 					isFullExam: validated.isFullExam,
+					usedStudentContext: studentContext !== null,
 				},
 			});
 

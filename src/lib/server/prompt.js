@@ -10,6 +10,8 @@ export function generatePrompt({
 	language,
 	testMode = 'quiz-practice',
 	objectiveOnly = false,
+	userContext = null,
+	warmUpDifficulty = null,
 }) {
 	return `You are an expert quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
     
@@ -86,6 +88,10 @@ export function generatePrompt({
     TOPIC INFORMATION:
     ${topicContext}
     
+    ${userContext ? `USER CONTEXT (personalized, keep private):
+    ${userContext}
+    ` : ''}
+    
           LANGUAGE INSTRUCTIONS:
           - If the subject itself is a language (e.g., Hindi, English, French), generate the paper in that language.
           - If the user specifies "Hindi medium" (or any other medium), generate the entire quiz in that medium language, regardless of the subject.
@@ -149,6 +155,11 @@ export function generatePrompt({
           - Test mastery of the subject matter
           - Focus on optimization, best practices, and intricate details`
 					}
+      ${warmUpDifficulty ? `WARM-UP GRADIENT:
+          - The first approximately 20% of the questions must be a gentle warm-up at ${warmUpDifficulty} level (fundamental, quick wins).
+          - The remaining ~80% must be at ${difficulty} level.
+          - Keep the total question count exact; make the transition gradual rather than abrupt.
+          ` : ''}
           
           IMPORTANT GUIDELINES:
           1. Focus on real-world applications and problem-solving scenarios

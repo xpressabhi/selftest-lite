@@ -8,12 +8,21 @@ import {
 	createTestRecord,
 	findReusableFullExamRecord,
 	getClientKey,
+	getStateForIdentity,
 	getTestRecordsByIds,
 	logApiEvent,
 } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { paperSchema } from '$lib/server/quizSchema';
 import { normalizeMathText } from '$lib/shared/latex';
+import { PROFILE_STATE_KEY, isPersonalized, normalizeProfile } from '$lib/shared/userProfile';
+import {
+	buildProfileContext,
+	buildTailoredSummary,
+	computeLearnerSignals,
+	resolveDifficulty,
+	resolveWarmUpDifficulty,
+} from '$lib/server/profile';
 import {
 	parseRequestBody,
 	sanitizePreviousTestIds,
@@ -117,6 +126,8 @@ async function generateQuestionBatch({
 	language,
 	testMode,
 	objectiveOnly,
+	userContext,
+	warmUpDifficulty,
 	deadlineMs,
 }) {
 	assertWithinDeadline(deadlineMs);
@@ -133,6 +144,8 @@ async function generateQuestionBatch({
 		language,
 		testMode,
 		objectiveOnly,
+		userContext,
+		warmUpDifficulty,
 	});
 
 	const remainingTimeMs = getRemainingTimeMs(deadlineMs);
@@ -182,6 +195,8 @@ async function generatePaper({
 	language,
 	testMode,
 	objectiveOnly,
+	userContext,
+	warmUpDifficulty,
 	deadlineMs,
 }) {
 	const totalBatches = Math.ceil(numQuestions / BATCH_SIZE);
@@ -239,6 +254,8 @@ async function generatePaper({
 						language,
 						testMode,
 						objectiveOnly,
+						userContext,
+						warmUpDifficulty,
 						deadlineMs,
 					}),
 				);
@@ -314,6 +331,7 @@ export async function POST({ request, cookies }) {
 			testType = 'multiple-choice',
 			numQuestions = 10,
 			difficulty = 'intermediate',
+			difficultyExplicit = false,
 			language = 'english',
 			objectiveOnly = false,
 			durationMinutes = null,
@@ -385,6 +403,60 @@ export async function POST({ request, cookies }) {
 		const previousTestRecords = await getTestRecordsByIds(
 			normalizedPreviousTestIds,
 		);
+
+		let personalized = false;
+		let tailoredSummary = null;
+		let resolvedDifficulty = difficulty;
+		let userContext = null;
+		let warmUpDifficulty = null;
+		if (user?.id || clientId) {
+			try {
+				const storage = await getStateForIdentity({ userId: user?.id, clientId });
+				let profile = null;
+				if (typeof storage?.[PROFILE_STATE_KEY] === 'string') {
+					try {
+						profile = normalizeProfile(JSON.parse(storage[PROFILE_STATE_KEY]));
+					} catch {
+						profile = null;
+					}
+				}
+				if (isPersonalized(profile)) {
+					personalized = true;
+					const signals = await computeLearnerSignals({ userId: user?.id, clientId });
+					const topicKeywords = [
+						resolvedTopic,
+						examName,
+						...(Array.isArray(selectedTopics) ? selectedTopics : []),
+						...(Array.isArray(syllabusFocus) ? syllabusFocus : []),
+					];
+					if (testMode === 'quiz-practice') {
+						resolvedDifficulty = resolveDifficulty({
+							profile,
+							signals,
+							requestDifficulty: difficulty,
+							difficultyExplicit: difficultyExplicit === true,
+							topicKeywords,
+						});
+						warmUpDifficulty = resolveWarmUpDifficulty(resolvedDifficulty);
+					}
+					userContext = buildProfileContext({
+						profile,
+						signals,
+						resolvedDifficulty,
+						warmUpDifficulty,
+						topicKeywords,
+					});
+					tailoredSummary = buildTailoredSummary({
+						profile,
+						signals,
+						resolvedDifficulty:
+							testMode === 'quiz-practice' ? resolvedDifficulty : difficulty,
+					});
+				}
+			} catch (profileError) {
+				console.error('Failed to apply user profile:', profileError);
+			}
+		}
 
 		if (testMode === 'full-exam' && examId) {
 			const locallyAttemptedTestIds = previousTestRecords
@@ -480,7 +552,7 @@ export async function POST({ request, cookies }) {
 				ai,
 				resolvedTopic,
 				numQuestions,
-				difficulty,
+				difficulty: resolvedDifficulty,
 				testType,
 				topicContext,
 				examName,
@@ -489,6 +561,8 @@ export async function POST({ request, cookies }) {
 				language,
 				testMode,
 				objectiveOnly,
+				userContext,
+				warmUpDifficulty,
 				deadlineMs: startedAt + GENERATION_TIMEOUT_MS,
 			});
 
@@ -505,7 +579,8 @@ export async function POST({ request, cookies }) {
 					syllabusFocus,
 					testType,
 					numQuestions,
-					difficulty,
+					difficulty: resolvedDifficulty,
+					requestedDifficulty: difficulty,
 					language,
 					objectiveOnly,
 					durationMinutes,
@@ -518,7 +593,7 @@ export async function POST({ request, cookies }) {
 				examName,
 				testType,
 				numQuestions,
-				difficulty,
+				difficulty: resolvedDifficulty,
 				language,
 				createdByUserId: user?.id || null,
 			});
@@ -536,8 +611,10 @@ export async function POST({ request, cookies }) {
 					examName,
 					testType,
 					numQuestions,
-					difficulty,
+					difficulty: resolvedDifficulty,
+					requestedDifficulty: difficulty,
 					language,
+					personalized,
 					questionCount: questionPaper.questions.length,
 					testId,
 				},
@@ -546,6 +623,8 @@ export async function POST({ request, cookies }) {
 			return json({
 				...stripAnswerKey(storedPaper),
 				id: testId,
+				personalized,
+				tailoredSummary,
 			});
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
