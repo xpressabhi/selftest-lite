@@ -1,6 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { t } from '$lib/client/i18n';
 	import {
@@ -12,7 +11,7 @@
 		setThemePreference,
 		themePreference,
 	} from '$lib/client/preferences';
-	import { FOCUS_SEARCH_EVENT, STORAGE_KEYS } from '$lib/client/constants';
+	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { initDeepLinks } from '$lib/client/deepLink';
 	import { startTelemetry, track } from '$lib/client/telemetry';
 	import {
@@ -310,15 +309,6 @@
 		setDataSaver(next);
 	}
 
-	function openSearch() {
-		isMenuOpen = false;
-		if (page.url.pathname === '/') {
-			window.dispatchEvent(new CustomEvent(FOCUS_SEARCH_EVENT));
-		} else {
-			void goto('/?focus=search');
-		}
-	}
-
 	async function handleGoogleCredential(credential) {
 		isSigningIn = true;
 		try {
@@ -418,14 +408,11 @@
 				>
 					<span aria-hidden="true">⌁</span>
 				</button>
-				<button class="header-icon desktop-only" type="button" aria-label={$t('searchTests')} onclick={openSearch}>
-					<span aria-hidden="true">⌕</span>
-				</button>
 				<button class="header-icon" type="button" aria-label={$t('switchLanguageAria')} onclick={toggleLanguage}>
 					<span aria-hidden="true">◎</span>
 				</button>
 				<button class="header-icon" type="button" aria-label={$t('toggleThemeAria')} onclick={toggleTheme}>
-					<span aria-hidden="true">{$themePreference === 'dark' ? '☀' : '◐'}</span>
+					<span aria-hidden="true">{$themePreference === 'dark' ? '☀' : '☾'}</span>
 				</button>
 				<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
 					<span aria-hidden="true">◷</span>
@@ -473,11 +460,21 @@
 		{#if isMenuOpen}
 			<nav class="mobile-menu" aria-label={$t('navigationMenu')}>
 				{#if $user}
-					<a href="/history" onclick={() => (isMenuOpen = false)}>
-						◷ {$t('history')}
-						<span class="small text-muted">({$user.name || $user.email})</span>
-					</a>
-					<button type="button" onclick={() => {
+					<div class="menu-user">
+						<span class="menu-user-initial">{(($user.name || $user.email || '?')).charAt(0).toUpperCase()}</span>
+						<span class="menu-user-name">{$user.name || $user.email}</span>
+					</div>
+				{/if}
+				<div class="menu-section-label">{$t('menuSectionExplore')}</div>
+				<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
+				<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
+				<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
+				<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
+				<div class="menu-section-label">{$t('menuSectionActions')}</div>
+				<a href="/history" onclick={() => (isMenuOpen = false)}>◷ {$t('history')}</a>
+				<button type="button" class:active={$isDataSaverActive} onclick={toggleDataSaver}>⌁ {$t('dataSaver')}</button>
+				{#if $user}
+					<button type="button" class="menu-signout" onclick={() => {
 						isMenuOpen = false;
 						void handleSignOut();
 					}}>⏻ {$t('signOut')}</button>
@@ -487,12 +484,6 @@
 						showSignInModal = true;
 					}}>▣ {$t('signIn')}</button>
 				{/if}
-				<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
-				<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
-				<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
-				<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
-				<a href="/history" onclick={() => (isMenuOpen = false)}>{$t('history')}</a>
-				<button type="button" onclick={openSearch}>{$t('searchTests')}</button>
 			</nav>
 		{/if}
 	</header>
@@ -570,8 +561,26 @@
 		<a class:active={activePath === '/bookmarks'} href="/bookmarks"><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a>
 		<a class="create-tab" href="/"><span aria-hidden="true">＋</span>{$t('createTab')}</a>
 		<a class:active={activePath === '/history'} href="/history"><span aria-hidden="true">◷</span>{$t('historyTab')}</a>
-		<button type="button" onclick={openSearch}><span aria-hidden="true">⌕</span>{$t('searchTab')}</button>
 	</nav>
+
+	<footer class="site-footer border-top bg-body">
+		<div class="footer-inner">
+			<a class="brand-link" href="/">
+				<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
+				<span>selftest.in</span>
+			</a>
+			<p class="footer-tagline small text-muted">{$t('footerTagline')}</p>
+			<nav class="footer-links" aria-label={$t('footerNav')}>
+				<a href="/about">{$t('about')}</a>
+				<a href="/blog">{$t('blog')}</a>
+				<a href="/faq">{$t('faq')}</a>
+				<a href="/contact">{$t('contact')}</a>
+				<a href="/privacy">{$t('privacy')}</a>
+				<a href="/terms">{$t('terms')}</a>
+			</nav>
+			<p class="footer-copy small text-muted">© {new Date().getFullYear()} selftest.in — {$t('allRightsReserved')}</p>
+		</div>
+	</footer>
 
 	{#if toast}
 		<div class={`toast-lite ${toast.type}`} role="status">{toast.message}</div>
@@ -740,19 +749,109 @@
 		background: var(--surface);
 	}
 
+	.menu-section-label {
+		padding: 14px 4px 4px;
+		color: var(--text-muted);
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.menu-user {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 4px 12px;
+		border-bottom: 1px solid var(--line);
+		margin-bottom: 4px;
+	}
+
+	.menu-user-initial {
+		display: grid;
+		width: 36px;
+		height: 36px;
+		flex: 0 0 auto;
+		place-items: center;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
+		color: var(--color-brand-600);
+		font-weight: 700;
+	}
+
+	.menu-user-name {
+		overflow: hidden;
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
 	.mobile-menu a,
 	.mobile-menu button {
 		min-height: 44px;
 		padding: 10px 4px;
 		border: 0;
-		border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
 		background: transparent;
 		text-align: left;
+	}
+
+	.mobile-menu a:hover,
+	.mobile-menu button:hover,
+	.mobile-menu button.active {
+		color: var(--color-brand-600);
+	}
+
+	.mobile-menu button.active {
+		font-weight: 700;
+	}
+
+	.menu-signout {
+		color: var(--text-muted);
 	}
 
 	.mobile-main {
 		min-height: calc(100vh - 58px);
 		padding-bottom: calc(80px + env(safe-area-inset-bottom));
+	}
+
+	.site-footer {
+		display: none;
+	}
+
+	.footer-inner {
+		display: grid;
+		gap: 12px;
+		max-width: 920px;
+		margin: 0 auto;
+		padding: 28px;
+	}
+
+	.footer-tagline {
+		max-width: 420px;
+		margin: 0;
+	}
+
+	.footer-links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 20px;
+	}
+
+	.footer-links a {
+		padding: 8px 0;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.footer-links a:hover {
+		color: var(--color-brand-600);
+	}
+
+	.footer-copy {
+		margin: 4px 0 0;
 	}
 
 	.bottom-nav {
@@ -762,7 +861,7 @@
 		left: 0;
 		z-index: 1030;
 		display: grid;
-		grid-template-columns: repeat(5, 1fr);
+		grid-template-columns: repeat(4, 1fr);
 		padding: 0 8px calc(6px + env(safe-area-inset-bottom));
 	}
 
@@ -1027,6 +1126,10 @@
 			display: none;
 		}
 
+		.site-footer {
+			display: block;
+		}
+
 		.mobile-main {
 			padding-bottom: 0;
 		}
@@ -1047,6 +1150,12 @@
 		.pwa-install-hint {
 			align-items: flex-start;
 			flex-direction: column;
+		}
+	}
+
+	@media (max-width: 359.98px) {
+		.brand-link span {
+			display: none;
 		}
 	}
 </style>
