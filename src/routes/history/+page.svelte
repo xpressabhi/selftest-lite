@@ -4,19 +4,24 @@
 	import { t } from '$lib/client/i18n';
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
-	import { getHistory, saveHistory } from '$lib/client/storage';
-	import { flushPendingAttempts, getPendingAttemptCount, hydrateHistoryFromServer } from '$lib/client/sync';
+	import { getHistory, removeFromHistory, saveHistory } from '$lib/client/storage';
+	import { flushPendingAttempts, getPendingAttemptCount, hydrateHistoryFromServer, purgePendingAttemptsForTest } from '$lib/client/sync';
+	import { showToast } from '$lib/client/toast';
 
-	let history = [];
-	let search = '';
-	let isHydrating = false;
-	let pendingCount = 0;
+	let history = $state([]);
+	let search = $state('');
+	let isHydrating = $state(false);
+	let pendingCount = $state(0);
+	let pendingDelete = $state(null);
+	let deleting = $state(false);
 
-	$: filteredHistory = history.filter((entry) =>
-		`${entry.topic || ''}`.toLowerCase().includes(search.trim().toLowerCase()),
+	let filteredHistory = $derived(
+		history.filter((entry) =>
+			`${entry.topic || ''}`.toLowerCase().includes(search.trim().toLowerCase()),
+		),
 	);
-	$: stats = getStats(history);
-	$: reviewQueue = buildReviewQueue(history);
+	let stats = $derived(getStats(history));
+	let reviewQueue = $derived(buildReviewQueue(history));
 
 	function refreshHistory() {
 		history = getHistory();
@@ -30,6 +35,30 @@
 		saveHistory([]);
 		track('history:clear');
 		refreshHistory();
+	}
+
+	function requestDelete(entry) {
+		pendingDelete = entry;
+	}
+
+	function performDelete() {
+		const entry = pendingDelete;
+		if (!entry || deleting) {
+			return;
+		}
+		deleting = true;
+		removeFromHistory(entry.id);
+		purgePendingAttemptsForTest(entry.id);
+		showToast($t('deleteTestSuccess'), 'success');
+		track('history:delete-test', { id: entry.id });
+		deleting = false;
+		pendingDelete = null;
+	}
+
+	function handleDeleteKeydown(event) {
+		if (event.key === 'Escape' && pendingDelete && !deleting) {
+			pendingDelete = null;
+		}
 	}
 
 	onMount(() => {
@@ -135,32 +164,78 @@
 	{:else}
 		<div class="list-group">
 			{#each filteredHistory as entry (`${entry.id}-${entry.timestamp || ''}`)}
-				<a
-					class="list-group-item list-group-item-action d-flex align-items-center justify-content-between gap-3"
-					href={entry.userAnswers ? `/results?id=${entry.id}` : `/test?id=${entry.id}`}
-					onclick={() => track('history:open-test', { id: entry.id, status: entry.userAnswers ? 'submitted' : 'unsubmitted' })}
-				>
-					<div>
-						<div class="fw-semibold">{entry.topic || $t('testNotFound')}</div>
-						<div class="text-muted small">
-							{entry.questions?.length || entry.totalQuestions || 0} {$t('questions')}
-							{#if entry.timestamp}
-								<span> · {new Date(entry.timestamp).toLocaleString()}</span>
-							{/if}
+				<div class="list-group-item list-group-item-action history-row">
+					<a
+						class="history-link"
+						href={entry.userAnswers ? `/results?id=${entry.id}` : `/test?id=${entry.id}`}
+						onclick={() => track('history:open-test', { id: entry.id, status: entry.userAnswers ? 'submitted' : 'unsubmitted' })}
+					>
+						<div>
+							<div class="fw-semibold">{entry.topic || $t('testNotFound')}</div>
+							<div class="text-muted small">
+								{entry.questions?.length || entry.totalQuestions || 0} {$t('questions')}
+								{#if entry.timestamp}
+									<span> · {new Date(entry.timestamp).toLocaleString()}</span>
+								{/if}
+							</div>
 						</div>
-					</div>
-					{#if entry.userAnswers}
-						<span class="badge bg-success">
-							{entry.score ?? 0}/{entry.totalQuestions || entry.questions?.length || 0}
-						</span>
-					{:else}
-						<span class="badge bg-warning text-dark">{$t('unsubmittedTest')}</span>
-					{/if}
-				</a>
+						{#if entry.userAnswers}
+							<span class="badge bg-success">
+								{entry.score ?? 0}/{entry.totalQuestions || entry.questions?.length || 0}
+							</span>
+						{:else}
+							<span class="badge bg-warning text-dark">{$t('unsubmittedTest')}</span>
+						{/if}
+					</a>
+					<button
+						class="history-delete"
+						type="button"
+						aria-label={`${$t('deleteTest')}: ${entry.topic || $t('untitledTest')}`}
+						onclick={() => requestDelete(entry)}
+					>
+						<span aria-hidden="true">🗑</span>
+					</button>
+				</div>
 			{/each}
 		</div>
 	{/if}
 </section>
+
+<svelte:window onkeydown={handleDeleteKeydown} />
+
+{#if pendingDelete}
+	<div
+		class="delete-backdrop"
+		role="presentation"
+		onclick={(event) => {
+			if (event.target === event.currentTarget && !deleting) {
+				pendingDelete = null;
+			}
+		}}
+	>
+		<div
+			class="delete-modal"
+			role="dialog"
+			aria-modal="true"
+			tabindex="-1"
+			aria-label={$t('deleteTestConfirmTitle')}
+		>
+			<h2 class="h5 fw-bold mb-1">{$t('deleteTestConfirmTitle')}</h2>
+			<p class="text-muted small mb-2">
+				{$t('deleteTestConfirmTopic')}: <strong class="text-break">{pendingDelete.topic || $t('untitledTest')}</strong>
+			</p>
+			<p class="text-muted small mb-3">{$t('deleteTestConfirmBody')}</p>
+			<div class="d-flex flex-wrap gap-2">
+				<button class="btn btn-outline-secondary" type="button" disabled={deleting} onclick={() => (pendingDelete = null)}>
+					{$t('cancel')}
+				</button>
+				<button class="btn btn-danger" type="button" disabled={deleting} onclick={performDelete}>
+					{deleting ? $t('deleting') : $t('deleteTest')}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.stat-card {
@@ -181,5 +256,70 @@
 	.stat-card span {
 		color: var(--text-muted);
 		font-size: 0.8rem;
+	}
+
+	.history-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 0;
+	}
+
+	.history-link {
+		display: flex;
+		flex: 1 1 auto;
+		min-width: 0;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 0 12px 16px;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.history-link:hover {
+		background: var(--surface-muted);
+	}
+
+	.history-delete {
+		display: grid;
+		width: 44px;
+		height: 44px;
+		flex: 0 0 auto;
+		margin-right: 8px;
+		place-items: center;
+		border: 0;
+		border-radius: 10px;
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 1rem;
+		cursor: pointer;
+		transition: background 0.12s ease, color 0.12s ease;
+	}
+
+	.history-delete:hover,
+	.history-delete:focus-visible {
+		background: rgba(220, 53, 69, 0.1);
+		color: #dc2626;
+	}
+
+	.delete-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 1200;
+		display: grid;
+		place-items: center;
+		padding: 20px;
+		background: rgba(15, 23, 42, 0.55);
+	}
+
+	.delete-modal {
+		width: 100%;
+		max-width: 400px;
+		padding: 20px;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--surface);
+		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
 	}
 </style>

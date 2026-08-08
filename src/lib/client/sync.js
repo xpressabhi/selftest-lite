@@ -14,6 +14,7 @@
 
 import {
 	emitLocalStorageChange,
+	getHiddenHistoryIds,
 	getHistory,
 	upsertHistory,
 	writeJson,
@@ -78,6 +79,16 @@ export function queuePendingAttempt(attempt) {
 
 export function getPendingAttemptCount() {
 	return readPendingAttempts().length;
+}
+
+/** Drops queued offline attempts for a deleted test so they can't resurface. */
+export function purgePendingAttemptsForTest(testId) {
+	if (testId === undefined || testId === null) {
+		return;
+	}
+	const key = String(testId);
+	const pending = readPendingAttempts().filter((item) => String(item.testId) !== key);
+	writePendingAttempts(pending);
 }
 
 function serializeAttempt(attempt) {
@@ -242,9 +253,16 @@ export async function hydrateHistoryFromServer() {
 			return false;
 		}
 
+		// Tests the user removed from history stay out, even though their
+		// attempts still exist server-side.
+		const hiddenIds = new Set(getHiddenHistoryIds());
+		const visibleAttempts = remoteAttempts.filter(
+			(attempt) => !hiddenIds.has(String(attempt?.testId)),
+		);
+
 		const mergedHistory = mergeRemoteAttemptsIntoHistory(
 			getHistory(),
-			remoteAttempts,
+			visibleAttempts,
 		);
 		let changed = false;
 		for (const entry of mergedHistory) {

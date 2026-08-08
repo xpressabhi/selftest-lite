@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
 	HOME_TOUR_COMPLETED: 'selftest_home_tour_completed',
 	PWA_INSTALL_DISMISSED_AT: 'selftest_pwa_install_dismissed_at',
 	PENDING_ATTEMPTS: 'selftest_pending_attempts',
+	HIDDEN_HISTORY: 'selftest_hidden_history',
 };
 
 export const LOCAL_STORAGE_CHANGE_EVENT = 'selftest-local-change';

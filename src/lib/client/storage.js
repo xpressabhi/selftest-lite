@@ -76,6 +76,34 @@ export function saveHistory(history) {
 	);
 }
 
+/**
+ * Removes a test from local history and cleans up everything tied to it:
+ * drafts, flags, attempt results, and the unsubmitted-test marker. The id is
+ * remembered so server-side attempts don't re-add it during history
+ * hydration; the test itself stays in the shared database.
+ */
+export function removeFromHistory(testId) {
+	if (testId === undefined || testId === null) {
+		return;
+	}
+	const key = String(testId);
+	const history = getHistory().filter((entry) => String(entry.id) !== key);
+	saveHistory(history);
+	const hidden = getHiddenHistoryIds();
+	if (!hidden.includes(key)) {
+		writeJson(STORAGE_KEYS.HIDDEN_HISTORY, [...hidden, key].slice(-200));
+	}
+	removeKey(getDraftAnswerKey(testId));
+	removeKey(getDraftFlagsKey(testId));
+	removeKey(getAttemptResultKey(testId));
+	clearUnsubmittedTest(testId);
+}
+
+export function getHiddenHistoryIds() {
+	const value = readJson(STORAGE_KEYS.HIDDEN_HISTORY, []);
+	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
+}
+
 export function upsertHistory(test) {
 	if (!test?.id) {
 		return;
