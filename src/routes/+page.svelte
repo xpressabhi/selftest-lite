@@ -621,13 +621,6 @@
 			</div>
 		</div>
 
-		{#if $isDataSaverActive && !isFullExam}
-			<div class="alert alert-info mt-3 mb-0">
-				{$t('slowConnectionReduced')} {numQuestions} {$t('forFasterLoading')}
-			</div>
-		{:else if $isDataSaverActive && isFullExam}
-			<div class="alert alert-info mt-3 mb-0">{$t('fullLengthSlowConnection')}</div>
-		{/if}
 		{#if isOffline}
 			<div class="alert alert-warning mt-3 mb-0">{$t('offlineAccessHistory')}</div>
 		{/if}

@@ -29,10 +29,6 @@
 
 	let { children } = $props();
 	let isOffline = $state(false);
-	let isSlowConnection = $state(false);
-	let effectiveType = $state('');
-	let showSlowBanner = $state(false);
-	let slowBannerDismissed = $state(false);
 	let deferredInstallPrompt = $state(null);
 	let showInstallHint = $state(false);
 	let showInstallGuide = $state(false);
@@ -87,16 +83,7 @@
 		}
 
 		const updateNetworkState = () => {
-			const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-			const nextEffectiveType = String(connection?.effectiveType || '');
 			isOffline = !navigator.onLine;
-			effectiveType = nextEffectiveType;
-			isSlowConnection =
-				Boolean(connection?.saveData) ||
-				['slow-2g', '2g', '3g'].includes(nextEffectiveType.toLowerCase());
-			if (isOffline) {
-				slowBannerDismissed = false;
-			}
 		};
 		const updateStandaloneState = () => {
 			isStandalone =
@@ -184,16 +171,6 @@
 
 	$effect(() => {
 		track('page:view', { route: page.url.pathname });
-	});
-
-	$effect(() => {
-		if (isSlowConnection && !isOffline && !slowBannerDismissed) {
-			const timer = window.setTimeout(() => {
-				showSlowBanner = true;
-			}, 1200);
-			return () => window.clearTimeout(timer);
-		}
-		showSlowBanner = false;
 	});
 
 	$effect(() => {
@@ -476,13 +453,6 @@
 	{#if isOffline}
 		<div class="connection-banner offline-banner" role="alert">
 			{$t('offlineQuizzesAvailable')}
-		</div>
-	{:else if showSlowBanner}
-		<div class="connection-banner slow-banner" role="alert">
-			<span>{$t('slowConnectionUsingOptimized')} {effectiveType ? `(${effectiveType})` : ''}</span>
-			<button type="button" class="banner-close" aria-label={$t('close')} onclick={() => (slowBannerDismissed = true)}>
-				×
-			</button>
 		</div>
 	{/if}
 
@@ -919,22 +889,6 @@
 
 	.offline-banner {
 		background: #b45309;
-	}
-
-	.slow-banner {
-		background: #4338ca;
-	}
-
-	.banner-close {
-		display: grid;
-		min-width: 44px;
-		min-height: 44px;
-		place-items: center;
-		border: 0;
-		background: transparent;
-		color: inherit;
-		font-size: 1.25rem;
-		line-height: 1;
 	}
 
 	.pwa-install-hint {
