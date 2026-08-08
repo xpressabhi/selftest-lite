@@ -20,76 +20,35 @@
 		<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
 		<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
 		<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-		<style>
-			#boot-screen {
-				position: fixed;
-				inset: 0;
-				z-index: 2147483647;
-				display: grid;
-				place-content: center;
-				gap: 12px;
-				background: #f8fafc;
-				color: #111827;
-				font: 700 1.25rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
-				text-align: center;
-				opacity: 1;
-				transition: opacity 180ms ease, visibility 180ms ease;
-			}
-
-			#boot-screen.is-hidden {
-				visibility: hidden;
-				opacity: 0;
-				pointer-events: none;
-			}
-
-			#boot-screen .boot-mark {
-				display: block;
-				width: 96px;
-				height: 96px;
-				line-height: 1;
-				object-fit: contain;
-			}
-
-			#boot-screen .boot-spinner {
-				width: 24px;
-				height: 24px;
-				margin: 4px auto 0;
-				border: 3px solid rgba(79, 70, 229, 0.2);
-				border-top-color: #4f46e5;
-				border-radius: 50%;
-				animation: boot-spin 700ms linear infinite;
-			}
-
-			@keyframes boot-spin {
-			to { transform: rotate(360deg); }
-			}
-
-			@media (prefers-color-scheme: dark) {
-				#boot-screen {
-					background: #111827;
-					color: #f8fafc;
+		<script>
+			// Pre-paint preferences: apply saved theme/language/data-saver from
+			// localStorage before first paint to avoid theme/language flashes.
+			(function () {
+				try {
+					var stored = window.localStorage;
+					var theme = stored.getItem('selftest_theme') || 'system';
+					var dark =
+						theme === 'dark' ||
+						(theme === 'system' &&
+							window.matchMedia('(prefers-color-scheme: dark)').matches);
+					if (dark) {
+						document.documentElement.classList.add('dark');
+						document.documentElement.setAttribute('data-bs-theme', 'dark');
+					}
+					if (stored.getItem('selftest_language') === 'hindi') {
+						document.documentElement.setAttribute('lang', 'hi');
+					}
+					if (stored.getItem('dataSaverMode') === 'true') {
+						document.documentElement.classList.add('data-saver', 'reduce-motion');
+					}
+				} catch (error) {
+					// localStorage unavailable (private mode etc.); defaults apply.
 				}
-			}
-
-			@media (prefers-reduced-motion: reduce) {
-				#boot-screen { transition: none; }
-				#boot-screen .boot-spinner { animation: none; }
-			}
-
-			html.reduce-motion #boot-screen { transition: none; }
-			html.reduce-motion #boot-screen .boot-spinner { animation: none; }
-		</style>
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
-		<div id="boot-screen" aria-hidden="true">
-			<img class="boot-mark" src="/icons/96.png" alt="" width="96" height="96" />
-			<span>selftest.in</span>
-			<span class="boot-spinner"></span>
-		</div>
 		<div style="display: contents">%sveltekit.body%</div>
-		<script>
-			window.setTimeout(() => document.getElementById('boot-screen')?.classList.add('is-hidden'), 10000);
-		</script>
 	</body>
 </html>

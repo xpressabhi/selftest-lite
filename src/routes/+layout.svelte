@@ -62,17 +62,7 @@
 	//   script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7214001284506571';
 	//   document.head.appendChild(script);
 
-	function dismissBootScreen() {
-		const bootScreen = document.getElementById('boot-screen');
-		if (!bootScreen) {
-			return;
-		}
-		bootScreen.classList.add('is-hidden');
-		window.setTimeout(() => bootScreen.remove(), 220);
-	}
-
 	onMount(() => {
-		dismissBootScreen();
 		initializePreferences();
 		startTelemetry();
 		void initDeepLinks();
