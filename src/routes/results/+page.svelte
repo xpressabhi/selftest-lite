@@ -14,6 +14,7 @@
 		getWeekActivity,
 	} from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import { showToast } from '$lib/client/toast';
 	import {
 		getAttemptResult,
 		getHistory,
@@ -270,7 +271,7 @@
 			return;
 		}
 		await navigator.clipboard.writeText(url);
-		alert($t('shareLinkCopied'));
+		showToast($t('shareLinkCopied'), 'success');
 	}
 </script>
 
@@ -665,7 +666,6 @@
 	.filter-chip:hover,
 	.filter-chip:focus-visible {
 		border-color: var(--color-brand-500);
-		outline: none;
 	}
 
 	.filter-chip.active {
@@ -741,10 +741,6 @@
 	.review-card-head:hover .review-card-question,
 	.review-card-head:focus-visible .review-card-question {
 		color: var(--color-brand-600);
-	}
-
-	.review-card-head:focus-visible {
-		outline: none;
 	}
 
 	.review-card-question {

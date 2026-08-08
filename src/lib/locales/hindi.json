@@ -342,6 +342,7 @@
   "testSummaryBody": "टेस्ट विवरण देखें, दोस्तों के साथ शेयर करें, फिर तैयार होने पर शुरू करें।",
   "startTest": "टेस्ट शुरू करें",
   "questionsCountFormat": "{count} प्रश्न",
+  "goToQuestion": "प्रश्न {count} पर जाएँ",
   "testLabel": "टेस्ट",
   "testDocument": "टेस्ट दस्तावेज़",
   "testPresentation": "टेस्ट प्रस्तुति",

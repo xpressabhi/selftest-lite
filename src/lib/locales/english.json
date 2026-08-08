@@ -342,6 +342,7 @@
   "testSummaryBody": "Review the test details, share it with friends, then start when you're ready.",
   "startTest": "Start Test",
   "questionsCountFormat": "{count} Questions",
+  "goToQuestion": "Go to question {count}",
   "testLabel": "Test",
   "testDocument": "Test Document",
   "testPresentation": "Test Presentation",

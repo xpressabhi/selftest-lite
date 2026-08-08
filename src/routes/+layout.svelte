@@ -23,6 +23,7 @@
 		user,
 	} from '$lib/client/auth';
 	import { flushPendingAttempts, startStateSync } from '$lib/client/sync';
+	import { showToast, toast } from '$lib/client/toast';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import '$lib/styles/globals.css';
 
@@ -40,8 +41,6 @@
 	let isIOS = $state(false);
 	let iosBrowser = $state('safari');
 	let isInstalling = $state(false);
-	let toast = $state(null);
-	let toastTimer;
 	let pullStartY = 0;
 	let pullDistance = $state(0);
 	let isRefreshing = $state(false);
@@ -90,11 +89,7 @@
 			navigator.serviceWorker
 				.register('/sw.js')
 				.then(() => {
-					toast = { type: 'success', message: $t('offlineReady') };
-					window.clearTimeout(toastTimer);
-					toastTimer = window.setTimeout(() => {
-						toast = null;
-					}, 3000);
+					showToast($t('offlineReady'), 'success');
 				})
 				.catch(() => {
 					// Service worker registration is best-effort; local dev may not serve a built sw.js.
@@ -191,7 +186,6 @@
 			window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 			window.removeEventListener('appinstalled', handleAppInstalled);
 			connection?.removeEventListener?.('change', updateNetworkState);
-			window.clearTimeout(toastTimer);
 		};
 	});
 
@@ -214,11 +208,7 @@
 
 	$effect(() => {
 		if (isOffline) {
-			toast = { type: 'warning', message: $t('offlineToastMessage') };
-			window.clearTimeout(toastTimer);
-			toastTimer = window.setTimeout(() => {
-				toast = null;
-			}, 4500);
+			showToast($t('offlineToastMessage'), 'warning', 4500);
 		}
 	});
 
@@ -319,7 +309,7 @@
 			track('auth:google-sign-in');
 		} catch (error) {
 			console.error('Google sign-in failed:', error);
-			toast = { type: 'error', message: $t('signInFailed') };
+			showToast($t('signInFailed'), 'error', 6000);
 		} finally {
 			isSigningIn = false;
 		}
@@ -500,7 +490,7 @@
 	{:else if showSlowBanner}
 		<div class="connection-banner slow-banner" role="alert">
 			<span>{$t('slowConnectionUsingOptimized')} {effectiveType ? `(${effectiveType})` : ''}</span>
-			<button type="button" class="banner-close" aria-label="Close" onclick={() => (slowBannerDismissed = true)}>
+			<button type="button" class="banner-close" aria-label={$t('close')} onclick={() => (slowBannerDismissed = true)}>
 				×
 			</button>
 		</div>
@@ -591,8 +581,8 @@
 	</footer>
 	{/if}
 
-	{#if toast}
-		<div class={`toast-lite ${toast.type}`} role="status">{toast.message}</div>
+	{#if $toast}
+		<div class={`toast-lite ${$toast.type}`} role={$toast.type === 'error' ? 'alert' : 'status'}>{$toast.message}</div>
 	{/if}
 
 	{#if showSignInModal}
@@ -739,7 +729,6 @@
 	.header-icon.active {
 		background: color-mix(in srgb, var(--color-brand-600) 13%, transparent);
 		color: var(--color-brand-600);
-		outline: none;
 	}
 
 	.data-saver-control {
@@ -904,7 +893,6 @@
 	.bottom-nav button:focus-visible {
 		color: var(--color-brand-600);
 		font-weight: 700;
-		outline: none;
 	}
 
 	.bottom-nav span {

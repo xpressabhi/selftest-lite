@@ -68,7 +68,7 @@
 						class:answered={answers[index] !== undefined}
 						class:flagged={flagged.includes(index)}
 						class:current={index === currentIndex}
-						aria-label="Go to question {index + 1}"
+						aria-label={$t('goToQuestion', { count: index + 1 })}
 						type="button"
 						onclick={() => onJump?.(index)}
 					>
@@ -180,11 +180,11 @@
 	.sheet-close:focus-visible {
 		background: var(--surface-muted);
 		color: var(--text);
-		outline: none;
 	}
 
 	.sheet-body {
 		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 6px 16px 12px;
 	}
 

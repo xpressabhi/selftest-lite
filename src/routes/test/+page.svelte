@@ -26,6 +26,7 @@
 		writeDraftFlags,
 	} from '$lib/client/storage';
 	import { pushAttempt } from '$lib/client/sync';
+	import { showToast } from '$lib/client/toast';
 
 	let questionPaper = $state(null);
 	let answers = $state({});
@@ -273,7 +274,7 @@
 			return;
 		}
 		await navigator.clipboard.writeText(url);
-		alert($t('shareLinkCopied'));
+		showToast($t('shareLinkCopied'), 'success');
 	}
 
 	function nextQuestion() {
@@ -422,6 +423,7 @@
 						class:active={flagged.includes(currentQuestionIndex)}
 						type="button"
 						aria-pressed={flagged.includes(currentQuestionIndex)}
+						aria-label={flagged.includes(currentQuestionIndex) ? $t('flaggedQuestions') : $t('flagForReview')}
 						onclick={() => toggleFlag(currentQuestionIndex)}
 					>
 						<span aria-hidden="true">⚑</span>
@@ -595,7 +597,6 @@
 	.test-exit:hover,
 	.test-exit:focus-visible {
 		background: var(--surface-muted);
-		outline: none;
 	}
 
 	.test-exit-label {
@@ -641,7 +642,6 @@
 	.test-overflow-btn:focus-visible,
 	.test-overflow-btn[aria-expanded='true'] {
 		background: var(--surface-muted);
-		outline: none;
 	}
 
 	.test-overflow-menu {
@@ -859,7 +859,6 @@
 
 	.test-flag:hover,
 	.test-flag:focus-visible {
-		outline: none;
 		border-color: #d97706;
 	}
 
@@ -894,7 +893,6 @@
 	.test-option:hover,
 	.test-option:focus-visible {
 		border-color: var(--color-brand-500);
-		outline: none;
 	}
 
 	.test-option.selected {
