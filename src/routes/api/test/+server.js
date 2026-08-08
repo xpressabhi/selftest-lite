@@ -66,7 +66,7 @@ export async function GET({ request, url, cookies }) {
 			const requestedLimit = Math.min(Math.max(Number(limit) || 10, 1), 10);
 			const tests = await listTestRecords({
 				search,
-				limit: Math.min(requestedLimit + 1, 10),
+				limit: requestedLimit + 1,
 				offset: Number(offset),
 				language,
 				examType,

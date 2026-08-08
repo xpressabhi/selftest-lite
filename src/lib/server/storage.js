@@ -891,7 +891,7 @@ export async function listTestRecords({
 } = {}) {
 	await ensureStorageSchema();
 
-	const cappedLimit = Math.min(Math.max(Number(limit) || 10, 1), 10);
+	const cappedLimit = Math.min(Math.max(Number(limit) || 10, 1), 21);
 	const normalizedOffset = Math.max(Number(offset) || 0, 0);
 	const trimmedSearch = search.trim();
 	const normalizedLanguage = String(language || '')

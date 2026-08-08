@@ -20,7 +20,8 @@
 	];
 
 	const SEARCH_DEBOUNCE_MS = 350;
-	const SEARCH_PAGE_SIZE = 5;
+	const SEARCH_INITIAL_PAGE_SIZE = 10;
+	const SEARCH_INCREMENT = 5;
 	const RECENT_TTL_MS = 60_000;
 
 	let currentExampleIndex = $state(0);
@@ -85,9 +86,11 @@
 			localSearchStatus = 'loading';
 		}
 
+		const limit = append ? SEARCH_INCREMENT : SEARCH_INITIAL_PAGE_SIZE;
+
 		try {
 			const response = await fetch(
-				`/api/test?q=${encodeURIComponent(q)}&limit=${SEARCH_PAGE_SIZE}&offset=${offset}`,
+				`/api/test?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`,
 				{ signal: controller.signal },
 			);
 			const payload = await response.json().catch(() => null);
