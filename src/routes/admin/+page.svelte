@@ -10,7 +10,7 @@
 	let error = $state('');
 	let stats = $state(null);
 	let featureUsage = $state(null);
-	let days = $state(7);
+	let days = $state(1);
 	let activeTab = $state('overview');
 
 	const TABS = [
