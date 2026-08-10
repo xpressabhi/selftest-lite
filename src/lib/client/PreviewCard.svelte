@@ -315,12 +315,17 @@
 	<div class="preview-footer">
 		<button
 			class="generate-btn"
+			class:ai-shimmer={GENERATING}
 			disabled={GENERATING || (!topic && !parsingFailed)}
 			onclick={handleGenerate}
 			type="button"
 		>
-			{GENERATING ? $t('generating') : $t('previewGenerate')}
-			{#if !GENERATING}
+			{#if GENERATING}
+				<span class="thinking-dots" aria-label={$t('generating')}>
+					<span></span><span></span><span></span>
+				</span>
+			{:else}
+				{$t('previewGenerate')}
 				<span class="generate-time">{$t('previewGeneratingTime')}</span>
 			{/if}
 		</button>

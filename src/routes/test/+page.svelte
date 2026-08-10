@@ -325,7 +325,9 @@
 <section class="test-shell">
 	{#if loading}
 		<div class="py-5 text-center">
-			<div class="spinner-border text-primary" role="status"></div>
+			<div class="thinking-dots" role="status" aria-label={$t('loading')}>
+				<span></span><span></span><span></span>
+			</div>
 			<p class="text-muted mt-3">{$t('loading')}</p>
 		</div>
 	{:else if error}

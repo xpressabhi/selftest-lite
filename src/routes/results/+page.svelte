@@ -282,7 +282,9 @@
 <section class="container py-4">
 	{#if loading}
 		<div class="py-5 text-center">
-			<div class="spinner-border text-primary" role="status"></div>
+			<div class="thinking-dots" role="status" aria-label={$t('loading')}>
+				<span></span><span></span><span></span>
+			</div>
 			<p class="text-muted mt-3">{$t('loading')}</p>
 		</div>
 	{:else if error}
@@ -503,7 +505,14 @@
 											disabled={loadingExplanation[index]}
 											onclick={() => fetchExplanation(index, question)}
 										>
-											{loadingExplanation[index] ? $t('generatingExplanation') : $t('generateExplanation')}
+											{#if loadingExplanation[index]}
+												<span class="thinking-dots">
+													<span></span><span></span><span></span>
+												</span>
+												<span style="margin-left:6px">{$t('generatingExplanation')}</span>
+											{:else}
+												{$t('generateExplanation')}
+											{/if}
 										</button>
 									{/if}
 								</AnimatedHeight>

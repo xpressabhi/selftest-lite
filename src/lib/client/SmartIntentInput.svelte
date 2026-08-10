@@ -275,7 +275,9 @@
 				autocomplete="off"
 			/>
 			{#if PARSING}
-				<span class="intent-spinner" aria-label={$t('smartIntentParsing')}></span>
+				<span class="intent-thinking" aria-label={$t('smartIntentParsing')}>
+					<span></span><span></span><span></span>
+				</span>
 			{:else}
 				<button class="intent-btn" type="submit" disabled={!trimmedValue || disabled || GENERATING} aria-label={$t('generateQuiz')}>
 					<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -407,7 +409,7 @@
 	.intent-input-group.parsing {
 		border-color: rgb(var(--brand-rgb));
 		box-shadow: 0 0 0 4px rgba(var(--brand-rgb), 0.15);
-		animation: pulse-border 1.8s ease-in-out infinite;
+		animation: parsing-glow 2s ease-in-out infinite;
 	}
 
 	.intent-input-group.parsing.dropdown-visible {
@@ -415,9 +417,9 @@
 		border-bottom-color: rgb(var(--brand-rgb));
 	}
 
-	@keyframes pulse-border {
-		0%, 100% { box-shadow: 0 0 0 4px rgba(var(--brand-rgb), 0.12); }
-		50% { box-shadow: 0 0 0 8px rgba(var(--brand-rgb), 0.04); }
+	@keyframes parsing-glow {
+		0%, 100% { box-shadow: 0 0 0 4px rgba(var(--brand-rgb), 0.12), 0 0 12px rgba(var(--brand-rgb), 0.06); }
+		50% { box-shadow: 0 0 0 6px rgba(var(--brand-rgb), 0.08), 0 0 20px rgba(var(--brand-rgb), 0.1); }
 	}
 
 	.intent-icon {
@@ -447,20 +449,22 @@
 		opacity: 0.7;
 	}
 
-	.intent-spinner {
-		width: 22px;
-		height: 22px;
-		border: 2.5px solid var(--line);
-		border-top-color: rgb(var(--brand-rgb));
-		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
+	.intent-thinking {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
 		margin-right: 8px;
 		flex-shrink: 0;
 	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
+	.intent-thinking span {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: rgb(var(--brand-rgb));
+		animation: thinking-dot 1.4s ease-in-out infinite;
 	}
+	.intent-thinking span:nth-child(2) { animation-delay: 0.16s; }
+	.intent-thinking span:nth-child(3) { animation-delay: 0.32s; }
 
 	.intent-btn {
 		flex-shrink: 0;

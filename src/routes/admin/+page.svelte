@@ -154,7 +154,9 @@
 
 		{#if checking && !stats}
 			<div class="py-5 text-center">
-				<div class="spinner-border text-primary" role="status"></div>
+				<div class="thinking-dots" role="status" aria-label="Loading">
+					<span></span><span></span><span></span>
+				</div>
 			</div>
 		{:else if !authed}
 			<form class="admin-login bg-body border rounded-3 p-4 shadow-sm" onsubmit={(event) => { event.preventDefault(); void login(); }}>

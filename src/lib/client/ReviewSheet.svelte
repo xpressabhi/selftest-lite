@@ -99,6 +99,11 @@
 					</button>
 				{/if}
 				<button class="btn btn-success" type="button" disabled={submitting} onclick={onSubmit}>
+					{#if submitting}
+						<span class="thinking-dots" style="margin-right:6px">
+							<span></span><span></span><span></span>
+						</span>
+					{/if}
 					{submitting ? $t('submittingAnswers') : $t('submitTest')}
 				</button>
 			</div>
