@@ -552,9 +552,11 @@
 			<div
 				class="sign-in-modal"
 				role="dialog"
+				tabindex="-1"
 				aria-modal="true"
 				aria-label={$t('signInTitle')}
 				onclick={(event) => event.stopPropagation()}
+				onkeydown={(event) => { if (event.key === 'Escape') { showSignInModal = false; } }}
 			>
 				<button class="modal-close" type="button" aria-label={$t('close')} onclick={() => (showSignInModal = false)}>
 					×
@@ -836,8 +838,7 @@
 		padding: 0 8px calc(6px + env(safe-area-inset-bottom));
 	}
 
-	.bottom-nav a,
-	.bottom-nav button {
+	.bottom-nav a {
 		display: flex;
 		min-height: 48px;
 		align-items: center;
@@ -852,7 +853,7 @@
 	}
 
 	.bottom-nav a.active,
-	.bottom-nav button:focus-visible {
+	.bottom-nav a:focus-visible {
 		color: var(--color-brand-600);
 		font-weight: 700;
 	}
@@ -868,7 +869,7 @@
 	}
 
 	:global(.dark) .bottom-nav a.active,
-	:global(.dark) .bottom-nav button:focus-visible,
+	:global(.dark) .bottom-nav a:focus-visible,
 	:global(.dark) .create-tab {
 		color: var(--color-brand-100) !important;
 	}

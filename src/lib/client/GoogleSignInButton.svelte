@@ -10,7 +10,7 @@
 	const googleClientId = resolveGoogleClientId(env.PUBLIC_GOOGLE_CLIENT_ID);
 
 	let { onCredential, oncredential, disabled = false } = $props();
-	const credentialCallback = onCredential || oncredential || null;
+	const credentialCallback = $derived(onCredential || oncredential || null);
 	let buttonRef = $state(null);
 	let status = $state('idle');
 	let googleScriptPromise = null;

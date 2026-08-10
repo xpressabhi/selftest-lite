@@ -61,10 +61,7 @@
 		'Business Communication',
 	];
 
-	let draft = $state(
-		normalizeProfile(initial) ||
-			createDefaultProfile(),
-	);
+	let draft = $state((() => normalizeProfile(initial) || createDefaultProfile())());
 	let step = $state(0);
 	let subjectInput = $state('');
 	let focusInput = $state('');
