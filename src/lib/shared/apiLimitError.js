@@ -42,20 +42,37 @@ export function isApiLimitExceededError(errorLike) {
 	return API_LIMIT_PATTERNS.some((pattern) => pattern.test(details));
 }
 
-export function isApiLimitExceededResponse(status, errorPayload) {
-	if (status === 429) return true;
-	if (errorPayload?.code === API_LIMIT_ERROR_CODE) return true;
-	return isApiLimitExceededError(errorPayload);
-}
-
 export function isApiTimeoutError(errorLike) {
 	const details = collectErrorText(errorLike).toLowerCase();
 	if (!details) return false;
 	return API_TIMEOUT_PATTERNS.some((pattern) => pattern.test(details));
 }
 
-export function isApiTimeoutResponse(status, errorPayload) {
-	if ([408, 504, 524].includes(status)) return true;
-	if (errorPayload?.code === API_TIMEOUT_ERROR_CODE) return true;
-	return isApiTimeoutError(errorPayload);
+export function classifyApiError(error, fallbackArgs = {}) {
+	const {
+		fallbackCode = 'UNEXPECTED_ERROR',
+		fallbackMessage = 'An unexpected error occurred',
+		limitMessage = 'API limit exceeded. Please retry manually after some time.',
+		timeoutMessage = 'The request timed out. Please retry.',
+	} = fallbackArgs;
+
+	if (isApiLimitExceededError(error)) {
+		return {
+			statusCode: 429,
+			code: API_LIMIT_ERROR_CODE,
+			message: limitMessage,
+		};
+	}
+	if (isApiTimeoutError(error)) {
+		return {
+			statusCode: 408,
+			code: API_TIMEOUT_ERROR_CODE,
+			message: timeoutMessage,
+		};
+	}
+	return {
+		statusCode: 500,
+		code: fallbackCode,
+		message: fallbackMessage,
+	};
 }

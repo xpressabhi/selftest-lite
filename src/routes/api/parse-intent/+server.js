@@ -8,9 +8,7 @@ import { PROFILE_STATE_KEY, parseProfileStateValue } from '$lib/shared/userProfi
 import { buildStudentContext } from '$lib/server/profile';
 import {
 	API_LIMIT_ERROR_CODE,
-	isApiLimitExceededError,
-	API_TIMEOUT_ERROR_CODE,
-	isApiTimeoutError,
+	classifyApiError,
 } from '$lib/shared/apiLimitError';
 import * as z from 'zod';
 
@@ -187,43 +185,26 @@ export async function POST({ request, cookies }) {
 		} catch (aiError) {
 			console.error('Intent parsing failed:', aiError);
 
-			if (isApiLimitExceededError(aiError) || isApiTimeoutError(aiError)) {
-				await logApiEvent({
-					route: '/api/parse-intent',
-					action: 'parse_intent',
-					clientKey,
-					request,
-					statusCode: isApiLimitExceededError(aiError) ? 429 : 408,
-					durationMs: Date.now() - startedAt,
-					errorMessage: aiError.message,
-				});
-
-				return json(
-					{
-						error: isApiLimitExceededError(aiError)
-							? 'API limit exceeded. Please retry later.'
-							: 'Intent parsing timed out.',
-						code: isApiLimitExceededError(aiError)
-							? API_LIMIT_ERROR_CODE
-							: API_TIMEOUT_ERROR_CODE,
-					},
-					{ status: isApiLimitExceededError(aiError) ? 429 : 408 },
-				);
-			}
+			const { statusCode, code, message } = classifyApiError(aiError, {
+				fallbackCode: 'PARSE_FAILED',
+				fallbackMessage: 'Failed to parse intent. Please try again.',
+				limitMessage: 'API limit exceeded. Please retry later.',
+				timeoutMessage: 'Intent parsing timed out.',
+			});
 
 			await logApiEvent({
 				route: '/api/parse-intent',
 				action: 'parse_intent',
 				clientKey,
 				request,
-				statusCode: 500,
+				statusCode,
 				durationMs: Date.now() - startedAt,
 				errorMessage: aiError.message,
 			});
 
 			return json(
-				{ error: 'Failed to parse intent. Please try again.', code: 'PARSE_FAILED' },
-				{ status: 500 },
+				{ error: message, code },
+				{ status: statusCode },
 			);
 		}
 	} catch (error) {

@@ -1,4 +1,7 @@
-export const VALID_LANGUAGES = ['english', 'hindi', 'spanish'];
+export const VALID_LANGUAGES = ['english', 'hindi'];
+
+export const TEST_MODE_QUIZ = 'quiz-practice';
+export const TEST_MODE_EXAM = 'full-exam';
 
 export const VALID_TEST_TYPES = [
 	'multiple-choice',

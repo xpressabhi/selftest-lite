@@ -230,7 +230,6 @@ export async function ensureStorageSchema() {
 					}
 				}
 				await query(`DROP TABLE app_user_state_legacy`);
-				console.log('Migrated legacy app_user_state rows to per-key schema');
 			} catch (error) {
 				console.error('Failed to migrate legacy app_user_state:', error);
 			}

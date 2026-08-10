@@ -14,8 +14,7 @@ import {
 import {
 	API_LIMIT_ERROR_CODE,
 	API_TIMEOUT_ERROR_CODE,
-	isApiLimitExceededError,
-	isApiTimeoutError,
+	classifyApiError,
 } from '$lib/shared/apiLimitError';
 
 const EXPLANATION_MODEL = 'gemini-flash-lite-latest';
@@ -171,14 +170,10 @@ export async function POST({ request }) {
 				{ status: 400 },
 			);
 		}
-		const isLimitError = isApiLimitExceededError(error);
-		const isTimeoutError = isApiTimeoutError(error);
-		const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;
-		const errorMessage = isLimitError
-			? 'API limit exceeded. Please retry manually after some time.'
-			: isTimeoutError
-				? 'Explanation timed out. Please retry.'
-				: 'An unexpected error occurred';
+		const { statusCode, code, message } = classifyApiError(error, {
+			fallbackCode: 'EXPLANATION_FAILED',
+			timeoutMessage: 'Explanation timed out. Please retry.',
+		});
 
 		await logApiEvent({
 			route: '/api/explain',
@@ -192,12 +187,8 @@ export async function POST({ request }) {
 
 		return json(
 			{
-				error: errorMessage,
-				code: isLimitError
-					? API_LIMIT_ERROR_CODE
-					: isTimeoutError
-						? 'EXPLANATION_TIMEOUT'
-						: 'EXPLANATION_FAILED',
+				error: message,
+				code,
 			},
 			{ status: statusCode },
 		);

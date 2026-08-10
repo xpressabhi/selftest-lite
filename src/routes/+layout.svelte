@@ -45,6 +45,18 @@
 	let showUserMenu = $state(false);
 	let isSigningIn = $state(false);
 
+	const PWA_DISMISS_WINDOW = 7 * 24 * 60 * 60 * 1000;
+
+	function isPwaInstallDismissed() {
+		if (typeof window === 'undefined') return true;
+		const dismissedAt = Number(
+			window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
+		);
+		return (
+			Number.isFinite(dismissedAt) && Date.now() - dismissedAt < PWA_DISMISS_WINDOW
+		);
+	}
+
 	// AdSense is intentionally NOT loaded: adsbygoogle.js is ~1.4MB (the heaviest
 	// payload on the site) and there are no ad units placed yet. Re-enable only
 	// once real ad slots exist, then load it gated behind `isDataSaverActive`
@@ -99,12 +111,7 @@
 			if (isAndroidOS) {
 				return;
 			}
-			const dismissedAt = Number(
-				window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
-			);
-			const dismissedRecently =
-				Number.isFinite(dismissedAt) && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000;
-			showInstallHint = !dismissedRecently && !isStandalone;
+			showInstallHint = !isPwaInstallDismissed() && !isStandalone;
 		};
 		const handleAppInstalled = () => {
 			deferredInstallPrompt = null;
@@ -135,12 +142,7 @@
 			}
 		}
 		if (isIOS && !isStandalone) {
-			const dismissedAt = Number(
-				window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
-			);
-			const dismissedRecently =
-				Number.isFinite(dismissedAt) && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000;
-			if (!dismissedRecently) {
+			if (!isPwaInstallDismissed()) {
 				track('pwa:install-prompt');
 				showInstallHint = true;
 			}

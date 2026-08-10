@@ -2,11 +2,6 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Vite 8 derives `import.meta.env.PROD`/`DEV` from `process.env.NODE_ENV`
-// (not from the build mode), so a plain `vite build` without NODE_ENV=production
-// compiles PROD=false. That tree-shakes production-only code such as the
-// service worker registration in `+layout.svelte`, silently shipping a PWA
-// without offline support. Normalize it here so every build is deterministic.
 export default defineConfig(({ mode }) => {
 	if (mode === 'production' && !process.env.NODE_ENV) {
 		process.env.NODE_ENV = 'production';
@@ -18,12 +13,8 @@ export default defineConfig(({ mode }) => {
 			VitePWA({
 				registerType: 'autoUpdate',
 				includeAssets: [
-					'icons/favicon.ico',
-					'icons/favicon-16x16.png',
-					'icons/favicon-32x32.png',
-					'icons/apple-touch-icon.png',
-					'icons/192.png',
-					'icons/512.png',
+					'icons/*.png',
+					'icons/*.ico',
 					'ads.txt',
 				],
 				manifest: false,
@@ -103,5 +94,8 @@ export default defineConfig(({ mode }) => {
 				},
 			}),
 		],
+		build: {
+			sourcemap: false,
+		},
 	};
 });

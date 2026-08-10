@@ -29,13 +29,15 @@ import {
 	validateGenerateRequest,
 	repairGeneratedPaper,
 	validateGeneratedPaper,
+	comparableText,
 } from '$lib/server/quizValidation';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
 import {
 	API_LIMIT_ERROR_CODE,
-	isApiLimitExceededError,
 	API_TIMEOUT_ERROR_CODE,
+	isApiLimitExceededError,
 	isApiTimeoutError,
+	classifyApiError,
 } from '$lib/shared/apiLimitError';
 
 const MODEL_NAME = 'gemini-flash-lite-latest';
@@ -61,10 +63,6 @@ function assertWithinDeadline(deadlineMs) {
 	}
 }
 
-function canonicalizeText(value) {
-	return normalizeMathText(value).replace(/\s+/gu, ' ').trim();
-}
-
 function normalizeGeneratedPaper(questionPaper) {
 	if (!questionPaper || !Array.isArray(questionPaper.questions)) {
 		return questionPaper;
@@ -85,7 +83,7 @@ function normalizeGeneratedPaper(questionPaper) {
 			const matchingOption = Array.isArray(options)
 				? options.find(
 						(option) =>
-							canonicalizeText(option) === canonicalizeText(normalizedAnswer),
+							comparableText(option) === comparableText(normalizedAnswer),
 					)
 				: null;
 
@@ -621,19 +619,11 @@ export async function POST({ request, cookies }) {
 			});
 		} catch (parseError) {
 			console.error('Failed to parse or validate response:', parseError);
-			const isLimitError = isApiLimitExceededError(parseError);
-			const isTimeoutError = isApiTimeoutError(parseError);
-			const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;
-			const errorCode = isLimitError
-				? API_LIMIT_ERROR_CODE
-				: isTimeoutError
-					? API_TIMEOUT_ERROR_CODE
-					: 'GENERATION_FAILED';
-			const errorMessage = isLimitError
-				? 'API limit exceeded. Please retry manually after some time.'
-				: isTimeoutError
-					? 'Generation timed out after 180 seconds. Please retry.'
-					: 'Failed to generate valid quiz questions. Please try again.';
+			const { statusCode, code, message } = classifyApiError(parseError, {
+				fallbackCode: 'GENERATION_FAILED',
+				fallbackMessage: 'Failed to generate valid quiz questions. Please try again.',
+				timeoutMessage: 'Generation timed out after 180 seconds. Please retry.',
+			});
 
 			await logApiEvent({
 				route: '/api/generate',
@@ -656,8 +646,8 @@ export async function POST({ request, cookies }) {
 
 			return json(
 				{
-					error: errorMessage,
-					code: errorCode,
+					error: message,
+					code,
 					details: parseError.message,
 				},
 				{ status: statusCode },
@@ -677,19 +667,10 @@ export async function POST({ request, cookies }) {
 				{ status: 400 },
 			);
 		}
-		const isLimitError = isApiLimitExceededError(error);
-		const isTimeoutError = isApiTimeoutError(error);
-		const statusCode = isLimitError ? 429 : isTimeoutError ? 408 : 500;
-		const errorCode = isLimitError
-			? API_LIMIT_ERROR_CODE
-			: isTimeoutError
-				? API_TIMEOUT_ERROR_CODE
-				: 'GENERATION_UNEXPECTED';
-		const errorMessage = isLimitError
-			? 'API limit exceeded. Please retry manually after some time.'
-			: isTimeoutError
-				? 'Generation timed out after 180 seconds. Please retry.'
-				: 'An unexpected error occurred';
+		const { statusCode, code, message } = classifyApiError(error, {
+			fallbackCode: 'GENERATION_UNEXPECTED',
+			timeoutMessage: 'Generation timed out after 180 seconds. Please retry.',
+		});
 
 		await logApiEvent({
 			route: '/api/generate',
@@ -703,8 +684,8 @@ export async function POST({ request, cookies }) {
 
 		return json(
 			{
-				error: errorMessage,
-				code: errorCode,
+				error: message,
+				code,
 			},
 			{ status: statusCode },
 		);

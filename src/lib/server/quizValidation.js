@@ -66,7 +66,7 @@ function validateMathSyntax(value, label) {
 	}
 }
 
-function comparableText(value) {
+export function comparableText(value) {
 	return normalizeMathText(value).replace(/\s+/gu, ' ').trim();
 }
 
