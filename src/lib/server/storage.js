@@ -1270,7 +1270,7 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_ms FROM ai_test_attempts`),
 		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user`),
 		query(`SELECT COUNT(*)::INTEGER AS active FROM app_user_session WHERE expires_at > NOW()`),
-		query(`SELECT COUNT(DISTINCT COALESCE(user_id, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id, client_id)) FILTER (WHERE updated_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user_state`),
+		query(`SELECT COUNT(DISTINCT COALESCE(user_id::text, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id::text, client_id)) FILTER (WHERE updated_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user_state`),
 		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM api_rate_limit_events`),
 		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(*) FILTER (WHERE status_code >= 400 AND ${filter})::INTEGER AS errors FROM api_request_events`),
 		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(DISTINCT session_id) FILTER (WHERE ${filter})::INTEGER AS sessions FROM feature_events`),

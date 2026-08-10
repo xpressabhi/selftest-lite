@@ -11,7 +11,6 @@
 	let stats = $state(null);
 	let featureUsage = $state(null);
 	let days = $state(7);
-	let featureDays = $state(30);
 
 	const DURATION_OPTIONS = [
 		{ value: 1, label: '24h' },
@@ -28,7 +27,8 @@
 
 	async function loadFeatureUsage() {
 		try {
-			const response = await fetch(`/api/admin/feature-usage?days=${featureDays}`, { cache: 'no-store' });
+			const durationDays = days > 0 ? days : 90;
+			const response = await fetch(`/api/admin/feature-usage?days=${durationDays}`, { cache: 'no-store' });
 			if (response.status === 401) {
 				authed = false;
 				return;
@@ -105,6 +105,7 @@
 
 	function onDurationChange() {
 		void loadStats();
+		void loadFeatureUsage();
 	}
 
 	function formatTime(value) {
@@ -474,20 +475,9 @@
 			<div class="bg-body border rounded-3 p-3 mb-4">
 				<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
 					<h2 class="h6 fw-bold mb-0">{$t('adminFeatureUsage')}</h2>
-					<div class="d-flex align-items-center gap-2">
-						<select
-							class="form-select form-select-sm"
-							bind:value={featureDays}
-							onchange={() => void loadFeatureUsage()}
-						>
-							<option value="7">7 {$t('adminDaysShort')}</option>
-							<option value="30">30 {$t('adminDaysShort')}</option>
-							<option value="90">90 {$t('adminDaysShort')}</option>
-						</select>
-						<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void loadFeatureUsage()}>
-							{$t('adminRefresh')}
-						</button>
-					</div>
+					<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void loadFeatureUsage()}>
+						{$t('adminRefresh')}
+					</button>
 				</div>
 
 				{#if featureUsage}
