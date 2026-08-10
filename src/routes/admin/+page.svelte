@@ -10,7 +10,16 @@
 	let error = $state('');
 	let stats = $state(null);
 	let featureUsage = $state(null);
+	let days = $state(7);
 	let featureDays = $state(30);
+
+	const DURATION_OPTIONS = [
+		{ value: 1, label: '24h' },
+		{ value: 7, label: `7 ${$t('adminDaysShort')}` },
+		{ value: 30, label: `30 ${$t('adminDaysShort')}` },
+		{ value: 90, label: `90 ${$t('adminDaysShort')}` },
+		{ value: 0, label: 'All time' },
+	];
 
 	onMount(() => {
 		void loadStats();
@@ -39,7 +48,7 @@
 		checking = true;
 		error = '';
 		try {
-			const response = await fetch('/api/admin/stats', { cache: 'no-store' });
+			const response = await fetch(`/api/admin/stats?days=${days}`, { cache: 'no-store' });
 			if (response.status === 401) {
 				authed = false;
 				return;
@@ -94,6 +103,10 @@
 		featureUsage = null;
 	}
 
+	function onDurationChange() {
+		void loadStats();
+	}
+
 	function formatTime(value) {
 		if (!value) {
 			return '-';
@@ -105,6 +118,11 @@
 			hour: '2-digit',
 			minute: '2-digit',
 		});
+	}
+
+	function formatNumber(n) {
+		if (n == null) return '0';
+		return Number(n).toLocaleString();
 	}
 
 	function agentFamily(userAgent) {
@@ -181,13 +199,131 @@
 				<div class="alert alert-danger mb-3">{error}</div>
 			{/if}
 
+			<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+				<span class="text-muted small">Duration:</span>
+				{#each DURATION_OPTIONS as opt (opt.value)}
+					<button
+						class="btn btn-sm"
+						class:btn-primary={days === opt.value}
+						class:btn-outline-secondary={days !== opt.value}
+						type="button"
+						disabled={checking}
+						onclick={() => { days = opt.value; onDurationChange(); }}
+					>
+						{opt.label}
+					</button>
+				{/each}
+			</div>
+
+			{#if stats.overview}
+				{@const o = stats.overview}
+				<h2 class="h6 fw-bold mb-2">Database Overview ({o.durationDays}d window)</h2>
+				<div class="overview-grid mb-4">
+					<div class="overview-card">
+						<div class="overview-label">ai_test</div>
+						<div class="overview-total">{formatNumber(o.tables.ai_test.total)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.ai_test.recent)} in period</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">attempts</div>
+						<div class="overview-total">{formatNumber(o.tables.ai_test_attempts.total)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.ai_test_attempts.recent)} in period · avg {o.tables.ai_test_attempts.avg_score}%</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">users</div>
+						<div class="overview-total">{formatNumber(o.tables.app_user.total)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.app_user.recent)} active</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">sessions</div>
+						<div class="overview-total">{formatNumber(o.tables.app_user_session.active)}</div>
+						<div class="overview-recent">active now</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">state users</div>
+						<div class="overview-total">{formatNumber(o.tables.app_user_state.distinct_users)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.app_user_state.recent)} in period</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">rate limits</div>
+						<div class="overview-total">{formatNumber(o.tables.api_rate_limit_events.total)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.api_rate_limit_events.recent)} in period</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">api events</div>
+						<div class="overview-total">{formatNumber(o.tables.api_request_events.total)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.api_request_events.recent)} in period · {formatNumber(o.tables.api_request_events.errors)} errors</div>
+					</div>
+					<div class="overview-card">
+						<div class="overview-label">feature events</div>
+						<div class="overview-total">{formatNumber(o.tables.feature_events.total)}</div>
+						<div class="overview-recent">+{formatNumber(o.tables.feature_events.recent)} in period · {formatNumber(o.tables.feature_events.sessions)} sessions</div>
+					</div>
+				</div>
+
+				{#if o.testBreakdown?.byMode?.length || o.testBreakdown?.byDifficulty?.length || o.testBreakdown?.byLanguage?.length}
+					<div class="row g-3 mb-4">
+						{#if o.testBreakdown?.byMode?.length}
+							<section class="col-md-4">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Tests by Mode</h3>
+									{#each o.testBreakdown.byMode as item (item.test_mode)}
+										<div class="d-flex justify-content-between align-items-center border-bottom py-2">
+											<span>{item.test_mode || '-'}</span>
+											<strong>{item.count}</strong>
+										</div>
+									{/each}
+								</div>
+							</section>
+						{/if}
+						{#if o.testBreakdown?.byDifficulty?.length}
+							<section class="col-md-4">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Tests by Difficulty</h3>
+									{#each o.testBreakdown.byDifficulty as item (item.difficulty)}
+										<div class="d-flex justify-content-between align-items-center border-bottom py-2">
+											<span>{item.difficulty || '-'}</span>
+											<strong>{item.count}</strong>
+										</div>
+									{/each}
+								</div>
+							</section>
+						{/if}
+						{#if o.testBreakdown?.byLanguage?.length}
+							<section class="col-md-4">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Tests by Language</h3>
+									{#each o.testBreakdown.byLanguage as item (item.language)}
+										<div class="d-flex justify-content-between align-items-center border-bottom py-2">
+											<span>{item.language || '-'}</span>
+											<strong>{item.count}</strong>
+										</div>
+									{/each}
+								</div>
+							</section>
+						{/if}
+					</div>
+				{/if}
+
+				{#if o.attemptStats}
+					<div class="bg-body border rounded-3 p-3 mb-4">
+						<h3 class="h6 fw-bold mb-2">Attempt Quality (period)</h3>
+						<div class="d-flex flex-wrap gap-3">
+							<span>Avg Score: <strong>{o.attemptStats.avg_score ?? '-'}%</strong></span>
+							<span>Median Score: <strong>{o.attemptStats.median_score ?? '-'}%</strong></span>
+							<span>Perfect Scores: <strong>{formatNumber(o.attemptStats.perfect_scores)}</strong></span>
+						</div>
+					</div>
+				{/if}
+			{/if}
+
 			<div class="stat-cards mb-4">
 				<div class="bg-body border rounded-3 p-3">
-					<strong>{stats.totals?.total || 0}</strong>
+					<strong>{formatNumber(stats.totals?.total)}</strong>
 					<span>{$t('adminTotalRequests')}</span>
 				</div>
 				<div class="bg-body border rounded-3 p-3">
-					<strong>{stats.totals?.errors || 0}</strong>
+					<strong>{formatNumber(stats.totals?.errors)}</strong>
 					<span>{$t('adminErrors')}</span>
 				</div>
 				<div class="bg-body border rounded-3 p-3">
@@ -195,13 +331,13 @@
 					<span>{$t('adminAvgDuration')}</span>
 				</div>
 				<div class="bg-body border rounded-3 p-3">
-					<strong>{stats.rateLimited?.reduce((sum, item) => sum + item.events, 0) || 0}</strong>
+					<strong>{formatNumber(stats.rateLimited?.reduce((sum, item) => sum + item.events, 0))}</strong>
 					<span>{$t('adminRateLimited')}</span>
 				</div>
 			</div>
 
 			<div class="bg-body border rounded-3 p-3 mb-4">
-				<h2 class="h6 fw-bold mb-3">{$t('adminLast24h')}</h2>
+				<h2 class="h6 fw-bold mb-3">Requests ({days > 0 ? `${days}d` : 'all time'})</h2>
 				{#if stats.hourly?.length}
 					{@const maxRequests = Math.max(...stats.hourly.map((item) => item.requests), 1)}
 					<div class="hour-chart">
@@ -238,8 +374,8 @@
 									{#each stats.byRoute || [] as item (item.route)}
 										<tr>
 											<td class="mono">{item.route}</td>
-											<td>{item.requests}</td>
-											<td>{item.errors}</td>
+											<td>{formatNumber(item.requests)}</td>
+											<td>{formatNumber(item.errors)}</td>
 											<td>{item.avg_duration_ms} ms</td>
 										</tr>
 									{/each}
@@ -254,7 +390,7 @@
 						{#each stats.byStatus || [] as item (item.status_code)}
 							<div class="d-flex justify-content-between align-items-center border-bottom py-2">
 								<span>{item.status_code ?? '-'}</span>
-								<strong>{item.requests}</strong>
+								<strong>{formatNumber(item.requests)}</strong>
 							</div>
 						{/each}
 						{#if !(stats.byStatus?.length)}
@@ -271,7 +407,7 @@
 						{#each stats.byCountry || [] as item (item.country)}
 							<div class="d-flex justify-content-between align-items-center border-bottom py-2">
 								<span>{item.country}</span>
-								<strong>{item.requests}</strong>
+								<strong>{formatNumber(item.requests)}</strong>
 							</div>
 						{/each}
 						{#if !(stats.byCountry?.length)}
@@ -288,7 +424,7 @@
 									<div class="small text-truncate mono">{item.user_agent}</div>
 									<span class="badge text-bg-secondary">{agentFamily(item.user_agent)}</span>
 								</div>
-								<strong>{item.requests}</strong>
+								<strong>{formatNumber(item.requests)}</strong>
 							</div>
 						{/each}
 						{#if !(stats.topAgents?.length)}
@@ -357,11 +493,11 @@
 				{#if featureUsage}
 					<div class="stat-cards mb-4">
 						<div class="bg-body border rounded-3 p-3">
-							<strong>{featureUsage.totals?.total || 0}</strong>
+							<strong>{formatNumber(featureUsage.totals?.total)}</strong>
 							<span>{$t('adminFeatureEvents')}</span>
 						</div>
 						<div class="bg-body border rounded-3 p-3">
-							<strong>{featureUsage.totals?.sessions || 0}</strong>
+							<strong>{formatNumber(featureUsage.totals?.sessions)}</strong>
 							<span>{$t('adminFeatureSessions')}</span>
 						</div>
 						<div class="bg-body border rounded-3 p-3">
@@ -369,7 +505,7 @@
 							<span>{$t('adminFeaturePerSession')}</span>
 						</div>
 						<div class="bg-body border rounded-3 p-3">
-							<strong>{featureUsage.byEvent?.length || 0}</strong>
+							<strong>{formatNumber(featureUsage.byEvent?.length)}</strong>
 							<span>{$t('adminFeatureDistinct')}</span>
 						</div>
 					</div>
@@ -384,7 +520,7 @@
 										<div class="d-flex justify-content-between gap-2 small mb-1">
 											<span class="mono text-truncate">{item.event}</span>
 											<span class="text-nowrap">
-												<strong>{item.count}</strong>
+												<strong>{formatNumber(item.count)}</strong>
 												<span class="text-muted">({item.pct ?? 0}%)</span>
 											</span>
 										</div>
@@ -428,7 +564,7 @@
 								{#each featureUsage.byPage || [] as item (item.page)}
 									<div class="d-flex justify-content-between align-items-center border-bottom py-2">
 										<span class="mono text-truncate pe-2">{item.page}</span>
-										<strong>{item.events}</strong>
+										<strong>{formatNumber(item.events)}</strong>
 									</div>
 								{/each}
 								{#if !(featureUsage.byPage?.length)}
@@ -455,7 +591,7 @@
 													<td class="mono">{item.mode}</td>
 													<td class="mono">{item.difficulty}</td>
 													<td class="mono">{item.language}</td>
-													<td>{item.count}</td>
+													<td>{formatNumber(item.count)}</td>
 												</tr>
 											{/each}
 										</tbody>
@@ -477,7 +613,7 @@
 
 <style>
 	.admin-wrap {
-		max-width: 960px;
+		max-width: 1120px;
 	}
 
 	.admin-login {
@@ -490,7 +626,8 @@
 		gap: 12px;
 	}
 
-	.stat-cards div {
+	.stat-cards > div,
+	.overview-card {
 		display: flex;
 		min-height: 72px;
 		align-items: center;
@@ -499,13 +636,43 @@
 		text-align: center;
 	}
 
-	.stat-cards strong {
+	.stat-cards strong,
+	.overview-total {
 		font-size: 1.25rem;
+		font-weight: 700;
 	}
 
-	.stat-cards span {
+	.stat-cards span,
+	.overview-label {
 		color: var(--text-muted);
 		font-size: 0.75rem;
+	}
+
+	.overview-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 10px;
+	}
+
+	.overview-card {
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 0.75rem;
+		padding: 12px 8px;
+		min-height: 76px;
+	}
+
+	.overview-label {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+
+	.overview-recent {
+		color: var(--text-muted);
+		font-size: 0.65rem;
+		margin-top: 2px;
 	}
 
 	.hour-chart {
@@ -587,7 +754,8 @@
 	}
 
 	@media (max-width: 767.98px) {
-		.stat-cards {
+		.stat-cards,
+		.overview-grid {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}

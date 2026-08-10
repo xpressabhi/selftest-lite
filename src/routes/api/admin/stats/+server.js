@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { isAdminConfigured, isAdminRequest } from '$lib/server/adminAuth';
-import { getAdminStats } from '$lib/server/storage';
+import { getAdminStats, getDatabaseOverview } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
 
 const STATS_RATE_LIMIT = 60;
@@ -30,8 +30,12 @@ export async function GET({ request, url }) {
 		}
 
 		const recentLimit = Number(url.searchParams.get('recent')) || 50;
-		const stats = await getAdminStats({ recentLimit });
-		return json(stats);
+		const days = Number(url.searchParams.get('days')) || 0;
+		const [stats, overview] = await Promise.all([
+			getAdminStats({ recentLimit, days }),
+			getDatabaseOverview({ days: days || 7 }),
+		]);
+		return json({ ...stats, overview });
 	} catch (error) {
 		console.error(error);
 		return json(

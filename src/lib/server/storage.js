@@ -1033,10 +1033,18 @@ export async function cleanupOldRateLimitEvents() {
 	);
 }
 
-export async function getAdminStats({ recentLimit = 50 } = {}) {
+export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 	await ensureStorageSchema();
 
 	const cappedRecentLimit = Math.min(Math.max(Number(recentLimit) || 50, 1), 200);
+	const cappedDays = Math.min(Math.max(Number(days) || 0, 0), 365);
+	const durationFilter = cappedDays > 0
+		? `created_at >= NOW() - INTERVAL '${cappedDays} days'`
+		: '';
+	const durationWhere = durationFilter ? `WHERE ${durationFilter}` : '';
+	const rateLimitFilter = cappedDays > 0
+		? `created_at >= NOW() - INTERVAL '${cappedDays} days'`
+		: `created_at >= NOW() - INTERVAL '24 hours'`;
 	const [
 		totalsResult,
 		byRouteResult,
@@ -1054,7 +1062,8 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms,
 				MIN(created_at) AS first_event,
 				MAX(created_at) AS last_event
-			 FROM api_request_events`,
+			 FROM api_request_events
+			 ${durationWhere}`,
 		),
 		query(
 			`SELECT
@@ -1063,6 +1072,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				COUNT(*) FILTER (WHERE status_code >= 400)::INTEGER AS errors,
 				COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms
 			 FROM api_request_events
+			 ${durationWhere}
 			 GROUP BY route
 			 ORDER BY requests DESC`,
 		),
@@ -1071,6 +1081,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				status_code,
 				COUNT(*)::INTEGER AS requests
 			 FROM api_request_events
+			 ${durationWhere}
 			 GROUP BY status_code
 			 ORDER BY requests DESC`,
 		),
@@ -1079,7 +1090,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				date_trunc('hour', created_at) AS bucket,
 				COUNT(*)::INTEGER AS requests
 			 FROM api_request_events
-			 WHERE created_at >= NOW() - INTERVAL '24 hours'
+			 WHERE created_at >= NOW() - INTERVAL '${cappedDays > 0 ? cappedDays : 24} hours'
 			 GROUP BY bucket
 			 ORDER BY bucket`,
 		),
@@ -1088,6 +1099,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				COALESCE(NULLIF(ip_country, ''), 'unknown') AS country,
 				COUNT(*)::INTEGER AS requests
 			 FROM api_request_events
+			 ${durationWhere}
 			 GROUP BY country
 			 ORDER BY requests DESC
 			 LIMIT 20`,
@@ -1098,6 +1110,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				COUNT(*)::INTEGER AS requests
 			 FROM api_request_events
 			 WHERE user_agent IS NOT NULL AND user_agent <> ''
+			 ${durationFilter ? `AND ${durationFilter}` : ''}
 			 GROUP BY user_agent
 			 ORDER BY requests DESC
 			 LIMIT 15`,
@@ -1107,7 +1120,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				route,
 				COUNT(*)::INTEGER AS events
 			 FROM api_rate_limit_events
-			 WHERE created_at >= NOW() - INTERVAL '24 hours'
+			 WHERE ${rateLimitFilter}
 			 GROUP BY route
 			 ORDER BY events DESC`,
 		),
@@ -1126,6 +1139,7 @@ export async function getAdminStats({ recentLimit = 50 } = {}) {
 				user_agent,
 				created_at
 			 FROM api_request_events
+			 ${durationWhere}
 			 ORDER BY id DESC
 			 LIMIT $1`,
 			[cappedRecentLimit],
@@ -1229,5 +1243,65 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 		byPage: byPageResult.rows,
 		trend: trendResult.rows,
 		generateBreakdown: generateBreakdownResult.rows,
+	};
+}
+
+export async function getDatabaseOverview({ days = 7 } = {}) {
+	await ensureStorageSchema();
+
+	const cappedDays = Math.min(Math.max(Number(days) || 7, 1), 365);
+	const filter = `created_at >= NOW() - INTERVAL '${cappedDays} days'`;
+
+	const [
+		tests,
+		attempts,
+		users,
+		activeSessions,
+		stateUsers,
+		rateLimits,
+		requestEvents,
+		featureEvents,
+		testModes,
+		testDifficulties,
+		testLanguages,
+		attemptScores,
+	] = await Promise.all([
+		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM ai_test`),
+		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_ms FROM ai_test_attempts`),
+		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user`),
+		query(`SELECT COUNT(*)::INTEGER AS active FROM app_user_session WHERE expires_at > NOW()`),
+		query(`SELECT COUNT(DISTINCT COALESCE(user_id, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id, client_id)) FILTER (WHERE updated_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user_state`),
+		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM api_rate_limit_events`),
+		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(*) FILTER (WHERE status_code >= 400 AND ${filter})::INTEGER AS errors FROM api_request_events`),
+		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(DISTINCT session_id) FILTER (WHERE ${filter})::INTEGER AS sessions FROM feature_events`),
+		query(`SELECT test_mode, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY test_mode ORDER BY count DESC`),
+		query(`SELECT difficulty, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY difficulty ORDER BY count DESC`),
+		query(`SELECT language, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY language ORDER BY count DESC`),
+		query(`SELECT ROUND(AVG(score))::INTEGER AS avg_score, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score)::INTEGER AS median_score, COUNT(*) FILTER (WHERE score = total_questions)::INTEGER AS perfect_scores FROM ai_test_attempts WHERE ${filter}`),
+	]);
+
+	return {
+		durationDays: cappedDays,
+		tables: {
+			ai_test: { total: tests.rows[0]?.total || 0, recent: tests.rows[0]?.recent || 0 },
+			ai_test_attempts: {
+				total: attempts.rows[0]?.total || 0,
+				recent: attempts.rows[0]?.recent || 0,
+				avg_score: attempts.rows[0]?.avg_score || 0,
+				avg_time_ms: attempts.rows[0]?.avg_time_ms || 0,
+			},
+			app_user: { total: users.rows[0]?.total || 0, recent: users.rows[0]?.recent || 0 },
+			app_user_session: { active: activeSessions.rows[0]?.active || 0 },
+			app_user_state: { distinct_users: stateUsers.rows[0]?.total || 0, recent: stateUsers.rows[0]?.recent || 0 },
+			api_rate_limit_events: { total: rateLimits.rows[0]?.total || 0, recent: rateLimits.rows[0]?.recent || 0 },
+			api_request_events: { total: requestEvents.rows[0]?.total || 0, recent: requestEvents.rows[0]?.recent || 0, errors: requestEvents.rows[0]?.errors || 0 },
+			feature_events: { total: featureEvents.rows[0]?.total || 0, recent: featureEvents.rows[0]?.recent || 0, sessions: featureEvents.rows[0]?.sessions || 0 },
+		},
+		testBreakdown: {
+			byMode: testModes.rows,
+			byDifficulty: testDifficulties.rows,
+			byLanguage: testLanguages.rows,
+		},
+		attemptStats: attemptScores.rows[0] || {},
 	};
 }
