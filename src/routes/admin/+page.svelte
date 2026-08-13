@@ -150,7 +150,7 @@
 
 		{#if checking && !stats}
 			<div class="py-5 text-center">
-				<div class="thinking-dots" role="status" aria-label="Loading">
+				<div class="thinking-dots" role="status" aria-label={$t('loading')}>
 					<span></span><span></span><span></span>
 				</div>
 			</div>
@@ -182,7 +182,7 @@
 				{/each}
 			</div>
 
-			<nav class="tab-bar mb-4" role="tablist">
+			<div class="tab-bar mb-4" role="tablist" aria-label={$t('adminFeatureUsage')}>
 				{#each TABS as tab (tab.id)}
 					<button
 						class="tab-btn"
@@ -192,7 +192,7 @@
 						onclick={() => switchTab(tab.id)}
 					>{tab.label}</button>
 				{/each}
-			</nav>
+			</div>
 
 			<!-- OVERVIEW TAB -->
 			{#if activeTab === 'overview' && stats.overview}

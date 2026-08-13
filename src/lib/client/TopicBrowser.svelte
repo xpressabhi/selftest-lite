@@ -9,7 +9,11 @@
 	} = $props();
 
 	let expanded = $state(false);
-	const CATEGORIES = Object.entries(TOPIC_CATEGORIES).slice(0, 4);
+	let showAllCategories = $state(false);
+	const ALL_CATEGORIES = Object.entries(TOPIC_CATEGORIES);
+	const CATEGORIES = $derived(
+		showAllCategories ? ALL_CATEGORIES : ALL_CATEGORIES.slice(0, 4),
+	);
 
 	function toggleCategory(cat) {
 		const next = selectedCategory === cat ? '' : cat;
@@ -61,6 +65,15 @@
 					{/if}
 				{/each}
 			</div>
+			{#if ALL_CATEGORIES.length > 4}
+				<button
+					class="show-more-btn"
+					type="button"
+					onclick={() => (showAllCategories = !showAllCategories)}
+				>
+					{showAllCategories ? $t('hideList') : $t('showAllCategories')}
+				</button>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -176,5 +189,16 @@
 		background: rgba(var(--brand-rgb), 0.1);
 		color: rgb(var(--brand-rgb));
 		font-weight: 600;
+	}
+
+	.show-more-btn {
+		padding: 4px 8px;
+		border: 0;
+		background: transparent;
+		color: rgb(var(--brand-rgb));
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		min-height: 44px;
 	}
 </style>

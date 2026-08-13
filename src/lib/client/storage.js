@@ -60,20 +60,32 @@ export function removeKey(key) {
 	}
 }
 
+let historyCache = null;
+
+if (typeof window !== 'undefined') {
+	window.addEventListener('storage', (event) => {
+		if (!event.key || event.key === STORAGE_KEYS.TEST_HISTORY) {
+			historyCache = null;
+		}
+	});
+}
+
 export function getHistory() {
+	if (historyCache !== null) {
+		return historyCache;
+	}
 	const history = readJson(STORAGE_KEYS.TEST_HISTORY, []);
-	return Array.isArray(history) ? history : [];
+	historyCache = Array.isArray(history) ? history : [];
+	return historyCache;
 }
 
 export function saveHistory(history) {
 	const normalized = Array.isArray(history) ? history : [];
-	writeJson(
-		STORAGE_KEYS.TEST_HISTORY,
-		normalized
-			.filter((entry) => entry && typeof entry === 'object')
-			.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
-			.slice(0, 150),
-	);
+	historyCache = normalized
+		.filter((entry) => entry && typeof entry === 'object')
+		.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
+		.slice(0, 150);
+	writeJson(STORAGE_KEYS.TEST_HISTORY, historyCache);
 }
 
 /**
@@ -104,17 +116,21 @@ export function getHiddenHistoryIds() {
 	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
 
-export function upsertHistory(test) {
+export function upsertHistory(test, currentHistory = null) {
 	if (!test?.id) {
-		return;
+		return currentHistory ?? getHistory();
 	}
 
-	const history = getHistory().filter((entry) => String(entry.id) !== String(test.id));
+	const history = (Array.isArray(currentHistory) ? currentHistory : getHistory()).filter(
+		(entry) => String(entry.id) !== String(test.id),
+	);
 	const normalizedTest = {
 		...test,
 		timestamp: test.timestamp || Date.now(),
 	};
-	saveHistory([normalizedTest, ...history]);
+	const nextHistory = [normalizedTest, ...history];
+	saveHistory(nextHistory);
+	return nextHistory;
 }
 
 export function saveCurrentPaper(test) {
@@ -313,6 +329,13 @@ export function getAttemptResult(testId) {
 	return readJson(getAttemptResultKey(testId), null);
 }
 
+export function clearAttemptResult(testId) {
+	if (!testId) {
+		return;
+	}
+	removeKey(getAttemptResultKey(testId));
+}
+
 export async function submitTestAnswers({ id, answers = {}, timeTaken = 0 }) {
 	const response = await fetch('/api/test/submit', {
 		method: 'POST',
@@ -344,6 +367,10 @@ export function writeTrackedStorageSnapshot(snapshot) {
 		}
 		window.localStorage.setItem(key, value);
 		changedKeys.push(key);
+	}
+
+	if (changedKeys.includes(STORAGE_KEYS.TEST_HISTORY)) {
+		historyCache = null;
 	}
 
 	if (changedKeys.length > 0) {

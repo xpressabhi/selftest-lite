@@ -264,11 +264,12 @@ export async function hydrateHistoryFromServer() {
 			getHistory(),
 			visibleAttempts,
 		);
+		const localById = new Map(
+			getHistory().map((item) => [String(item.id), item]),
+		);
 		let changed = false;
 		for (const entry of mergedHistory) {
-			const local = getHistory().find(
-				(item) => String(item.id) === String(entry.id),
-			);
+			const local = localById.get(String(entry.id));
 			if (!local || Number(entry.timestamp || 0) !== Number(local.timestamp || 0)) {
 				upsertHistory(entry);
 				changed = true;
@@ -310,61 +311,72 @@ function stateSnapshotHash(snapshot) {
 	return JSON.stringify(Object.entries(snapshot).sort());
 }
 
+let stateHydrationPromise = null;
+
 /** Pulls server-side bookmarks/presets and merges them into localStorage. */
-export async function hydrateUserState() {
+export function hydrateUserState() {
 	if (typeof window === 'undefined') {
-		return false;
+		return Promise.resolve(false);
+	}
+	if (stateHydrationPromise) {
+		return stateHydrationPromise;
 	}
 
-	try {
-		const response = await fetch('/api/user/state', {
-			method: 'GET',
-			headers: getClientHeaders(),
-		});
-		if (response.status === 401) {
+	stateHydrationPromise = (async () => {
+		try {
+			const response = await fetch('/api/user/state', {
+				method: 'GET',
+				headers: getClientHeaders(),
+			});
+			if (response.status === 401) {
+				return false;
+			}
+			if (!response.ok) {
+				throw new Error('Failed to fetch user state');
+			}
+
+			const data = await response.json();
+			const remoteStorage =
+				data?.storage && typeof data.storage === 'object' ? data.storage : {};
+			const localStorageSnapshot = readStateSnapshot();
+
+			const merged = mergeStateSnapshots(
+				remoteStorage,
+				Object.fromEntries(
+					Object.entries(localStorageSnapshot).map(([key, value]) => [
+						STORAGE_TO_STATE_KEY[key],
+						value,
+					]),
+				),
+			);
+
+			let changed = false;
+			for (const stateKey of SYNCED_STATE_KEYS) {
+				if (!(stateKey in merged)) {
+					continue;
+				}
+				const storageKey = STATE_KEY_TO_STORAGE[stateKey];
+				const current = window.localStorage.getItem(storageKey);
+				const next = merged[stateKey];
+				if (current !== next) {
+					writeJson(storageKey, JSON.parse(next));
+					changed = true;
+				}
+			}
+
+			// Mark current state as synced so the watcher doesn't immediately
+			// push the same values back.
+			lastStateHash = stateSnapshotHash(readStateSnapshot());
+			return changed;
+		} catch (error) {
+			console.error('Failed to hydrate user state:', error);
 			return false;
+		} finally {
+			stateHydrationPromise = null;
 		}
-		if (!response.ok) {
-			throw new Error('Failed to fetch user state');
-		}
+	})();
 
-		const data = await response.json();
-		const remoteStorage =
-			data?.storage && typeof data.storage === 'object' ? data.storage : {};
-		const localStorageSnapshot = readStateSnapshot();
-
-		const merged = mergeStateSnapshots(
-			remoteStorage,
-			Object.fromEntries(
-				Object.entries(localStorageSnapshot).map(([key, value]) => [
-					STORAGE_TO_STATE_KEY[key],
-					value,
-				]),
-			),
-		);
-
-		let changed = false;
-		for (const stateKey of SYNCED_STATE_KEYS) {
-			if (!(stateKey in merged)) {
-				continue;
-			}
-			const storageKey = STATE_KEY_TO_STORAGE[stateKey];
-			const current = window.localStorage.getItem(storageKey);
-			const next = merged[stateKey];
-			if (current !== next) {
-				writeJson(storageKey, JSON.parse(next));
-				changed = true;
-			}
-		}
-
-		// Mark current state as synced so the watcher doesn't immediately
-		// push the same values back.
-		lastStateHash = stateSnapshotHash(readStateSnapshot());
-		return changed;
-	} catch (error) {
-		console.error('Failed to hydrate user state:', error);
-		return false;
-	}
+	return stateHydrationPromise;
 }
 
 async function pushUserState() {

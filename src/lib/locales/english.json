@@ -757,5 +757,12 @@
   "aiWillConfigureBest": "AI will configure the best settings for you",
   "exactMatch": "Exact match",
   "startTypingToGenerate": "Type anything to generate a new test, or enter a Test ID to open an existing one",
-  "profileSaving": "Saving..."
+  "profileSaving": "Saving...",
+  "retakeTest": "Retake test",
+  "practiceMore": "Practice more",
+  "shareResultText": "I scored {score}/{total} ({percentage}%) on \"{topic}\" with selftest.in",
+  "fewerQuestions": "Fewer questions",
+  "moreQuestions": "More questions",
+  "showAllCategories": "Show all categories",
+  "examSelected": "Selected"
 }

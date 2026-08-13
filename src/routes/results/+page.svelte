@@ -1,4 +1,5 @@
 <script>
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
@@ -16,9 +17,13 @@
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import { showToast } from '$lib/client/toast';
 	import {
+		clearAttemptResult,
+		clearDraftAnswers,
+		clearDraftFlags,
+		clearUnsubmittedTest,
 		getAttemptResult,
 		getHistory,
-		isQuestionBookmarked,
+		getQuestionBookmarks,
 		resolveTestRecord,
 		toggleQuestionBookmark,
 		upsertHistory,
@@ -160,9 +165,12 @@
 		achievements = getAchievements();
 		topicMastery = buildTopicMasteryItems(history);
 		reviewQueue = buildReviewQueue(history);
+		const bookmarkKeys = new Set(
+			getQuestionBookmarks().map((item) => `${item.question}::${item.answer}`),
+		);
 		bookmarkedQuestionKeys = (questionPaper?.questions || [])
-			.filter((question) => isQuestionBookmarked(question))
-			.map((question) => `${question.question}::${question.answer}`);
+			.filter((question) => bookmarkKeys.has(questionKey(question)))
+			.map((question) => questionKey(question));
 	}
 
 	function questionKey(question) {
@@ -262,16 +270,53 @@
 		track('results:share');
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
+		const text = $t('shareResultText', {
+			score: questionPaper.score ?? 0,
+			total: questionPaper.totalQuestions ?? totalQuestions,
+			percentage,
+			topic: questionPaper.topic,
+		});
 		if (navigator.share) {
 			await navigator.share({
 				title,
-				text: title,
+				text,
 				url,
 			});
 			return;
 		}
-		await navigator.clipboard.writeText(url);
+		await navigator.clipboard.writeText(`${text}\n${url}`);
 		showToast($t('shareLinkCopied'), 'success');
+	}
+
+	function practiceMoreHref() {
+		const requestParams = questionPaper?.requestParams || {};
+		const params = new URLSearchParams({
+			mode: 'quiz-practice',
+			topic: questionPaper?.topic || '',
+			difficulty: requestParams.difficulty || 'intermediate',
+			testType: requestParams.testType || 'multiple-choice',
+			numQuestions: String(Math.min(20, Number(requestParams.numQuestions) || 10)),
+			paperLanguage: requestParams.language || 'english',
+		});
+		return `/?${params.toString()}`;
+	}
+
+	function retakeTest() {
+		if (!questionPaper?.id) {
+			return;
+		}
+		track('results:retake', { id: questionPaper.id });
+		const stripped = { ...questionPaper };
+		delete stripped.userAnswers;
+		delete stripped.score;
+		delete stripped.totalQuestions;
+		delete stripped.timeTaken;
+		clearAttemptResult(questionPaper.id);
+		clearDraftAnswers(questionPaper.id);
+		clearDraftFlags(questionPaper.id);
+		clearUnsubmittedTest(questionPaper.id);
+		upsertHistory(stripped);
+		void goto(`/test?id=${encodeURIComponent(questionPaper.id)}`);
 	}
 </script>
 
@@ -337,6 +382,12 @@
 				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
 					{$t('share')}
 				</button>
+				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={retakeTest}>
+					{$t('retakeTest')}
+				</button>
+				<a class="btn btn-sm btn-outline-primary" href={practiceMoreHref()}>
+					{$t('practiceMore')}
+				</a>
 				<a class="btn btn-sm btn-primary" href="/">{$t('startNewQuiz')}</a>
 			</div>
 		</div>

@@ -1,7 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
@@ -9,6 +9,8 @@
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import ReviewSheet from '$lib/client/ReviewSheet.svelte';
+	import { prewarmRichMarkdown } from '$lib/client/markdownRenderer';
+	import { prepareMathTextForRendering } from '$lib/shared/latex';
 	import { autoAdvance, setAutoAdvance } from '$lib/client/preferences';
 	import {
 		clearDraftAnswers,
@@ -45,6 +47,12 @@
 	let questionCardWidth = $state(0);
 	let questionCardEstimate = $state(null);
 	let autoAdvanceTimer = null;
+	let elapsedSeconds = $state(0);
+	let timerInterval = null;
+	let swipeStartX = null;
+	let swipeStartY = null;
+
+	const SWIPE_THRESHOLD_PX = 64;
 
 	let answeredCount = $derived(Object.keys(answers).length);
 	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
@@ -110,6 +118,21 @@
 		}
 	});
 
+	$effect(() => {
+		if (!questionPaper?.questions?.length) {
+			return;
+		}
+		const [previous, current, next] = [
+			questionPaper.questions[currentQuestionIndex - 1],
+			questionPaper.questions[currentQuestionIndex],
+			questionPaper.questions[currentQuestionIndex + 1],
+		];
+		const toWarm = [current, next, previous]
+			.filter(Boolean)
+			.flatMap((q) => [q.question, ...(q.options || [])]);
+		prewarmRichMarkdown(toWarm.map(prepareMathTextForRendering));
+	});
+
 	onMount(async () => {
 		const testId = page.url.searchParams.get('id');
 		try {
@@ -137,6 +160,10 @@
 			return;
 		}
 		startedAt = Date.now();
+		elapsedSeconds = 0;
+		timerInterval = window.setInterval(() => {
+			elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+		}, 1000);
 		showOverflowMenu = false;
 		track('test:start', {
 			id: questionPaper.id,
@@ -144,6 +171,83 @@
 			language: questionPaper.language || '',
 		});
 		testStarted = true;
+	}
+
+	onDestroy(() => {
+		if (typeof window === 'undefined') {
+			return;
+		}
+		window.clearTimeout(autoAdvanceTimer);
+		if (timerInterval) {
+			window.clearInterval(timerInterval);
+		}
+	});
+
+	function formatElapsed(totalSeconds) {
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+	}
+
+	function handleTestKeydown(event) {
+		if (!testStarted || loading || submitting || showReviewSheet || showExitModal) {
+			return;
+		}
+		const target = event.target;
+		if (
+			target instanceof HTMLElement &&
+			(target.isContentEditable ||
+				['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+		) {
+			return;
+		}
+		if (event.metaKey || event.ctrlKey || event.altKey) {
+			return;
+		}
+
+		switch (event.key) {
+			case 'ArrowRight':
+				if (currentQuestionIndex < totalQuestions - 1) {
+					event.preventDefault();
+					nextQuestion();
+				}
+				break;
+			case 'ArrowLeft':
+				if (currentQuestionIndex > 0) {
+					event.preventDefault();
+					previousQuestion();
+				}
+				break;
+			case 'Enter':
+				// A focused button already activates on Enter; let it do its own
+				// thing instead of double-advancing.
+				if (target instanceof HTMLElement && ['BUTTON', 'A'].includes(target.tagName)) {
+					return;
+				}
+				if (currentQuestionIndex === totalQuestions - 1) {
+					event.preventDefault();
+					showReviewSheet = true;
+				} else {
+					event.preventDefault();
+					nextQuestion();
+				}
+				break;
+			case 'f':
+			case 'F':
+				event.preventDefault();
+				toggleFlag(currentQuestionIndex);
+				break;
+			default:
+				if (/^[1-4]$/.test(event.key)) {
+					const optionIndex = Number(event.key) - 1;
+					const options = questionPaper?.questions?.[currentQuestionIndex]?.options || [];
+					if (optionIndex < options.length) {
+						event.preventDefault();
+						setAnswer(currentQuestionIndex, options[optionIndex]);
+					}
+				}
+				break;
+		}
 	}
 
 	function setAnswer(index, option) {
@@ -227,7 +331,6 @@
 			clearDraftAnswers(questionPaper.id);
 			clearDraftFlags(questionPaper.id);
 			clearUnsubmittedTest(questionPaper.id);
-			upsertHistory(submittedPaper);
 			// Locally-graded attempts never hit /api/test/submit; push them to
 			// the server (best-effort, offline-safe) so history survives across
 			// devices and survives sign-in via client_id attribution.
@@ -239,12 +342,15 @@
 				timeTaken,
 				submittedAt: new Date().toISOString(),
 			});
-			const nextHistory = [
-				submittedPaper,
-				...getHistory().filter((entry) => String(entry.id) !== String(submittedPaper.id)),
-			];
+			const nextHistory = upsertHistory(submittedPaper, getHistory());
 			const streak = recordStreakActivity();
-			unlockAchievements(nextHistory, streak);
+			const newlyUnlocked = unlockAchievements(nextHistory, streak);
+			for (const achievement of newlyUnlocked) {
+				showToast(
+					`${$t('achievementUnlocked')}: ${$t(`achievement_${achievement.id}_title`)}`,
+					'success',
+				);
+			}
 			showReviewSheet = false;
 			goto(`/results?id=${questionPaper.id}`);
 		} catch (caughtError) {
@@ -304,6 +410,41 @@
 		showReviewSheet = false;
 	}
 
+	function handleSwipeStart(event) {
+		if (!testStarted || showReviewSheet || showExitModal) {
+			return;
+		}
+		if (event.touches?.length !== 1) {
+			return;
+		}
+		swipeStartX = event.touches[0].clientX;
+		swipeStartY = event.touches[0].clientY;
+	}
+
+	function handleSwipeEnd(event) {
+		if (swipeStartX === null || swipeStartY === null) {
+			return;
+		}
+		const touch = event.changedTouches?.[0];
+		if (!touch) {
+			swipeStartX = null;
+			swipeStartY = null;
+			return;
+		}
+		const deltaX = touch.clientX - swipeStartX;
+		const deltaY = touch.clientY - swipeStartY;
+		swipeStartX = null;
+		swipeStartY = null;
+		if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY) * 1.5) {
+			return;
+		}
+		if (deltaX < 0) {
+			nextQuestion();
+		} else {
+			previousQuestion();
+		}
+	}
+
 	function requestExit() {
 		if (answeredCount > 0) {
 			showExitModal = true;
@@ -321,6 +462,8 @@
 <svelte:head>
 	<title>{questionPaper?.topic || $t('testPrefix')} | selftest.in</title>
 </svelte:head>
+
+<svelte:window onkeydown={handleTestKeydown} />
 
 <section class="test-shell">
 	{#if loading}
@@ -344,6 +487,15 @@
 			<h1 class="test-topic">
 				<MarkdownContent content={questionPaper.topic} tag="span" />
 			</h1>
+			{#if testStarted}
+				<span
+					class="test-timer"
+					role="timer"
+					aria-label={`${$t('timeSpent')}: ${formatElapsed(elapsedSeconds)}`}
+				>
+					{formatElapsed(elapsedSeconds)}
+				</span>
+			{/if}
 			<div class="test-header-actions">
 				{#if testStarted}
 					<button
@@ -415,7 +567,13 @@
 		{/if}
 
 		<main class="test-main">
-			<div class="test-card-frame" bind:this={questionCardHost}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="test-card-frame"
+				bind:this={questionCardHost}
+				ontouchstart={handleSwipeStart}
+				ontouchend={handleSwipeEnd}
+			>
 				<div class="test-card-head">
 					<span class="test-question-no">
 						{$t('question')} {currentQuestionIndex + 1} {$t('of')} {totalQuestions}
@@ -622,6 +780,19 @@
 		white-space: nowrap;
 	}
 
+	.test-timer {
+		flex: 0 0 auto;
+		padding: 4px 10px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface-muted);
+		color: var(--text-muted);
+		font-size: 0.78rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.02em;
+	}
+
 	.test-header-actions {
 		position: relative;
 		flex: 0 0 auto;
@@ -660,7 +831,6 @@
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
 	}
 
-	.test-overflow-menu button,
 	.overflow-switch {
 		display: flex;
 		width: 100%;
@@ -675,13 +845,6 @@
 		font-size: 0.9rem;
 		font-weight: 600;
 		text-align: left;
-	}
-
-	.test-overflow-menu button:hover {
-		background: var(--surface-muted);
-	}
-
-	.overflow-switch {
 		cursor: pointer;
 	}
 

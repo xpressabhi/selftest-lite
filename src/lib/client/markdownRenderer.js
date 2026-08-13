@@ -17,7 +17,27 @@ const sanitizeSchema = {
 	},
 };
 
-export async function renderRichMarkdown(value) {
+const MAX_CACHE_ENTRIES = 250;
+const renderCache = new Map();
+
+function cacheGet(key) {
+	if (!renderCache.has(key)) {
+		return undefined;
+	}
+	const value = renderCache.get(key);
+	renderCache.delete(key);
+	renderCache.set(key, value);
+	return value;
+}
+
+function cacheSet(key, value) {
+	if (renderCache.size >= MAX_CACHE_ENTRIES) {
+		renderCache.delete(renderCache.keys().next().value);
+	}
+	renderCache.set(key, value);
+}
+
+async function renderOnce(value) {
 	const file = await unified()
 		.use(remarkParse)
 		.use(remarkGfm)
@@ -29,4 +49,29 @@ export async function renderRichMarkdown(value) {
 		.process(value || '');
 
 	return String(file);
+}
+
+export async function renderRichMarkdown(value) {
+	const normalized = String(value || '');
+	const cached = cacheGet(normalized);
+	if (cached !== undefined) {
+		return cached;
+	}
+	const rendered = await renderOnce(normalized);
+	cacheSet(normalized, rendered);
+	return rendered;
+}
+
+/**
+ * Renders text(s) in the background so the unified pipeline never runs on the
+ * interaction path. Used to warm the cache for upcoming questions.
+ */
+export function prewarmRichMarkdown(values) {
+	const texts = Array.isArray(values) ? values : [values];
+	for (const text of texts) {
+		const normalized = String(text || '');
+		if (normalized && !renderCache.has(normalized)) {
+			void renderRichMarkdown(normalized).catch(() => {});
+		}
+	}
 }

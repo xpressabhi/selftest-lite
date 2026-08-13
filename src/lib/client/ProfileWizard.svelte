@@ -150,14 +150,19 @@
 			return;
 		}
 		saving = true;
-		const saved = await saveProfile({
-			...draft,
-			setupComplete: true,
-		});
-		saving = false;
-		track('profile:save', { step: 'wizard', setupComplete: true });
-		onafterfinish?.(saved);
-		closeModal();
+		try {
+			const saved = await saveProfile({
+				...draft,
+				setupComplete: true,
+			});
+			track('profile:save', { step: 'wizard', setupComplete: true });
+			onafterfinish?.(saved);
+			closeModal();
+		} catch (error) {
+			console.error('Failed to save profile from wizard:', error);
+		} finally {
+			saving = false;
+		}
 	}
 
 	function handleSkip() {
@@ -358,7 +363,11 @@
 					disabled={!canAdvance() || saving}
 					onclick={handleNext}
 				>
-					{step < TOTAL_STEPS - 1 ? $t('profileWizardNext') : $t('profileWizardFinish')}
+					{saving
+						? $t('profileSaving')
+						: step < TOTAL_STEPS - 1
+							? $t('profileWizardNext')
+							: $t('profileWizardFinish')}
 				</button>
 			</div>
 		</div>

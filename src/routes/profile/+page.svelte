@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import { t } from '$lib/client/i18n';
 	import { loginWithGoogleCredential, user } from '$lib/client/auth';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
@@ -67,39 +66,32 @@
 	let loaded = $state(false);
 	let lastUserId = $state(null);
 	let saving = $state(false);
+	let saveQueued = false;
+	let resetting = $state(false);
 	let isSigningIn = $state(false);
 	let signInError = $state('');
+	let loadError = $state('');
+	let saveError = $state('');
 	let savedToast = $state(false);
+	let resetToast = $state(false);
 	let examQuery = $state('');
 	let subjectInput = $state('');
 	let focusInput = $state('');
 	let draft = $state(createDefaultProfile());
+
+	const EXAM_SEARCH_INDEX = INDIAN_EXAMS.map((exam) => ({
+		exam,
+		haystack: `${exam.name} ${exam.shortName || ''}`.toLowerCase(),
+	}));
 
 	const filteredExams = $derived.by(() => {
 		const query = examQuery.trim().toLowerCase();
 		if (!query) {
 			return [];
 		}
-		return INDIAN_EXAMS.filter(
-			(exam) =>
-				exam.name.toLowerCase().includes(query) ||
-				(exam.shortName || '').toLowerCase().includes(query),
-		).slice(0, 8);
-	});
-
-	onMount(async () => {
-		const nextProfile = await fetchProfile();
-		await fetchProfileInsights();
-		if (nextProfile) {
-			draft = structuredClone(nextProfile);
-			if (nextProfile.examTarget?.name) {
-				examQuery = nextProfile.examTarget.name;
-			}
-		}
-		loaded = true;
-		return () => {
-			// No-op: page-scoped state.
-		};
+		return EXAM_SEARCH_INDEX.filter(({ haystack }) => haystack.includes(query))
+			.map(({ exam }) => exam)
+			.slice(0, 8);
 	});
 
 	$effect(() => {
@@ -108,16 +100,26 @@
 			return;
 		}
 		lastUserId = userId;
-		void fetchProfile().then((nextProfile) => {
-			if (nextProfile) {
-				draft = structuredClone(nextProfile);
-				if (nextProfile.examTarget?.name) {
-					examQuery = nextProfile.examTarget.name;
+		if (!userId) {
+			loaded = false;
+			return;
+		}
+		loadError = '';
+		void Promise.all([fetchProfile(), fetchProfileInsights()])
+			.then(([nextProfile]) => {
+				if (nextProfile) {
+					draft = structuredClone(nextProfile);
+					if (nextProfile.examTarget?.name) {
+						examQuery = nextProfile.examTarget.name;
+					}
 				}
-			}
-			loaded = true;
-		});
-		void fetchProfileInsights();
+				loaded = true;
+			})
+			.catch((error) => {
+				console.error('Failed to load profile:', error);
+				loadError = error?.message || $t('somethingWentWrong');
+				loaded = true;
+			});
 	});
 
 	function toggleInList(listKey, value) {
@@ -181,28 +183,52 @@
 	}
 
 	async function handleSave() {
+		if (saving) {
+			saveQueued = true;
+			return;
+		}
 		saving = true;
-		const saved = await saveProfile({ ...draft, setupComplete: true });
-		saving = false;
-		track('profile:save', { step: 'profile-page' });
-		if (saved) {
-			draft = structuredClone(saved);
-			savedToast = true;
-			window.setTimeout(() => (savedToast = false), 2500);
-			void fetchProfileInsights();
+		saveError = '';
+		try {
+			const saved = await saveProfile({ ...draft, setupComplete: true });
+			track('profile:save', { step: 'profile-page' });
+			if (saved) {
+				draft = structuredClone(saved);
+				savedToast = true;
+				window.setTimeout(() => (savedToast = false), 2500);
+				void fetchProfileInsights();
+			}
+		} catch (error) {
+			console.error('Failed to save profile:', error);
+			saveError = error?.message || $t('somethingWentWrong');
+		} finally {
+			saving = false;
+			if (saveQueued) {
+				saveQueued = false;
+				void handleSave();
+			}
 		}
 	}
 
 	async function handleReset() {
-		if (!window.confirm($t('profileResetConfirm'))) {
+		if (resetting || !window.confirm($t('profileResetConfirm'))) {
 			return;
 		}
-		await resetProfile();
-		track('profile:reset', {});
-		draft = createDefaultProfile();
-		examQuery = '';
-		savedToast = true;
-		window.setTimeout(() => (savedToast = false), 2500);
+		resetting = true;
+		try {
+			await resetProfile();
+			track('profile:reset', {});
+			draft = createDefaultProfile();
+			examQuery = '';
+			resetToast = true;
+			window.setTimeout(() => (resetToast = false), 2500);
+			void fetchProfileInsights();
+		} catch (error) {
+			console.error('Failed to reset profile:', error);
+			saveError = error?.message || $t('somethingWentWrong');
+		} finally {
+			resetting = false;
+		}
 	}
 
 	async function handlePersonalizedChange() {
@@ -242,6 +268,18 @@
 				{#if savedToast}
 					<div class="alert alert-success mb-0" role="status">{$t('profileSaved')}</div>
 				{/if}
+				{#if resetToast}
+					<div class="alert alert-success mb-0" role="status">{$t('profileResetDone')}</div>
+				{/if}
+				{#if loadError}
+					<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0" role="alert">
+						<span>{loadError}</span>
+						<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => (lastUserId = null)}>
+							{$t('tryAgain')}
+						</button>
+					</div>
+				{/if}
+				{#if !loadError}
 
 				<section class="card p-4">
 					<h2 class="h5 fw-bold mb-3">{$t('profileSectionLearner')}</h2>
@@ -468,13 +506,17 @@
 				</section>
 
 				<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+					{#if saveError}
+						<div class="alert alert-danger small mb-0 w-full" role="alert">{saveError}</div>
+					{/if}
 					<button type="button" class="btn btn-primary" disabled={saving} onclick={handleSave}>
 						{saving ? $t('profileSaving') : $t('profileSaveButton')}
 					</button>
-					<button type="button" class="btn btn-outline-danger" onclick={handleReset}>
-						{$t('profileResetButton')}
+					<button type="button" class="btn btn-outline-danger" disabled={resetting} onclick={handleReset}>
+						{resetting ? $t('deleting') : $t('profileResetButton')}
 					</button>
 				</div>
+				{/if}
 			</div>
 		{:else}
 			<p class="text-muted">…</p>

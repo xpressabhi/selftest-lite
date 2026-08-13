@@ -247,9 +247,9 @@
 		{#if showQuestionsPicker}
 			<div class="chip-picker questions-picker">
 				<div class="picker-stepper">
-					<button type="button" class="stepper-btn" onclick={() => pickQuestions(numQuestions - 5)} aria-label="Fewer questions">−</button>
+					<button type="button" class="stepper-btn" onclick={() => pickQuestions(numQuestions - 5)} aria-label={$t('fewerQuestions')}>−</button>
 					<span class="stepper-value">{numQuestions}</span>
-					<button type="button" class="stepper-btn" onclick={() => pickQuestions(numQuestions + 5)} aria-label="More questions">+</button>
+					<button type="button" class="stepper-btn" onclick={() => pickQuestions(numQuestions + 5)} aria-label={$t('moreQuestions')}>+</button>
 				</div>
 				<div class="picker-presets">
 					{#each [5, 10, 15, 20, 25, 30] as n (n)}

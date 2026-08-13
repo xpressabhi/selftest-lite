@@ -101,8 +101,27 @@ import { prepareMathTextForRendering } from '$lib/shared/latex';
 		mermaidObserver.observe(containerElement);
 	}
 
+	let renderedContent = '';
+	let rendering = false;
+
+	async function renderCurrent() {
+		const rawContent = String(content || '');
+		if (rendering || rawContent === renderedContent) {
+			return;
+		}
+		rendering = true;
+		try {
+			await renderMarkdown(rawContent);
+			if (String(content || '') === rawContent) {
+				renderedContent = rawContent;
+			}
+		} finally {
+			rendering = false;
+		}
+	}
+
 	$effect(() => {
-		renderMarkdown(content);
+		void renderCurrent();
 	});
 
 	onDestroy(() => {

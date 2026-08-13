@@ -757,5 +757,12 @@
   "aiWillConfigureBest": "AI आपके लिए सबसे अच्छी सेटिंग्स तय करेगा",
   "exactMatch": "सटीक मिलान",
   "startTypingToGenerate": "नया टेस्ट बनाने के लिए कुछ भी लिखें, या मौजूदा टेस्ट खोलने के लिए टेस्ट आईडी डालें",
-  "profileSaving": "सेव हो रहा है…"
+  "profileSaving": "सेव हो रहा है…",
+  "retakeTest": "दोबारा टेस्ट दें",
+  "practiceMore": "और अभ्यास करें",
+  "shareResultText": "मैंने selftest.in पर \"{topic}\" में {score}/{total} ({percentage}%) अंक प्राप्त किए",
+  "fewerQuestions": "कम प्रश्न",
+  "moreQuestions": "अधिक प्रश्न",
+  "showAllCategories": "सभी श्रेणियां दिखाएं",
+  "examSelected": "चयनित"
 }

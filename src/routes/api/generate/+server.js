@@ -519,13 +519,28 @@ export async function POST({ request, cookies }) {
 			.filter(Boolean)
 			.join('\n');
 
-		const previousQuestions = previousTestRecords.flatMap(
-			(record) =>
-				record.test?.questions?.map((q) => ({
-					question: q.question,
-					answer: q.answer,
-				})) || [],
-		);
+		// Keep the "previous questions to avoid" context bounded: every past
+		// test can hold 100+ questions and 10 tests of that would balloon the
+		// prompt into tens of thousands of tokens, slowing every generation.
+		const MAX_PREVIOUS_QUESTIONS = 60;
+		const previousQuestions = [];
+		const seenQuestionKeys = new Set();
+		for (const record of previousTestRecords) {
+			for (const q of record.test?.questions || []) {
+				const key = comparableText(q.question);
+				if (!key || seenQuestionKeys.has(key)) {
+					continue;
+				}
+				seenQuestionKeys.add(key);
+				previousQuestions.push({ question: q.question, answer: q.answer });
+				if (previousQuestions.length >= MAX_PREVIOUS_QUESTIONS) {
+					break;
+				}
+			}
+			if (previousQuestions.length >= MAX_PREVIOUS_QUESTIONS) {
+				break;
+			}
+		}
 
 		const apiKey = env.GEMINI_API_KEY;
 		if (!apiKey) {

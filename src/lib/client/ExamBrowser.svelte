@@ -17,7 +17,7 @@
 	const DISPLAY_EXAMS = $derived(visibleExams.slice(0, 24));
 
 	function selectExam(examId) {
-		onexamchange('selectedExamId', examId);
+		onexamchange('examId', examId);
 	}
 
 	function toggleBookmark(examId) {
@@ -30,7 +30,7 @@
 		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
 		<span class="toggle-label">{$t('browseAllExams')}</span>
 		{#if selectedExamId}
-			<span class="toggle-count">1 {$t('select')}ed</span>
+			<span class="toggle-count">✓ {$t('examSelected')}</span>
 		{/if}
 	</button>
 
