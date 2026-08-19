@@ -53,13 +53,13 @@ export function getStats(history) {
 	const totalTests = completed.length;
 	const totalQuestions = completed.reduce(
 		(sum, entry) => sum + Number(entry.totalQuestions || entry.questions?.length || 0),
-		0,
+		0
 	);
 	const totalScore = completed.reduce((sum, entry) => sum + Number(entry.score || 0), 0);
 	const totalTime = completed.reduce((sum, entry) => sum + Number(entry.timeTaken || 0), 0);
 	const topics = new Set(completed.map((entry) => entry.topic).filter(Boolean));
 	const perfectScoreCount = completed.filter(
-		(entry) => Number(entry.score) === Number(entry.totalQuestions || entry.questions?.length),
+		(entry) => Number(entry.score) === Number(entry.totalQuestions || entry.questions?.length)
 	).length;
 
 	return {
@@ -108,7 +108,9 @@ export function recordStreakActivity() {
 		}
 		const next = {
 			...previous,
-			streakHistory: todayEntry ? history : [...history, { date: today, quizCount: 1 }].slice(-90),
+			streakHistory: todayEntry
+				? history
+				: [...history, { date: today, quizCount: 1 }].slice(-90),
 		};
 		writeJson(STREAK_KEY, next);
 		return next;
@@ -161,7 +163,7 @@ export function unlockAchievements(history, streak = getStreak()) {
 		streak_7: Number(streak.longestStreak || 0) >= 7,
 	};
 	const newlyUnlocked = ACHIEVEMENTS.filter(
-		(item) => checks[item.id] && !safeUnlockedIds.includes(item.id),
+		(item) => checks[item.id] && !safeUnlockedIds.includes(item.id)
 	);
 	if (newlyUnlocked.length > 0) {
 		writeJson(ACHIEVEMENTS_KEY, [...safeUnlockedIds, ...newlyUnlocked.map((item) => item.id)]);
@@ -239,7 +241,7 @@ export function buildTopicMasteryItems(history, maxItems = 4) {
 		.map(({ topic, entries }) => {
 			const latestAccuracy = entries[0].accuracy;
 			const averageAccuracy = Math.round(
-				entries.reduce((sum, entry) => sum + entry.accuracy, 0) / entries.length,
+				entries.reduce((sum, entry) => sum + entry.accuracy, 0) / entries.length
 			);
 			return {
 				id: entries[0].id,

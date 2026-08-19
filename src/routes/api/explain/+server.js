@@ -38,10 +38,10 @@ export async function POST({ request }) {
 		if (rateLimit.limited) {
 			await logApiEvent({
 				route: '/api/explain',
-			action: 'explain_answer',
-			clientKey,
-			request,
-			statusCode: 429,
+				action: 'explain_answer',
+				clientKey,
+				request,
+				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
 
@@ -59,7 +59,7 @@ export async function POST({ request }) {
 						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
 						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
 					},
-				},
+				}
 			);
 		}
 
@@ -72,7 +72,7 @@ export async function POST({ request }) {
 					error: 'Topic, question, and answer are required',
 					code: 'EXPLAIN_FIELDS_REQUIRED',
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -86,7 +86,7 @@ export async function POST({ request }) {
 					error: 'The question or answer is too long',
 					code: 'EXPLAIN_FIELDS_TOO_LONG',
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -100,15 +100,12 @@ export async function POST({ request }) {
 					error: 'Invalid language selection',
 					code: 'INVALID_LANGUAGE',
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
 		if (!apiKey) {
-			return json(
-				{ error: 'Gemini API key is not configured' },
-				{ status: 500 },
-			);
+			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
@@ -161,13 +158,13 @@ export async function POST({ request }) {
 		if (error?.code === 'REQUEST_TOO_LARGE') {
 			return json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
-				{ status: 413 },
+				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
 			return json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 		const { statusCode, code, message } = classifyApiError(error, {
@@ -190,7 +187,7 @@ export async function POST({ request }) {
 				error: message,
 				code,
 			},
-			{ status: statusCode },
+			{ status: statusCode }
 		);
 	}
 }

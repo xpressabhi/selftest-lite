@@ -7,7 +7,8 @@ const isLocalDevelopment =
 // Data-saver users opted into saving bandwidth: skip the analytics script
 // (~2KB + tracking calls) for them. Reads localStorage directly because the
 // store in preferences.js isn't hydrated yet at module load time.
-const dataSaverKey = typeof window !== 'undefined' ? window.localStorage.getItem('dataSaverMode') : null;
+const dataSaverKey =
+	typeof window !== 'undefined' ? window.localStorage.getItem('dataSaverMode') : null;
 const connection =
 	typeof navigator !== 'undefined'
 		? navigator.connection || navigator.mozConnection || navigator.webkitConnection

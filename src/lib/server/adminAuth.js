@@ -42,17 +42,13 @@ export function verifyAdminCredentials(username, password) {
 	if (!expectedUser || !expectedPass) {
 		return false;
 	}
-	return (
-		safeEqual(username, expectedUser) && safeEqual(password, expectedPass)
-	);
+	return safeEqual(username, expectedUser) && safeEqual(password, expectedPass);
 }
 
 export function createSessionToken(now = Date.now()) {
 	const payload = { exp: now + ADMIN_SESSION_TTL_MS };
 	const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
-	const signature = createHmac('sha256', sessionSecret())
-		.update(body)
-		.digest('base64url');
+	const signature = createHmac('sha256', sessionSecret()).update(body).digest('base64url');
 	return `${body}.${signature}`;
 }
 
@@ -64,9 +60,7 @@ export function verifySessionToken(token) {
 	if (!body || !signature) {
 		return false;
 	}
-	const expected = createHmac('sha256', sessionSecret())
-		.update(body)
-		.digest('base64url');
+	const expected = createHmac('sha256', sessionSecret()).update(body).digest('base64url');
 	if (!safeEqual(signature, expected)) {
 		return false;
 	}

@@ -12,11 +12,7 @@ export default defineConfig(({ mode }) => {
 			sveltekit(),
 			VitePWA({
 				registerType: 'autoUpdate',
-				includeAssets: [
-					'icons/*.png',
-					'icons/*.ico',
-					'ads.txt',
-				],
+				includeAssets: ['icons/*.png', 'icons/*.ico', 'ads.txt'],
 				manifest: false,
 				workbox: {
 					cleanupOutdatedCaches: true,
@@ -53,7 +49,8 @@ export default defineConfig(({ mode }) => {
 						},
 						{
 							urlPattern: ({ url }) =>
-								url.origin === self.location.origin && url.pathname.startsWith('/api/'),
+								url.origin === self.location.origin &&
+								url.pathname.startsWith('/api/'),
 							handler: 'NetworkFirst',
 							options: {
 								cacheName: 'apis',

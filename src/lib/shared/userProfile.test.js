@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	createDefaultProfile,
-	normalizeProfile,
-	parseProfileStateValue,
-} from './userProfile';
+import { createDefaultProfile, normalizeProfile, parseProfileStateValue } from './userProfile';
 
 describe('normalizeProfile', () => {
 	it('normalizes a valid profile', () => {

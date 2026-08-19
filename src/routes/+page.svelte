@@ -12,9 +12,7 @@
 		saveBookmarkedExamIds,
 		saveCurrentPaper,
 	} from '$lib/client/storage';
-	import {
-		STORAGE_KEYS,
-	} from '$lib/client/constants';
+	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import SmartIntentInput from '$lib/client/SmartIntentInput.svelte';
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
@@ -74,17 +72,17 @@
 	const currentProfile = $derived($profileStore);
 	const insights = $derived($profileInsights);
 	const tailoredSummary = $derived(
-		$user && insights?.tailoredSummary ? insights.tailoredSummary : null,
+		$user && insights?.tailoredSummary ? insights.tailoredSummary : null
 	);
 	const profileReadyForWizard = $derived(
 		$user &&
 			(currentProfile === null || !currentProfile.setupComplete) &&
-			(currentProfile === null || currentProfile.preferences?.personalized !== false),
+			(currentProfile === null || currentProfile.preferences?.personalized !== false)
 	);
 
 	let selectedExam = $derived(getIndianExamById(examId));
 	let bookmarkedExams = $derived(
-		OBJECTIVE_ONLY_EXAMS.filter((exam) => bookmarkedExamIds.includes(exam.id)),
+		OBJECTIVE_ONLY_EXAMS.filter((exam) => bookmarkedExamIds.includes(exam.id))
 	);
 	let visibleExams = $derived.by(() => {
 		const query = examSearchQuery.trim().toLowerCase();
@@ -102,7 +100,9 @@
 				.includes(query);
 		});
 	});
-	let canGenerate = $derived(topic.trim().length > 0 || selectedTopics.length > 0 || examId !== '');
+	let canGenerate = $derived(
+		topic.trim().length > 0 || selectedTopics.length > 0 || examId !== ''
+	);
 
 	onMount(() => {
 		const ua = window.navigator.userAgent || '';
@@ -151,11 +151,7 @@
 		}
 
 		const applyProfilePrefill = (insightsData) => {
-			if (
-				!insightsData?.suggestedDifficulty ||
-				difficultyTouched ||
-				isFullExam
-			) {
+			if (!insightsData?.suggestedDifficulty || difficultyTouched || isFullExam) {
 				return;
 			}
 			difficulty = insightsData.suggestedDifficulty;
@@ -165,8 +161,7 @@
 			const profileData = await fetchProfile();
 			const insightsData = await fetchProfileInsights();
 			applyProfilePrefill(insightsData);
-			const needsSetup =
-				!profileData || !profileData.setupComplete;
+			const needsSetup = !profileData || !profileData.setupComplete;
 			if (needsSetup && (!profileData || profileData.preferences?.personalized !== false)) {
 				const dismissedAtRaw = window.localStorage.getItem(PROFILE_WIZARD_DISMISS_KEY);
 				const dismissedAt = Number(dismissedAtRaw || 0);
@@ -211,7 +206,13 @@
 	});
 
 	$effect(() => {
-		if (status === 'loading' || topic.trim().length > 0 || selectedTopics.length > 0 || examId !== '' || error) {
+		if (
+			status === 'loading' ||
+			topic.trim().length > 0 ||
+			selectedTopics.length > 0 ||
+			examId !== '' ||
+			error
+		) {
 			heroCollapsed = true;
 			return;
 		}
@@ -227,7 +228,13 @@
 				heroCollapsed = true;
 				return;
 			}
-			if (status !== 'loading' && topic.trim().length === 0 && selectedTopics.length === 0 && examId === '' && !error) {
+			if (
+				status !== 'loading' &&
+				topic.trim().length === 0 &&
+				selectedTopics.length === 0 &&
+				examId === '' &&
+				!error
+			) {
 				heroCollapsed = false;
 			}
 		};
@@ -346,7 +353,11 @@
 		void parseIntent(example);
 	}
 
-	function getExamRequestParams(exam, syllabusFocus = selectedSyllabusFocus, customTopic = topic) {
+	function getExamRequestParams(
+		exam,
+		syllabusFocus = selectedSyllabusFocus,
+		customTopic = topic
+	) {
 		const focus = syllabusFocus.length > 0 ? syllabusFocus : exam.syllabus || [];
 		return {
 			testMode: 'full-exam',
@@ -402,7 +413,9 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...requestParams,
-					previousTestIds: historyEntries.filter(isStoredTest).map((entry) => Number(entry.id)),
+					previousTestIds: historyEntries
+						.filter(isStoredTest)
+						.map((entry) => Number(entry.id)),
 					attemptedTestIds: historyEntries
 						.filter((entry) => entry.userAnswers)
 						.filter(isStoredTest)
@@ -447,7 +460,9 @@
 					retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
 				}
 				const data = await postGenerate(requestParams);
-				track('generate:success', { mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice') });
+				track('generate:success', {
+					mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
+				});
 				saveCurrentPaper(data);
 				await goto(`/test?id=${data.id}`);
 				return;
@@ -469,9 +484,10 @@
 			error = isFullExam ? $t('errorSelectObjectiveExam') : $t('errorProvideTopic');
 			return;
 		}
-		const params = isFullExam && selectedExam
-			? getExamRequestParams(selectedExam)
-			: getQuizRequestParams();
+		const params =
+			isFullExam && selectedExam
+				? getExamRequestParams(selectedExam)
+				: getQuizRequestParams();
 		await runGeneration(params);
 	}
 
@@ -522,16 +538,22 @@
 		};
 		await runGeneration(quizParams);
 	}
-
 </script>
 
 <svelte:head>
 	<title>AI Quiz & Exam Paper Generator for India | selftest.in</title>
 </svelte:head>
 
-<section class="container py-4 py-md-5" style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)); padding-left: calc(1rem + env(safe-area-inset-left, 0px)); padding-right: calc(1rem + env(safe-area-inset-right, 0px));">
+<section
+	class="container py-4 py-md-5"
+	style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)); padding-left: calc(1rem + env(safe-area-inset-left, 0px)); padding-right: calc(1rem + env(safe-area-inset-right, 0px));"
+>
 	<div class="mx-auto home-wrap">
-		<div class="text-center mb-4 hero-block" class:hero-collapsed={heroCollapsed} aria-hidden={heroCollapsed}>
+		<div
+			class="text-center mb-4 hero-block"
+			class:hero-collapsed={heroCollapsed}
+			aria-hidden={heroCollapsed}
+		>
 			<p class="hero-tagline">{$t('aiPracticeForIndianExams')}</p>
 			<h1 class="hero-heading">{$t('createQuiz')}</h1>
 		</div>
@@ -548,11 +570,14 @@
 		</div>
 
 		{#if unsubmittedTest?.id}
-			<div class="alert alert-warning d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+			<div
+				class="alert alert-warning d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3"
+			>
 				<div>
 					<div class="fw-bold">{$t('unsubmittedTest')}</div>
 					<div class="small">
-						{$t('unsubmittedTestMessagePrefix')} "{unsubmittedTest.topic || $t('testPrefix')}" {$t('unsubmittedTestMessageSuffix')}
+						{$t('unsubmittedTestMessagePrefix')} "{unsubmittedTest.topic ||
+							$t('testPrefix')}" {$t('unsubmittedTestMessageSuffix')}
 					</div>
 				</div>
 				<a class="btn btn-warning btn-sm fw-bold" href={`/test?id=${unsubmittedTest.id}`}>
@@ -561,10 +586,7 @@
 			</div>
 		{/if}
 
-		<WelcomeBlock
-			onDismiss={handleWelcomeDismiss}
-			onShowExample={handleShowExample}
-		/>
+		<WelcomeBlock onDismiss={handleWelcomeDismiss} onShowExample={handleShowExample} />
 
 		<QuickStart
 			{bookmarkedExams}
@@ -577,7 +599,7 @@
 		<PreviewCard
 			{topic}
 			{numQuestions}
-			testType={testType}
+			{testType}
 			{difficulty}
 			language={paperLanguage}
 			{examId}
@@ -594,7 +616,8 @@
 			<div class="tailored-chip">
 				<span class="tailored-badge" aria-hidden="true">🎯</span>
 				<span class="small">
-					<strong>{$t('profileChipLabel')}:</strong> {tailoredSummary}
+					<strong>{$t('profileChipLabel')}:</strong>
+					{tailoredSummary}
 				</span>
 				<a class="tailored-edit" href="/profile">{$t('profileChipEdit')}</a>
 			</div>
@@ -609,14 +632,14 @@
 					ontopicchange={handleTopicBrowserChange}
 				/>
 				<ExamBrowser
-					examSearchQuery={examSearchQuery}
-					examGroupFilter={examGroupFilter}
-					showBookmarkedExamsOnly={showBookmarkedExamsOnly}
-					bookmarkedExamIds={bookmarkedExamIds}
+					{examSearchQuery}
+					{examGroupFilter}
+					{showBookmarkedExamsOnly}
+					{bookmarkedExamIds}
 					selectedExamId={examId}
 					onexamchange={handleExamBrowserChange}
 					onbookmarktoggle={toggleExamBookmark}
-					visibleExams={visibleExams}
+					{visibleExams}
 				/>
 			</div>
 		</div>
@@ -648,7 +671,8 @@
 					{$t('androidAppDownload')}
 				</a>
 				<p class="text-muted small mt-3 mb-0">
-					{$t('androidAppInstallHint')} <span class="fw-semibold">{$t('androidAppAllowUnknownSources')}</span>
+					{$t('androidAppInstallHint')}
+					<span class="fw-semibold">{$t('androidAppAllowUnknownSources')}</span>
 				</p>
 			</div>
 		</div>
@@ -672,7 +696,10 @@
 		max-height: 160px;
 		overflow: hidden;
 		opacity: 1;
-		transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.35s ease;
+		transition:
+			max-height 0.35s ease,
+			opacity 0.25s ease,
+			margin-bottom 0.35s ease;
 	}
 
 	.hero-block.hero-collapsed {

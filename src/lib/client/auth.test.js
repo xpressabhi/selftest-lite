@@ -37,13 +37,13 @@ describe('auth (post-login history sync)', () => {
 			JSON.stringify([
 				{
 					testId: 42,
-					userAnswers: { '0': 'A' },
+					userAnswers: { 0: 'A' },
 					score: 1,
 					totalQuestions: 1,
 					timeTaken: 10,
 					submittedAt: '2026-08-01T10:00:00.000Z',
 				},
-			]),
+			])
 		);
 	});
 
@@ -67,9 +67,7 @@ describe('auth (post-login history sync)', () => {
 				}
 				if (url === '/api/user/history' && method === 'POST') {
 					// Deferred: simulates a slow push while the GET would race ahead.
-					return historyPostPromise.then(() =>
-						jsonResponse({ success: true }),
-					);
+					return historyPostPromise.then(() => jsonResponse({ success: true }));
 				}
 				if (url === '/api/user/history') {
 					return Promise.resolve(jsonResponse({ attempts: [] }));
@@ -78,7 +76,7 @@ describe('auth (post-login history sync)', () => {
 					return Promise.resolve(jsonResponse({ storage: {} }));
 				}
 				return Promise.resolve(jsonResponse({ error: 'not found' }, false));
-			}),
+			})
 		);
 
 		const loginPromise = loginWithGoogleCredential('fake-credential');
@@ -108,7 +106,7 @@ describe('auth (post-login history sync)', () => {
 					return Promise.resolve(jsonResponse({ user: { id: 7 } }));
 				}
 				return Promise.resolve(jsonResponse({ error: 'down' }, false));
-			}),
+			})
 		);
 
 		const resolved = await loginWithGoogleCredential('fake-credential');

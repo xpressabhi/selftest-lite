@@ -21,7 +21,7 @@ export async function POST({ request, cookies }) {
 		if (rateLimit.limited) {
 			return json(
 				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
@@ -53,9 +53,6 @@ export async function POST({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json(
-			{ error: 'Failed to sign out', code: 'LOGOUT_FAILED' },
-			{ status: 500 },
-		);
+		return json({ error: 'Failed to sign out', code: 'LOGOUT_FAILED' }, { status: 500 });
 	}
 }

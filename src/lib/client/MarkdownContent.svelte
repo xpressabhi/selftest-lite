@@ -1,7 +1,7 @@
 <script>
-import { onDestroy, tick } from 'svelte';
-import { isDataSaverActive } from './preferences';
-import { prepareMathTextForRendering } from '$lib/shared/latex';
+	import { onDestroy, tick } from 'svelte';
+	import { isDataSaverActive } from './preferences';
+	import { prepareMathTextForRendering } from '$lib/shared/latex';
 
 	let { content = '', tag = 'div' } = $props();
 	let html = $state('');
@@ -19,12 +19,14 @@ import { prepareMathTextForRendering } from '$lib/shared/latex';
 
 	function needsRichRenderer(value) {
 		return /(^|\n)\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>|```)|\*\*|(?<!\*)\*(?!\s)[^*\n]+?(?<!\s)\*(?!\*)|__|~~|`|\[[^\]]+\]\([^)]*\)|\$\$?|\|.+\|/m.test(
-			value,
+			value
 		);
 	}
 
 	function hasMath(value) {
-		return /\$\$?|\\\(|\\\[|\\begin\{|\\(?:frac|dfrac|tfrac|sqrt|binom|vec|hat|bar|overline|underline|mathrm|mathbf|mathbb|mathcal|infty|pm|mp|cdot|times|leq|geq|neq|approx|sum|prod|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|sigma|omega|circ|Delta|Sigma|Omega|begin|end)\b|(?:[A-Za-z0-9)])\s*[\^_]\s*(?:\{[^{}]*\}|[A-Za-z0-9])/.test(value);
+		return /\$\$?|\\\(|\\\[|\\begin\{|\\(?:frac|dfrac|tfrac|sqrt|binom|vec|hat|bar|overline|underline|mathrm|mathbf|mathbb|mathcal|infty|pm|mp|cdot|times|leq|geq|neq|approx|sum|prod|int|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|sigma|omega|circ|Delta|Sigma|Omega|begin|end)\b|(?:[A-Za-z0-9)])\s*[\^_]\s*(?:\{[^{}]*\}|[A-Za-z0-9])/.test(
+			value
+		);
 	}
 
 	function hasMermaid(value) {
@@ -62,27 +64,33 @@ import { prepareMathTextForRendering } from '$lib/shared/latex';
 			if ($isDataSaverActive) {
 				return;
 			}
-		const mermaidModule = await import('mermaid');
-		const mermaid = mermaidModule.default;
-		mermaid.initialize({
-			startOnLoad: false,
-			securityLevel: 'strict',
-			theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'default',
-		});
-		await Promise.all(
-			mermaidBlocks.map(async (block, index) => {
-				const chart = block.textContent || '';
-				const wrapper = document.createElement('div');
-				wrapper.className = 'mermaid-diagram';
-				try {
-					const result = await mermaid.render(`selftest-mermaid-${Date.now()}-${index}`, chart);
-					wrapper.innerHTML = result.svg;
-					block.closest('pre')?.replaceWith(wrapper);
-				} catch {
-					block.closest('pre')?.classList.add('mermaid-error');
-				}
-			}),
-		);
+			const mermaidModule = await import('mermaid');
+			const mermaid = mermaidModule.default;
+			mermaid.initialize({
+				startOnLoad: false,
+				securityLevel: 'strict',
+				theme:
+					document.documentElement.getAttribute('data-bs-theme') === 'dark'
+						? 'dark'
+						: 'default',
+			});
+			await Promise.all(
+				mermaidBlocks.map(async (block, index) => {
+					const chart = block.textContent || '';
+					const wrapper = document.createElement('div');
+					wrapper.className = 'mermaid-diagram';
+					try {
+						const result = await mermaid.render(
+							`selftest-mermaid-${Date.now()}-${index}`,
+							chart
+						);
+						wrapper.innerHTML = result.svg;
+						block.closest('pre')?.replaceWith(wrapper);
+					} catch {
+						block.closest('pre')?.classList.add('mermaid-error');
+					}
+				})
+			);
 		};
 
 		if (!('IntersectionObserver' in window)) {
@@ -96,7 +104,7 @@ import { prepareMathTextForRendering } from '$lib/shared/latex';
 					void render();
 				}
 			},
-			{ rootMargin: '240px 0px' },
+			{ rootMargin: '240px 0px' }
 		);
 		mermaidObserver.observe(containerElement);
 	}

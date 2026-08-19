@@ -1,0 +1,18 @@
+# dependencies
+node_modules
+.claude
+
+# sveltekit
+.svelte-kit
+build
+.vercel
+
+# pwa / generated
+android
+dist
+www
+
+# misc
+coverage
+playwright-report
+.playwright-mcp

@@ -28,7 +28,7 @@ export async function POST({ request, cookies }) {
 					code: 'ADMIN_LOGIN_RATE_LIMITED',
 					resetTime: new Date(rateLimit.resetTime).toISOString(),
 				},
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
@@ -38,7 +38,7 @@ export async function POST({ request, cookies }) {
 					error: 'Admin access is not configured',
 					code: 'ADMIN_NOT_CONFIGURED',
 				},
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -60,7 +60,7 @@ export async function POST({ request, cookies }) {
 					error: 'Invalid username or password',
 					code: 'ADMIN_INVALID_CREDENTIALS',
 				},
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -88,13 +88,13 @@ export async function POST({ request, cookies }) {
 		if (error?.code === 'REQUEST_TOO_LARGE') {
 			return json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
-				{ status: 413 },
+				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
 			return json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 		return json(
@@ -102,7 +102,7 @@ export async function POST({ request, cookies }) {
 				error: 'An error occurred during login',
 				code: 'ADMIN_LOGIN_FAILED',
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

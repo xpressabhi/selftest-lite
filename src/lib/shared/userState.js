@@ -62,7 +62,7 @@ function toArray(value) {
 
 function mergeExams(remote, local) {
 	const values = [...toArray(local), ...toArray(remote)].filter(
-		(item) => typeof item === 'string',
+		(item) => typeof item === 'string'
 	);
 	return [...new Set(values)].slice(0, STATE_CAPS.selftest_bookmarked_exams);
 }
@@ -70,7 +70,7 @@ function mergeExams(remote, local) {
 function mergePresets(remote, local) {
 	const merged = dedupeByIdentity(
 		[...toArray(local), ...toArray(remote)],
-		(preset) => preset.key || preset.id || null,
+		(preset) => preset.key || preset.id || null
 	);
 	return merged.slice(0, STATE_CAPS.selftest_bookmarked_quiz_presets);
 }
@@ -78,8 +78,7 @@ function mergePresets(remote, local) {
 function mergeQuestionBookmarks(remote, local) {
 	const merged = dedupeByIdentity(
 		[...toArray(local), ...toArray(remote)],
-		(bookmark) =>
-			`${String(bookmark.question || '')}::${String(bookmark.answer || '')}`,
+		(bookmark) => `${String(bookmark.question || '')}::${String(bookmark.answer || '')}`
 	);
 	return merged.slice(0, STATE_CAPS.selftest_bookmarks);
 }
@@ -149,9 +148,7 @@ export function mergeStateSnapshots(remote, local) {
 		const remoteValue = parseStateValue(remoteValues[key]);
 
 		const strategy = MERGE_STRATEGIES[key];
-		const merged = strategy
-			? strategy(remoteValue, localValue)
-			: localValue;
+		const merged = strategy ? strategy(remoteValue, localValue) : localValue;
 		if (merged !== null && merged !== undefined) {
 			result[key] = JSON.stringify(merged);
 		}

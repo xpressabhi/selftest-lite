@@ -49,19 +49,20 @@
 	let percentage = $derived(
 		questionPaper?.totalQuestions
 			? Math.round((questionPaper.score / questionPaper.totalQuestions) * 100)
-			: 0,
+			: 0
 	);
 
 	let correctCount = $derived(
 		(questionPaper?.questions || []).filter(
 			(question, index) =>
-				(question.correct ?? (questionPaper.userAnswers?.[index] === question.answer)) === true,
-		).length,
+				(question.correct ?? questionPaper.userAnswers?.[index] === question.answer) ===
+				true
+		).length
 	);
 	let unansweredCount = $derived(
 		(questionPaper?.questions || []).filter(
-			(question, index) => questionPaper.userAnswers?.[index] == null,
-		).length,
+			(question, index) => questionPaper.userAnswers?.[index] == null
+		).length
 	);
 	let incorrectCount = $derived(totalQuestions - correctCount - unansweredCount);
 
@@ -69,7 +70,8 @@
 		(questionPaper?.questions || [])
 			.map((question, index) => ({ question, index }))
 			.filter(({ question, index }) => {
-				const isCorrect = question.correct ?? (questionPaper.userAnswers?.[index] === question.answer);
+				const isCorrect =
+					question.correct ?? questionPaper.userAnswers?.[index] === question.answer;
 				if (filter === 'correct') {
 					return isCorrect === true;
 				}
@@ -80,7 +82,7 @@
 					return questionPaper.userAnswers?.[index] == null;
 				}
 				return true;
-			}),
+			})
 	);
 
 	const RING_RADIUS = 42;
@@ -94,7 +96,7 @@
 		const defaults = {};
 		questionPaper.questions.forEach((question, index) => {
 			const isCorrect =
-				question.correct ?? (questionPaper.userAnswers?.[index] === question.answer);
+				question.correct ?? questionPaper.userAnswers?.[index] === question.answer;
 			defaults[index] = isCorrect !== true;
 		});
 		expanded = defaults;
@@ -112,7 +114,7 @@
 			const attemptResult = getAttemptResult(testId);
 			if (attemptResult?.results) {
 				const resultByIndex = new Map(
-					attemptResult.results.map((item) => [item.index, item]),
+					attemptResult.results.map((item) => [item.index, item])
 				);
 				resolved = {
 					...resolved,
@@ -120,7 +122,7 @@
 					userAnswers:
 						resolved.userAnswers ||
 						Object.fromEntries(
-							attemptResult.results.map((item) => [item.index, item.yourAnswer]),
+							attemptResult.results.map((item) => [item.index, item.yourAnswer])
 						),
 					questions: resolved.questions.map((question, index) => {
 						const graded = resultByIndex.get(index);
@@ -142,8 +144,7 @@
 			} else if (
 				questionPaper.questions.some(
 					(question) =>
-						question.correct === undefined &&
-						typeof question.answer !== 'string',
+						question.correct === undefined && typeof question.answer !== 'string'
 				)
 			) {
 				error = $t('resultNotAvailable');
@@ -166,7 +167,7 @@
 		topicMastery = buildTopicMasteryItems(history);
 		reviewQueue = buildReviewQueue(history);
 		const bookmarkKeys = new Set(
-			getQuestionBookmarks().map((item) => `${item.question}::${item.answer}`),
+			getQuestionBookmarks().map((item) => `${item.question}::${item.answer}`)
 		);
 		bookmarkedQuestionKeys = (questionPaper?.questions || [])
 			.filter((question) => bookmarkKeys.has(questionKey(question)))
@@ -245,7 +246,7 @@
 							...item,
 							explanation: data.explanation,
 						}
-					: item,
+					: item
 			);
 			questionPaper = {
 				...questionPaper,
@@ -336,7 +337,10 @@
 		<div class="alert alert-warning">{error}</div>
 		<div class="d-flex flex-wrap gap-2">
 			{#if questionPaper?.id && !questionPaper.userAnswers}
-				<a class="btn btn-primary" href={`/test?id=${encodeURIComponent(questionPaper.id)}`}>
+				<a
+					class="btn btn-primary"
+					href={`/test?id=${encodeURIComponent(questionPaper.id)}`}
+				>
 					{$t('backToTest')}
 				</a>
 			{/if}
@@ -371,12 +375,20 @@
 						{questionPaper.score} / {questionPaper.totalQuestions}
 					</div>
 					<p class="text-muted mb-0">
-						{$t('timeSpent')}: {Math.round((questionPaper.timeTaken || 0) / 60)} {$t('minuteShort')}
+						{$t('timeSpent')}: {Math.round((questionPaper.timeTaken || 0) / 60)}
+						{$t('minuteShort')}
 					</p>
 				</div>
 			</div>
 			<div class="d-flex flex-wrap gap-2 mt-3 no-print">
-				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => { window.print(); track('results:print'); }}>
+				<button
+					class="btn btn-sm btn-outline-secondary"
+					type="button"
+					onclick={() => {
+						window.print();
+						track('results:print');
+					}}
+				>
 					{$t('print')}
 				</button>
 				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
@@ -392,17 +404,41 @@
 			</div>
 		</div>
 
-		<div class="filter-bar bg-body border rounded-3 p-2 mb-4" role="group" aria-label={$t('reviewAnswers')}>
-			<button class="filter-chip" class:active={filter === 'all'} type="button" onclick={() => (filter = 'all')}>
+		<div
+			class="filter-bar bg-body border rounded-3 p-2 mb-4"
+			role="group"
+			aria-label={$t('reviewAnswers')}
+		>
+			<button
+				class="filter-chip"
+				class:active={filter === 'all'}
+				type="button"
+				onclick={() => (filter = 'all')}
+			>
 				{$t('filterAll')}<span class="filter-count">{totalQuestions}</span>
 			</button>
-			<button class="filter-chip" class:active={filter === 'correct'} type="button" onclick={() => (filter = 'correct')}>
+			<button
+				class="filter-chip"
+				class:active={filter === 'correct'}
+				type="button"
+				onclick={() => (filter = 'correct')}
+			>
 				{$t('filterCorrect')}<span class="filter-count">{correctCount}</span>
 			</button>
-			<button class="filter-chip" class:active={filter === 'incorrect'} type="button" onclick={() => (filter = 'incorrect')}>
+			<button
+				class="filter-chip"
+				class:active={filter === 'incorrect'}
+				type="button"
+				onclick={() => (filter = 'incorrect')}
+			>
 				{$t('filterIncorrect')}<span class="filter-count">{incorrectCount}</span>
 			</button>
-			<button class="filter-chip" class:active={filter === 'unanswered'} type="button" onclick={() => (filter = 'unanswered')}>
+			<button
+				class="filter-chip"
+				class:active={filter === 'unanswered'}
+				type="button"
+				onclick={() => (filter = 'unanswered')}
+			>
 				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
 			</button>
 		</div>
@@ -415,24 +451,49 @@
 							<h2 class="h6 fw-bold mb-1">{$t('streaks')}</h2>
 							<p class="text-muted small mb-0">{$t('dayStreak')}</p>
 						</div>
-						<div class="display-6 fw-bold text-primary">{streak?.currentStreak || 0}</div>
+						<div class="display-6 fw-bold text-primary">
+							{streak?.currentStreak || 0}
+						</div>
 					</div>
 					<div class="week-strip mt-3">
 						{#each weekActivity as day (day.date)}
-							<span class:active={day.active} class:today={day.isToday} title={day.date}></span>
+							<span
+								class:active={day.active}
+								class:today={day.isToday}
+								title={day.date}
+							></span>
 						{/each}
 					</div>
-					<p class="small text-muted mt-2 mb-0">{$t('best')}: {streak?.longestStreak || 0}</p>
+					<p class="small text-muted mt-2 mb-0">
+						{$t('best')}: {streak?.longestStreak || 0}
+					</p>
 				</section>
 			</div>
 			<div class="col-md-6">
 				<section class="result-panel bg-body border rounded-3 p-3">
 					<h2 class="h6 fw-bold">{$t('yourProgress')}</h2>
 					<div class="stats-grid">
-						<div><strong>{stats?.totalTests || 0}</strong><span>{$t('quizzes')}</span></div>
-						<div><strong>{stats?.averageScore || 0}%</strong><span>{$t('avgScore')}</span></div>
-						<div><strong>{stats?.totalQuestions || 0}</strong><span>{$t('questionsHeading')}</span></div>
-						<div><strong>{formatDuration(stats?.totalTime || 0, $t('minuteShort'), $t('hourShort'))}</strong><span>{$t('timeSpent')}</span></div>
+						<div>
+							<strong>{stats?.totalTests || 0}</strong><span>{$t('quizzes')}</span>
+						</div>
+						<div>
+							<strong>{stats?.averageScore || 0}%</strong><span>{$t('avgScore')}</span
+							>
+						</div>
+						<div>
+							<strong>{stats?.totalQuestions || 0}</strong><span
+								>{$t('questionsHeading')}</span
+							>
+						</div>
+						<div>
+							<strong
+								>{formatDuration(
+									stats?.totalTime || 0,
+									$t('minuteShort'),
+									$t('hourShort')
+								)}</strong
+							><span>{$t('timeSpent')}</span>
+						</div>
 					</div>
 				</section>
 			</div>
@@ -444,8 +505,12 @@
 					<div class="result-panel bg-body border rounded-3 p-3">
 						<h2 class="h6 fw-bold">{$t('achievements')}</h2>
 						<div class="d-flex flex-wrap gap-2">
-							{#each achievements.filter((item) => item.unlocked).slice(0, 6) as achievement (achievement.id)}
-								<span class="badge text-bg-success achievement-badge">{$t(`achievement_${achievement.id}_title`)}</span>
+							{#each achievements
+								.filter((item) => item.unlocked)
+								.slice(0, 6) as achievement (achievement.id)}
+								<span class="badge text-bg-success achievement-badge"
+									>{$t(`achievement_${achievement.id}_title`)}</span
+								>
 							{/each}
 						</div>
 					</div>
@@ -456,7 +521,11 @@
 						{#each topicMastery as item (item.id)}
 							<div class="d-flex justify-content-between gap-3 border-bottom py-2">
 								<span class="text-truncate">{item.topic}</span>
-								<span class={item.status === 'strong' ? 'text-success' : 'text-warning'}>
+								<span
+									class={item.status === 'strong'
+										? 'text-success'
+										: 'text-warning'}
+								>
 									{item.latestAccuracy}%
 								</span>
 							</div>
@@ -490,7 +559,7 @@
 		<div class="d-grid gap-3">
 			{#each filteredQuestions as { question, index } (`${index}-${question.question}`)}
 				{@const userAnswer = questionPaper.userAnswers?.[index]}
-				{@const isCorrect = question.correct ?? (userAnswer === question.answer)}
+				{@const isCorrect = question.correct ?? userAnswer === question.answer}
 				<article class="bg-body border rounded-3 p-3 shadow-sm">
 					<button
 						class="review-card-head"
@@ -502,10 +571,22 @@
 							<span class="review-card-number">{index + 1}.</span>
 							<MarkdownContent content={question.question} />
 						</span>
-						<span class="badge" class:bg-success={isCorrect} class:bg-danger={!isCorrect}>
-							{isCorrect ? $t('correct') : userAnswer == null ? $t('notAnswered') : $t('incorrect')}
+						<span
+							class="badge"
+							class:bg-success={isCorrect}
+							class:bg-danger={!isCorrect}
+						>
+							{isCorrect
+								? $t('correct')
+								: userAnswer == null
+									? $t('notAnswered')
+									: $t('incorrect')}
 						</span>
-						<span class="review-chevron" class:open={expanded[index] === true} aria-hidden="true">▾</span>
+						<span
+							class="review-chevron"
+							class:open={expanded[index] === true}
+							aria-hidden="true">▾</span
+						>
 					</button>
 					<AnimatedHeight class="review-region">
 						{#if expanded[index] === true}
@@ -521,18 +602,26 @@
 								</button>
 								<p class="mb-1">
 									<span class="fw-semibold">{$t('yourAnswer')}:</span>
-									<span class:text-success={isCorrect} class:text-danger={!isCorrect}>
-										<MarkdownContent content={userAnswer || $t('notAnswered')} />
+									<span
+										class:text-success={isCorrect}
+										class:text-danger={!isCorrect}
+									>
+										<MarkdownContent
+											content={userAnswer || $t('notAnswered')}
+										/>
 									</span>
 								</p>
 								{#if question.options?.length}
 									<div class="answer-options mb-3">
-										<div class="small fw-semibold text-muted mb-1">{$t('options')}</div>
+										<div class="small fw-semibold text-muted mb-1">
+											{$t('options')}
+										</div>
 										{#each question.options as option, optionIndex (optionIndex)}
 											<div
 												class="review-option"
 												class:correct-option={option === question.answer}
-												class:user-option={option === userAnswer && option !== question.answer}
+												class:user-option={option === userAnswer &&
+													option !== question.answer}
 											>
 												<MarkdownContent content={option} />
 											</div>
@@ -541,7 +630,9 @@
 								{/if}
 								<p class="mb-3">
 									<span class="fw-semibold">{$t('correctAnswer')}:</span>
-									<span class="text-success"><MarkdownContent content={question.answer} /></span>
+									<span class="text-success"
+										><MarkdownContent content={question.answer} /></span
+									>
 								</p>
 								<AnimatedHeight class="explanation-region" aria-live="polite">
 									{#if question.explanation}
@@ -560,7 +651,9 @@
 												<span class="thinking-dots">
 													<span></span><span></span><span></span>
 												</span>
-												<span style="margin-left:6px">{$t('generatingExplanation')}</span>
+												<span style="margin-left:6px"
+													>{$t('generatingExplanation')}</span
+												>
 											{:else}
 												{$t('generateExplanation')}
 											{/if}
@@ -568,7 +661,9 @@
 									{/if}
 								</AnimatedHeight>
 								{#if explanationError[index]}
-									<div class="text-danger small mt-2">{explanationError[index]}</div>
+									<div class="text-danger small mt-2">
+										{explanationError[index]}
+									</div>
 								{/if}
 							</div>
 						{/if}

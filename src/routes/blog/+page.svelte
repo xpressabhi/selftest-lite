@@ -2,16 +2,47 @@
 	import { t } from '$lib/client/i18n';
 
 	const posts = [
-		['how-to-study-effectively', 'blogPost1Title', 'blogPost1Excerpt', 'blogPost1Category', 'blogPost1ReadTime', 'blogPost1Date'],
-		['overcoming-exam-anxiety', 'blogPost2Title', 'blogPost2Excerpt', 'blogPost2Category', 'blogPost2ReadTime', 'blogPost2Date'],
-		['spaced-repetition-explained', 'blogPost3Title', 'blogPost3Excerpt', 'blogPost3Category', 'blogPost3ReadTime', 'blogPost3Date'],
-		['best-prompts-for-learning', 'blogPost4Title', 'blogPost4Excerpt', 'blogPost4Category', 'blogPost4ReadTime', 'blogPost4Date'],
+		[
+			'how-to-study-effectively',
+			'blogPost1Title',
+			'blogPost1Excerpt',
+			'blogPost1Category',
+			'blogPost1ReadTime',
+			'blogPost1Date',
+		],
+		[
+			'overcoming-exam-anxiety',
+			'blogPost2Title',
+			'blogPost2Excerpt',
+			'blogPost2Category',
+			'blogPost2ReadTime',
+			'blogPost2Date',
+		],
+		[
+			'spaced-repetition-explained',
+			'blogPost3Title',
+			'blogPost3Excerpt',
+			'blogPost3Category',
+			'blogPost3ReadTime',
+			'blogPost3Date',
+		],
+		[
+			'best-prompts-for-learning',
+			'blogPost4Title',
+			'blogPost4Excerpt',
+			'blogPost4Category',
+			'blogPost4ReadTime',
+			'blogPost4Date',
+		],
 	];
 </script>
 
 <svelte:head>
 	<title>{$t('blog')} | selftest.in</title>
-	<meta name="description" content="Study tips, active recall guides, spaced repetition, and AI quiz generation advice from selftest.in." />
+	<meta
+		name="description"
+		content="Study tips, active recall guides, spaced repetition, and AI quiz generation advice from selftest.in."
+	/>
 </svelte:head>
 
 <section class="container py-4 py-md-5">
@@ -28,7 +59,9 @@
 						<span class="small text-muted">{$t(post[5])}</span>
 					</div>
 					<h2 class="h5 fw-bold">
-						<a class="stretched-link text-decoration-none" href={`/blog/${post[0]}`}>{$t(post[1])}</a>
+						<a class="stretched-link text-decoration-none" href={`/blog/${post[0]}`}
+							>{$t(post[1])}</a
+						>
 					</h2>
 					<p class="text-muted">{$t(post[2])}</p>
 					<p class="small text-muted mb-0">{$t(post[4])}</p>

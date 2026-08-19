@@ -18,16 +18,14 @@ export function generatePrompt({
     LANGUAGE: ${language || 'English'}
     TEST MODE: ${testMode}
     EXAM MODE: ${
-			examName
-				? `Generate this as an India exam-style paper for ${examName}.`
-				: 'General quiz mode'
-		}
+		examName
+			? `Generate this as an India exam-style paper for ${examName}.`
+			: 'General quiz mode'
+	}
     OBJECTIVE ONLY: ${objectiveOnly ? 'Yes' : 'No'}
     SYLLABUS COVERAGE: ${
-			syllabusFocus.length > 0
-				? syllabusFocus.join(', ')
-				: 'Use the full provided topic context'
-		}
+		syllabusFocus.length > 0 ? syllabusFocus.join(', ') : 'Use the full provided topic context'
+	}
     
     OUTPUT FORMAT:
     The response must be a valid JSON object with this exact structure:
@@ -51,15 +49,15 @@ export function generatePrompt({
     6. Questions must match the specified difficulty level
     7. Do not repeat previous questions
     8. ${
-			examName
-				? `Match the tone and rigor expected in ${examName} objective practice papers.`
-				: 'Keep questions practical and realistic.'
-		}
+		examName
+			? `Match the tone and rigor expected in ${examName} objective practice papers.`
+			: 'Keep questions practical and realistic.'
+	}
     9. ${
-			testMode === 'full-exam'
-				? 'Generate a full-length exam paper style output for objective testing.'
-				: 'Generate a concise quiz-practice style output.'
-		}
+		testMode === 'full-exam'
+			? 'Generate a full-length exam paper style output for objective testing.'
+			: 'Generate a concise quiz-practice style output.'
+	}
     10. Do not include explanation fields for questions. Explanations are generated later on demand.
     11. Before returning, verify that every answer is exactly equal to one of its options.
     12. Do a silent final quality-control pass before returning the JSON. Re-check every question from scratch: solve it independently, confirm that the keyed answer is factually correct, confirm that only one option is correct, and replace any ambiguous, contradictory, duplicated, or incorrectly keyed question with a new one.
@@ -88,9 +86,13 @@ export function generatePrompt({
     TOPIC INFORMATION:
     ${topicContext}
     
-    ${userContext ? `USER CONTEXT (personalized, keep private):
+    ${
+		userContext
+			? `USER CONTEXT (personalized, keep private):
     ${userContext}
-    ` : ''}
+    `
+			: ''
+	}
     
           LANGUAGE INSTRUCTIONS:
           - If the subject itself is a language (e.g., Hindi, English, French), generate the paper in that language.
@@ -99,20 +101,20 @@ export function generatePrompt({
     
           Quiz Type Instructions:
           ${
-						testType === 'multiple-choice'
-							? `
+				testType === 'multiple-choice'
+					? `
           - Create challenging multiple-choice questions with 4 options each
           - Ensure distractors (wrong options) are plausible and educational
           - Include practical, real-world scenarios when possible
           - For code questions, show short code snippets in proper format`
-							: testType === 'true-false'
-							? `
+					: testType === 'true-false'
+						? `
           - Create nuanced true/false statements that test deep understanding
           - Use exactly 2 options with localized true/false wording in the selected language
           - Include some slightly tricky but fair statements
           - Focus on common misconceptions and important concepts
           - For code, present statements about code behavior or best practices`
-							: testType === 'coding'
+						: testType === 'coding'
 							? `
           - Create practical coding problems using proper code block formatting
           - Include a mix of:
@@ -123,29 +125,29 @@ export function generatePrompt({
           - Focus on real-world programming scenarios
           - Show expected inputs/outputs for clarity`
 							: testType === 'speed-challenge'
-							? `
+								? `
           - Create fast-response multiple-choice questions with exactly 4 options
           - Keep question stems concise and direct while preserving difficulty
           - Favor practical recall and quick reasoning over long derivations
           - Ensure wrong options are plausible but clearly distinguishable`
-							: `
+								: `
           - Mix different question types for comprehensive assessment
           - Include properly formatted code examples where relevant
           - Balance theoretical concepts with practical application
           - Use appropriate formatting for each question type`
-					}      Difficulty Level (${difficulty}):
+			}      Difficulty Level (${difficulty}):
           ${
-						difficulty === 'beginner'
-							? `
+				difficulty === 'beginner'
+					? `
           - Focus on fundamental concepts and basic understanding
           - Use simple, clear language and straightforward scenarios
           - Include some easy wins to build confidence`
-							: difficulty === 'intermediate'
-							? `
+					: difficulty === 'intermediate'
+						? `
           - Mix basic and advanced concepts
           - Include some challenging but fair questions
           - Test practical application of knowledge`
-							: difficulty === 'advanced'
+						: difficulty === 'advanced'
 							? `
           - Focus on complex scenarios and edge cases
           - Test deep understanding and problem-solving skills
@@ -154,12 +156,16 @@ export function generatePrompt({
           - Include expert-level concepts and advanced scenarios
           - Test mastery of the subject matter
           - Focus on optimization, best practices, and intricate details`
-					}
-      ${warmUpDifficulty ? `WARM-UP GRADIENT:
+			}
+      ${
+			warmUpDifficulty
+				? `WARM-UP GRADIENT:
           - The first approximately 20% of the questions must be a gentle warm-up at ${warmUpDifficulty} level (fundamental, quick wins).
           - The remaining ~80% must be at ${difficulty} level.
           - Keep the total question count exact; make the transition gradual rather than abrupt.
-          ` : ''}
+          `
+				: ''
+		}
           
           IMPORTANT GUIDELINES:
           1. Focus on real-world applications and problem-solving scenarios
@@ -171,10 +177,10 @@ export function generatePrompt({
           7. Avoid purely theoretical or definition-based questions
           8. Each question should demonstrate a practical use case or implementation
           9. ${
-						examName
-							? `Ensure coverage is balanced across selected syllabus units for ${examName}.`
-							: 'Ensure broad coverage across selected context.'
-					}
+				examName
+					? `Ensure coverage is balanced across selected syllabus units for ${examName}.`
+					: 'Ensure broad coverage across selected context.'
+			}
           
           IMPORTANT: Generate questions that are different from the previously asked questions listed below.
           
@@ -185,12 +191,10 @@ export function generatePrompt({
     
           PREVIOUS QUESTIONS TO AVOID:
           ${
-						previousQuestions.length > 0
-							? previousQuestions
-									.map((q) => `Q: ${q.question}\nA: ${q.answer}`)
-									.join('\n\n')
-							: 'No previous questions.'
-					}
+				previousQuestions.length > 0
+					? previousQuestions.map((q) => `Q: ${q.question}\nA: ${q.answer}`).join('\n\n')
+					: 'No previous questions.'
+			}
           FORMATTING GUIDELINES:
           - Use markdown for emphasis (**bold**, *italic*)
           - Use LaTeX for math ($E = mc^2$)
@@ -213,12 +217,7 @@ export function generatePrompt({
         `;
 }
 
-export function generateExplanationPrompt({
-	topic,
-	question,
-	answer,
-	language,
-}) {
+export function generateExplanationPrompt({ topic, question, answer, language }) {
 	return `
       Generate an accurate explanation for why the answer is correct.
 

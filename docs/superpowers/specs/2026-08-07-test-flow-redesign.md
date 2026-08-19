@@ -11,15 +11,15 @@ Hard constraints (from AGENTS.md): mobile-first with low-end Android + data-save
 
 ## Decisions (from ideation)
 
-| # | Decision | Choice |
-|---|----------|--------|
-| 1 | Scope | Test-taking flow + results page (not home/config) |
-| 2 | Answer flow | Auto-advance on answer, toggleable (default on) |
-| 3 | Submit moment | Full review sheet before submit (replaces `confirm()`) |
-| 4 | Results layout | Score card + filterable/collapsible review |
-| 5 | Exam extras | Flag for review only (no live timer, no keyboard shortcuts) |
-| 6 | Layout | Full-screen focused mode — site nav hidden on `/test` |
-| 7 | Answering | One-at-a-time card, options as letter-badged selectable cards, tap-to-clear |
+| #   | Decision       | Choice                                                                      |
+| --- | -------------- | --------------------------------------------------------------------------- |
+| 1   | Scope          | Test-taking flow + results page (not home/config)                           |
+| 2   | Answer flow    | Auto-advance on answer, toggleable (default on)                             |
+| 3   | Submit moment  | Full review sheet before submit (replaces `confirm()`)                      |
+| 4   | Results layout | Score card + filterable/collapsible review                                  |
+| 5   | Exam extras    | Flag for review only (no live timer, no keyboard shortcuts)                 |
+| 6   | Layout         | Full-screen focused mode — site nav hidden on `/test`                       |
+| 7   | Answering      | One-at-a-time card, options as letter-badged selectable cards, tap-to-clear |
 
 ## Section 1 — Test page: immersive shell
 
@@ -74,16 +74,16 @@ Every new/changed user-facing string added to `src/lib/locales/english.json` and
 
 ## Files touched
 
-| File | Change |
-|------|--------|
-| `src/routes/+layout.svelte` | Hide TopNav/BottomNav on `/test` |
-| `src/routes/test/+page.svelte` | Full redesign (header, card, bottom bar, sheet wiring, exit modal) |
-| `src/lib/client/ReviewSheet.svelte` | New component |
-| `src/lib/client/storage.js` | Flag read/write/clear helpers |
-| `src/lib/client/storage.test.js` | Flag helper tests |
-| `src/lib/client/preferences.js` | `autoAdvance` store + persistence |
-| `src/routes/results/+page.svelte` | Score ring, filter chips, collapsible cards |
-| `src/lib/locales/english.json`, `hindi.json` | New keys |
+| File                                         | Change                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| `src/routes/+layout.svelte`                  | Hide TopNav/BottomNav on `/test`                                   |
+| `src/routes/test/+page.svelte`               | Full redesign (header, card, bottom bar, sheet wiring, exit modal) |
+| `src/lib/client/ReviewSheet.svelte`          | New component                                                      |
+| `src/lib/client/storage.js`                  | Flag read/write/clear helpers                                      |
+| `src/lib/client/storage.test.js`             | Flag helper tests                                                  |
+| `src/lib/client/preferences.js`              | `autoAdvance` store + persistence                                  |
+| `src/routes/results/+page.svelte`            | Score ring, filter chips, collapsible cards                        |
+| `src/lib/locales/english.json`, `hindi.json` | New keys                                                           |
 
 ## Error handling
 

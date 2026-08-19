@@ -14,7 +14,10 @@
 
 <svelte:head>
 	<title>{$t('privacyHeroTitle')} | selftest.in</title>
-	<meta name="description" content="Privacy policy for selftest.in learning data, local storage, analytics, and contact information." />
+	<meta
+		name="description"
+		content="Privacy policy for selftest.in learning data, local storage, analytics, and contact information."
+	/>
 </svelte:head>
 
 <section class="container py-4 py-md-5">

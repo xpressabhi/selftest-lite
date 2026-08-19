@@ -50,11 +50,9 @@
 	function isPwaInstallDismissed() {
 		if (typeof window === 'undefined') return true;
 		const dismissedAt = Number(
-			window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0,
+			window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0
 		);
-		return (
-			Number.isFinite(dismissedAt) && Date.now() - dismissedAt < PWA_DISMISS_WINDOW
-		);
+		return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < PWA_DISMISS_WINDOW;
 	}
 
 	// AdSense is intentionally NOT loaded: adsbygoogle.js is ~1.4MB (the heaviest
@@ -153,7 +151,8 @@
 		window.addEventListener('resize', updateStandaloneState);
 		window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 		window.addEventListener('appinstalled', handleAppInstalled);
-		const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+		const connection =
+			navigator.connection || navigator.mozConnection || navigator.webkitConnection;
 		connection?.addEventListener?.('change', updateNetworkState);
 
 		return () => {
@@ -344,112 +343,164 @@
 	<a class="skip-link" href="#main-content">{$t('skipToMainContent')}</a>
 	{#if !isImmersive}
 		<header class="app-header border-bottom bg-body">
-		<nav class="header-inner" aria-label={$t('mainNavigation')}>
-			<a class="brand-link" href="/">
-				<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
-				<span>selftest.in</span>
-			</a>
-
-			<div class="desktop-nav" aria-label={$t('mainNavigation')}>
-				<a href="/about">{$t('about')}</a>
-				<a href="/blog">{$t('blog')}</a>
-				<a href="/faq">{$t('faq')}</a>
-				<a href="/contact">{$t('contact')}</a>
-				<a class="create-link" href="/">{$t('createTab')}</a>
-			</div>
-
-			<div class="header-actions">
-				<button
-					class:active={$isDataSaverActive}
-					class="header-icon data-saver-control"
-					type="button"
-					aria-label={$t('dataSaver')}
-					title={$t('dataSaver')}
-					onclick={toggleDataSaver}
-				>
-					<span aria-hidden="true">⌁</span>
-				</button>
-				<button class="header-icon" type="button" aria-label={$t('switchLanguageAria')} onclick={toggleLanguage}>
-					<span aria-hidden="true">◎</span>
-				</button>
-				<button class="header-icon" type="button" aria-label={$t('toggleThemeAria')} onclick={toggleTheme}>
-					<span aria-hidden="true">{$themePreference === 'dark' ? '☀' : '☾'}</span>
-				</button>
-				<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
-					<span aria-hidden="true">◷</span>
+			<nav class="header-inner" aria-label={$t('mainNavigation')}>
+				<a class="brand-link" href="/">
+					<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
+					<span>selftest.in</span>
 				</a>
-				{#if $user}
-					<div class="user-menu-wrap">
-						<button
-							class="user-chip"
-							type="button"
-							aria-label={$t('signedInAs')}
-							aria-expanded={showUserMenu}
-							onclick={() => {
-								showUserMenu = !showUserMenu;
-								isMenuOpen = false;
-							}}
-						>
-							{#if $user.pictureUrl}
-								<img src={$user.pictureUrl} alt="" width="28" height="28" referrerpolicy="no-referrer" />
-							{:else}
-								<span class="user-initial">{($user.name || $user.email || '?').charAt(0).toUpperCase()}</span>
-							{/if}
-						</button>
-						{#if showUserMenu}
-							<div class="user-menu">
-								<div class="user-menu-header">
-									<div class="fw-semibold">{($user.name || $user.email).slice(0, 40)}</div>
-									<div class="small text-muted">{$t('signedInAs')}</div>
-								</div>
-								<a href="/history" onclick={() => (showUserMenu = false)}>◷ {$t('history')}</a>
-								<button type="button" onclick={handleSignOut}>⏻ {$t('signOut')}</button>
-							</div>
-						{/if}
-					</div>
-				{:else if !$isAuthLoading}
-					<button class="header-icon sign-in-control" type="button" aria-label={$t('signIn')} onclick={() => (showSignInModal = true)}>
-						<span aria-hidden="true">▣</span>
-					</button>
-				{/if}
-				<button class="header-icon menu-control" type="button" aria-label={$t('toggleMenu')} onclick={() => (isMenuOpen = !isMenuOpen)}>
-					<span aria-hidden="true">☰</span>
-				</button>
-			</div>
-		</nav>
 
-		{#if isMenuOpen}
-			<nav class="mobile-menu" aria-label={$t('navigationMenu')}>				{#if $user}
-					<div class="menu-user">
-						<span class="menu-user-initial">{(($user.name || $user.email || '?')).charAt(0).toUpperCase()}</span>
-						<span class="menu-user-name">{$user.name || $user.email}</span>
-					</div>
-				{/if}
-				<div class="menu-section-label">{$t('menuSectionExplore')}</div>
-				<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
-				<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
-				<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
-				<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
-				<div class="menu-section-label">{$t('menuSectionActions')}</div>
-				{#if $user}
-					<a href="/profile" onclick={() => (isMenuOpen = false)}>☺ {$t('profileMenuLabel')}</a>
-				{/if}
-				<a href="/history" onclick={() => (isMenuOpen = false)}>◷ {$t('history')}</a>
-				<button type="button" class:active={$isDataSaverActive} onclick={toggleDataSaver}>⌁ {$t('dataSaver')}</button>
-				{#if $user}
-					<button type="button" class="menu-signout" onclick={() => {
-						isMenuOpen = false;
-						void handleSignOut();
-					}}>⏻ {$t('signOut')}</button>
-				{:else if !$isAuthLoading}
-					<button type="button" onclick={() => {
-						isMenuOpen = false;
-						showSignInModal = true;
-					}}>▣ {$t('signIn')}</button>
-				{/if}
+				<div class="desktop-nav" aria-label={$t('mainNavigation')}>
+					<a href="/about">{$t('about')}</a>
+					<a href="/blog">{$t('blog')}</a>
+					<a href="/faq">{$t('faq')}</a>
+					<a href="/contact">{$t('contact')}</a>
+					<a class="create-link" href="/">{$t('createTab')}</a>
+				</div>
+
+				<div class="header-actions">
+					<button
+						class:active={$isDataSaverActive}
+						class="header-icon data-saver-control"
+						type="button"
+						aria-label={$t('dataSaver')}
+						title={$t('dataSaver')}
+						onclick={toggleDataSaver}
+					>
+						<span aria-hidden="true">⌁</span>
+					</button>
+					<button
+						class="header-icon"
+						type="button"
+						aria-label={$t('switchLanguageAria')}
+						onclick={toggleLanguage}
+					>
+						<span aria-hidden="true">◎</span>
+					</button>
+					<button
+						class="header-icon"
+						type="button"
+						aria-label={$t('toggleThemeAria')}
+						onclick={toggleTheme}
+					>
+						<span aria-hidden="true">{$themePreference === 'dark' ? '☀' : '☾'}</span>
+					</button>
+					<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
+						<span aria-hidden="true">◷</span>
+					</a>
+					{#if $user}
+						<div class="user-menu-wrap">
+							<button
+								class="user-chip"
+								type="button"
+								aria-label={$t('signedInAs')}
+								aria-expanded={showUserMenu}
+								onclick={() => {
+									showUserMenu = !showUserMenu;
+									isMenuOpen = false;
+								}}
+							>
+								{#if $user.pictureUrl}
+									<img
+										src={$user.pictureUrl}
+										alt=""
+										width="28"
+										height="28"
+										referrerpolicy="no-referrer"
+									/>
+								{:else}
+									<span class="user-initial"
+										>{($user.name || $user.email || '?')
+											.charAt(0)
+											.toUpperCase()}</span
+									>
+								{/if}
+							</button>
+							{#if showUserMenu}
+								<div class="user-menu">
+									<div class="user-menu-header">
+										<div class="fw-semibold">
+											{($user.name || $user.email).slice(0, 40)}
+										</div>
+										<div class="small text-muted">{$t('signedInAs')}</div>
+									</div>
+									<a href="/history" onclick={() => (showUserMenu = false)}
+										>◷ {$t('history')}</a
+									>
+									<button type="button" onclick={handleSignOut}
+										>⏻ {$t('signOut')}</button
+									>
+								</div>
+							{/if}
+						</div>
+					{:else if !$isAuthLoading}
+						<button
+							class="header-icon sign-in-control"
+							type="button"
+							aria-label={$t('signIn')}
+							onclick={() => (showSignInModal = true)}
+						>
+							<span aria-hidden="true">▣</span>
+						</button>
+					{/if}
+					<button
+						class="header-icon menu-control"
+						type="button"
+						aria-label={$t('toggleMenu')}
+						onclick={() => (isMenuOpen = !isMenuOpen)}
+					>
+						<span aria-hidden="true">☰</span>
+					</button>
+				</div>
 			</nav>
-		{/if}
-	</header>
+
+			{#if isMenuOpen}
+				<nav class="mobile-menu" aria-label={$t('navigationMenu')}>
+					{#if $user}
+						<div class="menu-user">
+							<span class="menu-user-initial"
+								>{($user.name || $user.email || '?').charAt(0).toUpperCase()}</span
+							>
+							<span class="menu-user-name">{$user.name || $user.email}</span>
+						</div>
+					{/if}
+					<div class="menu-section-label">{$t('menuSectionExplore')}</div>
+					<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
+					<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
+					<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
+					<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
+					<div class="menu-section-label">{$t('menuSectionActions')}</div>
+					{#if $user}
+						<a href="/profile" onclick={() => (isMenuOpen = false)}
+							>☺ {$t('profileMenuLabel')}</a
+						>
+					{/if}
+					<a href="/history" onclick={() => (isMenuOpen = false)}>◷ {$t('history')}</a>
+					<button
+						type="button"
+						class:active={$isDataSaverActive}
+						onclick={toggleDataSaver}>⌁ {$t('dataSaver')}</button
+					>
+					{#if $user}
+						<button
+							type="button"
+							class="menu-signout"
+							onclick={() => {
+								isMenuOpen = false;
+								void handleSignOut();
+							}}>⏻ {$t('signOut')}</button
+						>
+					{:else if !$isAuthLoading}
+						<button
+							type="button"
+							onclick={() => {
+								isMenuOpen = false;
+								showSignInModal = true;
+							}}>▣ {$t('signIn')}</button
+						>
+					{/if}
+				</nav>
+			{/if}
+		</header>
 	{/if}
 
 	{#if isOffline}
@@ -486,10 +537,23 @@
 				{/if}
 			</div>
 			<div class="d-flex gap-2">
-				<button class="btn btn-sm btn-primary" type="button" disabled={isInstalling} onclick={installApp}>
-					{isInstalling ? $t('preparing') : deferredInstallPrompt ? $t('installNow') : $t('openInstallGuide')}
+				<button
+					class="btn btn-sm btn-primary"
+					type="button"
+					disabled={isInstalling}
+					onclick={installApp}
+				>
+					{isInstalling
+						? $t('preparing')
+						: deferredInstallPrompt
+							? $t('installNow')
+							: $t('openInstallGuide')}
 				</button>
-				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={dismissInstallHint}>
+				<button
+					class="btn btn-sm btn-outline-secondary"
+					type="button"
+					onclick={dismissInstallHint}
+				>
 					{$t('later')}
 				</button>
 			</div>
@@ -497,7 +561,10 @@
 	{/if}
 
 	{#if pullDistance > 8}
-		<div class="pull-indicator" style={`transform: translateY(${Math.min(pullDistance - 44, 0)}px);`}>
+		<div
+			class="pull-indicator"
+			style={`transform: translateY(${Math.min(pullDistance - 44, 0)}px);`}
+		>
 			{isRefreshing || pullDistance > 64 ? $t('loading') : $t('retrying')}
 		</div>
 	{/if}
@@ -515,36 +582,49 @@
 
 	{#if !isImmersive}
 		<nav class="bottom-nav border-top bg-body" aria-label={$t('mobileNavigation')}>
-		<a class:active={activePath === '/'} href="/"><span aria-hidden="true">⌂</span>{$t('homeTab')}</a>
-		<a class:active={activePath === '/bookmarks'} href="/bookmarks"><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a>
-		<a class="create-tab" href="/"><span aria-hidden="true">＋</span>{$t('createTab')}</a>
-		<a class:active={activePath === '/history'} href="/history"><span aria-hidden="true">◷</span>{$t('historyTab')}</a>
-	</nav>
+			<a class:active={activePath === '/'} href="/"
+				><span aria-hidden="true">⌂</span>{$t('homeTab')}</a
+			>
+			<a class:active={activePath === '/bookmarks'} href="/bookmarks"
+				><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a
+			>
+			<a class="create-tab" href="/"><span aria-hidden="true">＋</span>{$t('createTab')}</a>
+			<a class:active={activePath === '/history'} href="/history"
+				><span aria-hidden="true">◷</span>{$t('historyTab')}</a
+			>
+		</nav>
 	{/if}
 
 	{#if !isImmersive}
 		<footer class="site-footer border-top bg-body">
-		<div class="footer-inner">
-			<a class="brand-link" href="/">
-				<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
-				<span>selftest.in</span>
-			</a>
-			<p class="footer-tagline small text-muted">{$t('footerTagline')}</p>
-			<nav class="footer-links" aria-label={$t('footerNav')}>
-				<a href="/about">{$t('about')}</a>
-				<a href="/blog">{$t('blog')}</a>
-				<a href="/faq">{$t('faq')}</a>
-				<a href="/contact">{$t('contact')}</a>
-				<a href="/privacy">{$t('privacy')}</a>
-				<a href="/terms">{$t('terms')}</a>
-			</nav>
-			<p class="footer-copy small text-muted">© {new Date().getFullYear()} selftest.in — {$t('allRightsReserved')}</p>
-		</div>
-	</footer>
+			<div class="footer-inner">
+				<a class="brand-link" href="/">
+					<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
+					<span>selftest.in</span>
+				</a>
+				<p class="footer-tagline small text-muted">{$t('footerTagline')}</p>
+				<nav class="footer-links" aria-label={$t('footerNav')}>
+					<a href="/about">{$t('about')}</a>
+					<a href="/blog">{$t('blog')}</a>
+					<a href="/faq">{$t('faq')}</a>
+					<a href="/contact">{$t('contact')}</a>
+					<a href="/privacy">{$t('privacy')}</a>
+					<a href="/terms">{$t('terms')}</a>
+				</nav>
+				<p class="footer-copy small text-muted">
+					© {new Date().getFullYear()} selftest.in — {$t('allRightsReserved')}
+				</p>
+			</div>
+		</footer>
 	{/if}
 
 	{#if $toast}
-		<div class={`toast-lite ${$toast.type}`} role={$toast.type === 'error' ? 'alert' : 'status'}>{$toast.message}</div>
+		<div
+			class={`toast-lite ${$toast.type}`}
+			role={$toast.type === 'error' ? 'alert' : 'status'}
+		>
+			{$toast.message}
+		</div>
 	{/if}
 
 	{#if showSignInModal}
@@ -556,9 +636,18 @@
 				aria-modal="true"
 				aria-label={$t('signInTitle')}
 				onclick={(event) => event.stopPropagation()}
-				onkeydown={(event) => { if (event.key === 'Escape') { showSignInModal = false; } }}
+				onkeydown={(event) => {
+					if (event.key === 'Escape') {
+						showSignInModal = false;
+					}
+				}}
 			>
-				<button class="modal-close" type="button" aria-label={$t('close')} onclick={() => (showSignInModal = false)}>
+				<button
+					class="modal-close"
+					type="button"
+					aria-label={$t('close')}
+					onclick={() => (showSignInModal = false)}
+				>
 					×
 				</button>
 				<div class="h5 fw-bold mb-1">{$t('signInTitle')}</div>

@@ -17,8 +17,8 @@
 	let unansweredCount = $derived(Math.max(0, total - answeredCount));
 	let firstUnanswered = $derived(
 		Array.from({ length: total }, (_, index) => index).find(
-			(index) => answers[index] === undefined,
-		),
+			(index) => answers[index] === undefined
+		)
 	);
 
 	function handleKeydown(event) {
@@ -47,15 +47,27 @@
 		}
 	}}
 >
-	<div class="review-sheet" role="dialog" aria-modal="true" tabindex="-1" aria-label={$t('reviewAnswers')}>
+	<div
+		class="review-sheet"
+		role="dialog"
+		aria-modal="true"
+		tabindex="-1"
+		aria-label={$t('reviewAnswers')}
+	>
 		<div class="sheet-handle" aria-hidden="true"></div>
 
 		<header class="sheet-header">
 			<h2 class="sheet-title">{$t('reviewAnswers')}</h2>
 			<span class="sheet-count">
-				<strong>{answeredCount}</strong> / {total} {$t('answeredLabel')}
+				<strong>{answeredCount}</strong> / {total}
+				{$t('answeredLabel')}
 			</span>
-			<button class="sheet-close" type="button" aria-label={$t('closeMenu')} onclick={onClose}>
+			<button
+				class="sheet-close"
+				type="button"
+				aria-label={$t('closeMenu')}
+				onclick={onClose}
+			>
 				×
 			</button>
 		</header>
@@ -86,7 +98,9 @@
 		<footer class="sheet-footer">
 			{#if unansweredCount > 0}
 				<p class="sheet-warning" role="alert">
-					{$t('unansweredWarning')} {unansweredCount} {$t('unansweredQuestions')}.
+					{$t('unansweredWarning')}
+					{unansweredCount}
+					{$t('unansweredQuestions')}.
 				</p>
 			{/if}
 			{#if error}
@@ -94,11 +108,20 @@
 			{/if}
 			<div class="sheet-actions">
 				{#if firstUnanswered !== undefined}
-					<button class="btn btn-outline-secondary" type="button" onclick={() => onJump?.(firstUnanswered)}>
+					<button
+						class="btn btn-outline-secondary"
+						type="button"
+						onclick={() => onJump?.(firstUnanswered)}
+					>
 						{$t('reviewUnanswered')}
 					</button>
 				{/if}
-				<button class="btn btn-success" type="button" disabled={submitting} onclick={onSubmit}>
+				<button
+					class="btn btn-success"
+					type="button"
+					disabled={submitting}
+					onclick={onSubmit}
+				>
 					{#if submitting}
 						<span class="thinking-dots" style="margin-right:6px">
 							<span></span><span></span><span></span>
@@ -219,7 +242,9 @@
 	}
 
 	.sheet-tile.current {
-		box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--color-brand-600);
+		box-shadow:
+			0 0 0 2px var(--surface),
+			0 0 0 4px var(--color-brand-600);
 	}
 
 	.sheet-tile.flagged::after {

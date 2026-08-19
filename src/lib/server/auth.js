@@ -65,9 +65,7 @@ async function cleanupExpiredSessionsMaybe() {
 	}
 
 	try {
-		await query(
-			`DELETE FROM app_user_session WHERE expires_at < NOW() - INTERVAL '7 days'`,
-		);
+		await query(`DELETE FROM app_user_session WHERE expires_at < NOW() - INTERVAL '7 days'`);
 	} catch (error) {
 		console.error('Failed to cleanup expired auth sessions:', error);
 	}
@@ -111,8 +109,7 @@ export async function verifyGoogleCredential(credential) {
 
 	const tokenInfo = await response.json();
 	const hasValidIssuer =
-		tokenInfo.iss === 'accounts.google.com' ||
-		tokenInfo.iss === 'https://accounts.google.com';
+		tokenInfo.iss === 'accounts.google.com' || tokenInfo.iss === 'https://accounts.google.com';
 	const expiresAtMs = Number(tokenInfo.exp || 0) * 1000;
 
 	if (
@@ -153,13 +150,7 @@ export async function upsertGoogleUser(profile) {
 			updated_at = NOW()
 		 WHERE google_sub = $1 OR email = $2
 		 RETURNING id, google_sub, email, name, picture_url, locale, created_at, last_login_at`,
-		[
-			profile.googleSub,
-			profile.email,
-			profile.name,
-			profile.pictureUrl,
-			profile.locale,
-		],
+		[profile.googleSub, profile.email, profile.name, profile.pictureUrl, profile.locale]
 	);
 
 	if (updateResult.rows.length > 0) {
@@ -172,13 +163,7 @@ export async function upsertGoogleUser(profile) {
 			 (google_sub, email, name, picture_url, locale, last_login_at, updated_at)
 			 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 			 RETURNING id, google_sub, email, name, picture_url, locale, created_at, last_login_at`,
-			[
-				profile.googleSub,
-				profile.email,
-				profile.name,
-				profile.pictureUrl,
-				profile.locale,
-			],
+			[profile.googleSub, profile.email, profile.name, profile.pictureUrl, profile.locale]
 		);
 
 		return mapUserRow(insertResult.rows[0]);
@@ -194,7 +179,7 @@ export async function upsertGoogleUser(profile) {
 			 WHERE google_sub = $1 OR email = $2
 			 ORDER BY updated_at DESC
 			 LIMIT 1`,
-			[profile.googleSub, profile.email],
+			[profile.googleSub, profile.email]
 		);
 
 		return mapUserRow(fallbackResult.rows[0]);
@@ -216,7 +201,7 @@ export async function createSessionForUser(userId) {
 		`INSERT INTO app_user_session
 		 (user_id, session_token_hash, expires_at, last_seen_at)
 		 VALUES ($1, $2, $3, NOW())`,
-		[normalizedUserId, sessionTokenHash, expiresAt.toISOString()],
+		[normalizedUserId, sessionTokenHash, expiresAt.toISOString()]
 	);
 
 	cleanupExpiredSessionsMaybe();
@@ -234,9 +219,7 @@ export async function revokeSessionByToken(rawSessionToken) {
 
 	await ensureStorageSchema();
 	const sessionTokenHash = hashSessionToken(rawSessionToken);
-	await query(`DELETE FROM app_user_session WHERE session_token_hash = $1`, [
-		sessionTokenHash,
-	]);
+	await query(`DELETE FROM app_user_session WHERE session_token_hash = $1`, [sessionTokenHash]);
 }
 
 export async function getSessionFromRequest(cookies, options = {}) {
@@ -266,7 +249,7 @@ export async function getSessionFromRequest(cookies, options = {}) {
 		 WHERE s.session_token_hash = $1
 			AND s.expires_at > NOW()
 		 LIMIT 1`,
-		[sessionTokenHash],
+		[sessionTokenHash]
 	);
 
 	const row = result.rows[0];
@@ -285,7 +268,7 @@ export async function getSessionFromRequest(cookies, options = {}) {
 			`UPDATE app_user_session
 			 SET expires_at = $2, last_seen_at = NOW()
 			 WHERE id = $1`,
-			[row.session_id, expiresAt.toISOString()],
+			[row.session_id, expiresAt.toISOString()]
 		);
 	}
 

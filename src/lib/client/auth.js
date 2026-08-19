@@ -4,11 +4,7 @@
 
 import { writable } from 'svelte/store';
 import { getClientHeaders } from './identity';
-import {
-	flushPendingAttempts,
-	hydrateHistoryFromServer,
-	hydrateUserState,
-} from './sync';
+import { flushPendingAttempts, hydrateHistoryFromServer, hydrateUserState } from './sync';
 
 export const user = writable(null);
 export const isAuthLoading = writable(true);
@@ -122,11 +118,7 @@ export async function handleAuthRedirect() {
 	}
 
 	try {
-		window.history.replaceState(
-			null,
-			'',
-			window.location.pathname + window.location.search,
-		);
+		window.history.replaceState(null, '', window.location.pathname + window.location.search);
 		await loginWithGoogleCredential(decodeURIComponent(idToken));
 	} catch (error) {
 		console.error('Google sign-in redirect handling failed:', error);

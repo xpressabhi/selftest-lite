@@ -1,9 +1,5 @@
 import { json } from '@sveltejs/kit';
-import {
-	getAuthenticatedUser,
-	getClientIdFromRequest,
-	normalizeClientId,
-} from '$lib/server/auth';
+import { getAuthenticatedUser, getClientIdFromRequest, normalizeClientId } from '$lib/server/auth';
 import { recordTelemetryEvents, validateTelemetryPayload } from '$lib/server/telemetry';
 import { rateLimiter } from '$lib/server/rateLimiter';
 
@@ -21,7 +17,7 @@ export async function POST({ request, cookies }) {
 				code: 'RATE_LIMIT_EXCEEDED',
 				resetTime: new Date(rateLimit.resetTime).toISOString(),
 			},
-			{ status: 429 },
+			{ status: 429 }
 		);
 	}
 
@@ -34,12 +30,14 @@ export async function POST({ request, cookies }) {
 
 	const validated = validateTelemetryPayload(body);
 	if (validated.error) {
-		return json({ error: validated.error, code: 'INVALID_TELEMETRY' }, { status: validated.status });
+		return json(
+			{ error: validated.error, code: 'INVALID_TELEMETRY' },
+			{ status: validated.status }
+		);
 	}
 
 	const user = await getAuthenticatedUser(cookies);
-	const clientId =
-		normalizeClientId(validated.clientId) || getClientIdFromRequest(request);
+	const clientId = normalizeClientId(validated.clientId) || getClientIdFromRequest(request);
 
 	try {
 		await recordTelemetryEvents(validated.events, {

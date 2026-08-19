@@ -22,7 +22,7 @@
 	let exams = $derived(
 		examIds
 			.map((examId) => getIndianExamById(examId))
-			.filter((exam) => exam && typeof exam === 'object'),
+			.filter((exam) => exam && typeof exam === 'object')
 	);
 
 	onMount(() => {
@@ -61,7 +61,7 @@
 			return;
 		}
 		questionBookmarks = questionBookmarks.filter(
-			(item) => item.question !== bookmark.question || item.answer !== bookmark.answer,
+			(item) => item.question !== bookmark.question || item.answer !== bookmark.answer
 		);
 		saveQuestionBookmarks(questionBookmarks);
 		track('bookmark:remove-question');
@@ -91,16 +91,29 @@
 				{:else}
 					<div class="list-group list-group-flush">
 						{#each exams as exam (exam.id)}
-							<div class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3">
+							<div
+								class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3"
+							>
 								<div>
 									<div class="fw-semibold">{exam.name}</div>
-									<div class="small text-muted">{exam.stream} · {exam.durationMinutes} {$t('minuteShort')}</div>
+									<div class="small text-muted">
+										{exam.stream} · {exam.durationMinutes}
+										{$t('minuteShort')}
+									</div>
 								</div>
 								<div class="d-flex gap-2">
-									<button class="btn btn-sm btn-outline-primary" type="button" onclick={() => goto(`/?exam=${exam.id}`)}>
+									<button
+										class="btn btn-sm btn-outline-primary"
+										type="button"
+										onclick={() => goto(`/?exam=${exam.id}`)}
+									>
 										{$t('select')}
 									</button>
-									<button class="btn btn-sm btn-outline-danger" type="button" onclick={() => removeExam(exam.id)}>
+									<button
+										class="btn btn-sm btn-outline-danger"
+										type="button"
+										onclick={() => removeExam(exam.id)}
+									>
 										{$t('removeBookmark')}
 									</button>
 								</div>
@@ -119,14 +132,24 @@
 				{:else}
 					<div class="list-group list-group-flush">
 						{#each presets as preset (preset.id)}
-							<div class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3">
+							<div
+								class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3"
+							>
 								<div>
-									<div class="fw-semibold">{preset.label || preset.topicSeed || $t('quizPractice')}</div>
+									<div class="fw-semibold">
+										{preset.label || preset.topicSeed || $t('quizPractice')}
+									</div>
 									<div class="small text-muted">
-										{preset.numQuestions || 10} {$t('questions')} · {preset.difficulty || $t('intermediate')}
+										{preset.numQuestions || 10}
+										{$t('questions')} · {preset.difficulty ||
+											$t('intermediate')}
 									</div>
 								</div>
-								<button class="btn btn-sm btn-outline-danger" type="button" onclick={() => removePreset(preset.id)}>
+								<button
+									class="btn btn-sm btn-outline-danger"
+									type="button"
+									onclick={() => removePreset(preset.id)}
+								>
 									{$t('removeBookmark')}
 								</button>
 							</div>
@@ -147,15 +170,22 @@
 					<article class="border rounded-3 p-3">
 						<div class="d-flex align-items-start justify-content-between gap-3">
 							<div>
-								<p class="small text-muted mb-1">{bookmark.topic || $t('quizPractice')}</p>
+								<p class="small text-muted mb-1">
+									{bookmark.topic || $t('quizPractice')}
+								</p>
 								<MarkdownContent content={bookmark.question} />
 							</div>
-							<button class="btn btn-sm btn-outline-danger" type="button" onclick={() => removeQuestionBookmark(bookmark)}>
+							<button
+								class="btn btn-sm btn-outline-danger"
+								type="button"
+								onclick={() => removeQuestionBookmark(bookmark)}
+							>
 								{$t('removeBookmark')}
 							</button>
 						</div>
 						<p class="small text-success mt-2 mb-0">
-							<strong>{$t('correctAnswer')}:</strong> {bookmark.answer}
+							<strong>{$t('correctAnswer')}:</strong>
+							{bookmark.answer}
 						</p>
 					</article>
 				{/each}

@@ -39,10 +39,7 @@ export function getClientIp(request) {
 export function getClientKey(request) {
 	const ip = getClientIp(request);
 	const userAgent = request.headers.get('user-agent') || 'unknown';
-	return createHash('sha256')
-		.update(`${ip}|${userAgent}`)
-		.digest('hex')
-		.slice(0, 40);
+	return createHash('sha256').update(`${ip}|${userAgent}`).digest('hex').slice(0, 40);
 }
 
 /**
@@ -72,22 +69,22 @@ export async function ensureStorageSchema() {
 			)
 		`);
 
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS topic TEXT`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS test_type TEXT`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS difficulty TEXT`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS language TEXT`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS num_questions INTEGER`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS test_mode TEXT`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS exam_id TEXT`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS objective_only BOOLEAN`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS duration_minutes INTEGER`);
-			await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS created_by_user_id BIGINT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS topic TEXT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS test_type TEXT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS difficulty TEXT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS language TEXT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS num_questions INTEGER`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS test_mode TEXT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS exam_id TEXT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS objective_only BOOLEAN`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS duration_minutes INTEGER`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS created_by_user_id BIGINT`);
 
-			await query(`
+		await query(`
 				CREATE INDEX IF NOT EXISTS idx_ai_test_created_at
 				ON ai_test (created_at DESC)
 			`);
-			await query(`
+		await query(`
 				CREATE INDEX IF NOT EXISTS idx_ai_test_exam_lookup
 				ON ai_test (test_mode, exam_id, language, created_at DESC)
 			`);
@@ -184,7 +181,7 @@ export async function ensureStorageSchema() {
 			`SELECT column_name
 			 FROM information_schema.columns
 			 WHERE table_name = 'app_user_state'
-				AND column_name IN ('state_key', 'client_id', 'storage')`,
+				AND column_name IN ('state_key', 'client_id', 'storage')`
 		);
 		const stateColumns = stateShapeResult.rows.map((row) => row.column_name);
 		const isLegacyStateShape =
@@ -204,7 +201,7 @@ export async function ensureStorageSchema() {
 				`);
 
 				const legacyRows = await query(
-					`SELECT user_id, storage FROM app_user_state_legacy WHERE user_id IS NOT NULL`,
+					`SELECT user_id, storage FROM app_user_state_legacy WHERE user_id IS NOT NULL`
 				);
 				for (const legacyRow of legacyRows) {
 					const blob = legacyRow.storage;
@@ -223,7 +220,7 @@ export async function ensureStorageSchema() {
 						await query(
 							`INSERT INTO app_user_state (user_id, state_key, value)
 							 VALUES ($1, $2, $3::jsonb)`,
-							[legacyRow.user_id, stateKey, rawValue],
+							[legacyRow.user_id, stateKey, rawValue]
 						).catch(() => {
 							// Best-effort migration of legacy rows.
 						});
@@ -354,18 +351,15 @@ export async function createTestRecord(test, requestParams = {}) {
 	const testMode = requestParams.testMode || null;
 	const examId = normalizeExamId(requestParams.examId);
 	const objectiveOnly =
-		typeof requestParams.objectiveOnly === 'boolean'
-			? requestParams.objectiveOnly
-			: null;
+		typeof requestParams.objectiveOnly === 'boolean' ? requestParams.objectiveOnly : null;
 	const durationMinutes = Number.isFinite(Number(requestParams.durationMinutes))
 		? Number(requestParams.durationMinutes)
 		: null;
-	const numQuestions =
-		Number.isInteger(requestParams.numQuestions)
-			? requestParams.numQuestions
-			: Array.isArray(test?.questions)
-				? test.questions.length
-				: null;
+	const numQuestions = Number.isInteger(requestParams.numQuestions)
+		? requestParams.numQuestions
+		: Array.isArray(test?.questions)
+			? test.questions.length
+			: null;
 	const createdByUserId = normalizeUserIdValue(requestParams.createdByUserId);
 
 	const result = await query(
@@ -385,7 +379,7 @@ export async function createTestRecord(test, requestParams = {}) {
 			objectiveOnly,
 			durationMinutes,
 			createdByUserId,
-		],
+		]
 	);
 
 	return result.rows[0]?.id;
@@ -411,7 +405,7 @@ export async function getTestRecordById(id) {
 			num_questions
 		 FROM ai_test
 		 WHERE id = $1`,
-		[normalizedId],
+		[normalizedId]
 	);
 
 	return result.rows[0] || null;
@@ -449,7 +443,7 @@ export async function createTestAttempt({
 			score,
 			totalQuestions,
 			timeTaken,
-		],
+		]
 	);
 
 	return result.rows[0]?.id;
@@ -488,7 +482,7 @@ export async function getMyAttemptForIdentity(testId, identity = {}) {
 			AND (a.user_id = $2 OR a.client_id = $3)
 		 ORDER BY a.created_at DESC
 		 LIMIT 1`,
-		[testId, userId, clientId],
+		[testId, userId, clientId]
 	);
 
 	return result.rows[0] || null;
@@ -538,7 +532,7 @@ export async function listAttemptsForIdentity(identity = {}, { limit = 100 } = {
 		 WHERE ${whereClauses.join(' OR ')}
 		 ORDER BY a.created_at DESC
 		 LIMIT $${queryParams.length}`,
-		queryParams,
+		queryParams
 	);
 
 	return result.rows;
@@ -564,12 +558,8 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 			continue;
 		}
 
-		const submittedAtRaw = attempt?.submittedAt
-			? new Date(attempt.submittedAt)
-			: new Date();
-		const submittedAt = Number.isNaN(submittedAtRaw.getTime())
-			? new Date()
-			: submittedAtRaw;
+		const submittedAtRaw = attempt?.submittedAt ? new Date(attempt.submittedAt) : new Date();
+		const submittedAt = Number.isNaN(submittedAtRaw.getTime()) ? new Date() : submittedAtRaw;
 
 		const userAnswers =
 			attempt?.userAnswers &&
@@ -600,7 +590,7 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 				AND (user_id IS NOT DISTINCT FROM $4)
 				AND (client_id IS NOT DISTINCT FROM $5)
 			 LIMIT 1`,
-			[testId, submittedAt.toISOString(), score, userId, clientId],
+			[testId, submittedAt.toISOString(), score, userId, clientId]
 		);
 		if (dedupeResult.rows.length > 0) {
 			continue;
@@ -619,7 +609,7 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 				totalQuestions,
 				timeTaken,
 				submittedAt.toISOString(),
-			],
+			]
 		);
 		insertedCount += result.rowCount || 0;
 	}
@@ -655,7 +645,7 @@ export async function getStateForIdentity(identity = {}) {
 		 FROM app_user_state
 		 WHERE ${whereClauses.join(' OR ')}
 		 ORDER BY state_key, updated_at DESC`,
-		queryParams,
+		queryParams
 	);
 
 	const storage = {};
@@ -689,16 +679,16 @@ export async function upsertStateForIdentity(identity, stateKey, value) {
 		 SET user_id = $1, client_id = $2, value = $4, updated_at = NOW()
 		 WHERE state_key = $3
 			AND (user_id = $1 OR (user_id IS NULL AND client_id = $2))`,
-		[userId, clientId, stateKey, value],
+		[userId, clientId, stateKey, value]
 	);
 	if (updateResult.rowCount > 0) {
 		return true;
 	}
 
-	const insertResult = 	await query(
+	const insertResult = await query(
 		`INSERT INTO app_user_state (user_id, client_id, state_key, value)
 		 VALUES ($1, $2, $3, $4)`,
-		[userId, clientId, stateKey, value],
+		[userId, clientId, stateKey, value]
 	);
 	return (insertResult.rowCount || 0) > 0;
 }
@@ -720,7 +710,7 @@ export async function deleteStateForIdentity(identity, stateKey) {
 		`DELETE FROM app_user_state
 		 WHERE state_key = $1
 			AND (user_id = $2 OR (user_id IS NULL AND client_id = $3))`,
-		[stateKey, userId, clientId],
+		[stateKey, userId, clientId]
 	);
 	return (result.rowCount || 0) > 0;
 }
@@ -744,7 +734,7 @@ export async function backfillUserIdentity(userId, clientId) {
 				`UPDATE ${table}
 				 SET user_id = $1
 				 WHERE client_id = $2 AND user_id IS NULL`,
-				[normalizedUserId, clientId],
+				[normalizedUserId, clientId]
 			);
 			totalBackfilled += result.rowCount || 0;
 		} catch (error) {
@@ -757,7 +747,7 @@ export async function backfillUserIdentity(userId, clientId) {
 		 SET created_by_user_id = $1
 		 WHERE created_by_user_id IS NULL
 			AND test->'requestParams'->>'clientId' = $2`,
-		[normalizedUserId, clientId],
+		[normalizedUserId, clientId]
 	).catch((error) => {
 		console.error('Failed to backfill ai_test creator:', error);
 	});
@@ -767,7 +757,7 @@ export async function backfillUserIdentity(userId, clientId) {
 			`UPDATE app_user_state
 			 SET user_id = $1, client_id = NULL
 			 WHERE client_id = $2 AND user_id IS NULL`,
-			[normalizedUserId, clientId],
+			[normalizedUserId, clientId]
 		);
 		// A user row may already exist for a key (earlier login on another
 		// device): keep the newest row per (user_id, state_key).
@@ -777,7 +767,7 @@ export async function backfillUserIdentity(userId, clientId) {
 			 WHERE a.user_id = b.user_id
 				AND a.state_key = b.state_key
 				AND a.id <> b.id
-				AND (a.updated_at < b.updated_at OR (a.updated_at = b.updated_at AND a.id > b.id))`,
+				AND (a.updated_at < b.updated_at OR (a.updated_at = b.updated_at AND a.id > b.id))`
 		);
 	} catch (error) {
 		console.error('Failed to backfill user state:', error);
@@ -790,9 +780,7 @@ export async function getTestRecordsByIds(ids) {
 	await ensureStorageSchema();
 
 	const normalizedIds = Array.isArray(ids)
-		? ids
-				.map((value) => Number(value))
-				.filter((value) => Number.isInteger(value) && value > 0)
+		? ids.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)
 		: [];
 
 	if (normalizedIds.length === 0) {
@@ -805,24 +793,18 @@ export async function getTestRecordsByIds(ids) {
 			test
 		 FROM ai_test
 		 WHERE id = ANY($1::bigint[])`,
-		[normalizedIds],
+		[normalizedIds]
 	);
 
 	return result.rows;
 }
 
-export async function findReusableFullExamRecord({
-	examId,
-	language,
-	excludedTestIds = [],
-}) {
+export async function findReusableFullExamRecord({ examId, language, excludedTestIds = [] }) {
 	await ensureStorageSchema();
 
 	const normalizedExamId = normalizeExamId(examId);
 	const normalizedLanguage =
-		typeof language === 'string' && language.trim()
-			? language.trim().toLowerCase()
-			: null;
+		typeof language === 'string' && language.trim() ? language.trim().toLowerCase() : null;
 	const normalizedExcludedTestIds = Array.isArray(excludedTestIds)
 		? excludedTestIds
 				.map((value) => Number(value))
@@ -838,7 +820,7 @@ export async function findReusableFullExamRecord({
 
 	queryParams.push(normalizedLanguage);
 	whereClauses.push(
-		`COALESCE(t.language, LOWER(t.test->'requestParams'->>'language'), 'english') = $${queryParams.length}`,
+		`COALESCE(t.language, LOWER(t.test->'requestParams'->>'language'), 'english') = $${queryParams.length}`
 	);
 	whereClauses.push(
 		`(
@@ -847,7 +829,7 @@ export async function findReusableFullExamRecord({
 				COALESCE(t.test->'requestParams'->>'testMode', '') = 'full-exam'
 				AND COALESCE(t.test->'requestParams'->>'examId', '') = $1
 			)
-		)`,
+		)`
 	);
 	queryParams.push(normalizedExcludedTestIds);
 	whereClauses.push(`NOT (t.id = ANY($${queryParams.length}::bigint[]))`);
@@ -858,7 +840,7 @@ export async function findReusableFullExamRecord({
 					THEN (t.test::jsonb)->'questions'
 				ELSE '[]'::jsonb
 			END
-		) > 0`,
+		) > 0`
 	);
 
 	const result = await query(
@@ -875,7 +857,7 @@ export async function findReusableFullExamRecord({
 		 WHERE ${whereClauses.join(' AND ')}
 		 ORDER BY t.created_at DESC
 		 LIMIT 1`,
-		queryParams,
+		queryParams
 	);
 
 	return result.rows[0] || null;
@@ -900,9 +882,7 @@ export async function listTestRecords({
 		.trim()
 		.toLowerCase();
 	const hasLanguageFilter = ['english', 'hindi'].includes(normalizedLanguage);
-	const hasExamTypeFilter = ['full-exam', 'quiz-practice'].includes(
-		normalizedExamType,
-	);
+	const hasExamTypeFilter = ['full-exam', 'quiz-practice'].includes(normalizedExamType);
 
 	const whereClauses = [];
 	const queryParams = [];
@@ -910,28 +890,27 @@ export async function listTestRecords({
 	if (trimmedSearch) {
 		queryParams.push(`%${trimmedSearch}%`);
 		whereClauses.push(
-			`(COALESCE(topic, test->>'topic', '') ILIKE $${queryParams.length} OR CAST(id AS TEXT) ILIKE $${queryParams.length})`,
+			`(COALESCE(topic, test->>'topic', '') ILIKE $${queryParams.length} OR CAST(id AS TEXT) ILIKE $${queryParams.length})`
 		);
 	}
 
 	if (hasLanguageFilter) {
 		queryParams.push(normalizedLanguage);
 		whereClauses.push(
-			`LOWER(COALESCE(language, test->'requestParams'->>'language', 'english')) = $${queryParams.length}`,
+			`LOWER(COALESCE(language, test->'requestParams'->>'language', 'english')) = $${queryParams.length}`
 		);
 	}
 
 	if (hasExamTypeFilter) {
 		queryParams.push(normalizedExamType);
 		whereClauses.push(
-			`LOWER(COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice')) = $${queryParams.length}`,
+			`LOWER(COALESCE(test_mode, test->'requestParams'->>'testMode', 'quiz-practice')) = $${queryParams.length}`
 		);
 	}
 
 	queryParams.push(cappedLimit);
 	queryParams.push(normalizedOffset);
-	const whereSql =
-		whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+	const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
 	const result = await query(
 		`SELECT
@@ -948,17 +927,14 @@ export async function listTestRecords({
 		 ORDER BY created_at DESC
 		 LIMIT $${queryParams.length - 1}
 		 OFFSET $${queryParams.length}`,
-		queryParams,
+		queryParams
 	);
 
 	return result.rows;
 }
 
 function extractClientContext(request) {
-	if (
-		!request ||
-		typeof request.headers?.get !== 'function'
-	) {
+	if (!request || typeof request.headers?.get !== 'function') {
 		return {
 			userAgent: null,
 			ipCountry: null,
@@ -1018,7 +994,7 @@ export async function logApiEvent({
 				ipRegion,
 				ipTimezone,
 				normalizedUserId,
-			],
+			]
 		);
 	} catch (error) {
 		console.error('Failed to log API event:', error);
@@ -1029,7 +1005,7 @@ export async function cleanupOldRateLimitEvents() {
 	await ensureStorageSchema();
 	await query(
 		`DELETE FROM api_rate_limit_events
-		 WHERE created_at < NOW() - INTERVAL '2 days'`,
+		 WHERE created_at < NOW() - INTERVAL '2 days'`
 	);
 }
 
@@ -1038,13 +1014,13 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 
 	const cappedRecentLimit = Math.min(Math.max(Number(recentLimit) || 50, 1), 200);
 	const cappedDays = Math.min(Math.max(Number(days) || 0, 0), 365);
-	const durationFilter = cappedDays > 0
-		? `created_at >= NOW() - INTERVAL '${cappedDays} days'`
-		: '';
+	const durationFilter =
+		cappedDays > 0 ? `created_at >= NOW() - INTERVAL '${cappedDays} days'` : '';
 	const durationWhere = durationFilter ? `WHERE ${durationFilter}` : '';
-	const rateLimitFilter = cappedDays > 0
-		? `created_at >= NOW() - INTERVAL '${cappedDays} days'`
-		: `created_at >= NOW() - INTERVAL '24 hours'`;
+	const rateLimitFilter =
+		cappedDays > 0
+			? `created_at >= NOW() - INTERVAL '${cappedDays} days'`
+			: `created_at >= NOW() - INTERVAL '24 hours'`;
 	const [
 		totalsResult,
 		byRouteResult,
@@ -1063,7 +1039,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 				MIN(created_at) AS first_event,
 				MAX(created_at) AS last_event
 			 FROM api_request_events
-			 ${durationWhere}`,
+			 ${durationWhere}`
 		),
 		query(
 			`SELECT
@@ -1074,7 +1050,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 FROM api_request_events
 			 ${durationWhere}
 			 GROUP BY route
-			 ORDER BY requests DESC`,
+			 ORDER BY requests DESC`
 		),
 		query(
 			`SELECT
@@ -1083,7 +1059,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 FROM api_request_events
 			 ${durationWhere}
 			 GROUP BY status_code
-			 ORDER BY requests DESC`,
+			 ORDER BY requests DESC`
 		),
 		query(
 			`SELECT
@@ -1092,7 +1068,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 FROM api_request_events
 			 WHERE created_at >= NOW() - INTERVAL '${cappedDays > 0 ? cappedDays : 24} hours'
 			 GROUP BY bucket
-			 ORDER BY bucket`,
+			 ORDER BY bucket`
 		),
 		query(
 			`SELECT
@@ -1102,7 +1078,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 ${durationWhere}
 			 GROUP BY country
 			 ORDER BY requests DESC
-			 LIMIT 20`,
+			 LIMIT 20`
 		),
 		query(
 			`SELECT
@@ -1113,7 +1089,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 ${durationFilter ? `AND ${durationFilter}` : ''}
 			 GROUP BY user_agent
 			 ORDER BY requests DESC
-			 LIMIT 15`,
+			 LIMIT 15`
 		),
 		query(
 			`SELECT
@@ -1122,7 +1098,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 FROM api_rate_limit_events
 			 WHERE ${rateLimitFilter}
 			 GROUP BY route
-			 ORDER BY events DESC`,
+			 ORDER BY events DESC`
 		),
 		query(
 			`SELECT
@@ -1142,7 +1118,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 ${durationWhere}
 			 ORDER BY id DESC
 			 LIMIT $1`,
-			[cappedRecentLimit],
+			[cappedRecentLimit]
 		),
 	]);
 
@@ -1164,15 +1140,10 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 	const cappedDays = Math.min(Math.max(Number(days) || 30, 1), 90);
 	const cappedLimit = Math.min(Math.max(Number(limit) || 60, 1), 200);
 
-	const [
-		totalsResult,
-		byEventResult,
-		byPageResult,
-		trendResult,
-		generateBreakdownResult,
-	] = await Promise.all([
-		query(
-			`SELECT
+	const [totalsResult, byEventResult, byPageResult, trendResult, generateBreakdownResult] =
+		await Promise.all([
+			query(
+				`SELECT
 				COUNT(*)::INTEGER AS total,
 				COUNT(DISTINCT session_id)::INTEGER AS sessions,
 				MIN(created_at) AS first_at,
@@ -1180,10 +1151,10 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 				COALESCE(ROUND(COUNT(*)::NUMERIC / NULLIF(COUNT(DISTINCT session_id), 0), 1), 0) AS events_per_session
 			 FROM feature_events
 			 WHERE created_at >= NOW() - ($1::text || ' days')::interval`,
-			[cappedDays],
-		),
-		query(
-			`SELECT
+				[cappedDays]
+			),
+			query(
+				`SELECT
 				event,
 				COUNT(*)::INTEGER AS count
 			 FROM feature_events
@@ -1191,10 +1162,10 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 			 GROUP BY event
 			 ORDER BY count DESC
 			 LIMIT $2`,
-			[cappedDays, cappedLimit],
-		),
-		query(
-			`SELECT
+				[cappedDays, cappedLimit]
+			),
+			query(
+				`SELECT
 				COALESCE(NULLIF(page, ''), '(unknown)') AS page,
 				COUNT(*)::INTEGER AS events
 			 FROM feature_events
@@ -1202,10 +1173,10 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 			 GROUP BY page
 			 ORDER BY events DESC
 			 LIMIT 25`,
-			[cappedDays],
-		),
-		query(
-			`SELECT
+				[cappedDays]
+			),
+			query(
+				`SELECT
 				date_trunc('day', created_at) AS day,
 				COUNT(*)::INTEGER AS events,
 				COUNT(DISTINCT session_id)::INTEGER AS sessions
@@ -1213,10 +1184,10 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
 			 GROUP BY day
 			 ORDER BY day`,
-			[cappedDays],
-		),
-		query(
-			`SELECT
+				[cappedDays]
+			),
+			query(
+				`SELECT
 				COALESCE(props->>'mode', '(none)') AS mode,
 				COALESCE(props->>'difficulty', '(none)') AS difficulty,
 				COALESCE(props->>'language', '(none)') AS language,
@@ -1227,9 +1198,9 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 			 GROUP BY mode, difficulty, language
 			 ORDER BY count DESC
 			 LIMIT 30`,
-			[cappedDays],
-		),
-	]);
+				[cappedDays]
+			),
+		]);
 
 	const byEvent = byEventResult.rows;
 	const total = totalsResult.rows?.[0]?.total || 0;
@@ -1266,18 +1237,40 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 		testLanguages,
 		attemptScores,
 	] = await Promise.all([
-		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM ai_test`),
-		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_ms FROM ai_test_attempts`),
-		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user`),
+		query(
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM ai_test`
+		),
+		query(
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_ms FROM ai_test_attempts`
+		),
+		query(
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user`
+		),
 		query(`SELECT COUNT(*)::INTEGER AS active FROM app_user_session WHERE expires_at > NOW()`),
-		query(`SELECT COUNT(DISTINCT COALESCE(user_id::text, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id::text, client_id)) FILTER (WHERE updated_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user_state`),
-		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM api_rate_limit_events`),
-		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(*) FILTER (WHERE status_code >= 400 AND ${filter})::INTEGER AS errors FROM api_request_events`),
-		query(`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(DISTINCT session_id) FILTER (WHERE ${filter})::INTEGER AS sessions FROM feature_events`),
-		query(`SELECT test_mode, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY test_mode ORDER BY count DESC`),
-		query(`SELECT difficulty, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY difficulty ORDER BY count DESC`),
-		query(`SELECT language, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY language ORDER BY count DESC`),
-		query(`SELECT ROUND(AVG(score))::INTEGER AS avg_score, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score)::INTEGER AS median_score, COUNT(*) FILTER (WHERE score = total_questions)::INTEGER AS perfect_scores FROM ai_test_attempts WHERE ${filter}`),
+		query(
+			`SELECT COUNT(DISTINCT COALESCE(user_id::text, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id::text, client_id)) FILTER (WHERE updated_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user_state`
+		),
+		query(
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM api_rate_limit_events`
+		),
+		query(
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(*) FILTER (WHERE status_code >= 400 AND ${filter})::INTEGER AS errors FROM api_request_events`
+		),
+		query(
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(DISTINCT session_id) FILTER (WHERE ${filter})::INTEGER AS sessions FROM feature_events`
+		),
+		query(
+			`SELECT test_mode, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY test_mode ORDER BY count DESC`
+		),
+		query(
+			`SELECT difficulty, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY difficulty ORDER BY count DESC`
+		),
+		query(
+			`SELECT language, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY language ORDER BY count DESC`
+		),
+		query(
+			`SELECT ROUND(AVG(score))::INTEGER AS avg_score, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score)::INTEGER AS median_score, COUNT(*) FILTER (WHERE score = total_questions)::INTEGER AS perfect_scores FROM ai_test_attempts WHERE ${filter}`
+		),
 	]);
 
 	return {
@@ -1292,10 +1285,24 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 			},
 			app_user: { total: users.rows[0]?.total || 0, recent: users.rows[0]?.recent || 0 },
 			app_user_session: { active: activeSessions.rows[0]?.active || 0 },
-			app_user_state: { distinct_users: stateUsers.rows[0]?.total || 0, recent: stateUsers.rows[0]?.recent || 0 },
-			api_rate_limit_events: { total: rateLimits.rows[0]?.total || 0, recent: rateLimits.rows[0]?.recent || 0 },
-			api_request_events: { total: requestEvents.rows[0]?.total || 0, recent: requestEvents.rows[0]?.recent || 0, errors: requestEvents.rows[0]?.errors || 0 },
-			feature_events: { total: featureEvents.rows[0]?.total || 0, recent: featureEvents.rows[0]?.recent || 0, sessions: featureEvents.rows[0]?.sessions || 0 },
+			app_user_state: {
+				distinct_users: stateUsers.rows[0]?.total || 0,
+				recent: stateUsers.rows[0]?.recent || 0,
+			},
+			api_rate_limit_events: {
+				total: rateLimits.rows[0]?.total || 0,
+				recent: rateLimits.rows[0]?.recent || 0,
+			},
+			api_request_events: {
+				total: requestEvents.rows[0]?.total || 0,
+				recent: requestEvents.rows[0]?.recent || 0,
+				errors: requestEvents.rows[0]?.errors || 0,
+			},
+			feature_events: {
+				total: featureEvents.rows[0]?.total || 0,
+				recent: featureEvents.rows[0]?.recent || 0,
+				sessions: featureEvents.rows[0]?.sessions || 0,
+			},
 		},
 		testBreakdown: {
 			byMode: testModes.rows,

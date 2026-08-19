@@ -72,12 +72,7 @@ const SYLLABUS = {
 		'Geography',
 		'General Science and Environment',
 	],
-	defenceOfficer: [
-		'Mathematics',
-		'English',
-		'General Knowledge',
-		'Science and Current Affairs',
-	],
+	defenceOfficer: ['Mathematics', 'English', 'General Knowledge', 'Science and Current Affairs'],
 };
 
 function createObjectiveExam({
@@ -174,7 +169,13 @@ export const INDIAN_EXAMS = [
 		fullLengthQuestions: 120,
 		durationMinutes: 120,
 		defaultDifficulty: 'advanced',
-		syllabus: ['General Medicine', 'Pediatrics', 'Surgery', 'Gynecology', 'Preventive and Social Medicine'],
+		syllabus: [
+			'General Medicine',
+			'Pediatrics',
+			'Surgery',
+			'Gynecology',
+			'Preventive and Social Medicine',
+		],
 	}),
 
 	// SSC exams (Group B/C/D)
@@ -980,7 +981,7 @@ export const INDIAN_EXAMS = [
 ];
 
 export const OBJECTIVE_ONLY_EXAMS = INDIAN_EXAMS.filter(
-	(exam) => exam.questionFormat === 'objective',
+	(exam) => exam.questionFormat === 'objective'
 );
 
 export function getIndianExamById(examId) {

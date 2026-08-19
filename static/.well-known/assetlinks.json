@@ -1,12 +1,12 @@
 [
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.selftest.app",
-      "sha256_cert_fingerprints": [
-        "C6:D0:78:08:AD:CE:8A:1B:B9:4C:8C:2E:01:92:BC:8D:C6:71:81:DF:B3:24:8B:A3:8B:F4:0E:23:49:E8:91:DF"
-      ]
-    }
-  }
+	{
+		"relation": ["delegate_permission/common.handle_all_urls"],
+		"target": {
+			"namespace": "android_app",
+			"package_name": "com.selftest.app",
+			"sha256_cert_fingerprints": [
+				"C6:D0:78:08:AD:CE:8A:1B:B9:4C:8C:2E:01:92:BC:8D:C6:71:81:DF:B3:24:8B:A3:8B:F4:0E:23:49:E8:91:DF"
+			]
+		}
+	}
 ]

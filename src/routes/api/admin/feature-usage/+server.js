@@ -7,10 +7,7 @@ const STATS_RATE_LIMIT = 60;
 
 export async function GET({ request, url }) {
 	if (!isAdminConfigured() || !isAdminRequest(request)) {
-		return json(
-			{ error: 'Unauthorized', code: 'ADMIN_UNAUTHORIZED' },
-			{ status: 401 },
-		);
+		return json({ error: 'Unauthorized', code: 'ADMIN_UNAUTHORIZED' }, { status: 401 });
 	}
 
 	try {
@@ -25,7 +22,7 @@ export async function GET({ request, url }) {
 					code: 'RATE_LIMIT_EXCEEDED',
 					resetTime: new Date(rateLimit.resetTime).toISOString(),
 				},
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
@@ -37,7 +34,7 @@ export async function GET({ request, url }) {
 		console.error(error);
 		return json(
 			{ error: 'Failed to load feature usage', code: 'FEATURE_USAGE_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

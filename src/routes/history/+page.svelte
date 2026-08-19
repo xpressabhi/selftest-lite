@@ -5,7 +5,12 @@
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
 	import { getHistory, removeFromHistory, saveHistory } from '$lib/client/storage';
-	import { flushPendingAttempts, getPendingAttemptCount, hydrateHistoryFromServer, purgePendingAttemptsForTest } from '$lib/client/sync';
+	import {
+		flushPendingAttempts,
+		getPendingAttemptCount,
+		hydrateHistoryFromServer,
+		purgePendingAttemptsForTest,
+	} from '$lib/client/sync';
 	import { showToast } from '$lib/client/toast';
 
 	let history = $state([]);
@@ -17,8 +22,8 @@
 
 	let filteredHistory = $derived(
 		history.filter((entry) =>
-			`${entry.topic || ''}`.toLowerCase().includes(search.trim().toLowerCase()),
-		),
+			`${entry.topic || ''}`.toLowerCase().includes(search.trim().toLowerCase())
+		)
 	);
 	let stats = $derived(getStats(history));
 	let reviewQueue = $derived(buildReviewQueue(history));
@@ -67,10 +72,7 @@
 		async function hydrate() {
 			isHydrating = true;
 			try {
-				await Promise.all([
-					hydrateHistoryFromServer(),
-					flushPendingAttempts(),
-				]);
+				await Promise.all([hydrateHistoryFromServer(), flushPendingAttempts()]);
 			} finally {
 				isHydrating = false;
 				refreshHistory();
@@ -109,7 +111,9 @@
 		</div>
 		<div class="d-flex align-items-center gap-2">
 			{#if pendingCount > 0}
-				<span class="badge bg-warning text-dark">{$t('syncingActivity')} ({pendingCount})</span>
+				<span class="badge bg-warning text-dark"
+					>{$t('syncingActivity')} ({pendingCount})</span
+				>
 			{:else if isHydrating}
 				<span class="badge bg-secondary">{$t('syncingActivity')}</span>
 			{/if}
@@ -124,24 +128,43 @@
 	{#if stats.totalTests > 0}
 		<section class="row g-3 mb-4">
 			<div class="col-6 col-md-3">
-				<div class="stat-card"><strong>{stats.totalTests}</strong><span>{$t('quizzes')}</span></div>
+				<div class="stat-card">
+					<strong>{stats.totalTests}</strong><span>{$t('quizzes')}</span>
+				</div>
 			</div>
 			<div class="col-6 col-md-3">
-				<div class="stat-card"><strong>{stats.averageScore}%</strong><span>{$t('avgScore')}</span></div>
+				<div class="stat-card">
+					<strong>{stats.averageScore}%</strong><span>{$t('avgScore')}</span>
+				</div>
 			</div>
 			<div class="col-6 col-md-3">
-				<div class="stat-card"><strong>{stats.totalQuestions}</strong><span>{$t('questionsHeading')}</span></div>
+				<div class="stat-card">
+					<strong>{stats.totalQuestions}</strong><span>{$t('questionsHeading')}</span>
+				</div>
 			</div>
 			<div class="col-6 col-md-3">
-				<div class="stat-card"><strong>{formatDuration(stats.totalTime, $t('minuteShort'), $t('hourShort'))}</strong><span>{$t('timeSpent')}</span></div>
+				<div class="stat-card">
+					<strong
+						>{formatDuration(
+							stats.totalTime,
+							$t('minuteShort'),
+							$t('hourShort')
+						)}</strong
+					><span>{$t('timeSpent')}</span>
+				</div>
 			</div>
 		</section>
 	{/if}
 
 	{#if reviewQueue.today.length > 0}
-		<section class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2">
+		<section
+			class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2"
+		>
 			<span>{$t('reviewQueueTitle')}: {reviewQueue.today[0].topic}</span>
-			<a class="btn btn-sm btn-primary" href={`/?mode=quiz-practice&topic=${encodeURIComponent(reviewQueue.today[0].topic)}`}>
+			<a
+				class="btn btn-sm btn-primary"
+				href={`/?mode=quiz-practice&topic=${encodeURIComponent(reviewQueue.today[0].topic)}`}
+			>
 				{$t('startReview')}
 			</a>
 		</section>
@@ -167,13 +190,20 @@
 				<div class="list-group-item list-group-item-action history-row">
 					<a
 						class="history-link"
-						href={entry.userAnswers ? `/results?id=${entry.id}` : `/test?id=${entry.id}`}
-						onclick={() => track('history:open-test', { id: entry.id, status: entry.userAnswers ? 'submitted' : 'unsubmitted' })}
+						href={entry.userAnswers
+							? `/results?id=${entry.id}`
+							: `/test?id=${entry.id}`}
+						onclick={() =>
+							track('history:open-test', {
+								id: entry.id,
+								status: entry.userAnswers ? 'submitted' : 'unsubmitted',
+							})}
 					>
 						<div>
 							<div class="fw-semibold">{entry.topic || $t('testNotFound')}</div>
 							<div class="text-muted small">
-								{entry.questions?.length || entry.totalQuestions || 0} {$t('questions')}
+								{entry.questions?.length || entry.totalQuestions || 0}
+								{$t('questions')}
 								{#if entry.timestamp}
 									<span> · {new Date(entry.timestamp).toLocaleString()}</span>
 								{/if}
@@ -181,7 +211,9 @@
 						</div>
 						{#if entry.userAnswers}
 							<span class="badge bg-success">
-								{entry.score ?? 0}/{entry.totalQuestions || entry.questions?.length || 0}
+								{entry.score ?? 0}/{entry.totalQuestions ||
+									entry.questions?.length ||
+									0}
 							</span>
 						{:else}
 							<span class="badge bg-warning text-dark">{$t('unsubmittedTest')}</span>
@@ -222,14 +254,25 @@
 		>
 			<h2 class="h5 fw-bold mb-1">{$t('deleteTestConfirmTitle')}</h2>
 			<p class="text-muted small mb-2">
-				{$t('deleteTestConfirmTopic')}: <strong class="text-break">{pendingDelete.topic || $t('untitledTest')}</strong>
+				{$t('deleteTestConfirmTopic')}:
+				<strong class="text-break">{pendingDelete.topic || $t('untitledTest')}</strong>
 			</p>
 			<p class="text-muted small mb-3">{$t('deleteTestConfirmBody')}</p>
 			<div class="d-flex flex-wrap gap-2">
-				<button class="btn btn-outline-secondary" type="button" disabled={deleting} onclick={() => (pendingDelete = null)}>
+				<button
+					class="btn btn-outline-secondary"
+					type="button"
+					disabled={deleting}
+					onclick={() => (pendingDelete = null)}
+				>
 					{$t('cancel')}
 				</button>
-				<button class="btn btn-danger" type="button" disabled={deleting} onclick={performDelete}>
+				<button
+					class="btn btn-danger"
+					type="button"
+					disabled={deleting}
+					onclick={performDelete}
+				>
 					{deleting ? $t('deleting') : $t('deleteTest')}
 				</button>
 			</div>
@@ -294,7 +337,9 @@
 		color: var(--text-muted);
 		font-size: 1rem;
 		cursor: pointer;
-		transition: background 0.12s ease, color 0.12s ease;
+		transition:
+			background 0.12s ease,
+			color 0.12s ease;
 	}
 
 	.history-delete:hover,

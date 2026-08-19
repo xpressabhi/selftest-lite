@@ -6,7 +6,7 @@
 
 ## Goal
 
-Capture what users *can* do and what they *actually do* across the app, at micro-interaction level, and surface a most-used → least-used feature ranking in the admin dashboard so feature planning is data-driven.
+Capture what users _can_ do and what they _actually do_ across the app, at micro-interaction level, and surface a most-used → least-used feature ranking in the admin dashboard so feature planning is data-driven.
 
 ## Architecture
 
@@ -19,16 +19,16 @@ Browser track() → in-memory queue → batch flush (30s / 20 events / pagehide 
 
 ## Files
 
-| File | Purpose |
-| --- | --- |
-| `src/lib/client/telemetry.js` | Browser tracker: `track(event, props)`, queue, batch flush, sendBeacon on pagehide |
-| `src/lib/server/telemetry.js` | `TELEMETRY_EVENTS` allowlist, `validateTelemetryEvents`, `recordTelemetryEvents` (DB insert) |
-| `src/routes/api/telemetry/+server.js` | Ingest endpoint (POST, 204, rate-limited) |
-| `src/routes/api/admin/feature-usage/+server.js` | Admin stats endpoint (auth + rate limit, like `/api/admin/stats`) |
-| `src/lib/server/storage.js` | Add `feature_events` table + indexes to `ensureStorageSchema`; add `getFeatureUsageStats` |
-| `src/routes/admin/+page.svelte` | "Feature usage" panel: ranking list, per-page table, 30-day trend |
-| `src/routes/+layout.svelte`, `+page.svelte`, `test/+page.svelte`, `results/+page.svelte`, `history/+page.svelte`, `bookmarks/+page.svelte` | Wire `track()` calls |
-| `src/lib/client/telemetry.test.js`, `src/lib/server/telemetry.test.js` | Unit tests (queue batching, validation) |
+| File                                                                                                                                       | Purpose                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `src/lib/client/telemetry.js`                                                                                                              | Browser tracker: `track(event, props)`, queue, batch flush, sendBeacon on pagehide           |
+| `src/lib/server/telemetry.js`                                                                                                              | `TELEMETRY_EVENTS` allowlist, `validateTelemetryEvents`, `recordTelemetryEvents` (DB insert) |
+| `src/routes/api/telemetry/+server.js`                                                                                                      | Ingest endpoint (POST, 204, rate-limited)                                                    |
+| `src/routes/api/admin/feature-usage/+server.js`                                                                                            | Admin stats endpoint (auth + rate limit, like `/api/admin/stats`)                            |
+| `src/lib/server/storage.js`                                                                                                                | Add `feature_events` table + indexes to `ensureStorageSchema`; add `getFeatureUsageStats`    |
+| `src/routes/admin/+page.svelte`                                                                                                            | "Feature usage" panel: ranking list, per-page table, 30-day trend                            |
+| `src/routes/+layout.svelte`, `+page.svelte`, `test/+page.svelte`, `results/+page.svelte`, `history/+page.svelte`, `bookmarks/+page.svelte` | Wire `track()` calls                                                                         |
+| `src/lib/client/telemetry.test.js`, `src/lib/server/telemetry.test.js`                                                                     | Unit tests (queue batching, validation)                                                      |
 
 ## Data model
 

@@ -23,7 +23,12 @@
 				<div class="bg-body border rounded-3 p-3 h-100">
 					<h2 class="h5 fw-bold">{$t('connectCreatorTitle')}</h2>
 					<p class="text-muted mb-3">{$t('creatorRole')}</p>
-					<a class="btn btn-outline-primary" href="https://www.linkedin.com" rel="noreferrer" target="_blank">
+					<a
+						class="btn btn-outline-primary"
+						href="https://www.linkedin.com"
+						rel="noreferrer"
+						target="_blank"
+					>
 						{$t('connectOnLinkedIn')}
 					</a>
 				</div>

@@ -91,7 +91,7 @@
 		try {
 			const response = await fetch(
 				`/api/test?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`,
-				{ signal: controller.signal },
+				{ signal: controller.signal }
 			);
 			const payload = await response.json().catch(() => null);
 			if (searchAbort !== controller) return;
@@ -259,7 +259,11 @@
 
 <div class="intent-wrap" bind:this={dropdownRef}>
 	<form class="intent-form" onsubmit={handleSubmit}>
-		<div class="intent-input-group" class:parsing={PARSING} class:dropdown-visible={showDropdown}>
+		<div
+			class="intent-input-group"
+			class:parsing={PARSING}
+			class:dropdown-visible={showDropdown}
+		>
 			<span class="intent-icon" aria-hidden="true">&#10024;</span>
 			<input
 				class="intent-input"
@@ -279,9 +283,20 @@
 					<span></span><span></span><span></span>
 				</span>
 			{:else}
-				<button class="intent-btn" type="submit" disabled={!trimmedValue || disabled || GENERATING} aria-label={$t('generateQuiz')}>
+				<button
+					class="intent-btn"
+					type="submit"
+					disabled={!trimmedValue || disabled || GENERATING}
+					aria-label={$t('generateQuiz')}
+				>
 					<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-						<path d="M4 10L16 10M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						<path
+							d="M4 10L16 10M16 10L11 5M16 10L11 15"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
 					</svg>
 				</button>
 			{/if}
@@ -290,14 +305,37 @@
 		{#if showDropdown}
 			<div class="intent-dropdown" bind:this={resultsRef} onscroll={handleDropdownScroll}>
 				{#if trimmedValue && !isTestId}
-					<button class="dropdown-generate" type="button" onclick={() => { closeDropdown(); onsubmit(trimmedValue); }}>
+					<button
+						class="dropdown-generate"
+						type="button"
+						onclick={() => {
+							closeDropdown();
+							onsubmit(trimmedValue);
+						}}
+					>
 						<span class="generate-icon" aria-hidden="true">&#9889;</span>
 						<div class="generate-text">
-							<span class="generate-label">{$t('generateNew')}: "{trimmedValue.length > 60 ? trimmedValue.slice(0, 57) + '...' : trimmedValue}"</span>
+							<span class="generate-label"
+								>{$t('generateNew')}: "{trimmedValue.length > 60
+									? trimmedValue.slice(0, 57) + '...'
+									: trimmedValue}"</span
+							>
 							<span class="generate-hint">{$t('aiWillConfigureBest')}</span>
 						</div>
-						<svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="generate-arrow">
-							<path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 16 16"
+							fill="none"
+							class="generate-arrow"
+						>
+							<path
+								d="M3 8H13M13 8L9 4M13 8L9 12"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 				{/if}
@@ -305,12 +343,18 @@
 				{#if exactTestIdMatch}
 					<div class="dropdown-section">
 						<span class="dropdown-section-title">{$t('exactMatch')}</span>
-						<button class="dropdown-result" type="button" onclick={() => handleResultClick(exactTestIdMatch.id)}>
+						<button
+							class="dropdown-result"
+							type="button"
+							onclick={() => handleResultClick(exactTestIdMatch.id)}
+						>
 							<span class="result-icon" aria-hidden="true">&#128269;</span>
 							<div class="result-text">
 								<strong>{exactTestIdMatch.topic || $t('untitledTest')}</strong>
 								<span class="result-meta">
-									{exactTestIdMatch.test_mode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')} &middot; {$t('testId')}: {exactTestIdMatch.id}
+									{exactTestIdMatch.test_mode === 'full-exam'
+										? $t('fullExamPaper')
+										: $t('quizPractice')} &middot; {$t('testId')}: {exactTestIdMatch.id}
 								</span>
 							</div>
 						</button>
@@ -327,11 +371,17 @@
 							{trimmedValue ? $t('matchingTests') : $t('recentTests')}
 						</span>
 						{#each localSearchResults as test (test.id)}
-							<button class="dropdown-result" type="button" onclick={() => handleResultClick(test.id)}>
+							<button
+								class="dropdown-result"
+								type="button"
+								onclick={() => handleResultClick(test.id)}
+							>
 								<div class="result-text">
 									<strong>{test.topic || $t('untitledTest')}</strong>
 									<span class="result-meta">
-										{test.test_mode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')} &middot; {$t('testId')}: {test.id}
+										{test.test_mode === 'full-exam'
+											? $t('fullExamPaper')
+											: $t('quizPractice')} &middot; {$t('testId')}: {test.id}
 									</span>
 								</div>
 							</button>
@@ -391,7 +441,10 @@
 		border-radius: 20px;
 		background: var(--surface);
 		border: 2px solid var(--line);
-		transition: border-color 0.2s ease, box-shadow 0.2s ease, border-radius 0.2s ease;
+		transition:
+			border-color 0.2s ease,
+			box-shadow 0.2s ease,
+			border-radius 0.2s ease;
 		position: relative;
 		z-index: 10;
 	}
@@ -418,8 +471,17 @@
 	}
 
 	@keyframes parsing-glow {
-		0%, 100% { box-shadow: 0 0 0 4px rgba(var(--brand-rgb), 0.12), 0 0 12px rgba(var(--brand-rgb), 0.06); }
-		50% { box-shadow: 0 0 0 6px rgba(var(--brand-rgb), 0.08), 0 0 20px rgba(var(--brand-rgb), 0.1); }
+		0%,
+		100% {
+			box-shadow:
+				0 0 0 4px rgba(var(--brand-rgb), 0.12),
+				0 0 12px rgba(var(--brand-rgb), 0.06);
+		}
+		50% {
+			box-shadow:
+				0 0 0 6px rgba(var(--brand-rgb), 0.08),
+				0 0 20px rgba(var(--brand-rgb), 0.1);
+		}
 	}
 
 	.intent-icon {
@@ -463,8 +525,12 @@
 		background: rgb(var(--brand-rgb));
 		animation: thinking-dot 1.4s ease-in-out infinite;
 	}
-	.intent-thinking span:nth-child(2) { animation-delay: 0.16s; }
-	.intent-thinking span:nth-child(3) { animation-delay: 0.32s; }
+	.intent-thinking span:nth-child(2) {
+		animation-delay: 0.16s;
+	}
+	.intent-thinking span:nth-child(3) {
+		animation-delay: 0.32s;
+	}
 
 	.intent-btn {
 		flex-shrink: 0;
@@ -478,7 +544,10 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		transition: background 0.2s ease, transform 0.15s ease, opacity 0.15s ease;
+		transition:
+			background 0.2s ease,
+			transform 0.15s ease,
+			opacity 0.15s ease;
 	}
 
 	.intent-btn:hover:not(:disabled) {
@@ -513,8 +582,14 @@
 	}
 
 	@keyframes dropdown-in {
-		from { opacity: 0; transform: translateY(-4px); }
-		to { opacity: 1; transform: translateY(0); }
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.dropdown-generate {
@@ -673,7 +748,10 @@
 		background: var(--surface-muted);
 		color: var(--text-muted);
 		cursor: pointer;
-		transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			color 0.15s ease,
+			background 0.15s ease;
 		white-space: nowrap;
 		max-width: 100%;
 		overflow: hidden;

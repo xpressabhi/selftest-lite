@@ -23,14 +23,14 @@ describe('parseRequestBody', () => {
 
 	it('rejects invalid JSON', async () => {
 		await expect(parseRequestBody(jsonRequest('{not json'))).rejects.toBeInstanceOf(
-			InvalidRequestBodyError,
+			InvalidRequestBodyError
 		);
 	});
 
 	it('rejects bodies over 2MB', async () => {
 		const oversized = 'x'.repeat(2 * 1024 * 1024 + 1);
 		await expect(parseRequestBody(jsonRequest(oversized))).rejects.toBeInstanceOf(
-			RequestBodyTooLargeError,
+			RequestBodyTooLargeError
 		);
 	});
 });
@@ -55,7 +55,7 @@ describe('validateGenerateRequest', () => {
 				testMode: 'full-exam',
 				examName: 'JEE Main',
 				objectiveOnly: true,
-			}),
+			})
 		).toBeNull();
 	});
 
@@ -97,10 +97,10 @@ describe('validateGenerateRequest', () => {
 
 	it('rejects out-of-range question counts', () => {
 		expect(validateGenerateRequest({ ...base, numQuestions: 0 }).code).toBe(
-			'INVALID_QUESTION_COUNT',
+			'INVALID_QUESTION_COUNT'
 		);
 		expect(validateGenerateRequest({ ...base, numQuestions: 201 }).code).toBe(
-			'INVALID_QUESTION_COUNT',
+			'INVALID_QUESTION_COUNT'
 		);
 	});
 
@@ -194,13 +194,17 @@ describe('validateGeneratedPaper', () => {
 				questionPaper: validPaper,
 				testType: 'multiple-choice',
 				numQuestions: 1,
-			}),
+			})
 		).not.toThrow();
 	});
 
 	it('rejects a paper missing topic or questions', () => {
 		expect(() =>
-			validateGeneratedPaper({ questionPaper: {}, testType: 'multiple-choice', numQuestions: 1 }),
+			validateGeneratedPaper({
+				questionPaper: {},
+				testType: 'multiple-choice',
+				numQuestions: 1,
+			})
 		).toThrow('Invalid response structure');
 	});
 
@@ -216,7 +220,11 @@ describe('validateGeneratedPaper', () => {
 			],
 		};
 		expect(() =>
-			validateGeneratedPaper({ questionPaper: paper, testType: 'multiple-choice', numQuestions: 1 }),
+			validateGeneratedPaper({
+				questionPaper: paper,
+				testType: 'multiple-choice',
+				numQuestions: 1,
+			})
 		).toThrow(/answer must match one of the options/);
 	});
 
@@ -226,7 +234,11 @@ describe('validateGeneratedPaper', () => {
 			questions: [{ question: 'Q?', options: ['A', 'B'], answer: 'A' }],
 		};
 		expect(() =>
-			validateGeneratedPaper({ questionPaper: paper, testType: 'multiple-choice', numQuestions: 1 }),
+			validateGeneratedPaper({
+				questionPaper: paper,
+				testType: 'multiple-choice',
+				numQuestions: 1,
+			})
 		).toThrow(/exactly 4 options/);
 	});
 
@@ -239,7 +251,11 @@ describe('validateGeneratedPaper', () => {
 			],
 		};
 		expect(() =>
-			validateGeneratedPaper({ questionPaper: paper, testType: 'multiple-choice', numQuestions: 2 }),
+			validateGeneratedPaper({
+				questionPaper: paper,
+				testType: 'multiple-choice',
+				numQuestions: 2,
+			})
 		).toThrow(/duplicates another question/);
 	});
 
@@ -255,7 +271,11 @@ describe('validateGeneratedPaper', () => {
 			],
 		};
 		expect(() =>
-			validateGeneratedPaper({ questionPaper: paper, testType: 'multiple-choice', numQuestions: 1 }),
+			validateGeneratedPaper({
+				questionPaper: paper,
+				testType: 'multiple-choice',
+				numQuestions: 1,
+			})
 		).toThrow(/invalid LaTeX/);
 	});
 });
@@ -266,7 +286,7 @@ describe('validateTestRecordPayload', () => {
 			validateTestRecordPayload({
 				topic: 'Physics',
 				questions: [{ question: 'Q?', options: ['A', 'B'], answer: 'A' }],
-			}),
+			})
 		).toBeNull();
 	});
 

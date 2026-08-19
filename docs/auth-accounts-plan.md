@@ -18,12 +18,12 @@ Last updated: Aug 2026
 
 ## Platform risk assessment
 
-| Platform | Risk | Mitigation |
-| --- | --- | --- |
-| Web browser | Low | Standard GIS popup flow + httpOnly cookie. |
-| PWA (standalone) | Low | Same origin, first-party cookie. Redirect-mode fallback if popups are blocked in standalone windows. |
+| Platform                        | Risk | Mitigation                                                                                                                                                                             |
+| ------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web browser                     | Low  | Standard GIS popup flow + httpOnly cookie.                                                                                                                                             |
+| PWA (standalone)                | Low  | Same origin, first-party cookie. Redirect-mode fallback if popups are blocked in standalone windows.                                                                                   |
 | Android app (Capacitor WebView) | High | GIS popup mode can fail silently in WebViews (popups blocked). Use `ux_mode: 'redirect'` on native + enable JS popups in `MainActivity` as belt-and-suspenders. Must be device-tested. |
-| iOS PWA | Note | Safari evicts PWA storage after ~7 days unused; user re-logs in. Inherent to iOS, not fixable. |
+| iOS PWA                         | Note | Safari evicts PWA storage after ~7 days unused; user re-logs in. Inherent to iOS, not fixable.                                                                                         |
 
 ## Architecture
 
@@ -43,6 +43,7 @@ Browser / PWA / Android WebView
 ```
 
 Identity resolution order on the server:
+
 1. Session cookie → `user_id`
 2. `x-client-id` header → `client_id`
 3. Fallback: legacy `getClientKey(request)` (ip+ua hash) for backwards compat

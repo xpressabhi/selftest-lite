@@ -45,9 +45,19 @@
 		<div class="welcome-inner">
 			<div class="welcome-top">
 				<h2 class="welcome-title">{$t('welcomeTitle')}</h2>
-				<button class="welcome-dismiss" type="button" onclick={handleDismiss} aria-label={$t('close')}>
+				<button
+					class="welcome-dismiss"
+					type="button"
+					onclick={handleDismiss}
+					aria-label={$t('close')}
+				>
 					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						<path
+							d="M4 4L12 12M12 4L4 12"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+						/>
 					</svg>
 				</button>
 			</div>
@@ -87,7 +97,12 @@
 		</div>
 	</div>
 {:else if dismissed}
-	<button class="welcome-reopen" type="button" onclick={handleReopen} aria-label={$t('welcomeReopen')}>
+	<button
+		class="welcome-reopen"
+		type="button"
+		onclick={handleReopen}
+		aria-label={$t('welcomeReopen')}
+	>
 		?
 	</button>
 {/if}
@@ -143,7 +158,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: background 0.15s ease, color 0.15s ease;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease;
 		flex-shrink: 0;
 	}
 
@@ -229,7 +246,9 @@
 		font-weight: 600;
 		cursor: pointer;
 		border: 0;
-		transition: background 0.15s ease, transform 0.12s ease;
+		transition:
+			background 0.15s ease,
+			transform 0.12s ease;
 		min-height: 44px;
 	}
 
@@ -271,7 +290,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: color 0.15s ease, transform 0.12s ease;
+		transition:
+			color 0.15s ease,
+			transform 0.12s ease;
 	}
 
 	.welcome-reopen:hover {

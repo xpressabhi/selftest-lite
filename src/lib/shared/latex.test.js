@@ -42,10 +42,10 @@ describe('prepareMathTextForRendering', () => {
 
 	it('does not wrap bare math that appears only inside code spans', () => {
 		expect(prepareMathTextForRendering('Literal syntax uses the `BUILD_TUPLE` opcode.')).toBe(
-			'Literal syntax uses the `BUILD_TUPLE` opcode.',
+			'Literal syntax uses the `BUILD_TUPLE` opcode.'
 		);
 		expect(prepareMathTextForRendering('`snake_case_var` is an identifier')).toBe(
-			'`snake_case_var` is an identifier',
+			'`snake_case_var` is an identifier'
 		);
 		expect(prepareMathTextForRendering('```\nBUILD_TUPLE\n```')).toBe('```\nBUILD_TUPLE\n```');
 	});

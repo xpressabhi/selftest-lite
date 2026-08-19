@@ -19,7 +19,7 @@
 
 	let motionDisabled = $derived(prefersReducedMotion || $isDataSaverActive);
 	let transition = $derived(
-		motionDisabled ? 'none' : `height ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+		motionDisabled ? 'none' : `height ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`
 	);
 
 	function getElementHeight() {
@@ -106,7 +106,7 @@
 	});
 </script>
 
-	<div
+<div
 	{...restProps}
 	bind:this={element}
 	class={`animated-height ${className}`}

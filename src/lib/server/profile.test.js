@@ -13,7 +13,7 @@ import { createDefaultProfile } from '$lib/shared/userProfile';
 function attemptRow({
 	topic = 'Trigonometry',
 	difficulty = 'intermediate',
-	userAnswers = { '0': 'A', '1': 'B' },
+	userAnswers = { 0: 'A', 1: 'B' },
 	test = {
 		questions: [
 			{ question: 'q1', options: ['A', 'B', 'C', 'D'], answer: 'A' },
@@ -41,9 +41,7 @@ describe('aggregateLearnerSignals', () => {
 	});
 
 	it('computes overall accuracy from graded answers', () => {
-		const signals = aggregateLearnerSignals([
-			attemptRow({ userAnswers: { '0': 'A', '1': 'A' } }),
-		]);
+		const signals = aggregateLearnerSignals([attemptRow({ userAnswers: { 0: 'A', 1: 'A' } })]);
 		expect(signals.testsTaken).toBe(1);
 		expect(signals.overallAccuracy).toBe(0.5);
 		expect(signals.lastDifficulty).toBe('intermediate');
@@ -51,13 +49,13 @@ describe('aggregateLearnerSignals', () => {
 
 	it('marks weak topics only above the attempt threshold', () => {
 		const oneAttempt = aggregateLearnerSignals([
-			attemptRow({ userAnswers: { '0': 'B', '1': 'B' } }),
+			attemptRow({ userAnswers: { 0: 'B', 1: 'B' } }),
 		]);
 		expect(oneAttempt.weakTopics).toEqual([]);
 
 		const twoAttempts = aggregateLearnerSignals([
-			attemptRow({ userAnswers: { '0': 'B', '1': 'B' } }),
-			attemptRow({ userAnswers: { '0': 'B', '1': 'B' } }),
+			attemptRow({ userAnswers: { 0: 'B', 1: 'B' } }),
+			attemptRow({ userAnswers: { 0: 'B', 1: 'B' } }),
 		]);
 		expect(twoAttempts.weakTopics).toHaveLength(1);
 		expect(twoAttempts.weakTopics[0].topic).toBe('Trigonometry');
@@ -66,8 +64,8 @@ describe('aggregateLearnerSignals', () => {
 
 	it('marks strong topics at high accuracy', () => {
 		const signals = aggregateLearnerSignals([
-			attemptRow({ userAnswers: { '0': 'A', '1': 'B' } }),
-			attemptRow({ userAnswers: { '0': 'A', '1': 'B' } }),
+			attemptRow({ userAnswers: { 0: 'A', 1: 'B' } }),
+			attemptRow({ userAnswers: { 0: 'A', 1: 'B' } }),
 		]);
 		expect(signals.strongTopics).toHaveLength(1);
 		expect(signals.weakTopics).toHaveLength(0);
@@ -76,7 +74,7 @@ describe('aggregateLearnerSignals', () => {
 	it('skips attempts without answers', () => {
 		const signals = aggregateLearnerSignals([
 			attemptRow({ userAnswers: {} }),
-			attemptRow({ userAnswers: { '0': 'A', '1': 'B' } }),
+			attemptRow({ userAnswers: { 0: 'A', 1: 'B' } }),
 		]);
 		expect(signals.testsTaken).toBe(1);
 		expect(signals.overallAccuracy).toBe(1);
@@ -85,8 +83,8 @@ describe('aggregateLearnerSignals', () => {
 	it('weights recent attempts higher than old ones', () => {
 		const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 		const recent = aggregateLearnerSignals([
-			attemptRow({ userAnswers: { '0': 'A', '1': 'B' } }),
-			attemptRow({ userAnswers: { '0': 'B', '1': 'B' }, submittedAt: oldDate }),
+			attemptRow({ userAnswers: { 0: 'A', 1: 'B' } }),
+			attemptRow({ userAnswers: { 0: 'B', 1: 'B' }, submittedAt: oldDate }),
 		]);
 		// The recent 100% attempt dominates the old 50% attempt.
 		expect(recent.overallAccuracy).toBeGreaterThan(0.9);
@@ -96,52 +94,123 @@ describe('aggregateLearnerSignals', () => {
 describe('resolveDifficulty', () => {
 	it('keeps the request difficulty when not personalized', () => {
 		expect(
-			resolveDifficulty({ profile: null, requestDifficulty: 'expert', difficultyExplicit: false }),
+			resolveDifficulty({
+				profile: null,
+				requestDifficulty: 'expert',
+				difficultyExplicit: false,
+			})
 		).toBe('expert');
 	});
 
 	it('respects an explicit user choice', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'beginner', personalized: true } });
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: 0.9, testsTaken: 10, lastDifficulty: 'intermediate' };
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'beginner', personalized: true },
+		});
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: 0.9,
+			testsTaken: 10,
+			lastDifficulty: 'intermediate',
+		};
 		expect(
-			resolveDifficulty({ profile, signals, requestDifficulty: 'advanced', difficultyExplicit: true }),
+			resolveDifficulty({
+				profile,
+				signals,
+				requestDifficulty: 'advanced',
+				difficultyExplicit: true,
+			})
 		).toBe('advanced');
 	});
 
 	it('escalates a level on high recent accuracy', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'intermediate', personalized: true } });
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: 0.9, testsTaken: 5, lastDifficulty: 'intermediate' };
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'intermediate', personalized: true },
+		});
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: 0.9,
+			testsTaken: 5,
+			lastDifficulty: 'intermediate',
+		};
 		expect(
-			resolveDifficulty({ profile, signals, requestDifficulty: 'intermediate', difficultyExplicit: false }),
+			resolveDifficulty({
+				profile,
+				signals,
+				requestDifficulty: 'intermediate',
+				difficultyExplicit: false,
+			})
 		).toBe('advanced');
 	});
 
 	it('drops a level on low accuracy', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'intermediate', personalized: true } });
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: 0.4, testsTaken: 5, lastDifficulty: 'intermediate' };
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'intermediate', personalized: true },
+		});
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: 0.4,
+			testsTaken: 5,
+			lastDifficulty: 'intermediate',
+		};
 		expect(
-			resolveDifficulty({ profile, signals, requestDifficulty: 'intermediate', difficultyExplicit: false }),
+			resolveDifficulty({
+				profile,
+				signals,
+				requestDifficulty: 'intermediate',
+				difficultyExplicit: false,
+			})
 		).toBe('beginner');
 	});
 
 	it('keeps the level at mid accuracy', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'intermediate', personalized: true } });
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: 0.7, testsTaken: 5, lastDifficulty: 'intermediate' };
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'intermediate', personalized: true },
+		});
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: 0.7,
+			testsTaken: 5,
+			lastDifficulty: 'intermediate',
+		};
 		expect(
-			resolveDifficulty({ profile, signals, requestDifficulty: 'intermediate', difficultyExplicit: false }),
+			resolveDifficulty({
+				profile,
+				signals,
+				requestDifficulty: 'intermediate',
+				difficultyExplicit: false,
+			})
 		).toBe('intermediate');
 	});
 
 	it('stays at beginner without dropping below the floor', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'beginner', personalized: true } });
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: 0.1, testsTaken: 5, lastDifficulty: 'beginner' };
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'beginner', personalized: true },
+		});
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: 0.1,
+			testsTaken: 5,
+			lastDifficulty: 'beginner',
+		};
 		expect(
-			resolveDifficulty({ profile, signals, requestDifficulty: 'beginner', difficultyExplicit: false }),
+			resolveDifficulty({
+				profile,
+				signals,
+				requestDifficulty: 'beginner',
+				difficultyExplicit: false,
+			})
 		).toBe('beginner');
 	});
 
 	it('uses per-topic accuracy when the topic matches', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'beginner', personalized: true } });
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'beginner', personalized: true },
+		});
 		const signals = {
 			weakTopics: [{ topic: 'Thermodynamics', accuracy: 0.3, attempts: 3 }],
 			strongTopics: [],
@@ -156,15 +225,28 @@ describe('resolveDifficulty', () => {
 				requestDifficulty: 'intermediate',
 				difficultyExplicit: false,
 				topicKeywords: ['thermodynamics second law'],
-			}),
+			})
 		).toBe('beginner');
 	});
 
 	it('falls back to comfort when there is no attempt history', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'expert', personalized: true } });
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: null, testsTaken: 0, lastDifficulty: null };
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'expert', personalized: true },
+		});
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: null,
+			testsTaken: 0,
+			lastDifficulty: null,
+		};
 		expect(
-			resolveDifficulty({ profile, signals, requestDifficulty: 'beginner', difficultyExplicit: false }),
+			resolveDifficulty({
+				profile,
+				signals,
+				requestDifficulty: 'beginner',
+				difficultyExplicit: false,
+			})
 		).toBe('expert');
 	});
 });
@@ -209,7 +291,11 @@ describe('buildProfileContext', () => {
 	it('returns null when not personalized', () => {
 		expect(buildProfileContext({ profile: null })).toBe(null);
 		expect(
-			buildProfileContext({ profile: baseProfile({ preferences: { language: null, difficultyComfort: null, personalized: false } }) }),
+			buildProfileContext({
+				profile: baseProfile({
+					preferences: { language: null, difficultyComfort: null, personalized: false },
+				}),
+			})
 		).toBe(null);
 	});
 
@@ -257,10 +343,18 @@ describe('buildProfileContext', () => {
 	});
 
 	it('omits warm-up rules at beginner', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: 'beginner', personalized: true } });
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: 'beginner', personalized: true },
+		});
 		const context = buildProfileContext({
 			profile,
-			signals: { weakTopics: [], strongTopics: [], overallAccuracy: 0.5, testsTaken: 2, lastDifficulty: 'beginner' },
+			signals: {
+				weakTopics: [],
+				strongTopics: [],
+				overallAccuracy: 0.5,
+				testsTaken: 2,
+				lastDifficulty: 'beginner',
+			},
 			resolvedDifficulty: 'beginner',
 			warmUpDifficulty: null,
 		});
@@ -268,7 +362,9 @@ describe('buildProfileContext', () => {
 	});
 
 	it('does not inject weak topics unrelated to the requested topic', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: null, personalized: true } });
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: null, personalized: true },
+		});
 		const signals = {
 			weakTopics: [{ topic: 'Python tuples', accuracy: 0.3333, attempts: 2 }],
 			strongTopics: [],
@@ -289,7 +385,9 @@ describe('buildProfileContext', () => {
 	});
 
 	it('keeps weak topics related to the requested topic', () => {
-		const profile = baseProfile({ preferences: { language: null, difficultyComfort: null, personalized: true } });
+		const profile = baseProfile({
+			preferences: { language: null, difficultyComfort: null, personalized: true },
+		});
 		const signals = {
 			weakTopics: [{ topic: 'Python tuples', accuracy: 0.3333, attempts: 2 }],
 			strongTopics: [],
@@ -348,9 +446,15 @@ describe('buildTailoredSummary', () => {
 			examTarget: { examId: 'jee-main', name: 'JEE Main' },
 			declaredFocus: ['Trigonometry', 'Kinematics'],
 		});
-		const signals = { weakTopics: [], strongTopics: [], overallAccuracy: 0.7, testsTaken: 5, lastDifficulty: 'intermediate' };
+		const signals = {
+			weakTopics: [],
+			strongTopics: [],
+			overallAccuracy: 0.7,
+			testsTaken: 5,
+			lastDifficulty: 'intermediate',
+		};
 		expect(buildTailoredSummary({ profile, signals, resolvedDifficulty: 'intermediate' })).toBe(
-			'JEE Main • intermediate • focus: Trigonometry, Kinematics',
+			'JEE Main • intermediate • focus: Trigonometry, Kinematics'
 		);
 	});
 });

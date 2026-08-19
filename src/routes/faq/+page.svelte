@@ -12,7 +12,10 @@
 
 <svelte:head>
 	<title>{$t('faqHeroTitle')} | selftest.in</title>
-	<meta name="description" content="Frequently asked questions about selftest.in quizzes, privacy, sync, and AI generation." />
+	<meta
+		name="description"
+		content="Frequently asked questions about selftest.in quizzes, privacy, sync, and AI generation."
+	/>
 </svelte:head>
 
 <section class="container py-4 py-md-5">

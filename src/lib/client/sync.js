@@ -32,7 +32,7 @@ const STATE_KEY_TO_STORAGE = {
 	selftest_user_profile: STORAGE_KEYS.USER_PROFILE,
 };
 const STORAGE_TO_STATE_KEY = Object.fromEntries(
-	Object.entries(STATE_KEY_TO_STORAGE).map(([key, storageKey]) => [storageKey, key]),
+	Object.entries(STATE_KEY_TO_STORAGE).map(([key, storageKey]) => [storageKey, key])
 );
 
 function readPendingAttempts() {
@@ -55,7 +55,7 @@ function writePendingAttempts(attempts) {
 	try {
 		window.localStorage.setItem(
 			STORAGE_KEYS.PENDING_ATTEMPTS,
-			JSON.stringify(attempts.slice(-PENDING_LIMIT)),
+			JSON.stringify(attempts.slice(-PENDING_LIMIT))
 		);
 	} catch {
 		// Best-effort queue persistence.
@@ -64,11 +64,7 @@ function writePendingAttempts(attempts) {
 
 export function queuePendingAttempt(attempt) {
 	const pending = readPendingAttempts().filter(
-		(item) =>
-			!(
-				item.testId === attempt.testId &&
-				item.submittedAt === attempt.submittedAt
-			),
+		(item) => !(item.testId === attempt.testId && item.submittedAt === attempt.submittedAt)
 	);
 	pending.push({
 		...attempt,
@@ -99,9 +95,7 @@ function serializeAttempt(attempt) {
 		totalQuestions: Number.isFinite(Number(attempt.totalQuestions))
 			? Number(attempt.totalQuestions)
 			: null,
-		timeTaken: Number.isFinite(Number(attempt.timeTaken))
-			? Number(attempt.timeTaken)
-			: null,
+		timeTaken: Number.isFinite(Number(attempt.timeTaken)) ? Number(attempt.timeTaken) : null,
 		submittedAt: attempt.submittedAt || new Date().toISOString(),
 	};
 }
@@ -184,7 +178,7 @@ export function mergeRemoteAttemptsIntoHistory(history, remoteAttempts) {
 	const historyMap = new Map(
 		normalizedHistory
 			.filter((entry) => entry?.id !== undefined && entry?.id !== null)
-			.map((entry) => [String(entry.id), entry]),
+			.map((entry) => [String(entry.id), entry])
 	);
 
 	for (const attempt of remoteAttempts) {
@@ -196,9 +190,7 @@ export function mergeRemoteAttemptsIntoHistory(history, remoteAttempts) {
 		const submittedAtMs = attempt.submittedAt
 			? new Date(attempt.submittedAt).getTime()
 			: Date.now();
-		const safeSubmittedAtMs = Number.isNaN(submittedAtMs)
-			? Date.now()
-			: submittedAtMs;
+		const safeSubmittedAtMs = Number.isNaN(submittedAtMs) ? Date.now() : submittedAtMs;
 
 		const existing = historyMap.get(String(testId));
 		const existingTimestamp = Number(existing?.timestamp || 0);
@@ -257,16 +249,11 @@ export async function hydrateHistoryFromServer() {
 		// attempts still exist server-side.
 		const hiddenIds = new Set(getHiddenHistoryIds());
 		const visibleAttempts = remoteAttempts.filter(
-			(attempt) => !hiddenIds.has(String(attempt?.testId)),
+			(attempt) => !hiddenIds.has(String(attempt?.testId))
 		);
 
-		const mergedHistory = mergeRemoteAttemptsIntoHistory(
-			getHistory(),
-			visibleAttempts,
-		);
-		const localById = new Map(
-			getHistory().map((item) => [String(item.id), item]),
-		);
+		const mergedHistory = mergeRemoteAttemptsIntoHistory(getHistory(), visibleAttempts);
+		const localById = new Map(getHistory().map((item) => [String(item.id), item]));
 		let changed = false;
 		for (const entry of mergedHistory) {
 			const local = localById.get(String(entry.id));
@@ -346,8 +333,8 @@ export function hydrateUserState() {
 					Object.entries(localStorageSnapshot).map(([key, value]) => [
 						STORAGE_TO_STATE_KEY[key],
 						value,
-					]),
-				),
+					])
+				)
 			);
 
 			let changed = false;
@@ -397,7 +384,7 @@ async function pushUserState() {
 		Object.entries(snapshot).map(([storageKey, value]) => [
 			STORAGE_TO_STATE_KEY[storageKey],
 			value,
-		]),
+		])
 	);
 
 	try {

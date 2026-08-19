@@ -50,7 +50,7 @@ export async function GET({ request, url, cookies }) {
 				{
 					status: 429,
 					headers: rateLimitHeaders(rateLimit),
-				},
+				}
 			);
 		}
 
@@ -103,16 +103,13 @@ export async function GET({ request, url, cookies }) {
 				durationMs: Date.now() - startedAt,
 				metadata: { testId: id },
 			});
-			return json(
-				{ error: 'Test not found', code: 'TEST_NOT_FOUND' },
-				{ status: 404 },
-			);
+			return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 		}
 
-		const myAttempt = await getMyAttemptForIdentity(
-			testRecord.id,
-			{ userId: user?.id, clientId },
-		);
+		const myAttempt = await getMyAttemptForIdentity(testRecord.id, {
+			userId: user?.id,
+			clientId,
+		});
 		let mappedAttempt = null;
 		if (myAttempt) {
 			mappedAttempt = {
@@ -144,7 +141,7 @@ export async function GET({ request, url, cookies }) {
 		console.error('Database error:', error);
 		return json(
 			{ error: 'An error occurred while fetching the test', code: 'TEST_FETCH_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

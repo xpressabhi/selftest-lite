@@ -85,7 +85,9 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 	const contentWidth = Math.max(160, cardWidth - 32);
 	const questionResult = await measureText(question.question, '18px Inter', contentWidth, 27);
 	const optionResults = await Promise.all(
-		(question.options || []).map((option) => measureText(option, '14px Inter', contentWidth, 20)),
+		(question.options || []).map((option) =>
+			measureText(option, '14px Inter', contentWidth, 20)
+		)
 	);
 
 	if (!questionResult || optionResults.some((result) => !result)) {
@@ -95,7 +97,7 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 	const questionHeight = Math.max(27, questionResult.height);
 	const optionsHeight = optionResults.reduce(
 		(total, result) => total + Math.max(48, result.height + 16),
-		0,
+		0
 	);
 	const optionGaps = Math.max(0, optionResults.length - 1) * 8;
 

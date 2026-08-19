@@ -16,7 +16,9 @@ function getSystemLanguage() {
 	if (typeof navigator === 'undefined') {
 		return 'english';
 	}
-	const locales = navigator.languages?.length ? navigator.languages : [navigator.language || 'en'];
+	const locales = navigator.languages?.length
+		? navigator.languages
+		: [navigator.language || 'en'];
 	return locales[0]?.toLowerCase().startsWith('hi') ? 'hindi' : 'english';
 }
 
@@ -43,7 +45,8 @@ export function initializePreferences() {
 	applyTheme(savedTheme);
 
 	const savedDataSaver = window.localStorage.getItem(DATA_SAVER_KEY);
-	const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+	const connection =
+		navigator.connection || navigator.mozConnection || navigator.webkitConnection;
 	const slowConnection =
 		Boolean(connection?.saveData) ||
 		['slow-2g', '2g', '3g'].includes(String(connection?.effectiveType || '').toLowerCase());

@@ -32,12 +32,7 @@ export const VALID_PROFESSIONS = [
 
 export const VALID_LANGUAGES = ['english', 'hindi'];
 
-export const VALID_DIFFICULTIES = [
-	'beginner',
-	'intermediate',
-	'advanced',
-	'expert',
-];
+export const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 export const MAX_SUBJECTS = 12;
 export const MAX_FOCUS_TOPICS = 10;
@@ -99,15 +94,17 @@ function normalizeExamTarget(value) {
 	}
 	return {
 		examId: value.examId.trim().slice(0, 100),
-		name: typeof value.name === 'string' ? value.name.trim().slice(0, MAX_EXAM_NAME_LENGTH) : null,
+		name:
+			typeof value.name === 'string'
+				? value.name.trim().slice(0, MAX_EXAM_NAME_LENGTH)
+				: null,
 	};
 }
 
 function normalizePreferences(value) {
 	const preferences = isPlainObject(value) ? value : {};
 	const language =
-		typeof preferences.language === 'string' &&
-		VALID_LANGUAGES.includes(preferences.language)
+		typeof preferences.language === 'string' && VALID_LANGUAGES.includes(preferences.language)
 			? preferences.language
 			: null;
 	const difficultyComfort =
@@ -140,7 +137,11 @@ export function normalizeProfile(value) {
 	}
 
 	const preferences = normalizePreferences(value.preferences);
-	if (!preferences.personalized && preferences.language === null && preferences.difficultyComfort === null) {
+	if (
+		!preferences.personalized &&
+		preferences.language === null &&
+		preferences.difficultyComfort === null
+	) {
 		// A fully-empty profile adds no value; treat as absent.
 		return null;
 	}

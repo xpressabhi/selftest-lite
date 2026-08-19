@@ -16,14 +16,14 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 
 ## Tech Stack
 
-| Area | Technology |
-| --- | --- |
-| Framework | SvelteKit 2 + Vite 8 |
-| UI | Svelte 5 + Tailwind CSS 4 |
-| AI | Google Gemini (`/api/generate`), Gemini Flash Lite (`/api/explain`) |
-| Database | Neon PostgreSQL (`@neondatabase/serverless`) |
-| PWA | `vite-plugin-pwa` |
-| Validation | Zod + structured JSON output |
+| Area       | Technology                                                          |
+| ---------- | ------------------------------------------------------------------- |
+| Framework  | SvelteKit 2 + Vite 8                                                |
+| UI         | Svelte 5 + Tailwind CSS 4                                           |
+| AI         | Google Gemini (`/api/generate`), Gemini Flash Lite (`/api/explain`) |
+| Database   | Neon PostgreSQL (`@neondatabase/serverless`)                        |
+| PWA        | `vite-plugin-pwa`                                                   |
+| Validation | Zod + structured JSON output                                        |
 
 ## Prerequisites
 
@@ -52,13 +52,13 @@ Open the URL printed by Vite (normally <http://localhost:5173>).
 
 ## Environment Variables
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | Yes | Google AI Studio API key for quiz generation |
-| `DATABASE_URL` | No* | Neon PostgreSQL connection string. *Required for persistence, rate limiting, and admin stats. Without it the app still runs but nothing is stored and admin features are disabled. |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | No | Enable the admin dashboard (`/admin`) and API stats |
-| `ADMIN_SESSION_SECRET` | No | Stable secret for admin sessions; if unset, sessions are derived from the admin credentials |
-| `PUBLIC_GOOGLE_CLIENT_ID` | No | Google OAuth 2.0 Web client ID for Google Sign-In. Enables accounts, server-saved test history and per-user activity tracking (anonymous `client_id` tracking works without it) |
+| Variable                            | Required | Description                                                                                                                                                                        |
+| ----------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`                    | Yes      | Google AI Studio API key for quiz generation                                                                                                                                       |
+| `DATABASE_URL`                      | No*      | Neon PostgreSQL connection string. *Required for persistence, rate limiting, and admin stats. Without it the app still runs but nothing is stored and admin features are disabled. |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | No       | Enable the admin dashboard (`/admin`) and API stats                                                                                                                                |
+| `ADMIN_SESSION_SECRET`              | No       | Stable secret for admin sessions; if unset, sessions are derived from the admin credentials                                                                                        |
+| `PUBLIC_GOOGLE_CLIENT_ID`           | No       | Google OAuth 2.0 Web client ID for Google Sign-In. Enables accounts, server-saved test history and per-user activity tracking (anonymous `client_id` tracking works without it)    |
 
 ## Scripts
 
@@ -73,21 +73,21 @@ npm run test     # vitest unit tests
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-| --- | --- | --- |
-| `/api/generate` | POST | Generate a quiz/exam paper from topic, difficulty, language, etc. (personalized when a profile exists; response includes `personalized` + `tailoredSummary`) |
-| `/api/explain` | POST | Generate an explanation for a question/answer |
-| `/api/test?id=` | GET | Fetch a stored test paper (includes `myAttempt` for the current user/device) |
-| `/api/test/submit` | POST | Submit answers, grade, and store an attempt (attributed to user or anonymous `client_id`) |
-| `/api/auth/google` | POST | Exchange a Google id_token for a session cookie (backfills anonymous activity) |
-| `/api/auth/me` | GET | Resolve the current session (slides expiry) |
-| `/api/auth/logout` | POST | Revoke the session |
-| `/api/user/history` | GET/POST | Pull/push server-saved submissions for the current identity |
-| `/api/user/state` | GET/POST | Pull/push synced bookmarks, quiz presets & user profile for the current identity |
-| `/api/user/profile` | GET/POST/DELETE | Read/save/reset the learner profile (class, exam target, subjects, preferences, focus topics) |
-| `/api/user/profile/insights` | GET | Computed learner signals: weak/strong topics, accuracy, suggested difficulty |
-| `/api/admin/login` / `/api/admin/logout` | POST | Admin session management |
-| `/api/admin/stats` | GET | Usage analytics (admin only) |
+| Endpoint                                 | Method          | Description                                                                                                                                                  |
+| ---------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/api/generate`                          | POST            | Generate a quiz/exam paper from topic, difficulty, language, etc. (personalized when a profile exists; response includes `personalized` + `tailoredSummary`) |
+| `/api/explain`                           | POST            | Generate an explanation for a question/answer                                                                                                                |
+| `/api/test?id=`                          | GET             | Fetch a stored test paper (includes `myAttempt` for the current user/device)                                                                                 |
+| `/api/test/submit`                       | POST            | Submit answers, grade, and store an attempt (attributed to user or anonymous `client_id`)                                                                    |
+| `/api/auth/google`                       | POST            | Exchange a Google id_token for a session cookie (backfills anonymous activity)                                                                               |
+| `/api/auth/me`                           | GET             | Resolve the current session (slides expiry)                                                                                                                  |
+| `/api/auth/logout`                       | POST            | Revoke the session                                                                                                                                           |
+| `/api/user/history`                      | GET/POST        | Pull/push server-saved submissions for the current identity                                                                                                  |
+| `/api/user/state`                        | GET/POST        | Pull/push synced bookmarks, quiz presets & user profile for the current identity                                                                             |
+| `/api/user/profile`                      | GET/POST/DELETE | Read/save/reset the learner profile (class, exam target, subjects, preferences, focus topics)                                                                |
+| `/api/user/profile/insights`             | GET             | Computed learner signals: weak/strong topics, accuracy, suggested difficulty                                                                                 |
+| `/api/admin/login` / `/api/admin/logout` | POST            | Admin session management                                                                                                                                     |
+| `/api/admin/stats`                       | GET             | Usage analytics (admin only)                                                                                                                                 |
 
 All endpoints are rate-limited. See `src/lib/server/rateLimiter.js`.
 

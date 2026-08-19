@@ -27,7 +27,5 @@ export function stripAnswerKey(record) {
 		}),
 	};
 
-	return Array.isArray(record.questions)
-		? redacted
-		: { ...record, test: redacted };
+	return Array.isArray(record.questions) ? redacted : { ...record, test: redacted };
 }

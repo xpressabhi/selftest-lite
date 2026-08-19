@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	mergeStateSnapshots,
-	validateStateValue,
-	isSyncedStateKey,
-} from '../shared/userState';
+import { mergeStateSnapshots, validateStateValue, isSyncedStateKey } from '../shared/userState';
 import { mergeRemoteAttemptsIntoHistory } from './sync.js';
 import { normalizeClientId } from '../server/auth.js';
 import { normalizeUserIdValue } from '../server/storage.js';
@@ -39,22 +35,25 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 	});
 
 	it('merges a remote attempt into history keyed by test id', () => {
-		const merged = mergeRemoteAttemptsIntoHistory([], [
-			{
-				testId: 42,
-				test: { topic: 'Chemistry' },
-				userAnswers: { '0': 'A' },
-				score: 8,
-				totalQuestions: 10,
-				timeTaken: 300,
-				submittedAt: '2026-08-01T10:00:00.000Z',
-			},
-		]);
+		const merged = mergeRemoteAttemptsIntoHistory(
+			[],
+			[
+				{
+					testId: 42,
+					test: { topic: 'Chemistry' },
+					userAnswers: { 0: 'A' },
+					score: 8,
+					totalQuestions: 10,
+					timeTaken: 300,
+					submittedAt: '2026-08-01T10:00:00.000Z',
+				},
+			]
+		);
 		expect(merged).toHaveLength(1);
 		expect(merged[0]).toMatchObject({
 			id: 42,
 			topic: 'Chemistry',
-			userAnswers: { '0': 'A' },
+			userAnswers: { 0: 'A' },
 			score: 8,
 			totalQuestions: 10,
 			timeTaken: 300,
@@ -67,7 +66,7 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 			{
 				id: 42,
 				topic: 'Old',
-				userAnswers: { '0': 'B' },
+				userAnswers: { 0: 'B' },
 				score: 5,
 				timestamp: new Date('2026-07-01T10:00:00.000Z').getTime(),
 			},
@@ -76,7 +75,7 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 			{
 				testId: 42,
 				test: { topic: 'New' },
-				userAnswers: { '0': 'A' },
+				userAnswers: { 0: 'A' },
 				score: 9,
 				totalQuestions: 10,
 				timeTaken: 120,
@@ -93,7 +92,7 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 			{
 				id: 42,
 				topic: 'Local Newer',
-				userAnswers: { '0': 'B' },
+				userAnswers: { 0: 'B' },
 				score: 7,
 				timestamp: new Date('2026-09-01T10:00:00.000Z').getTime(),
 			},
@@ -102,7 +101,7 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 			{
 				testId: 42,
 				test: { topic: 'Remote Older' },
-				userAnswers: { '0': 'A' },
+				userAnswers: { 0: 'A' },
 				score: 9,
 				totalQuestions: 10,
 				timeTaken: 120,
@@ -114,11 +113,14 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 	});
 
 	it('skips remote attempts without a valid test payload', () => {
-		const merged = mergeRemoteAttemptsIntoHistory([], [
-			{ testId: 0, test: null },
-			{ testId: 'abc', test: {} },
-			{ testId: 7, test: null },
-		]);
+		const merged = mergeRemoteAttemptsIntoHistory(
+			[],
+			[
+				{ testId: 0, test: null },
+				{ testId: 'abc', test: {} },
+				{ testId: 7, test: null },
+			]
+		);
 		expect(merged).toHaveLength(0);
 	});
 });
@@ -126,7 +128,7 @@ describe('sync (mergeRemoteAttemptsIntoHistory)', () => {
 describe('auth (normalizeClientId)', () => {
 	it('accepts a well-formed client id', () => {
 		expect(normalizeClientId('c-3f2a1b4c-9d8e-4f7a-8b2c-1d2e3f4a5b6c')).toBe(
-			'c-3f2a1b4c-9d8e-4f7a-8b2c-1d2e3f4a5b6c',
+			'c-3f2a1b4c-9d8e-4f7a-8b2c-1d2e3f4a5b6c'
 		);
 	});
 
@@ -142,7 +144,7 @@ describe('auth (normalizeClientId)', () => {
 		expect(normalizeClientId(42)).toBeNull();
 		expect(normalizeClientId(undefined)).toBeNull();
 		expect(normalizeClientId('  c-123456789012345678901234567890  ')).toBe(
-			'c-123456789012345678901234567890',
+			'c-123456789012345678901234567890'
 		);
 	});
 });
@@ -189,9 +191,7 @@ describe('userState (mergeStateSnapshots)', () => {
 
 	it('merges question bookmarks deduped by question+answer', () => {
 		const remote = {
-			[BOOKMARKS]: JSON.stringify([
-				{ question: 'Q1', answer: 'A1', bookmarkedAt: 1 },
-			]),
+			[BOOKMARKS]: JSON.stringify([{ question: 'Q1', answer: 'A1', bookmarkedAt: 1 }]),
 		};
 		const local = {
 			[BOOKMARKS]: JSON.stringify([
@@ -284,9 +284,9 @@ describe('userState (validateStateValue)', () => {
 
 	it('accepts JSON strings and objects, rejects scalars and invalid JSON', () => {
 		expect(validateStateValue('[]', 'selftest_bookmarks')).toBe('[]');
-		expect(
-			validateStateValue({ question: 'Q' }, 'selftest_bookmarks'),
-		).toBe(JSON.stringify({ question: 'Q' }));
+		expect(validateStateValue({ question: 'Q' }, 'selftest_bookmarks')).toBe(
+			JSON.stringify({ question: 'Q' })
+		);
 		expect(validateStateValue('42', 'selftest_bookmarks')).toBeNull();
 		expect(validateStateValue('"hello"', 'selftest_bookmarks')).toBeNull();
 		expect(validateStateValue('{broken', 'selftest_bookmarks')).toBeNull();

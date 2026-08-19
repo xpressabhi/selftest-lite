@@ -124,9 +124,7 @@
 
 	function toggleInList(listKey, value) {
 		const current = draft[listKey] || [];
-		const index = current.findIndex(
-			(item) => item.toLowerCase() === value.toLowerCase(),
-		);
+		const index = current.findIndex((item) => item.toLowerCase() === value.toLowerCase());
 		if (index >= 0) {
 			draft[listKey] = current.filter((_, itemIndex) => itemIndex !== index);
 		} else {
@@ -240,7 +238,7 @@
 
 	const signals = $derived($profileInsights?.signals || null);
 	const percent = $derived((value) =>
-		typeof value === 'number' ? `${Math.round(value * 100)}%` : '—',
+		typeof value === 'number' ? `${Math.round(value * 100)}%` : '—'
 	);
 </script>
 
@@ -248,7 +246,10 @@
 	<title>{$t('profilePageTitle')} | selftest.in</title>
 </svelte:head>
 
-<section class="container py-4 py-md-5" style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));">
+<section
+	class="container py-4 py-md-5"
+	style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));"
+>
 	<div class="mx-auto profile-wrap">
 		<h1 class="h3 fw-bold mb-3">{$t('profilePageTitle')}</h1>
 
@@ -259,7 +260,10 @@
 					<div class="alert alert-danger small mb-3" role="alert">{signInError}</div>
 				{/if}
 				<div class="d-flex justify-content-center">
-					<GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSigningIn} />
+					<GoogleSignInButton
+						onCredential={handleGoogleCredential}
+						disabled={isSigningIn}
+					/>
 				</div>
 				<p class="text-muted small mt-3 mb-0">{$t('signInAnonymousNote')}</p>
 			</div>
@@ -269,253 +273,327 @@
 					<div class="alert alert-success mb-0" role="status">{$t('profileSaved')}</div>
 				{/if}
 				{#if resetToast}
-					<div class="alert alert-success mb-0" role="status">{$t('profileResetDone')}</div>
+					<div class="alert alert-success mb-0" role="status">
+						{$t('profileResetDone')}
+					</div>
 				{/if}
 				{#if loadError}
-					<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0" role="alert">
+					<div
+						class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0"
+						role="alert"
+					>
 						<span>{loadError}</span>
-						<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => (lastUserId = null)}>
+						<button
+							class="btn btn-sm btn-outline-secondary"
+							type="button"
+							onclick={() => (lastUserId = null)}
+						>
 							{$t('tryAgain')}
 						</button>
 					</div>
 				{/if}
 				{#if !loadError}
-
-				<section class="card p-4">
-					<h2 class="h5 fw-bold mb-3">{$t('profileSectionLearner')}</h2>
-					<div class="row g-3">
-						<div class="col-12 col-sm-6">
-							<label class="form-label fw-semibold" for="profile-class">{$t('profileWizardClassTitle')}</label>
-							<select
-								id="profile-class"
-								class="form-select"
-								bind:value={draft.class}
-							>
-								<option value="">{$t('profileWizardLanguageDefault')}</option>
-								{#each CLASS_OPTIONS as option (option.value)}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
-						</div>
-						{#if draft.class === 'working-professional'}
+					<section class="card p-4">
+						<h2 class="h5 fw-bold mb-3">{$t('profileSectionLearner')}</h2>
+						<div class="row g-3">
 							<div class="col-12 col-sm-6">
-								<label class="form-label fw-semibold" for="profile-profession">{$t('profileWizardProfessionTitle')}</label>
+								<label class="form-label fw-semibold" for="profile-class"
+									>{$t('profileWizardClassTitle')}</label
+								>
 								<select
-									id="profile-profession"
+									id="profile-class"
 									class="form-select"
-									bind:value={draft.profession}
+									bind:value={draft.class}
 								>
 									<option value="">{$t('profileWizardLanguageDefault')}</option>
-									{#each PROFESSION_OPTIONS as option (option.value)}
+									{#each CLASS_OPTIONS as option (option.value)}
 										<option value={option.value}>{option.label}</option>
 									{/each}
 								</select>
 							</div>
-						{/if}
-						<div class="col-12 col-sm-6">
-							<label class="form-label fw-semibold" for="profile-exam">{$t('profileWizardExamTitle')}</label>
-							<input
-								id="profile-exam"
-								class="form-control"
-								type="text"
-								placeholder={$t('profileWizardSearchExam')}
-								bind:value={examQuery}
-								oninput={() => {
-									if (draft.examTarget && examQuery !== draft.examTarget.name) {
-										draft.examTarget = null;
-									}
-								}}
-							/>
-							{#if filteredExams.length > 0}
-								<ul class="exam-suggestions">
-									{#each filteredExams as exam (exam.id)}
-										<li>
-											<button type="button" class="suggestion-button" onclick={() => selectExam(exam)}>
-												{exam.name}
-											</button>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-							{#if draft.examTarget}
-								<button type="button" class="chip-selected mt-2" onclick={clearExam}>
-									{draft.examTarget.name} <span aria-hidden="true">×</span>
-								</button>
-							{/if}
-						</div>
-						<div class="col-12">
-							<span class="form-label fw-semibold d-block">{$t('profileWizardSubjectsTitle')}</span>
-							<div class="chip-grid">
-								{#each (draft.class === 'working-professional' ? PROFESSIONAL_SUBJECT_SUGGESTIONS : SUBJECT_SUGGESTIONS) as subject (subject)}
-									<button
-										type="button"
-										class="chip"
-										class:selected={draft.subjects.some(
-											(item) => item.toLowerCase() === subject.toLowerCase(),
-										)}
-										onclick={() => toggleInList('subjects', subject)}
+							{#if draft.class === 'working-professional'}
+								<div class="col-12 col-sm-6">
+									<label class="form-label fw-semibold" for="profile-profession"
+										>{$t('profileWizardProfessionTitle')}</label
 									>
-										{subject}
-									</button>
-								{/each}
-							</div>
-							<div class="add-row">
+									<select
+										id="profile-profession"
+										class="form-select"
+										bind:value={draft.profession}
+									>
+										<option value=""
+											>{$t('profileWizardLanguageDefault')}</option
+										>
+										{#each PROFESSION_OPTIONS as option (option.value)}
+											<option value={option.value}>{option.label}</option>
+										{/each}
+									</select>
+								</div>
+							{/if}
+							<div class="col-12 col-sm-6">
+								<label class="form-label fw-semibold" for="profile-exam"
+									>{$t('profileWizardExamTitle')}</label
+								>
 								<input
+									id="profile-exam"
 									class="form-control"
 									type="text"
-									placeholder={$t('profileWizardAddSubjectPlaceholder')}
-									bind:value={subjectInput}
-									onkeydown={(event) => {
-										if (event.key === 'Enter') {
-											event.preventDefault();
-											addSubject();
+									placeholder={$t('profileWizardSearchExam')}
+									bind:value={examQuery}
+									oninput={() => {
+										if (
+											draft.examTarget &&
+											examQuery !== draft.examTarget.name
+										) {
+											draft.examTarget = null;
 										}
 									}}
 								/>
-								<button type="button" class="btn btn-outline-primary" onclick={addSubject}>
-									{$t('profileWizardAdd')}
-								</button>
-							</div>
-						</div>
-						<div class="col-12 col-sm-6">
-							<label class="form-label fw-semibold" for="profile-language">{$t('profileWizardLanguageLabel')}</label>
-							<select id="profile-language" class="form-select" bind:value={draft.preferences.language}>
-								<option value="">{$t('profileWizardLanguageDefault')}</option>
-								<option value="english">English</option>
-								<option value="hindi">हिन्दी</option>
-							</select>
-						</div>
-						<div class="col-12 col-sm-6">
-							<label class="form-label fw-semibold" for="profile-comfort">{$t('profileWizardComfortLabel')}</label>
-							<select id="profile-comfort" class="form-select" bind:value={draft.preferences.difficultyComfort}>
-								<option value="">{$t('profileWizardComfortDefault')}</option>
-								<option value="beginner">{$t('beginner')}</option>
-								<option value="intermediate">{$t('intermediate')}</option>
-								<option value="advanced">{$t('advanced')}</option>
-								<option value="expert">{$t('expert')}</option>
-							</select>
-						</div>
-					</div>
-				</section>
-
-				<section class="card p-4">
-					<h2 class="h5 fw-bold mb-1">{$t('profileSectionFocus')}</h2>
-					<p class="text-muted small mb-3">{$t('profileSaveHint')}</p>
-					{#if draft.declaredFocus.length > 0}
-						<div class="chip-grid mb-2">
-							{#each draft.declaredFocus as topic (topic)}
-								<button type="button" class="chip selected" onclick={() => toggleInList('declaredFocus', topic)}>
-									{topic} <span aria-hidden="true">×</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-					<div class="add-row">
-						<input
-							class="form-control"
-							type="text"
-							placeholder={$t('profileWizardAddFocusPlaceholder')}
-							bind:value={focusInput}
-							onkeydown={(event) => {
-								if (event.key === 'Enter') {
-									event.preventDefault();
-									addFocus();
-								}
-							}}
-						/>
-						<button type="button" class="btn btn-outline-primary" onclick={addFocus}>
-							{$t('profileWizardAdd')}
-						</button>
-					</div>
-				</section>
-
-				<section class="card p-4">
-					<h2 class="h5 fw-bold mb-3">{$t('profileSectionInsights')}</h2>
-					{#if !signals || signals.testsTaken === 0}
-						<p class="text-muted small mb-0">{$t('profileInsightsEmpty')}</p>
-					{:else}
-						<p class="text-muted small">
-							{$t('profileInsightsTestsTaken', { count: signals.testsTaken })}
-							{#if typeof signals.overallAccuracy === 'number'}
-								· {$t('profileInsightsOverallAccuracy', { percent: percent(signals.overallAccuracy) })}
-							{/if}
-						</p>
-						<div class="row g-3 mt-1">
-							<div class="col-12 col-sm-6">
-								<h3 class="h6 fw-bold text-danger">{$t('profileWeakTopics')}</h3>
-								{#if signals.weakTopics.length === 0}
-									<p class="text-muted small">—</p>
-								{:else}
-									<ul class="insight-list">
-										{#each signals.weakTopics as topic (topic.topic)}
+								{#if filteredExams.length > 0}
+									<ul class="exam-suggestions">
+										{#each filteredExams as exam (exam.id)}
 											<li>
-												<span class="fw-semibold">{topic.topic}</span>
-												<span class="text-muted small">
-													{$t('profileTopicAccuracy', {
-														percent: percent(topic.accuracy),
-														count: topic.attempts,
-													})}
-												</span>
+												<button
+													type="button"
+													class="suggestion-button"
+													onclick={() => selectExam(exam)}
+												>
+													{exam.name}
+												</button>
 											</li>
 										{/each}
 									</ul>
 								{/if}
-							</div>
-							<div class="col-12 col-sm-6">
-								<h3 class="h6 fw-bold text-success">{$t('profileStrongTopics')}</h3>
-								{#if signals.strongTopics.length === 0}
-									<p class="text-muted small">—</p>
-								{:else}
-									<ul class="insight-list">
-										{#each signals.strongTopics as topic (topic.topic)}
-											<li>
-												<span class="fw-semibold">{topic.topic}</span>
-												<span class="text-muted small">
-													{$t('profileTopicAccuracy', {
-														percent: percent(topic.accuracy),
-														count: topic.attempts,
-													})}
-												</span>
-											</li>
-										{/each}
-									</ul>
+								{#if draft.examTarget}
+									<button
+										type="button"
+										class="chip-selected mt-2"
+										onclick={clearExam}
+									>
+										{draft.examTarget.name} <span aria-hidden="true">×</span>
+									</button>
 								{/if}
 							</div>
+							<div class="col-12">
+								<span class="form-label fw-semibold d-block"
+									>{$t('profileWizardSubjectsTitle')}</span
+								>
+								<div class="chip-grid">
+									{#each draft.class === 'working-professional' ? PROFESSIONAL_SUBJECT_SUGGESTIONS : SUBJECT_SUGGESTIONS as subject (subject)}
+										<button
+											type="button"
+											class="chip"
+											class:selected={draft.subjects.some(
+												(item) =>
+													item.toLowerCase() === subject.toLowerCase()
+											)}
+											onclick={() => toggleInList('subjects', subject)}
+										>
+											{subject}
+										</button>
+									{/each}
+								</div>
+								<div class="add-row">
+									<input
+										class="form-control"
+										type="text"
+										placeholder={$t('profileWizardAddSubjectPlaceholder')}
+										bind:value={subjectInput}
+										onkeydown={(event) => {
+											if (event.key === 'Enter') {
+												event.preventDefault();
+												addSubject();
+											}
+										}}
+									/>
+									<button
+										type="button"
+										class="btn btn-outline-primary"
+										onclick={addSubject}
+									>
+										{$t('profileWizardAdd')}
+									</button>
+								</div>
+							</div>
+							<div class="col-12 col-sm-6">
+								<label class="form-label fw-semibold" for="profile-language"
+									>{$t('profileWizardLanguageLabel')}</label
+								>
+								<select
+									id="profile-language"
+									class="form-select"
+									bind:value={draft.preferences.language}
+								>
+									<option value="">{$t('profileWizardLanguageDefault')}</option>
+									<option value="english">English</option>
+									<option value="hindi">हिन्दी</option>
+								</select>
+							</div>
+							<div class="col-12 col-sm-6">
+								<label class="form-label fw-semibold" for="profile-comfort"
+									>{$t('profileWizardComfortLabel')}</label
+								>
+								<select
+									id="profile-comfort"
+									class="form-select"
+									bind:value={draft.preferences.difficultyComfort}
+								>
+									<option value="">{$t('profileWizardComfortDefault')}</option>
+									<option value="beginner">{$t('beginner')}</option>
+									<option value="intermediate">{$t('intermediate')}</option>
+									<option value="advanced">{$t('advanced')}</option>
+									<option value="expert">{$t('expert')}</option>
+								</select>
+							</div>
 						</div>
-					{/if}
-				</section>
+					</section>
 
-				<section class="card p-4">
-					<div class="d-flex align-items-center justify-content-between gap-3">
-						<div>
-							<h2 class="h6 fw-bold mb-1">{$t('profilePersonalizationLabel')}</h2>
-							<p class="text-muted small mb-0">{$t('profilePersonalizationHint')}</p>
-						</div>
-						<label class="switch" aria-label={$t('profilePersonalizationLabel')}>
+					<section class="card p-4">
+						<h2 class="h5 fw-bold mb-1">{$t('profileSectionFocus')}</h2>
+						<p class="text-muted small mb-3">{$t('profileSaveHint')}</p>
+						{#if draft.declaredFocus.length > 0}
+							<div class="chip-grid mb-2">
+								{#each draft.declaredFocus as topic (topic)}
+									<button
+										type="button"
+										class="chip selected"
+										onclick={() => toggleInList('declaredFocus', topic)}
+									>
+										{topic} <span aria-hidden="true">×</span>
+									</button>
+								{/each}
+							</div>
+						{/if}
+						<div class="add-row">
 							<input
-								type="checkbox"
-								checked={draft.preferences.personalized}
-								onchange={() => {
-									draft.preferences.personalized = event.target.checked;
-									void handlePersonalizedChange();
+								class="form-control"
+								type="text"
+								placeholder={$t('profileWizardAddFocusPlaceholder')}
+								bind:value={focusInput}
+								onkeydown={(event) => {
+									if (event.key === 'Enter') {
+										event.preventDefault();
+										addFocus();
+									}
 								}}
 							/>
-							<span class="switch-slider"></span>
-						</label>
-					</div>
-				</section>
+							<button
+								type="button"
+								class="btn btn-outline-primary"
+								onclick={addFocus}
+							>
+								{$t('profileWizardAdd')}
+							</button>
+						</div>
+					</section>
 
-				<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
-					{#if saveError}
-						<div class="alert alert-danger small mb-0 w-full" role="alert">{saveError}</div>
-					{/if}
-					<button type="button" class="btn btn-primary" disabled={saving} onclick={handleSave}>
-						{saving ? $t('profileSaving') : $t('profileSaveButton')}
-					</button>
-					<button type="button" class="btn btn-outline-danger" disabled={resetting} onclick={handleReset}>
-						{resetting ? $t('deleting') : $t('profileResetButton')}
-					</button>
-				</div>
+					<section class="card p-4">
+						<h2 class="h5 fw-bold mb-3">{$t('profileSectionInsights')}</h2>
+						{#if !signals || signals.testsTaken === 0}
+							<p class="text-muted small mb-0">{$t('profileInsightsEmpty')}</p>
+						{:else}
+							<p class="text-muted small">
+								{$t('profileInsightsTestsTaken', { count: signals.testsTaken })}
+								{#if typeof signals.overallAccuracy === 'number'}
+									· {$t('profileInsightsOverallAccuracy', {
+										percent: percent(signals.overallAccuracy),
+									})}
+								{/if}
+							</p>
+							<div class="row g-3 mt-1">
+								<div class="col-12 col-sm-6">
+									<h3 class="h6 fw-bold text-danger">
+										{$t('profileWeakTopics')}
+									</h3>
+									{#if signals.weakTopics.length === 0}
+										<p class="text-muted small">—</p>
+									{:else}
+										<ul class="insight-list">
+											{#each signals.weakTopics as topic (topic.topic)}
+												<li>
+													<span class="fw-semibold">{topic.topic}</span>
+													<span class="text-muted small">
+														{$t('profileTopicAccuracy', {
+															percent: percent(topic.accuracy),
+															count: topic.attempts,
+														})}
+													</span>
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</div>
+								<div class="col-12 col-sm-6">
+									<h3 class="h6 fw-bold text-success">
+										{$t('profileStrongTopics')}
+									</h3>
+									{#if signals.strongTopics.length === 0}
+										<p class="text-muted small">—</p>
+									{:else}
+										<ul class="insight-list">
+											{#each signals.strongTopics as topic (topic.topic)}
+												<li>
+													<span class="fw-semibold">{topic.topic}</span>
+													<span class="text-muted small">
+														{$t('profileTopicAccuracy', {
+															percent: percent(topic.accuracy),
+															count: topic.attempts,
+														})}
+													</span>
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</div>
+							</div>
+						{/if}
+					</section>
+
+					<section class="card p-4">
+						<div class="d-flex align-items-center justify-content-between gap-3">
+							<div>
+								<h2 class="h6 fw-bold mb-1">{$t('profilePersonalizationLabel')}</h2>
+								<p class="text-muted small mb-0">
+									{$t('profilePersonalizationHint')}
+								</p>
+							</div>
+							<label class="switch" aria-label={$t('profilePersonalizationLabel')}>
+								<input
+									type="checkbox"
+									checked={draft.preferences.personalized}
+									onchange={() => {
+										draft.preferences.personalized = event.target.checked;
+										void handlePersonalizedChange();
+									}}
+								/>
+								<span class="switch-slider"></span>
+							</label>
+						</div>
+					</section>
+
+					<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+						{#if saveError}
+							<div class="alert alert-danger small mb-0 w-full" role="alert">
+								{saveError}
+							</div>
+						{/if}
+						<button
+							type="button"
+							class="btn btn-primary"
+							disabled={saving}
+							onclick={handleSave}
+						>
+							{saving ? $t('profileSaving') : $t('profileSaveButton')}
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline-danger"
+							disabled={resetting}
+							onclick={handleReset}
+						>
+							{resetting ? $t('deleting') : $t('profileResetButton')}
+						</button>
+					</div>
 				{/if}
 			</div>
 		{:else}

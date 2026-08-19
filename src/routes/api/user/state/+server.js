@@ -25,7 +25,7 @@ function rateLimitedResponse(rateLimit) {
 			resetTime: new Date(rateLimit.resetTime).toISOString(),
 			remaining: rateLimit.remaining,
 		},
-		{ status: 429 },
+		{ status: 429 }
 	);
 }
 
@@ -65,7 +65,7 @@ export async function GET({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -99,7 +99,7 @@ export async function GET({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to fetch user state', code: 'STATE_FETCH_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }
@@ -140,7 +140,7 @@ export async function POST({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -163,7 +163,7 @@ export async function POST({ request, cookies }) {
 			const didUpsert = await upsertStateForIdentity(
 				{ userId: user?.id, clientId },
 				key,
-				safeValue,
+				safeValue
 			);
 			if (didUpsert) {
 				storedCount += 1;
@@ -198,7 +198,7 @@ export async function POST({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to update user state', code: 'STATE_UPDATE_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

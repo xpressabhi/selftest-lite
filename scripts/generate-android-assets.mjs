@@ -24,7 +24,7 @@ const SPLASHES = {
 	'drawable-land-xhdpi': [1280, 720],
 	'drawable-land-xxhdpi': [1600, 960],
 	'drawable-land-xxxhdpi': [1920, 1280],
-	'drawable': [480, 320],
+	drawable: [480, 320],
 };
 
 const LEGACY_ICON_SIZES = {
@@ -57,7 +57,10 @@ async function sampleBackgroundColor(image) {
 			}
 		}
 	}
-	const hex = (v) => Math.round(v / count).toString(16).padStart(2, '0');
+	const hex = (v) =>
+		Math.round(v / count)
+			.toString(16)
+			.padStart(2, '0');
 	return `#${hex(r)}${hex(g)}${hex(b)}`.toUpperCase();
 }
 
@@ -71,18 +74,17 @@ async function generateSplash(logo, targetDir, [width, height], bg) {
 			background: bg,
 		},
 	});
-	const centered = logo
-		.resize(logoSize, logoSize, { fit: 'cover' })
-		.composite([]);
-	const composited = await sharp(
-		await canvas.png().toBuffer(),
-	).composite([
-		{
-			input: await centered.png().toBuffer(),
-			left: Math.round((width - logoSize) / 2),
-			top: Math.round((height - logoSize) / 2),
-		},
-	]).png().toBuffer();
+	const centered = logo.resize(logoSize, logoSize, { fit: 'cover' }).composite([]);
+	const composited = await sharp(await canvas.png().toBuffer())
+		.composite([
+			{
+				input: await centered.png().toBuffer(),
+				left: Math.round((width - logoSize) / 2),
+				top: Math.round((height - logoSize) / 2),
+			},
+		])
+		.png()
+		.toBuffer();
 	writeFileSync(join(resDir, targetDir, 'splash.png'), composited);
 	console.log(`  splash ${targetDir} ${width}x${height}`);
 }

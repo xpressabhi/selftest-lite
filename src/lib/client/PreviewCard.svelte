@@ -26,10 +26,20 @@
 	let selectedExam = $derived(getIndianExamById(examId));
 
 	const FORMATS = [
-		{ value: 'multiple-choice', label: $t('multipleChoice'), icon: '📊', desc: $t('multipleChoice') },
+		{
+			value: 'multiple-choice',
+			label: $t('multipleChoice'),
+			icon: '📊',
+			desc: $t('multipleChoice'),
+		},
 		{ value: 'true-false', label: $t('trueFalse'), icon: '✅', desc: $t('trueFalse') },
 		{ value: 'coding', label: $t('codingProblems'), icon: '💻', desc: $t('codingProblems') },
-		{ value: 'speed-challenge', label: $t('speedChallenge'), icon: '⚡', desc: $t('speedChallenge') },
+		{
+			value: 'speed-challenge',
+			label: $t('speedChallenge'),
+			icon: '⚡',
+			desc: $t('speedChallenge'),
+		},
 	];
 
 	const DIFFICULTIES = [
@@ -39,11 +49,11 @@
 		{ value: 'expert', label: $t('expert'), emoji: '👑' },
 	];
 
-	const DIFFICULTY_ICON = Object.fromEntries(DIFFICULTIES.map(d => [d.value, d.emoji]));
-	const DIFFICULTY_LABEL = Object.fromEntries(DIFFICULTIES.map(d => [d.value, d.label]));
+	const DIFFICULTY_ICON = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d.emoji]));
+	const DIFFICULTY_LABEL = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d.label]));
 
-	const FORMAT_ICON = Object.fromEntries(FORMATS.map(f => [f.value, f.icon]));
-	const FORMAT_LABEL = Object.fromEntries(FORMATS.map(f => [f.value, f.label]));
+	const FORMAT_ICON = Object.fromEntries(FORMATS.map((f) => [f.value, f.icon]));
+	const FORMAT_LABEL = Object.fromEntries(FORMATS.map((f) => [f.value, f.label]));
 
 	function handleGenerate() {
 		showDifficultyPicker = false;
@@ -139,7 +149,10 @@
 					<div class="preview-topic-main">{topic || $t('untitledTest')}</div>
 					{#if selectedExam}
 						<div class="preview-topic-sub">
-							{selectedExam.stream || ''} · {$t('questionShort')} {selectedExam.defaultNumQuestions || selectedExam.fullLengthQuestions} · {selectedExam.durationMinutes}{$t('minuteShort')}
+							{selectedExam.stream || ''} · {$t('questionShort')}
+							{selectedExam.defaultNumQuestions || selectedExam.fullLengthQuestions} · {selectedExam.durationMinutes}{$t(
+								'minuteShort'
+							)}
 						</div>
 					{/if}
 				</div>
@@ -191,7 +204,9 @@
 					aria-label={$t('previewLanguage')}
 				>
 					<span class="chip-icon">{language === 'hindi' ? '🇮🇳' : '🇬🇧'}</span>
-					<span class="chip-label">{language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}</span>
+					<span class="chip-label"
+						>{language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}</span
+					>
 				</button>
 
 				{#if isFullExam && selectedExam}
@@ -247,9 +262,19 @@
 		{#if showQuestionsPicker}
 			<div class="chip-picker questions-picker">
 				<div class="picker-stepper">
-					<button type="button" class="stepper-btn" onclick={() => pickQuestions(numQuestions - 5)} aria-label={$t('fewerQuestions')}>−</button>
+					<button
+						type="button"
+						class="stepper-btn"
+						onclick={() => pickQuestions(numQuestions - 5)}
+						aria-label={$t('fewerQuestions')}>−</button
+					>
 					<span class="stepper-value">{numQuestions}</span>
-					<button type="button" class="stepper-btn" onclick={() => pickQuestions(numQuestions + 5)} aria-label={$t('moreQuestions')}>+</button>
+					<button
+						type="button"
+						class="stepper-btn"
+						onclick={() => pickQuestions(numQuestions + 5)}
+						aria-label={$t('moreQuestions')}>+</button
+					>
 				</div>
 				<div class="picker-presets">
 					{#each [5, 10, 15, 20, 25, 30] as n (n)}
@@ -341,7 +366,9 @@
 		border: 1px solid var(--line);
 		border-radius: 20px;
 		padding: 20px 24px;
-		transition: border-color 0.2s ease, box-shadow 0.2s ease;
+		transition:
+			border-color 0.2s ease,
+			box-shadow 0.2s ease;
 		position: relative;
 		overflow: hidden;
 	}
@@ -485,7 +512,10 @@
 		font-size: 0.82rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease,
+			transform 0.12s ease;
 		min-height: 44px;
 	}
 
@@ -522,8 +552,14 @@
 	}
 
 	@keyframes slide-down {
-		from { opacity: 0; transform: translateY(-6px); }
-		to { opacity: 1; transform: translateY(0); }
+		from {
+			opacity: 0;
+			transform: translateY(-6px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.picker-option {
@@ -538,7 +574,9 @@
 		font-size: 0.85rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: border-color 0.15s ease, background 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease;
 		min-height: 44px;
 	}
 
@@ -579,7 +617,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: border-color 0.15s ease, background 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease;
 	}
 
 	.stepper-btn:hover {
@@ -611,7 +651,10 @@
 		font-size: 0.85rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease,
+			color 0.15s ease;
 		min-height: 44px;
 		min-width: 44px;
 	}
@@ -653,7 +696,9 @@
 		font-size: 0.82rem;
 		cursor: pointer;
 		text-align: left;
-		transition: border-color 0.15s ease, background 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease;
 		min-height: 44px;
 		flex: 1 0 auto;
 		min-width: 160px;
@@ -696,7 +741,10 @@
 		align-items: center;
 		justify-content: center;
 		gap: 10px;
-		transition: background 0.2s ease, transform 0.12s ease, opacity 0.15s ease;
+		transition:
+			background 0.2s ease,
+			transform 0.12s ease,
+			opacity 0.15s ease;
 		min-height: 52px;
 	}
 

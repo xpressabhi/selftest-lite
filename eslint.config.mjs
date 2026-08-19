@@ -1,15 +1,11 @@
 import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
 import globals from 'globals';
+import prettier from 'eslint-config-prettier';
 
 export default [
 	{
-		ignores: [
-			'**/.svelte-kit/**',
-			'**/.vercel/**',
-			'**/build/**',
-			'**/node_modules/**',
-		],
+		ignores: ['**/.svelte-kit/**', '**/.vercel/**', '**/build/**', '**/node_modules/**'],
 	},
 	js.configs.recommended,
 	...svelte.configs.recommended,
@@ -30,4 +26,5 @@ export default [
 			'svelte/no-at-html-tags': 'off',
 		},
 	},
+	prettier,
 ];

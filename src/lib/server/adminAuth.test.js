@@ -74,7 +74,7 @@ describe('session tokens', () => {
 		const token = createSessionToken(NOW);
 		const [, signature] = token.split('.');
 		const tamperedBody = Buffer.from(
-			JSON.stringify({ exp: NOW + ADMIN_SESSION_TTL_MS * 10 }),
+			JSON.stringify({ exp: NOW + ADMIN_SESSION_TTL_MS * 10 })
 		).toString('base64url');
 		expect(verifySessionToken(`${tamperedBody}.${signature}`)).toBe(false);
 		expect(verifySessionToken('garbage')).toBe(false);

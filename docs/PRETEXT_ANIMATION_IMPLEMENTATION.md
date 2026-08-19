@@ -68,9 +68,9 @@ Responsibilities:
 - Expose a small API such as:
 
 ```js
-prepareText(text, font, options)
-measureText(prepared, width, lineHeight)
-clearTextMeasurementCache()
+prepareText(text, font, options);
+measureText(prepared, width, lineHeight);
+clearTextMeasurementCache();
 ```
 
 - Return a safe fallback when Canvas or `Intl.Segmenter` is unavailable.
@@ -140,8 +140,8 @@ When switching between English and Hindi:
 - Animate cards, labels, and controls between those heights.
 - Keep all new user-facing strings in:
 
-  - `src/lib/locales/english.json`
-  - `src/lib/locales/hindi.json`
+    - `src/lib/locales/english.json`
+    - `src/lib/locales/hindi.json`
 
 - Test mixed-script questions and long Hindi labels.
 
@@ -194,4 +194,3 @@ The integration is successful when:
 - Canvas-only rendering of quiz content.
 - Full virtualization of the results page.
 - Automatic hyphenation or a complete CSS inline-layout engine.
-

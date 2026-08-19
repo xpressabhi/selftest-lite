@@ -42,11 +42,7 @@ function isLocalhost() {
 		return false;
 	}
 	const hostname = window.location.hostname;
-	return (
-		hostname === 'localhost' ||
-		hostname === '127.0.0.1' ||
-		hostname === '::1'
-	);
+	return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
 function sendBatch(events) {
@@ -109,7 +105,7 @@ export function trackDebounced(event, props, delay = 800) {
 		setTimeout(() => {
 			debounceTimers.delete(event);
 			track(event, props);
-		}, delay),
+		}, delay)
 	);
 }
 
@@ -121,8 +117,7 @@ function trackScrollDepth() {
 		if (typeof window === 'undefined' || !document.documentElement) {
 			return;
 		}
-		const scrollable =
-			document.documentElement.scrollHeight - window.innerHeight;
+		const scrollable = document.documentElement.scrollHeight - window.innerHeight;
 		if (scrollable <= 0) {
 			return;
 		}

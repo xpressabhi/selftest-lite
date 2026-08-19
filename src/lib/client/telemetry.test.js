@@ -18,12 +18,15 @@ function installBrowserGlobals() {
 		visibilityState: 'visible',
 	});
 	vi.stubGlobal('crypto', { randomUUID: () => 'test-session' });
-	vi.stubGlobal('Blob', class Blob {
-		constructor(parts, options) {
-			this.parts = parts;
-			this.options = options;
+	vi.stubGlobal(
+		'Blob',
+		class Blob {
+			constructor(parts, options) {
+				this.parts = parts;
+				this.options = options;
+			}
 		}
-	});
+	);
 }
 
 function removeBrowserGlobals() {

@@ -1,8 +1,4 @@
-import {
-	LOCAL_STORAGE_CHANGE_EVENT,
-	LOCAL_STORAGE_SYNC_EVENT,
-	STORAGE_KEYS,
-} from './constants';
+import { LOCAL_STORAGE_CHANGE_EVENT, LOCAL_STORAGE_SYNC_EVENT, STORAGE_KEYS } from './constants';
 import { getClientHeaders } from './identity';
 
 export function emitLocalStorageChange(keys = []) {
@@ -16,7 +12,7 @@ export function emitLocalStorageChange(keys = []) {
 			detail: {
 				keys: normalizedKeys.filter(Boolean),
 			},
-		}),
+		})
 	);
 }
 
@@ -122,7 +118,7 @@ export function upsertHistory(test, currentHistory = null) {
 	}
 
 	const history = (Array.isArray(currentHistory) ? currentHistory : getHistory()).filter(
-		(entry) => String(entry.id) !== String(test.id),
+		(entry) => String(entry.id) !== String(test.id)
 	);
 	const normalizedTest = {
 		...test,
@@ -152,7 +148,7 @@ export function getBookmarkedExamIds() {
 export function saveBookmarkedExamIds(examIds) {
 	writeJson(
 		STORAGE_KEYS.BOOKMARKED_EXAMS,
-		Array.isArray(examIds) ? [...new Set(examIds.filter(Boolean))].slice(0, 20) : [],
+		Array.isArray(examIds) ? [...new Set(examIds.filter(Boolean))].slice(0, 20) : []
 	);
 }
 
@@ -164,7 +160,9 @@ export function getBookmarkedQuizPresets() {
 export function saveBookmarkedQuizPresets(presets) {
 	writeJson(
 		STORAGE_KEYS.BOOKMARKED_QUIZ_PRESETS,
-		Array.isArray(presets) ? presets.filter((item) => item && typeof item === 'object').slice(0, 20) : [],
+		Array.isArray(presets)
+			? presets.filter((item) => item && typeof item === 'object').slice(0, 20)
+			: []
 	);
 }
 
@@ -176,13 +174,15 @@ export function getQuestionBookmarks() {
 export function saveQuestionBookmarks(bookmarks) {
 	writeJson(
 		STORAGE_KEYS.QUESTION_BOOKMARKS,
-		Array.isArray(bookmarks) ? bookmarks.filter((item) => item && typeof item === 'object').slice(0, 300) : [],
+		Array.isArray(bookmarks)
+			? bookmarks.filter((item) => item && typeof item === 'object').slice(0, 300)
+			: []
 	);
 }
 
 export function isQuestionBookmarked(question) {
 	return getQuestionBookmarks().some(
-		(item) => item.question === question?.question && item.answer === question?.answer,
+		(item) => item.question === question?.question && item.answer === question?.answer
 	);
 }
 
@@ -192,10 +192,12 @@ export function toggleQuestionBookmark(question, metadata = {}) {
 	}
 	const bookmarks = getQuestionBookmarks();
 	const exists = bookmarks.some(
-		(item) => item.question === question.question && item.answer === question.answer,
+		(item) => item.question === question.question && item.answer === question.answer
 	);
 	const nextBookmarks = exists
-		? bookmarks.filter((item) => item.question !== question.question || item.answer !== question.answer)
+		? bookmarks.filter(
+				(item) => item.question !== question.question || item.answer !== question.answer
+			)
 		: [
 				{
 					...question,
@@ -214,9 +216,7 @@ export function getDraftAnswerKey(testId) {
 
 export function readDraftAnswers(testId) {
 	const answers = readJson(getDraftAnswerKey(testId), {});
-	return answers && typeof answers === 'object' && !Array.isArray(answers)
-		? answers
-		: {};
+	return answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
 }
 
 export function writeDraftAnswers(testId, answers) {
@@ -303,7 +303,8 @@ export async function resolveTestRecord(testId) {
 	if (record.myAttempt?.user_answers || record.myAttempt?.userAnswers) {
 		resolved.userAnswers = record.myAttempt.user_answers || record.myAttempt.userAnswers;
 		resolved.score = record.myAttempt.score;
-		resolved.totalQuestions = record.myAttempt.total_questions || record.myAttempt.totalQuestions;
+		resolved.totalQuestions =
+			record.myAttempt.total_questions || record.myAttempt.totalQuestions;
 		resolved.timeTaken = record.myAttempt.time_taken || record.myAttempt.timeTaken;
 		resolved.timestamp = new Date(record.myAttempt.submitted_at || Date.now()).getTime();
 	}
@@ -379,7 +380,7 @@ export function writeTrackedStorageSnapshot(snapshot) {
 				detail: {
 					keys: changedKeys,
 				},
-			}),
+			})
 		);
 	}
 

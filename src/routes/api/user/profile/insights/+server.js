@@ -1,9 +1,5 @@
 import { json } from '@sveltejs/kit';
-import {
-	getClientKey,
-	getStateForIdentity,
-	logApiEvent,
-} from '$lib/server/storage';
+import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
@@ -36,7 +32,7 @@ export async function GET({ request, cookies }) {
 					resetTime: new Date(rateLimit.resetTime).toISOString(),
 					remaining: rateLimit.remaining,
 				},
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
@@ -51,7 +47,7 @@ export async function GET({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -114,7 +110,7 @@ export async function GET({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to fetch profile insights', code: 'INSIGHTS_FETCH_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

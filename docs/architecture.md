@@ -13,19 +13,19 @@ Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 
 ## Key Modules
 
-| Module | Responsibility |
-| --- | --- |
-| `src/lib/server/prompt.js` | Builds the Gemini generation prompts (language-aware, dedup-aware) |
-| `src/lib/server/quizSchema.js` | Zod schema for generated papers |
-| `src/lib/server/quizValidation.js` | Request validation, paper repair/validation, LaTeX syntax checks |
-| `src/lib/server/paperRedaction.js` | Strips answer keys before papers leave the server |
-| `src/lib/server/storage.js` | Neon pool + schema auto-creation (`ai_test`, `ai_test_attempts`, `api_request_events`, `api_rate_limit_events`) |
-| `src/lib/server/rateLimiter.js` | Sliding-window rate limiting via `api_rate_limit_events` (fail-open) |
-| `src/lib/server/adminAuth.js` | HMAC-signed admin session tokens, timing-safe credential checks |
-| `src/lib/client/storage.js` | `localStorage` history/paper caching |
-| `src/lib/client/preferences.js` | Language, theme, and data-saver detection/stores |
-| `src/lib/locales/*.json` | English/Hindi UI strings |
-| `src/lib/shared/latex.js` | LaTeX normalization used by both server and client |
+| Module                             | Responsibility                                                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/lib/server/prompt.js`         | Builds the Gemini generation prompts (language-aware, dedup-aware)                                              |
+| `src/lib/server/quizSchema.js`     | Zod schema for generated papers                                                                                 |
+| `src/lib/server/quizValidation.js` | Request validation, paper repair/validation, LaTeX syntax checks                                                |
+| `src/lib/server/paperRedaction.js` | Strips answer keys before papers leave the server                                                               |
+| `src/lib/server/storage.js`        | Neon pool + schema auto-creation (`ai_test`, `ai_test_attempts`, `api_request_events`, `api_rate_limit_events`) |
+| `src/lib/server/rateLimiter.js`    | Sliding-window rate limiting via `api_rate_limit_events` (fail-open)                                            |
+| `src/lib/server/adminAuth.js`      | HMAC-signed admin session tokens, timing-safe credential checks                                                 |
+| `src/lib/client/storage.js`        | `localStorage` history/paper caching                                                                            |
+| `src/lib/client/preferences.js`    | Language, theme, and data-saver detection/stores                                                                |
+| `src/lib/locales/*.json`           | English/Hindi UI strings                                                                                        |
+| `src/lib/shared/latex.js`          | LaTeX normalization used by both server and client                                                              |
 
 ## Key Decisions
 

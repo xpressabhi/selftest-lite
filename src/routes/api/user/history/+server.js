@@ -33,7 +33,7 @@ function rateLimitedResponse(rateLimit) {
 			resetTime: new Date(rateLimit.resetTime).toISOString(),
 			remaining: rateLimit.remaining,
 		},
-		{ status: 429 },
+		{ status: 429 }
 	);
 }
 
@@ -73,13 +73,13 @@ export async function GET({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
 		const attempts = await listAttemptsForIdentity(
 			{ userId: user?.id, clientId },
-			{ limit: 200 },
+			{ limit: 200 }
 		);
 
 		await logApiEvent({
@@ -112,7 +112,7 @@ export async function GET({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to fetch user history', code: 'HISTORY_FETCH_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }
@@ -153,16 +153,13 @@ export async function POST({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
 		const body = await request.json().catch(() => ({}));
 		const attempts = Array.isArray(body?.attempts) ? body.attempts.slice(0, 300) : [];
-		const storedCount = await upsertUserTestAttempts(
-			{ userId: user?.id, clientId },
-			attempts,
-		);
+		const storedCount = await upsertUserTestAttempts({ userId: user?.id, clientId }, attempts);
 
 		await logApiEvent({
 			route: '/api/user/history',
@@ -192,7 +189,7 @@ export async function POST({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to update user history', code: 'HISTORY_UPDATE_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

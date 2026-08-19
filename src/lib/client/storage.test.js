@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	clearDraftFlags,
-	getDraftFlagsKey,
-	readDraftFlags,
-	writeDraftFlags,
-} from './storage.js';
+import { clearDraftFlags, getDraftFlagsKey, readDraftFlags, writeDraftFlags } from './storage.js';
 
 const FLAG_KEY_PREFIX = 'selftest_unsubmitted_test_flags_';
 

@@ -9,7 +9,11 @@ import {
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
-import { PROFILE_STATE_KEY, normalizeProfile, parseProfileStateValue } from '$lib/shared/userProfile';
+import {
+	PROFILE_STATE_KEY,
+	normalizeProfile,
+	parseProfileStateValue,
+} from '$lib/shared/userProfile';
 
 const PROFILE_GET_RATE_LIMIT = 60;
 const PROFILE_POST_RATE_LIMIT = 30;
@@ -23,7 +27,7 @@ function rateLimitedResponse(rateLimit) {
 			resetTime: new Date(rateLimit.resetTime).toISOString(),
 			remaining: rateLimit.remaining,
 		},
-		{ status: 429 },
+		{ status: 429 }
 	);
 }
 
@@ -57,7 +61,7 @@ export async function GET({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -92,7 +96,7 @@ export async function GET({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to fetch user profile', code: 'PROFILE_FETCH_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }
@@ -123,7 +127,7 @@ export async function POST({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
@@ -142,14 +146,14 @@ export async function POST({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Invalid profile payload', code: 'INVALID_PROFILE' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
 		const didUpsert = await upsertStateForIdentity(
 			{ userId: user?.id, clientId },
 			PROFILE_STATE_KEY,
-			JSON.stringify(profile),
+			JSON.stringify(profile)
 		);
 
 		await logApiEvent({
@@ -184,7 +188,7 @@ export async function POST({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to update user profile', code: 'PROFILE_UPDATE_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }
@@ -215,13 +219,13 @@ export async function DELETE({ request, cookies }) {
 			});
 			return json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
-				{ status: 401 },
+				{ status: 401 }
 			);
 		}
 
 		const didDelete = await deleteStateForIdentity(
 			{ userId: user?.id, clientId },
-			PROFILE_STATE_KEY,
+			PROFILE_STATE_KEY
 		);
 
 		await logApiEvent({
@@ -252,7 +256,7 @@ export async function DELETE({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to delete user profile', code: 'PROFILE_DELETE_ERROR' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

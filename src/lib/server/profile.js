@@ -71,8 +71,7 @@ function gradeAttempt(row) {
 		if (typeof yourAnswer !== 'string' || !yourAnswer.trim()) {
 			continue;
 		}
-		const correctAnswer =
-			typeof question?.answer === 'string' ? question.answer.trim() : null;
+		const correctAnswer = typeof question?.answer === 'string' ? question.answer.trim() : null;
 		if (correctAnswer === null) {
 			continue;
 		}
@@ -88,9 +87,7 @@ function gradeAttempt(row) {
 }
 
 function topicKey(value) {
-	return typeof value === 'string'
-		? value.replace(/\s+/gu, ' ').trim().toLowerCase()
-		: '';
+	return typeof value === 'string' ? value.replace(/\s+/gu, ' ').trim().toLowerCase() : '';
 }
 
 /**
@@ -112,9 +109,7 @@ export function aggregateLearnerSignals(rows, nowMs = Date.now()) {
 			continue;
 		}
 		testsTaken += 1;
-		const submittedMs = row?.submitted_at
-			? new Date(row.submitted_at).getTime()
-			: nowMs;
+		const submittedMs = row?.submitted_at ? new Date(row.submitted_at).getTime() : nowMs;
 		if (Number.isFinite(submittedMs) && submittedMs > lastAttemptAtMs) {
 			lastAttemptAtMs = submittedMs;
 			lastDifficulty =
@@ -146,9 +141,7 @@ export function aggregateLearnerSignals(rows, nowMs = Date.now()) {
 
 	const topicSignals = Array.from(perTopic.values()).map((entry) => {
 		const accuracy =
-			entry.answeredWeighted > 0
-				? entry.correctWeighted / entry.answeredWeighted
-				: 0;
+			entry.answeredWeighted > 0 ? entry.correctWeighted / entry.answeredWeighted : 0;
 		return {
 			topic: entry.displayTopic,
 			accuracy: Number(accuracy.toFixed(4)),
@@ -159,22 +152,17 @@ export function aggregateLearnerSignals(rows, nowMs = Date.now()) {
 	return {
 		weakTopics: topicSignals
 			.filter(
-				(signal) =>
-					signal.attempts >= MIN_TOPIC_ATTEMPTS &&
-					signal.accuracy < LOW_ACCURACY,
+				(signal) => signal.attempts >= MIN_TOPIC_ATTEMPTS && signal.accuracy < LOW_ACCURACY
 			)
 			.sort((a, b) => a.accuracy - b.accuracy),
 		strongTopics: topicSignals
 			.filter(
 				(signal) =>
-					signal.attempts >= MIN_TOPIC_ATTEMPTS &&
-					signal.accuracy >= HIGH_ACCURACY,
+					signal.attempts >= MIN_TOPIC_ATTEMPTS && signal.accuracy >= HIGH_ACCURACY
 			)
 			.sort((a, b) => b.accuracy - a.accuracy),
 		overallAccuracy:
-			answeredWeighted > 0
-				? Number((correctWeighted / answeredWeighted).toFixed(4))
-				: null,
+			answeredWeighted > 0 ? Number((correctWeighted / answeredWeighted).toFixed(4)) : null,
 		testsTaken,
 		lastDifficulty,
 	};
@@ -194,13 +182,10 @@ export function matchTopicSignal(signals, keywords = []) {
 	const candidates = Array.isArray(keywords)
 		? keywords.map((value) => String(value || '').trim()).filter(Boolean)
 		: [];
-	if (candidates.length === 0 || !signals?.weakTopics && !signals?.strongTopics) {
+	if (candidates.length === 0 || (!signals?.weakTopics && !signals?.strongTopics)) {
 		return null;
 	}
-	const allTopics = [
-		...(signals.weakTopics || []),
-		...(signals.strongTopics || []),
-	];
+	const allTopics = [...(signals.weakTopics || []), ...(signals.strongTopics || [])];
 	if (allTopics.length === 0) {
 		return null;
 	}
@@ -220,7 +205,7 @@ export function matchTopicSignal(signals, keywords = []) {
 }
 
 const DIFFICULTY_ORDER = Object.fromEntries(
-	VALID_DIFFICULTIES.map((level, index) => [level, index]),
+	VALID_DIFFICULTIES.map((level, index) => [level, index])
 );
 
 function shiftDifficulty(level, delta) {
@@ -228,10 +213,7 @@ function shiftDifficulty(level, delta) {
 	if (index === undefined) {
 		return level;
 	}
-	const nextIndex = Math.min(
-		VALID_DIFFICULTIES.length - 1,
-		Math.max(0, index + delta),
-	);
+	const nextIndex = Math.min(VALID_DIFFICULTIES.length - 1, Math.max(0, index + delta));
 	return VALID_DIFFICULTIES[nextIndex];
 }
 
@@ -262,9 +244,7 @@ export function resolveDifficulty({
 			: profile?.preferences?.difficultyComfort || 'beginner';
 
 	const matched = matchTopicSignal(signals, topicKeywords);
-	const accuracy = matched
-		? matched.accuracy
-		: signals?.overallAccuracy;
+	const accuracy = matched ? matched.accuracy : signals?.overallAccuracy;
 	if (accuracy === null || accuracy === undefined) {
 		return baseDifficulty;
 	}
@@ -381,7 +361,7 @@ export function buildProfileContext({
 		const detail = relevantWeak
 			.map(
 				(signal) =>
-					`${signal.topic} (${formatAccuracy(signal.accuracy)} accuracy, ${signal.attempts} attempts)`,
+					`${signal.topic} (${formatAccuracy(signal.accuracy)} accuracy, ${signal.attempts} attempts)`
 			)
 			.join(', ');
 		lines.push(`- Practice areas to include: ${detail}`);
@@ -394,17 +374,17 @@ export function buildProfileContext({
 	const rules = [];
 	if (warmUpDifficulty) {
 		rules.push(
-			`Begin with approximately the first 20% of questions as a gentle warm-up at ${warmUpDifficulty} level, then ramp up to ${resolvedDifficulty} for the remaining questions.`,
+			`Begin with approximately the first 20% of questions as a gentle warm-up at ${warmUpDifficulty} level, then ramp up to ${resolvedDifficulty} for the remaining questions.`
 		);
 	}
 	if (focusTopics.length > 0) {
 		rules.push(
-			`Focus topics are hints WITHIN the requested Topic only. Never switch away from the requested Topic: generate the quiz about the requested Topic and weight some questions toward these focus topics. If a focus or practice topic is unrelated to the requested Topic, ignore it.`,
+			`Focus topics are hints WITHIN the requested Topic only. Never switch away from the requested Topic: generate the quiz about the requested Topic and weight some questions toward these focus topics. If a focus or practice topic is unrelated to the requested Topic, ignore it.`
 		);
 	}
 	if (profile?.examTarget?.name || className) {
 		rules.push(
-			`Match the question style and rigor expected at the student's stated level and exam target.`,
+			`Match the question style and rigor expected at the student's stated level and exam target.`
 		);
 	}
 
@@ -448,7 +428,7 @@ export function buildStudentContext(profile = null) {
 		return null;
 	}
 	return [
-		'STUDENT CONTEXT (use only to disambiguate vague intents; the user\'s explicit words always win):',
+		"STUDENT CONTEXT (use only to disambiguate vague intents; the user's explicit words always win):",
 		parts.map((part) => `- ${part}`).join('\n'),
 	].join('\n');
 }

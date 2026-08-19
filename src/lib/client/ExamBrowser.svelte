@@ -26,7 +26,7 @@
 </script>
 
 <div class="exam-browser">
-	<button class="browser-toggle" type="button" onclick={() => expanded = !expanded}>
+	<button class="browser-toggle" type="button" onclick={() => (expanded = !expanded)}>
 		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
 		<span class="toggle-label">{$t('browseAllExams')}</span>
 		{#if selectedExamId}
@@ -73,18 +73,29 @@
 						role="button"
 						tabindex="0"
 						onclick={() => selectExam(exam.id)}
-						onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectExam(exam.id); } }}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								selectExam(exam.id);
+							}
+						}}
 					>
 						<div class="exam-info">
 							<span class="exam-name">{exam.name}</span>
 							<span class="exam-meta">
-								{exam.stream || ''} · {$t('questionShort')} {exam.defaultNumQuestions || exam.fullLengthQuestions} · {exam.durationMinutes}{$t('minuteShort')}
+								{exam.stream || ''} · {$t('questionShort')}
+								{exam.defaultNumQuestions || exam.fullLengthQuestions} · {exam.durationMinutes}{$t(
+									'minuteShort'
+								)}
 							</span>
 						</div>
 						<button
 							class="exam-bookmark-btn"
 							type="button"
-							onclick={(e) => { e.stopPropagation(); toggleBookmark(exam.id); }}
+							onclick={(e) => {
+								e.stopPropagation();
+								toggleBookmark(exam.id);
+							}}
 							aria-label={$t('bookmarkExam')}
 						>
 							{bookmarkedExamIds.includes(exam.id) ? '★' : '☆'}
@@ -141,8 +152,14 @@
 	}
 
 	@keyframes slide-in {
-		from { opacity: 0; transform: translateY(-4px); }
-		to { opacity: 1; transform: translateY(0); }
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.exam-filters {

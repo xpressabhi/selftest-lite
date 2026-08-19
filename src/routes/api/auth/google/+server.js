@@ -60,7 +60,7 @@ export async function POST({ request, cookies }) {
 					resetTime: new Date(rateLimit.resetTime).toISOString(),
 					remaining: rateLimit.remaining,
 				},
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
@@ -70,7 +70,7 @@ export async function POST({ request, cookies }) {
 		if (!credential) {
 			return json(
 				{ error: 'Google credential is required', code: 'GOOGLE_CREDENTIAL_REQUIRED' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -117,7 +117,7 @@ export async function POST({ request, cookies }) {
 						: 'Unable to sign in right now.',
 				code: statusCode === 401 ? 'GOOGLE_SIGN_IN_FAILED' : 'SIGN_IN_ERROR',
 			},
-			{ status: statusCode },
+			{ status: statusCode }
 		);
 	}
 }

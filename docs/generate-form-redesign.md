@@ -96,6 +96,7 @@ POST /api/generate (existing endpoint, same payload)
 ## Implementation Plan
 
 ### Step 1: Create reusable components
+
 - `SmartIntentInput.svelte` — the pill input with cycling placeholders
 - `PreviewCard.svelte` — the dynamic preview with editable chips
 - `WelcomeBlock.svelte` — first-time orientation

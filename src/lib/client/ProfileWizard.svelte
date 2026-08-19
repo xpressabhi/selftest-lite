@@ -5,11 +5,7 @@
 	import { INDIAN_EXAMS } from '$lib/data/indianExams';
 	import { createDefaultProfile, normalizeProfile } from '$lib/shared/userProfile';
 
-	let {
-		initial = null,
-		onclose,
-		onafterfinish,
-	} = $props();
+	let { initial = null, onclose, onafterfinish } = $props();
 
 	const CLASS_OPTIONS = $derived([
 		{ value: 'class-8', label: 'Class 8' },
@@ -78,7 +74,7 @@
 		return INDIAN_EXAMS.filter(
 			(exam) =>
 				exam.name.toLowerCase().includes(query) ||
-				(exam.shortName || '').toLowerCase().includes(query),
+				(exam.shortName || '').toLowerCase().includes(query)
 		).slice(0, 8);
 	});
 
@@ -174,9 +170,19 @@
 	}
 </script>
 
-<div class="profile-wizard-overlay" role="dialog" aria-modal="true" aria-label={$t('profileWizardTitle')}>
+<div
+	class="profile-wizard-overlay"
+	role="dialog"
+	aria-modal="true"
+	aria-label={$t('profileWizardTitle')}
+>
 	<div class="profile-wizard">
-		<button class="wizard-close" type="button" aria-label={$t('profileWizardDismissAria')} onclick={closeModal}>
+		<button
+			class="wizard-close"
+			type="button"
+			aria-label={$t('profileWizardDismissAria')}
+			onclick={closeModal}
+		>
 			×
 		</button>
 		<div class="wizard-header">
@@ -258,12 +264,12 @@
 				<h3 class="wizard-section-title">{$t('profileWizardSubjectsTitle')}</h3>
 				<p class="wizard-hint">{$t('profileWizardSubjectsHint')}</p>
 				<div class="chip-grid">
-					{#each (draft.class === 'working-professional' ? PROFESSIONAL_SUBJECT_SUGGESTIONS : SUBJECT_SUGGESTIONS) as subject (subject)}
+					{#each draft.class === 'working-professional' ? PROFESSIONAL_SUBJECT_SUGGESTIONS : SUBJECT_SUGGESTIONS as subject (subject)}
 						<button
 							type="button"
 							class="chip"
 							class:selected={draft.subjects.some(
-								(item) => item.toLowerCase() === subject.toLowerCase(),
+								(item) => item.toLowerCase() === subject.toLowerCase()
 							)}
 							onclick={() => toggleSubject(subject)}
 						>
@@ -285,7 +291,11 @@
 							}
 						}}
 					/>
-					<button type="button" class="btn btn-outline-primary" onclick={addSubjectFromInput}>
+					<button
+						type="button"
+						class="btn btn-outline-primary"
+						onclick={addSubjectFromInput}
+					>
 						{$t('profileWizardAdd')}
 					</button>
 				</div>
@@ -294,16 +304,28 @@
 			<section class="wizard-body">
 				<h3 class="wizard-section-title">{$t('profileWizardPrefsTitle')}</h3>
 				<div class="form-group">
-					<label class="form-label" for="wizard-language">{$t('profileWizardLanguageLabel')}</label>
-					<select id="wizard-language" class="form-select" bind:value={draft.preferences.language}>
+					<label class="form-label" for="wizard-language"
+						>{$t('profileWizardLanguageLabel')}</label
+					>
+					<select
+						id="wizard-language"
+						class="form-select"
+						bind:value={draft.preferences.language}
+					>
 						<option value="">{$t('profileWizardLanguageDefault')}</option>
 						<option value="english">English</option>
 						<option value="hindi">हिन्दी</option>
 					</select>
 				</div>
 				<div class="form-group">
-					<label class="form-label" for="wizard-comfort">{$t('profileWizardComfortLabel')}</label>
-					<select id="wizard-comfort" class="form-select" bind:value={draft.preferences.difficultyComfort}>
+					<label class="form-label" for="wizard-comfort"
+						>{$t('profileWizardComfortLabel')}</label
+					>
+					<select
+						id="wizard-comfort"
+						class="form-select"
+						bind:value={draft.preferences.difficultyComfort}
+					>
 						<option value="">{$t('profileWizardComfortDefault')}</option>
 						<option value="beginner">{$t('beginner')}</option>
 						<option value="intermediate">{$t('intermediate')}</option>
@@ -320,7 +342,11 @@
 				{#if draft.declaredFocus.length > 0}
 					<div class="chip-grid">
 						{#each draft.declaredFocus as topic (topic)}
-							<button type="button" class="chip selected" onclick={() => toggleFocus(topic)}>
+							<button
+								type="button"
+								class="chip selected"
+								onclick={() => toggleFocus(topic)}
+							>
 								{topic} <span aria-hidden="true">×</span>
 							</button>
 						{/each}
@@ -340,7 +366,11 @@
 							}
 						}}
 					/>
-					<button type="button" class="btn btn-outline-primary" onclick={addFocusFromInput}>
+					<button
+						type="button"
+						class="btn btn-outline-primary"
+						onclick={addFocusFromInput}
+					>
 						{$t('profileWizardAdd')}
 					</button>
 				</div>
@@ -353,7 +383,11 @@
 			</button>
 			<div class="wizard-footer-actions">
 				{#if step > 0}
-					<button type="button" class="btn btn-outline-secondary" onclick={() => (step -= 1)}>
+					<button
+						type="button"
+						class="btn btn-outline-secondary"
+						onclick={() => (step -= 1)}
+					>
 						{$t('profileWizardBack')}
 					</button>
 				{/if}

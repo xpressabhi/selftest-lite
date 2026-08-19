@@ -124,7 +124,11 @@ export function validateTelemetryPayload(body) {
 			continue;
 		}
 		const event = rawEvent.event;
-		if (typeof event !== 'string' || event.length === 0 || event.length > MAX_EVENT_NAME_LENGTH) {
+		if (
+			typeof event !== 'string' ||
+			event.length === 0 ||
+			event.length > MAX_EVENT_NAME_LENGTH
+		) {
 			continue;
 		}
 		if (!TELEMETRY_EVENTS.has(event)) {
@@ -135,14 +139,19 @@ export function validateTelemetryPayload(body) {
 				? rawEvent.page
 				: null;
 		let props = {};
-		if (rawEvent.props && typeof rawEvent.props === 'object' && !Array.isArray(rawEvent.props)) {
+		if (
+			rawEvent.props &&
+			typeof rawEvent.props === 'object' &&
+			!Array.isArray(rawEvent.props)
+		) {
 			const serialized = JSON.stringify(rawEvent.props);
 			if (serialized && serialized.length <= MAX_PROPS_BYTES) {
 				props = rawEvent.props;
 			}
 		}
 		const created_at =
-			typeof rawEvent.created_at === 'string' && !Number.isNaN(Date.parse(rawEvent.created_at))
+			typeof rawEvent.created_at === 'string' &&
+			!Number.isNaN(Date.parse(rawEvent.created_at))
 				? rawEvent.created_at
 				: undefined;
 		events.push({ event, page, props, sessionId, created_at });
@@ -175,7 +184,7 @@ export async function recordTelemetryEvents(events, identity = {}) {
 
 	for (const event of events) {
 		values.push(
-			`($${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++})`,
+			`($${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++}, $${placeholderIndex++})`
 		);
 		params.push(
 			event.event,
@@ -184,14 +193,14 @@ export async function recordTelemetryEvents(events, identity = {}) {
 			event.sessionId || null,
 			event.created_at || nowIso,
 			clientId,
-			userId,
+			userId
 		);
 	}
 
 	const result = await query(
 		`INSERT INTO feature_events (event, page, props, session_id, created_at, client_id, user_id)
 		 VALUES ${values.join(', ')}`,
-		params,
+		params
 	);
 
 	return result.rowCount || 0;

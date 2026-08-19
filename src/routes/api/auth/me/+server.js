@@ -1,9 +1,5 @@
 import { json } from '@sveltejs/kit';
-import {
-	clearSessionCookie,
-	getSessionFromRequest,
-	setSessionCookie,
-} from '$lib/server/auth';
+import { clearSessionCookie, getSessionFromRequest, setSessionCookie } from '$lib/server/auth';
 import { getClientKey, logApiEvent } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
 
@@ -21,7 +17,7 @@ export async function GET({ request, cookies }) {
 		if (rateLimit.limited) {
 			return json(
 				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
@@ -62,9 +58,6 @@ export async function GET({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json(
-			{ error: 'Unable to resolve session', code: 'SESSION_ERROR' },
-			{ status: 500 },
-		);
+		return json({ error: 'Unable to resolve session', code: 'SESSION_ERROR' }, { status: 500 });
 	}
 }

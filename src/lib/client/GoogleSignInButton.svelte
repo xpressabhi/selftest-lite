@@ -27,9 +27,7 @@
 		}
 
 		googleScriptPromise = new Promise((resolve, reject) => {
-			const existingScript = document.querySelector(
-				`script[src="${GOOGLE_SCRIPT_SRC}"]`,
-			);
+			const existingScript = document.querySelector(`script[src="${GOOGLE_SCRIPT_SRC}"]`);
 			if (existingScript) {
 				if (window.google?.accounts?.id || existingScript.dataset.loaded === 'true') {
 					resolve();
@@ -39,7 +37,7 @@
 				existingScript.addEventListener(
 					'error',
 					() => reject(new Error('Failed to load Google Sign-In script')),
-					{ once: true },
+					{ once: true }
 				);
 				return;
 			}
@@ -52,8 +50,7 @@
 				script.dataset.loaded = 'true';
 				resolve();
 			};
-			script.onerror = () =>
-				reject(new Error('Failed to load Google Sign-In script'));
+			script.onerror = () => reject(new Error('Failed to load Google Sign-In script'));
 			document.head.appendChild(script);
 		});
 
@@ -66,7 +63,7 @@
 		}
 		if (typeof credentialCallback !== 'function') {
 			console.error(
-				'GoogleSignInButton: missing onCredential prop — sign-in callback will not run.',
+				'GoogleSignInButton: missing onCredential prop — sign-in callback will not run.'
 			);
 			return;
 		}
@@ -131,9 +128,7 @@
 
 		window.google.accounts.id.renderButton(container, {
 			type: 'standard',
-			theme: document.documentElement.classList.contains('dark')
-				? 'filled_black'
-				: 'outline',
+			theme: document.documentElement.classList.contains('dark') ? 'filled_black' : 'outline',
 			size: 'large',
 			shape: 'pill',
 			text: 'signin_with',
@@ -146,9 +141,7 @@
 
 {#if status === 'error'}
 	<div class="auth-google-error">
-		{googleClientId
-			? $t('googleLoginUnavailable')
-			: $t('googleClientMissing')}
+		{googleClientId ? $t('googleLoginUnavailable') : $t('googleClientMissing')}
 	</div>
 {:else}
 	<div

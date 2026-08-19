@@ -6,10 +6,7 @@ import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/stor
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { PROFILE_STATE_KEY, parseProfileStateValue } from '$lib/shared/userProfile';
 import { buildStudentContext } from '$lib/server/profile';
-import {
-	API_LIMIT_ERROR_CODE,
-	classifyApiError,
-} from '$lib/shared/apiLimitError';
+import { API_LIMIT_ERROR_CODE, classifyApiError } from '$lib/shared/apiLimitError';
 import * as z from 'zod';
 
 const MODEL_NAME = 'gemini-flash-lite-latest';
@@ -87,15 +84,18 @@ export async function POST({ request, cookies }) {
 		} catch {
 			return json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
 		const parsed = parseIntentSchema.safeParse(body);
 		if (!parsed.success) {
 			return json(
-				{ error: 'Intent must be a string between 2 and 500 characters', code: 'INVALID_INTENT' },
-				{ status: 400 },
+				{
+					error: 'Intent must be a string between 2 and 500 characters',
+					code: 'INVALID_INTENT',
+				},
+				{ status: 400 }
 			);
 		}
 
@@ -109,16 +109,13 @@ export async function POST({ request, cookies }) {
 					code: API_LIMIT_ERROR_CODE,
 					remaining: rateLimit.remaining,
 				},
-				{ status: 429 },
+				{ status: 429 }
 			);
 		}
 
 		const apiKey = env.GEMINI_API_KEY;
 		if (!apiKey) {
-			return json(
-				{ error: 'Gemini API key is not configured' },
-				{ status: 500 },
-			);
+			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
@@ -202,10 +199,7 @@ export async function POST({ request, cookies }) {
 				errorMessage: aiError.message,
 			});
 
-			return json(
-				{ error: message, code },
-				{ status: statusCode },
-			);
+			return json({ error: message, code }, { status: statusCode });
 		}
 	} catch (error) {
 		console.error('Parse intent unexpected error:', error);
@@ -222,7 +216,7 @@ export async function POST({ request, cookies }) {
 
 		return json(
 			{ error: 'An unexpected error occurred', code: 'PARSE_UNEXPECTED' },
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

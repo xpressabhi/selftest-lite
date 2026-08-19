@@ -25,7 +25,7 @@ export const TOPIC_CATEGORIES = {
 		'Data Structures',
 		'System Design',
 	],
-	'Academic': ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'History'],
+	Academic: ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'History'],
 	'Interview Prep': [
 		'Behavioral Questions',
 		'Problem Solving',
@@ -40,26 +40,8 @@ export const TOPIC_CATEGORIES = {
 		'Agile Methodology',
 		'Public Speaking',
 	],
-	'Fun & Trivia': [
-		'Movies & TV Shows',
-		'Video Games',
-		'Sports',
-		'Music',
-		'Pop Culture',
-	],
-	'Hobbies & Lifestyle': [
-		'Photography',
-		'Cooking',
-		'Fitness',
-		'Gardening',
-		'Travel',
-	],
+	'Fun & Trivia': ['Movies & TV Shows', 'Video Games', 'Sports', 'Music', 'Pop Culture'],
+	'Hobbies & Lifestyle': ['Photography', 'Cooking', 'Fitness', 'Gardening', 'Travel'],
 	'Language Learning': ['English', 'Spanish', 'Japanese', 'German', 'Mandarin'],
-	'Creative Arts': [
-		'Drawing',
-		'Writing',
-		'Music Theory',
-		'Design',
-		'Animation',
-	],
+	'Creative Arts': ['Drawing', 'Writing', 'Music Theory', 'Design', 'Animation'],
 };

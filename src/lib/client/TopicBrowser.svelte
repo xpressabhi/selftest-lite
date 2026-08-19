@@ -2,18 +2,12 @@
 	import { t } from '$lib/client/i18n';
 	import { TOPIC_CATEGORIES } from '$lib/shared/constants';
 
-	let {
-		selectedCategory = '',
-		selectedTopics = [],
-		ontopicchange = () => {},
-	} = $props();
+	let { selectedCategory = '', selectedTopics = [], ontopicchange = () => {} } = $props();
 
 	let expanded = $state(false);
 	let showAllCategories = $state(false);
 	const ALL_CATEGORIES = Object.entries(TOPIC_CATEGORIES);
-	const CATEGORIES = $derived(
-		showAllCategories ? ALL_CATEGORIES : ALL_CATEGORIES.slice(0, 4),
-	);
+	const CATEGORIES = $derived(showAllCategories ? ALL_CATEGORIES : ALL_CATEGORIES.slice(0, 4));
 
 	function toggleCategory(cat) {
 		const next = selectedCategory === cat ? '' : cat;
@@ -22,14 +16,14 @@
 
 	function toggleTopic(topicName) {
 		const next = selectedTopics.includes(topicName)
-			? selectedTopics.filter(t => t !== topicName)
+			? selectedTopics.filter((t) => t !== topicName)
 			: [...selectedTopics, topicName];
 		ontopicchange('selectedTopics', next);
 	}
 </script>
 
 <div class="topic-browser">
-	<button class="browser-toggle" type="button" onclick={() => expanded = !expanded}>
+	<button class="browser-toggle" type="button" onclick={() => (expanded = !expanded)}>
 		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
 		<span class="toggle-label">{$t('browseTopics')}</span>
 		{#if selectedTopics.length > 0}
@@ -120,8 +114,14 @@
 	}
 
 	@keyframes slide-in {
-		from { opacity: 0; transform: translateY(-4px); }
-		to { opacity: 1; transform: translateY(0); }
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.category-grid {
@@ -140,7 +140,10 @@
 		font-size: 0.82rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease,
+			color 0.15s ease;
 		min-height: 44px;
 	}
 
@@ -171,7 +174,10 @@
 		font-size: 0.82rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease,
+			color 0.15s ease;
 		min-height: 44px;
 		overflow: hidden;
 		text-overflow: ellipsis;

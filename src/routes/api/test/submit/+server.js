@@ -28,10 +28,10 @@ export async function POST({ request, cookies }) {
 		if (rateLimit.limited) {
 			await logApiEvent({
 				route: '/api/test:submit',
-			action: 'submit_test',
-			clientKey,
-			request,
-			statusCode: 429,
+				action: 'submit_test',
+				clientKey,
+				request,
+				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
 
@@ -49,7 +49,7 @@ export async function POST({ request, cookies }) {
 						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
 						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
 					},
-				},
+				}
 			);
 		}
 
@@ -57,32 +57,26 @@ export async function POST({ request, cookies }) {
 
 		const testId = Number(id);
 		if (!Number.isInteger(testId) || testId <= 0) {
-			return json(
-				{ error: 'Invalid test ID', code: 'INVALID_TEST_ID' },
-				{ status: 400 },
-			);
+			return json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
 		}
 
 		if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
 			return json(
 				{ error: 'Answers must be an object', code: 'INVALID_ANSWERS' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
 		const testRecord = await getTestRecordById(testId);
 		if (!testRecord) {
-			return json(
-				{ error: 'Test not found', code: 'TEST_NOT_FOUND' },
-				{ status: 404 },
-			);
+			return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 		}
 
 		const questions = testRecord.test?.questions;
 		if (!Array.isArray(questions) || questions.length === 0) {
 			return json(
 				{ error: 'Test has no questions', code: 'TEST_INVALID_CONTENT' },
-				{ status: 500 },
+				{ status: 500 }
 			);
 		}
 
@@ -93,12 +87,8 @@ export async function POST({ request, cookies }) {
 			if (!Number.isInteger(index) || index < 0 || index > maxIndex) {
 				continue;
 			}
-			const value =
-				typeof rawAnswer === 'string' ? rawAnswer.trim() : '';
-			if (
-				!value ||
-				value.length > MAX_ANSWER_TEXT_LENGTH
-			) {
+			const value = typeof rawAnswer === 'string' ? rawAnswer.trim() : '';
+			if (!value || value.length > MAX_ANSWER_TEXT_LENGTH) {
 				continue;
 			}
 			gradedAnswers.set(index, value);
@@ -106,14 +96,11 @@ export async function POST({ request, cookies }) {
 
 		const results = questions.map((question, index) => {
 			const yourAnswer = gradedAnswers.get(index) || null;
-			const correctAnswer =
-				typeof question?.answer === 'string' ? question.answer : null;
+			const correctAnswer = typeof question?.answer === 'string' ? question.answer : null;
 			return {
 				index,
 				correct:
-					yourAnswer !== null &&
-					correctAnswer !== null &&
-					yourAnswer === correctAnswer,
+					yourAnswer !== null && correctAnswer !== null && yourAnswer === correctAnswer,
 				yourAnswer,
 				correctAnswer,
 			};
@@ -121,7 +108,7 @@ export async function POST({ request, cookies }) {
 		const score = results.filter((result) => result.correct).length;
 		const normalizedTimeTaken = Math.min(
 			Math.max(Number(timeTaken) || 0, 0),
-			MAX_TIME_TAKEN_SECONDS,
+			MAX_TIME_TAKEN_SECONDS
 		);
 		const answeredMap = {};
 		for (const [index, value] of gradedAnswers) {
@@ -172,13 +159,13 @@ export async function POST({ request, cookies }) {
 		if (error?.code === 'REQUEST_TOO_LARGE') {
 			return json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
-				{ status: 413 },
+				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
 			return json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -199,7 +186,7 @@ export async function POST({ request, cookies }) {
 				error: 'An error occurred while submitting the test',
 				code: 'SUBMIT_FAILED',
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

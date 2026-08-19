@@ -14,7 +14,9 @@
 	<div class="mx-auto" style="max-width: 820px;">
 		<div class="d-flex flex-wrap gap-2 mb-3">
 			<span class="badge text-bg-primary">{$t(data.post.categoryKey)}</span>
-			<span class="small text-muted">{$t(data.post.dateKey)} · {$t(data.post.readTimeKey)}</span>
+			<span class="small text-muted"
+				>{$t(data.post.dateKey)} · {$t(data.post.readTimeKey)}</span
+			>
 		</div>
 		<h1 class="h2 fw-bold">{$t(data.post.titleKey)}</h1>
 		<p class="lead text-muted">{$t(data.post.excerptKey)}</p>

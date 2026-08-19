@@ -72,9 +72,7 @@ export function comparableText(value) {
 
 function findMatchingOption(options, answer) {
 	const normalizedAnswer = comparableText(answer);
-	const exactOption = options.find(
-		(option) => comparableText(option) === normalizedAnswer,
-	);
+	const exactOption = options.find((option) => comparableText(option) === normalizedAnswer);
 	if (exactOption) {
 		return exactOption;
 	}
@@ -88,9 +86,7 @@ function findMatchingOption(options, answer) {
 	}
 
 	const optionIndex = labelMatch[1].toUpperCase().charCodeAt(0) - 65;
-	return optionIndex >= 0 && optionIndex < options.length
-		? options[optionIndex]
-		: null;
+	return optionIndex >= 0 && optionIndex < options.length ? options[optionIndex] : null;
 }
 
 /**
@@ -107,8 +103,7 @@ export function repairGeneratedPaper({ questionPaper, fallbackTopic = '' }) {
 		return questionPaper;
 	}
 
-	const topic =
-		comparableText(questionPaper.topic) || comparableText(fallbackTopic);
+	const topic = comparableText(questionPaper.topic) || comparableText(fallbackTopic);
 	const questions = questionPaper.questions.map((question) => {
 		if (!question || typeof question !== 'object') {
 			return question;
@@ -118,9 +113,7 @@ export function repairGeneratedPaper({ questionPaper, fallbackTopic = '' }) {
 			? question.options.map((option) => normalizeMathText(option).trim())
 			: question.options;
 		const answer = normalizeMathText(question.answer).trim();
-		const matchingOption = Array.isArray(options)
-			? findMatchingOption(options, answer)
-			: null;
+		const matchingOption = Array.isArray(options) ? findMatchingOption(options, answer) : null;
 
 		return {
 			...question,
@@ -168,29 +161,26 @@ export function validateGenerateRequest({
 	numQuestions,
 	difficulty,
 }) {
-	const hasContext =
-		Boolean(topic) ||
-		selectedTopics.length > 0 ||
-		syllabusFocus.length > 0;
+	const hasContext = Boolean(topic) || selectedTopics.length > 0 || syllabusFocus.length > 0;
 
 	if (testMode !== 'full-exam' && !hasContext) {
 		return createValidationError(
 			'MISSING_TOPIC_CONTEXT',
-			'Topic, selected topics, or syllabus focus is required',
+			'Topic, selected topics, or syllabus focus is required'
 		);
 	}
 
 	if (testMode === 'full-exam' && !examName) {
 		return createValidationError(
 			'EXAM_REQUIRED',
-			'Exam selection is required for full exam mode',
+			'Exam selection is required for full exam mode'
 		);
 	}
 
 	if (testMode === 'full-exam' && !objectiveOnly) {
 		return createValidationError(
 			'OBJECTIVE_ONLY_REQUIRED',
-			'Full exam mode currently supports objective papers only',
+			'Full exam mode currently supports objective papers only'
 		);
 	}
 
@@ -201,36 +191,25 @@ export function validateGenerateRequest({
 	if (selectedTopics.length > MAX_SELECTED_TOPICS) {
 		return createValidationError(
 			'TOO_MANY_SELECTED_TOPICS',
-			`Too many selected topics. Maximum is ${MAX_SELECTED_TOPICS}`,
+			`Too many selected topics. Maximum is ${MAX_SELECTED_TOPICS}`
 		);
 	}
 
-	if (
-		selectedTopics.some(
-			(item) => String(item || '').length > MAX_TOPIC_LIST_ITEM_LENGTH,
-		)
-	) {
-		return createValidationError(
-			'SELECTED_TOPIC_TOO_LONG',
-			'A selected topic is too long',
-		);
+	if (selectedTopics.some((item) => String(item || '').length > MAX_TOPIC_LIST_ITEM_LENGTH)) {
+		return createValidationError('SELECTED_TOPIC_TOO_LONG', 'A selected topic is too long');
 	}
 
 	if (syllabusFocus.length > MAX_SYLLABUS_FOCUS) {
 		return createValidationError(
 			'TOO_MANY_SYLLABUS_FOCUS',
-			`Too many syllabus focus items. Maximum is ${MAX_SYLLABUS_FOCUS}`,
+			`Too many syllabus focus items. Maximum is ${MAX_SYLLABUS_FOCUS}`
 		);
 	}
 
-	if (
-		syllabusFocus.some(
-			(item) => String(item || '').length > MAX_TOPIC_LIST_ITEM_LENGTH,
-		)
-	) {
+	if (syllabusFocus.some((item) => String(item || '').length > MAX_TOPIC_LIST_ITEM_LENGTH)) {
 		return createValidationError(
 			'SYLLABUS_FOCUS_TOO_LONG',
-			'A syllabus focus item is too long',
+			'A syllabus focus item is too long'
 		);
 	}
 
@@ -241,7 +220,7 @@ export function validateGenerateRequest({
 	if (testMode === 'full-exam' && testType !== 'multiple-choice') {
 		return createValidationError(
 			'MCQ_ONLY_FULL_EXAM',
-			'Full exam mode supports multiple-choice objective format',
+			'Full exam mode supports multiple-choice objective format'
 		);
 	}
 
@@ -252,7 +231,7 @@ export function validateGenerateRequest({
 	if (numQuestions < MIN_QUESTIONS || numQuestions > MAX_QUESTIONS) {
 		return createValidationError(
 			'INVALID_QUESTION_COUNT',
-			`Number of questions must be between ${MIN_QUESTIONS} and ${MAX_QUESTIONS}`,
+			`Number of questions must be between ${MIN_QUESTIONS} and ${MAX_QUESTIONS}`
 		);
 	}
 
@@ -265,23 +244,20 @@ export function validateGenerateRequest({
 
 export function validateTestRecordPayload(test) {
 	if (!test || typeof test !== 'object' || Array.isArray(test)) {
-		return createValidationError(
-			'INVALID_TEST_DATA',
-			'Test data must be an object',
-		);
+		return createValidationError('INVALID_TEST_DATA', 'Test data must be an object');
 	}
 
 	if (!Array.isArray(test.questions) || test.questions.length < 1) {
 		return createValidationError(
 			'INVALID_TEST_DATA',
-			'Test data must include at least one question',
+			'Test data must include at least one question'
 		);
 	}
 
 	if (test.questions.length > MAX_TEST_QUESTIONS) {
 		return createValidationError(
 			'INVALID_TEST_DATA',
-			`Test data cannot contain more than ${MAX_TEST_QUESTIONS} questions`,
+			`Test data cannot contain more than ${MAX_TEST_QUESTIONS} questions`
 		);
 	}
 
@@ -301,9 +277,7 @@ export function validateTestRecordPayload(test) {
 		}
 		if (
 			Array.isArray(question.options) &&
-			question.options.some(
-				(option) => String(option || '').length > MAX_OPTION_TEXT_LENGTH,
-			)
+			question.options.some((option) => String(option || '').length > MAX_OPTION_TEXT_LENGTH)
 		) {
 			return createValidationError('INVALID_TEST_DATA', 'Option text is too long');
 		}
@@ -338,14 +312,12 @@ export function validateGeneratedPaper({ questionPaper, testType, numQuestions }
 
 		if (testType === 'true-false' && q.options.length !== 2) {
 			throw new Error(
-				`Question ${index + 1} must have exactly 2 options for true/false format`,
+				`Question ${index + 1} must have exactly 2 options for true/false format`
 			);
 		}
 
 		if (!q.options.includes(q.answer)) {
-			throw new Error(
-				`Question ${index + 1} answer must match one of the options`,
-			);
+			throw new Error(`Question ${index + 1} answer must match one of the options`);
 		}
 
 		const normalizedOptions = q.options.map((option) => comparableText(option));
@@ -362,7 +334,7 @@ export function validateGeneratedPaper({ questionPaper, testType, numQuestions }
 
 	if (questionPaper.questions.length !== numQuestions) {
 		throw new Error(
-			`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
+			`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`
 		);
 	}
 }

@@ -21,7 +21,7 @@
 					class="quickstart-chip exam-chip"
 					type="button"
 					onclick={() => onQuickStartExam(exam.id)}
-					disabled={disabled}
+					{disabled}
 				>
 					<span class="chip-star" aria-hidden="true">&#9733;</span>
 					<span class="chip-text">{exam.name}</span>
@@ -32,7 +32,7 @@
 					class="quickstart-chip preset-chip"
 					type="button"
 					onclick={() => onQuickStartPreset(preset)}
-					disabled={disabled}
+					{disabled}
 				>
 					<span class="chip-star" aria-hidden="true">&#9733;</span>
 					<span class="chip-text">{preset.label}</span>
@@ -74,7 +74,10 @@
 		font-size: 0.82rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease,
+			transform 0.12s ease;
 		min-height: 44px;
 	}
 

@@ -82,8 +82,7 @@ function normalizeGeneratedPaper(questionPaper) {
 			const normalizedAnswer = normalizeMathText(question.answer).trim();
 			const matchingOption = Array.isArray(options)
 				? options.find(
-						(option) =>
-							comparableText(option) === comparableText(normalizedAnswer),
+						(option) => comparableText(option) === comparableText(normalizedAnswer)
 					)
 				: null;
 
@@ -204,10 +203,7 @@ async function generatePaper({
 	for (let index = 0; index < totalBatches; index += 1) {
 		assertWithinDeadline(deadlineMs);
 
-		const batchQuestions = Math.min(
-			BATCH_SIZE,
-			numQuestions - generatedQuestions.length,
-		);
+		const batchQuestions = Math.min(BATCH_SIZE, numQuestions - generatedQuestions.length);
 		const batchContext = [
 			topicContext,
 			totalBatches > 1
@@ -226,11 +222,7 @@ async function generatePaper({
 
 		let batchPaper;
 		let lastValidationError;
-		for (
-			let attempt = 0;
-			attempt < MAX_BATCH_VALIDATION_ATTEMPTS;
-			attempt += 1
-		) {
+		for (let attempt = 0; attempt < MAX_BATCH_VALIDATION_ATTEMPTS; attempt += 1) {
 			const retryContext =
 				attempt > 0
 					? `The previous draft failed validation (${lastValidationError?.message || 'quality checks'}). Regenerate any affected questions. For every question, solve it independently, copy the answer exactly from one complete option string, verify it is the only correct option, remove duplicates, and ensure every LaTeX expression is valid KaTeX before returning JSON.`
@@ -243,9 +235,7 @@ async function generatePaper({
 						numQuestions: batchQuestions,
 						difficulty,
 						testType,
-						topicContext: [batchContext, retryContext]
-							.filter(Boolean)
-							.join('\n'),
+						topicContext: [batchContext, retryContext].filter(Boolean).join('\n'),
 						examName,
 						syllabusFocus,
 						previousQuestions: cumulativePrevious,
@@ -255,7 +245,7 @@ async function generatePaper({
 						userContext,
 						warmUpDifficulty,
 						deadlineMs,
-					}),
+					})
 				);
 				const repairedPaper = repairGeneratedPaper({
 					questionPaper: candidatePaper,
@@ -284,9 +274,7 @@ async function generatePaper({
 		}
 
 		if (!batchPaper) {
-			throw (
-				lastValidationError || new Error('Failed to validate generated batch')
-			);
+			throw lastValidationError || new Error('Failed to validate generated batch');
 		}
 		if (!resolvedPaperTopic && batchPaper.topic) {
 			resolvedPaperTopic = batchPaper.topic;
@@ -296,14 +284,12 @@ async function generatePaper({
 
 	if (generatedQuestions.length !== numQuestions) {
 		throw new Error(
-			`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`,
+			`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`
 		);
 	}
 
 	return {
-		topic: normalizeMathText(
-			resolvedPaperTopic || resolvedTopic || 'Generated Test',
-		),
+		topic: normalizeMathText(resolvedPaperTopic || resolvedTopic || 'Generated Test'),
 		questions: generatedQuestions,
 	};
 }
@@ -350,15 +336,13 @@ export async function POST({ request, cookies }) {
 		if (validationError) {
 			return json(
 				{ error: validationError.message, code: validationError.code },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
 		const resolvedTopic = topic || (examName ? `${examName} mock paper` : '');
 		const normalizedPreviousTestIds = sanitizePreviousTestIds(previousTestIds);
-		const normalizedAttemptedTestIds = new Set(
-			sanitizePreviousTestIds(attemptedTestIds),
-		);
+		const normalizedAttemptedTestIds = new Set(sanitizePreviousTestIds(attemptedTestIds));
 
 		const rateLimit = await rateLimiter(request, { bucket: '/api/generate' });
 		if (rateLimit.limited) {
@@ -394,13 +378,11 @@ export async function POST({ request, cookies }) {
 						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
 						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
 					},
-				},
+				}
 			);
 		}
 
-		const previousTestRecords = await getTestRecordsByIds(
-			normalizedPreviousTestIds,
-		);
+		const previousTestRecords = await getTestRecordsByIds(normalizedPreviousTestIds);
 
 		let personalized = false;
 		let tailoredSummary = null;
@@ -456,8 +438,7 @@ export async function POST({ request, cookies }) {
 						return false;
 					}
 					const requestParams = record.test?.requestParams || {};
-					const sameExam =
-						String(requestParams.examId || '') === String(examId);
+					const sameExam = String(requestParams.examId || '') === String(examId);
 					const isFullExam = requestParams.testMode === 'full-exam';
 					return sameExam && isFullExam;
 				})
@@ -511,9 +492,7 @@ export async function POST({ request, cookies }) {
 			syllabusFocus.length > 0
 				? `Selected syllabus focus: ${syllabusFocus.join(', ')}`
 				: null,
-			selectedTopics.length > 0
-				? `Selected topics: ${selectedTopics.join(', ')}`
-				: null,
+			selectedTopics.length > 0 ? `Selected topics: ${selectedTopics.join(', ')}` : null,
 			resolvedTopic ? `Additional context: ${resolvedTopic}` : null,
 		]
 			.filter(Boolean)
@@ -544,10 +523,7 @@ export async function POST({ request, cookies }) {
 
 		const apiKey = env.GEMINI_API_KEY;
 		if (!apiKey) {
-			return json(
-				{ error: 'Gemini API key is not configured' },
-				{ status: 500 },
-			);
+			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
@@ -665,7 +641,7 @@ export async function POST({ request, cookies }) {
 					code,
 					details: parseError.message,
 				},
-				{ status: statusCode },
+				{ status: statusCode }
 			);
 		}
 	} catch (error) {
@@ -673,13 +649,13 @@ export async function POST({ request, cookies }) {
 		if (error?.code === 'REQUEST_TOO_LARGE') {
 			return json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
-				{ status: 413 },
+				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
 			return json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 		const { statusCode, code, message } = classifyApiError(error, {
@@ -702,7 +678,7 @@ export async function POST({ request, cookies }) {
 				error: message,
 				code,
 			},
-			{ status: statusCode },
+			{ status: statusCode }
 		);
 	}
 }

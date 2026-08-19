@@ -12,6 +12,8 @@
 	import { prewarmRichMarkdown } from '$lib/client/markdownRenderer';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
 	import { autoAdvance, setAutoAdvance } from '$lib/client/preferences';
+	import { triggerVibration } from '$lib/client/haptics';
+	import { keepScreenAwake, stopKeepingScreenAwake } from '$lib/client/screenWake';
 	import {
 		clearDraftAnswers,
 		clearDraftFlags,
@@ -53,22 +55,24 @@
 	let swipeStartY = null;
 
 	const SWIPE_THRESHOLD_PX = 64;
+	const START_HAPTIC = 15;
+	const SUBMIT_HAPTIC = [25, 50, 25];
 
 	let answeredCount = $derived(Object.keys(answers).length);
 	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
 	let flaggedCount = $derived(flagged.length);
 	let hasDraftAnswers = $derived(Object.keys(answers).length > 0);
 	let testMode = $derived(
-		questionPaper?.testMode || questionPaper?.requestParams?.testMode || 'quiz-practice',
+		questionPaper?.testMode || questionPaper?.requestParams?.testMode || 'quiz-practice'
 	);
 	let testDifficulty = $derived(
-		questionPaper?.difficulty || questionPaper?.requestParams?.difficulty || '',
+		questionPaper?.difficulty || questionPaper?.requestParams?.difficulty || ''
 	);
 	let testLanguage = $derived(
-		questionPaper?.language || questionPaper?.requestParams?.language || 'english',
+		questionPaper?.language || questionPaper?.requestParams?.language || 'english'
 	);
 	let positionPercent = $derived(
-		totalQuestions > 0 ? Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100) : 0,
+		totalQuestions > 0 ? Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100) : 0
 	);
 	let question = $derived(questionPaper?.questions?.[currentQuestionIndex]);
 
@@ -171,6 +175,8 @@
 			language: questionPaper.language || '',
 		});
 		testStarted = true;
+		triggerVibration(START_HAPTIC);
+		void keepScreenAwake();
 	}
 
 	onDestroy(() => {
@@ -181,6 +187,7 @@
 		if (timerInterval) {
 			window.clearInterval(timerInterval);
 		}
+		stopKeepingScreenAwake();
 	});
 
 	function formatElapsed(totalSeconds) {
@@ -196,8 +203,7 @@
 		const target = event.target;
 		if (
 			target instanceof HTMLElement &&
-			(target.isContentEditable ||
-				['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+			(target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 		) {
 			return;
 		}
@@ -281,12 +287,10 @@
 	function gradeLocally(paper, userAnswers, timeTaken) {
 		const results = paper.questions.map((question, index) => {
 			const yourAnswer = userAnswers[index] ?? null;
-			const correctAnswer =
-				typeof question?.answer === 'string' ? question.answer : null;
+			const correctAnswer = typeof question?.answer === 'string' ? question.answer : null;
 			return {
 				index,
-				correct:
-					yourAnswer !== null && yourAnswer === correctAnswer,
+				correct: yourAnswer !== null && yourAnswer === correctAnswer,
 				yourAnswer,
 				correctAnswer,
 			};
@@ -306,61 +310,77 @@
 		submitting = true;
 		error = '';
 		track('test:submit');
-		const finalAnswers = { ...answers };
-		const timeTaken = Math.round((Date.now() - startedAt) / 1000);
-		try {
-			const hasLocalAnswerKey = questionPaper.questions.some(
-				(question) => typeof question?.answer === 'string' && question.answer.length > 0,
-			);
-			const gradedResult = hasLocalAnswerKey
-				? gradeLocally(questionPaper, finalAnswers, timeTaken)
-				: await submitTestAnswers({
-						id: questionPaper.id,
-						answers: finalAnswers,
-						timeTaken,
-					});
-			saveAttemptResult(questionPaper.id, gradedResult);
-			const submittedPaper = {
-				...questionPaper,
-				userAnswers: finalAnswers,
-				score: gradedResult.score,
-				totalQuestions: gradedResult.totalQuestions,
-				timeTaken,
-				timestamp: Date.now(),
-			};
-			clearDraftAnswers(questionPaper.id);
-			clearDraftFlags(questionPaper.id);
-			clearUnsubmittedTest(questionPaper.id);
-			// Locally-graded attempts never hit /api/test/submit; push them to
-			// the server (best-effort, offline-safe) so history survives across
-			// devices and survives sign-in via client_id attribution.
-			pushAttempt({
-				testId: questionPaper.id,
-				userAnswers: finalAnswers,
-				score: gradedResult.score,
-				totalQuestions: gradedResult.totalQuestions,
-				timeTaken,
-				submittedAt: new Date().toISOString(),
-			});
-			const nextHistory = upsertHistory(submittedPaper, getHistory());
-			const streak = recordStreakActivity();
-			const newlyUnlocked = unlockAchievements(nextHistory, streak);
-			for (const achievement of newlyUnlocked) {
-				showToast(
-					`${$t('achievementUnlocked')}: ${$t(`achievement_${achievement.id}_title`)}`,
-					'success',
+		const criticalSection = async () => {
+			const finalAnswers = { ...answers };
+			const timeTaken = Math.round((Date.now() - startedAt) / 1000);
+			try {
+				const hasLocalAnswerKey = questionPaper.questions.some(
+					(question) => typeof question?.answer === 'string' && question.answer.length > 0
 				);
+				const gradedResult = hasLocalAnswerKey
+					? gradeLocally(questionPaper, finalAnswers, timeTaken)
+					: await submitTestAnswers({
+							id: questionPaper.id,
+							answers: finalAnswers,
+							timeTaken,
+						});
+				saveAttemptResult(questionPaper.id, gradedResult);
+				const submittedPaper = {
+					...questionPaper,
+					userAnswers: finalAnswers,
+					score: gradedResult.score,
+					totalQuestions: gradedResult.totalQuestions,
+					timeTaken,
+					timestamp: Date.now(),
+				};
+				clearDraftAnswers(questionPaper.id);
+				clearDraftFlags(questionPaper.id);
+				clearUnsubmittedTest(questionPaper.id);
+				// Locally-graded attempts never hit /api/test/submit; push them to
+				// the server (best-effort, offline-safe) so history survives across
+				// devices and survives sign-in via client_id attribution.
+				pushAttempt({
+					testId: questionPaper.id,
+					userAnswers: finalAnswers,
+					score: gradedResult.score,
+					totalQuestions: gradedResult.totalQuestions,
+					timeTaken,
+					submittedAt: new Date().toISOString(),
+				});
+				const nextHistory = upsertHistory(submittedPaper, getHistory());
+				const streak = recordStreakActivity();
+				const newlyUnlocked = unlockAchievements(nextHistory, streak);
+				for (const achievement of newlyUnlocked) {
+					showToast(
+						`${$t('achievementUnlocked')}: ${$t(`achievement_${achievement.id}_title`)}`,
+						'success'
+					);
+				}
+				stopKeepingScreenAwake();
+				triggerVibration(SUBMIT_HAPTIC);
+				showReviewSheet = false;
+				goto(`/results?id=${questionPaper.id}`);
+			} catch (caughtError) {
+				track('test:submit-fail');
+				const localized = caughtError?.data
+					? localizedApiError(caughtError.data, $t, caughtError.status)
+					: '';
+				error = localized || caughtError.message || $t('submitFailed');
+				submitting = false;
 			}
-			showReviewSheet = false;
-			goto(`/results?id=${questionPaper.id}`);
-		} catch (caughtError) {
-			track('test:submit-fail');
-			const localized = caughtError?.data
-				? localizedApiError(caughtError.data, $t, caughtError.status)
-				: '';
-			error = localized || caughtError.message || $t('submitFailed');
-			submitting = false;
+		};
+		if (typeof navigator.locks?.request === 'function') {
+			try {
+				await navigator.locks.request(
+					`selftest:submit:${questionPaper.id}`,
+					criticalSection
+				);
+			} catch {
+				await criticalSection();
+			}
+			return;
 		}
+		await criticalSection();
 	}
 
 	async function shareTest() {
@@ -386,7 +406,7 @@
 	function nextQuestion() {
 		track('test:next', { from: currentQuestionIndex });
 		selectQuestion(
-			Math.min(currentQuestionIndex + 1, (questionPaper?.questions?.length || 1) - 1),
+			Math.min(currentQuestionIndex + 1, (questionPaper?.questions?.length || 1) - 1)
 		);
 	}
 
@@ -455,6 +475,7 @@
 
 	function leaveTest() {
 		track('test:exit');
+		stopKeepingScreenAwake();
 		goto('/');
 	}
 </script>
@@ -513,7 +534,8 @@
 								<input
 									type="checkbox"
 									checked={$autoAdvance}
-									onchange={(event) => setAutoAdvance(event.currentTarget.checked)}
+									onchange={(event) =>
+										setAutoAdvance(event.currentTarget.checked)}
 								/>
 								<span>{$t('autoAdvance')}</span>
 							</label>
@@ -539,7 +561,9 @@
 							{testMode === 'full-exam' ? $t('fullExamPaper') : $t('quizPractice')}
 						</span>
 						{#if testDifficulty}
-							<span class="test-meta-chip">{$t(testDifficulty) || testDifficulty}</span>
+							<span class="test-meta-chip"
+								>{$t(testDifficulty) || testDifficulty}</span
+							>
 						{/if}
 						<span class="test-meta-chip">
 							{testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}
@@ -558,129 +582,145 @@
 				</div>
 			</main>
 		{:else}
-		<div class="test-progress-track" aria-hidden="true">
-			<div class="test-progress-fill" style={`width: ${positionPercent}%`}></div>
-		</div>
-
-		{#if error}
-			<div class="test-error alert alert-danger" role="alert">{error}</div>
-		{/if}
-
-		<main class="test-main">
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="test-card-frame"
-				bind:this={questionCardHost}
-				ontouchstart={handleSwipeStart}
-				ontouchend={handleSwipeEnd}
-			>
-				<div class="test-card-head">
-					<span class="test-question-no">
-						{$t('question')} {currentQuestionIndex + 1} {$t('of')} {totalQuestions}
-					</span>
-					<button
-						class="test-flag"
-						class:active={flagged.includes(currentQuestionIndex)}
-						type="button"
-						aria-pressed={flagged.includes(currentQuestionIndex)}
-						aria-label={flagged.includes(currentQuestionIndex) ? $t('flaggedQuestions') : $t('flagForReview')}
-						onclick={() => toggleFlag(currentQuestionIndex)}
-					>
-						<span aria-hidden="true">⚑</span>
-						<span>{flagged.includes(currentQuestionIndex) ? $t('flaggedQuestions') : $t('flagForReview')}</span>
-					</button>
-				</div>
-				<AnimatedHeight
-					class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
-					estimatedHeight={questionCardEstimate}
-				>
-					{#key currentQuestionIndex}
-						<div
-							class="question-content"
-							class:question-content-forward={navigationDirection === 'forward'}
-							class:question-content-backward={navigationDirection === 'backward'}
-						>
-							<h2 class="test-question-text">
-								<MarkdownContent content={question.question} />
-							</h2>
-							<div class="d-grid gap-2">
-								{#each question.options || [] as option, optionIndex (optionIndex)}
-									<button
-										class="test-option"
-										class:selected={answers[currentQuestionIndex] === option}
-										type="button"
-										onclick={() => setAnswer(currentQuestionIndex, option)}
-									>
-										<span class="test-option-letter" aria-hidden="true">
-											{String.fromCharCode(65 + optionIndex)}
-										</span>
-										<span class="test-option-text">
-											<MarkdownContent content={option} />
-										</span>
-										{#if answers[currentQuestionIndex] === option}
-											<span class="test-option-check" aria-hidden="true">✓</span>
-										{/if}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/key}
-				</AnimatedHeight>
+			<div class="test-progress-track" aria-hidden="true">
+				<div class="test-progress-fill" style={`width: ${positionPercent}%`}></div>
 			</div>
-		</main>
 
-		<footer class="test-bottom-bar">
-			<div class="test-bottom-inner">
-				<button
-					class="test-progress-pill"
-					type="button"
-					aria-label={$t('questionsHeading')}
-					onclick={() => (showReviewSheet = true)}
+			{#if error}
+				<div class="test-error alert alert-danger" role="alert">{error}</div>
+			{/if}
+
+			<main class="test-main">
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="test-card-frame"
+					bind:this={questionCardHost}
+					ontouchstart={handleSwipeStart}
+					ontouchend={handleSwipeEnd}
 				>
-					<span class="pill-fill" style={`width: ${positionPercent}%`}></span>
-					<span class="pill-label">{answeredCount}/{totalQuestions}</span>
-				</button>
-				{#if flaggedCount > 0}
-					<span class="test-flag-badge" aria-label={`${$t('flaggedQuestions')}: ${flaggedCount}`}>
-						<span aria-hidden="true">⚑</span> {flaggedCount}
-					</span>
-				{/if}
-				<div class="test-nav-actions">
-					<button
-						class="btn btn-outline-secondary"
-						type="button"
-						disabled={currentQuestionIndex === 0}
-						onclick={previousQuestion}
-					>
-						{$t('tourPrevious')}
-					</button>
-					{#if currentQuestionIndex === totalQuestions - 1}
+					<div class="test-card-head">
+						<span class="test-question-no">
+							{$t('question')}
+							{currentQuestionIndex + 1}
+							{$t('of')}
+							{totalQuestions}
+						</span>
 						<button
-							class="btn btn-success"
+							class="test-flag"
+							class:active={flagged.includes(currentQuestionIndex)}
 							type="button"
-							disabled={submitting}
-							onclick={() => (showReviewSheet = true)}
+							aria-pressed={flagged.includes(currentQuestionIndex)}
+							aria-label={flagged.includes(currentQuestionIndex)
+								? $t('flaggedQuestions')
+								: $t('flagForReview')}
+							onclick={() => toggleFlag(currentQuestionIndex)}
 						>
-							{submitting ? $t('submittingAnswers') : $t('submitTest')}
+							<span aria-hidden="true">⚑</span>
+							<span
+								>{flagged.includes(currentQuestionIndex)
+									? $t('flaggedQuestions')
+									: $t('flagForReview')}</span
+							>
 						</button>
-					{:else}
-						<button class="btn btn-primary" type="button" onclick={nextQuestion}>
-							{$t('tourNext')}
-						</button>
-					{/if}
+					</div>
+					<AnimatedHeight
+						class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
+						estimatedHeight={questionCardEstimate}
+					>
+						{#key currentQuestionIndex}
+							<div
+								class="question-content"
+								class:question-content-forward={navigationDirection === 'forward'}
+								class:question-content-backward={navigationDirection === 'backward'}
+							>
+								<h2 class="test-question-text">
+									<MarkdownContent content={question.question} />
+								</h2>
+								<div class="d-grid gap-2">
+									{#each question.options || [] as option, optionIndex (optionIndex)}
+										<button
+											class="test-option"
+											class:selected={answers[currentQuestionIndex] ===
+												option}
+											type="button"
+											onclick={() => setAnswer(currentQuestionIndex, option)}
+										>
+											<span class="test-option-letter" aria-hidden="true">
+												{String.fromCharCode(65 + optionIndex)}
+											</span>
+											<span class="test-option-text">
+												<MarkdownContent content={option} />
+											</span>
+											{#if answers[currentQuestionIndex] === option}
+												<span class="test-option-check" aria-hidden="true"
+													>✓</span
+												>
+											{/if}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/key}
+					</AnimatedHeight>
 				</div>
-			</div>
-		</footer>
+			</main>
+
+			<footer class="test-bottom-bar">
+				<div class="test-bottom-inner">
+					<button
+						class="test-progress-pill"
+						type="button"
+						aria-label={$t('questionsHeading')}
+						onclick={() => (showReviewSheet = true)}
+					>
+						<span class="pill-fill" style={`width: ${positionPercent}%`}></span>
+						<span class="pill-label">{answeredCount}/{totalQuestions}</span>
+					</button>
+					{#if flaggedCount > 0}
+						<span
+							class="test-flag-badge"
+							aria-label={`${$t('flaggedQuestions')}: ${flaggedCount}`}
+						>
+							<span aria-hidden="true">⚑</span>
+							{flaggedCount}
+						</span>
+					{/if}
+					<div class="test-nav-actions">
+						<button
+							class="btn btn-outline-secondary"
+							type="button"
+							disabled={currentQuestionIndex === 0}
+							onclick={previousQuestion}
+						>
+							{$t('tourPrevious')}
+						</button>
+						{#if currentQuestionIndex === totalQuestions - 1}
+							<button
+								class="btn btn-success"
+								type="button"
+								disabled={submitting}
+								onclick={() => (showReviewSheet = true)}
+							>
+								{submitting ? $t('submittingAnswers') : $t('submitTest')}
+							</button>
+						{:else}
+							<button class="btn btn-primary" type="button" onclick={nextQuestion}>
+								{$t('tourNext')}
+							</button>
+						{/if}
+					</div>
+				</div>
+			</footer>
 		{/if}
 
 		{#if showReviewSheet}
 			<ReviewSheet
 				total={totalQuestions}
-				answers={answers}
-				flagged={flagged}
+				{answers}
+				{flagged}
 				currentIndex={currentQuestionIndex}
-				submitting={submitting}
-				error={error}
+				{submitting}
+				{error}
 				onClose={() => (showReviewSheet = false)}
 				onJump={jumpFromSheet}
 				onSubmit={submitTest}
@@ -707,7 +747,11 @@
 					<h2 class="h5 fw-bold mb-1">{$t('leaveTestTitle')}</h2>
 					<p class="text-muted small mb-3">{$t('leaveTestBody')}</p>
 					<div class="d-flex flex-wrap gap-2">
-						<button class="btn btn-outline-secondary" type="button" onclick={() => (showExitModal = false)}>
+						<button
+							class="btn btn-outline-secondary"
+							type="button"
+							onclick={() => (showExitModal = false)}
+						>
 							{$t('keepTaking')}
 						</button>
 						<button class="btn btn-danger" type="button" onclick={leaveTest}>
@@ -1052,7 +1096,9 @@
 		font-size: 0.95rem;
 		font-weight: 500;
 		text-align: left;
-		transition: border-color 150ms ease, background 150ms ease;
+		transition:
+			border-color 150ms ease,
+			background 150ms ease;
 	}
 
 	.test-option:hover,
