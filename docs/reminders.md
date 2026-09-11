@@ -27,11 +27,21 @@ page only after the user has completed at least two tests.
    npx web-push generate-vapid-keys
    ```
 2. Add env vars:
-   - Vercel (runtime): `PUBLIC_VAPID_KEY` (browser needs it).
+   - Vercel (runtime): `PUBLIC_VAPID_KEY` as **Plaintext/config** — Vercel rejects
+     `PUBLIC_`-prefixed variables marked `Sensitive` ("public framework prefix
+     cannot use visibility: secret"). The public key is not a secret: it is
+     sent to the browser with every subscription.
+     ```bash
+     vercel env add PUBLIC_VAPID_KEY production   # paste public key, answer "no" to sensitive
+     ```
    - GitHub Actions secrets: `DATABASE_URL`, `VAPID_PUBLIC_KEY`,
      `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (e.g. `mailto:you@example.com`).
-3. Test locally with a production build (`npm run build && npm run preview`);
-   `serviceWorker.ready` does not resolve reliably in `npm run dev`.
+     The private key is only used by the hourly sender, so it never needs to
+     live in Vercel.
+3. Redeploy after adding the Vercel variable (env changes apply per
+   deployment), then test locally with a production build
+   (`npm run build && npm run preview`); `serviceWorker.ready` does not resolve
+   reliably in `npm run dev`.
 
 ## Notes
 
