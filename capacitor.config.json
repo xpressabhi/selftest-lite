@@ -5,5 +5,13 @@
 	"server": {
 		"url": "https://www.selftest.in",
 		"allowNavigation": ["selftest.in", "www.selftest.in", "*.selftest.in"]
+	},
+	"plugins": {
+		"Keyboard": {
+			"resizeOnFullScreen": false
+		},
+		"SystemBars": {
+			"insetsHandling": "css"
+		}
 	}
 }

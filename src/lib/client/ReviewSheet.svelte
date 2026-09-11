@@ -296,7 +296,7 @@
 	}
 
 	.sheet-footer {
-		padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+		padding: 12px 16px calc(12px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		border-top: 1px solid var(--line);
 	}
 

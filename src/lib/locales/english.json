@@ -791,5 +791,6 @@
 	"reportOffSyllabus": "Off syllabus",
 	"reportThanks": "Report received, thank you",
 	"dailyReminder": "Daily practice reminder",
-	"reminderDenied": "Notifications are blocked in your browser settings"
+	"reminderDenied": "Notifications are blocked in your browser settings",
+	"loadDiagram": "Load diagram"
 }

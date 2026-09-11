@@ -300,6 +300,7 @@
 				disabled={disabled || PARSING || GENERATING}
 				aria-label={$t('smartIntentPlaceholder')}
 				autocomplete="off"
+				enterkeyhint="go"
 			/>
 			{#if PARSING}
 				<span class="intent-thinking" aria-label={$t('smartIntentParsing')}>

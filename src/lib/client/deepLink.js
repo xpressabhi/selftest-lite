@@ -2,6 +2,7 @@
 // selftest.in/test?id=1234 URL). The app loads the remote site in its
 // WebView, so deep links must be routed client-side via the SvelteKit router.
 import { goto } from '$app/navigation';
+import { track } from './telemetry';
 
 const APP_HOSTS = new Set(['selftest.in', 'www.selftest.in']);
 
@@ -14,6 +15,7 @@ function navigateToAppUrl(url) {
 		const target = parsed.pathname + parsed.search + parsed.hash;
 		const current = window.location.pathname + window.location.search + window.location.hash;
 		if (target !== current) {
+			track('app:deep-link', { path: parsed.pathname.slice(0, 64) });
 			void goto(target);
 		}
 	} catch {

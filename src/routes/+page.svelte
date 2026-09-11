@@ -628,7 +628,7 @@
 
 <section
 	class="container py-4 py-md-5"
-	style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)); padding-left: calc(1rem + env(safe-area-inset-left, 0px)); padding-right: calc(1rem + env(safe-area-inset-right, 0px));"
+	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px))); padding-left: calc(1rem + var(--sal, env(safe-area-inset-left, 0px))); padding-right: calc(1rem + var(--sar, env(safe-area-inset-right, 0px)));"
 >
 	<div class="mx-auto home-wrap">
 		<div

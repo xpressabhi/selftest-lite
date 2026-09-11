@@ -780,6 +780,7 @@
 <style>
 	.test-shell {
 		min-height: 100vh;
+		min-height: 100dvh;
 		display: flex;
 		flex-direction: column;
 	}
@@ -931,7 +932,7 @@
 		flex: 1 1 auto;
 		align-items: center;
 		justify-content: center;
-		padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+		padding: 24px 16px calc(24px + var(--sab, env(safe-area-inset-bottom, 0px)));
 	}
 
 	.test-summary-card {
@@ -1165,7 +1166,7 @@
 		position: sticky;
 		bottom: 0;
 		z-index: 1010;
-		padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+		padding: 8px 12px calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		border-top: 1px solid var(--line);
 		background: var(--surface);
 	}

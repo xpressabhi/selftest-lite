@@ -13,6 +13,7 @@
 	} from '$lib/client/preferences';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { initDeepLinks } from '$lib/client/deepLink';
+	import { initNativeShell } from '$lib/client/nativeShell';
 	import { startTelemetry, track } from '$lib/client/telemetry';
 	import {
 		handleAuthRedirect,
@@ -110,6 +111,7 @@
 		initializePreferences();
 		startTelemetry();
 		void initDeepLinks();
+		void initNativeShell();
 		void handleAuthRedirect();
 		// Session, state, and history hydration wait until the browser is idle
 		// so the first paint and first tap are never blocked by cold API calls.
@@ -909,11 +911,13 @@
 
 	.mobile-main {
 		min-height: calc(100vh - 58px);
-		padding-bottom: calc(80px + env(safe-area-inset-bottom));
+		min-height: calc(100dvh - 58px);
+		padding-bottom: calc(80px + var(--sab, env(safe-area-inset-bottom, 0px)));
 	}
 
 	.immersive-mode .mobile-main {
 		min-height: 100vh;
+		min-height: 100dvh;
 		padding-bottom: 0;
 	}
 
@@ -970,7 +974,7 @@
 		z-index: 1030;
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		padding: 0 8px calc(6px + env(safe-area-inset-bottom));
+		padding: 0 8px calc(6px + var(--sab, env(safe-area-inset-bottom, 0px)));
 	}
 
 	.bottom-nav a {
@@ -1032,7 +1036,7 @@
 	.pwa-install-hint {
 		position: fixed;
 		right: 12px;
-		bottom: calc(76px + env(safe-area-inset-bottom));
+		bottom: calc(76px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		left: 12px;
 		z-index: 1040;
 		display: flex;
@@ -1049,7 +1053,7 @@
 	.toast-lite {
 		position: fixed;
 		right: 16px;
-		bottom: calc(92px + env(safe-area-inset-bottom));
+		bottom: calc(92px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		z-index: 1100;
 		max-width: min(360px, calc(100vw - 32px));
 		padding: 10px 12px;
@@ -1178,7 +1182,7 @@
 
 	.pull-indicator {
 		position: fixed;
-		top: calc(58px + env(safe-area-inset-top));
+		top: calc(58px + var(--sat, env(safe-area-inset-top, 0px)));
 		left: 50%;
 		z-index: 1060;
 		min-height: 34px;

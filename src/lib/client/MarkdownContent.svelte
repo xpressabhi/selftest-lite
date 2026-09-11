@@ -1,6 +1,7 @@
 <script>
 	import { onDestroy, tick } from 'svelte';
 	import { isDataSaverActive } from './preferences';
+	import { t } from './i18n';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
 
 	let { content = '', tag = 'div' } = $props();
@@ -51,7 +52,7 @@
 	}
 
 	async function renderMermaid() {
-		if (!containerElement || $isDataSaverActive) {
+		if (!containerElement) {
 			return;
 		}
 		const mermaidBlocks = [...containerElement.querySelectorAll('pre > code.language-mermaid')];
@@ -59,9 +60,9 @@
 			return;
 		}
 		mermaidObserver?.disconnect();
-		const render = async () => {
+		const render = async (blocks, force = false) => {
 			mermaidObserver?.disconnect();
-			if ($isDataSaverActive) {
+			if ($isDataSaverActive && !force) {
 				return;
 			}
 			const mermaidModule = await import('mermaid');
@@ -75,7 +76,7 @@
 						: 'default',
 			});
 			await Promise.all(
-				mermaidBlocks.map(async (block, index) => {
+				blocks.map(async (block, index) => {
 					const chart = block.textContent || '';
 					const wrapper = document.createElement('div');
 					wrapper.className = 'mermaid-diagram';
@@ -87,21 +88,48 @@
 						wrapper.innerHTML = result.svg;
 						block.closest('pre')?.replaceWith(wrapper);
 					} catch {
-						block.closest('pre')?.classList.add('mermaid-error');
+						const pre = block.closest('pre');
+						if (pre) {
+							pre.style.display = '';
+							pre.classList.add('mermaid-error');
+						}
 					}
 				})
 			);
 		};
 
+		// Data saver: never ship the mermaid chunk automatically. Show a
+		// tap-to-load placeholder so the diagram is still one tap away.
+		if ($isDataSaverActive) {
+			for (const block of mermaidBlocks) {
+				const pre = block.closest('pre');
+				if (!pre || pre.dataset.mermaidPlaceholder === '1') {
+					continue;
+				}
+				pre.dataset.mermaidPlaceholder = '1';
+				pre.style.display = 'none';
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'mermaid-load-btn';
+				button.textContent = $t('loadDiagram');
+				button.addEventListener('click', () => {
+					button.remove();
+					void render([block], true);
+				});
+				pre.after(button);
+			}
+			return;
+		}
+
 		if (!('IntersectionObserver' in window)) {
-			await render();
+			await render(mermaidBlocks);
 			return;
 		}
 
 		mermaidObserver = new IntersectionObserver(
 			(entries) => {
 				if (entries.some((entry) => entry.isIntersecting)) {
-					void render();
+					void render(mermaidBlocks);
 				}
 			},
 			{ rootMargin: '240px 0px' }
@@ -179,5 +207,18 @@
 	.markdown-content :global(.mermaid-diagram svg) {
 		max-width: 100%;
 		height: auto;
+	}
+
+	.markdown-content :global(.mermaid-load-btn) {
+		display: block;
+		width: 100%;
+		min-height: 44px;
+		padding: 10px 12px;
+		border: 1px dashed var(--line);
+		border-radius: 0.5rem;
+		background: var(--surface-muted, #f8f9fa);
+		color: var(--text);
+		font-size: 0.85rem;
+		cursor: pointer;
 	}
 </style>

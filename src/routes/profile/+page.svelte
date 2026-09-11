@@ -248,7 +248,7 @@
 
 <section
 	class="container py-4 py-md-5"
-	style="padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));"
+	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px)));"
 >
 	<div class="mx-auto profile-wrap">
 		<h1 class="h3 fw-bold mb-3">{$t('profilePageTitle')}</h1>

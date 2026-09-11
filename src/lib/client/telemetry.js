@@ -133,6 +133,43 @@ function trackScrollDepth() {
 	window.addEventListener('scroll', onScroll, { passive: true });
 }
 
+/**
+ * Rage taps: two taps in the same spot within 400ms usually mean the first
+ * one did not do what the user expected. Capped per session to stay quiet.
+ */
+function trackRageTaps() {
+	let lastTapAt = 0;
+	let lastTapX = 0;
+	let lastTapY = 0;
+	let reported = 0;
+
+	window.addEventListener(
+		'pointerdown',
+		(event) => {
+			const now = Date.now();
+			const isRageTap =
+				now - lastTapAt < 400 &&
+				Math.abs(event.clientX - lastTapX) < 24 &&
+				Math.abs(event.clientY - lastTapY) < 24;
+			lastTapAt = now;
+			lastTapX = event.clientX;
+			lastTapY = event.clientY;
+			if (!isRageTap || reported >= 5) {
+				return;
+			}
+			reported += 1;
+			const element =
+				event.target instanceof Element
+					? event.target.closest('button, a, [role="button"]')
+					: null;
+			track('ui:rage-tap', {
+				target: String(element?.className || element?.tagName || 'unknown').slice(0, 60),
+			});
+		},
+		{ passive: true }
+	);
+}
+
 export function startTelemetry() {
 	if (started || typeof window === 'undefined' || isLocalhost()) {
 		return;
@@ -152,4 +189,5 @@ export function startTelemetry() {
 	});
 
 	trackScrollDepth();
+	trackRageTaps();
 }
