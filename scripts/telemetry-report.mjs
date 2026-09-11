@@ -134,6 +134,45 @@ printTable(
 	]
 );
 
+section('Cohort retention (last 14 days of cohorts)');
+const cohortRows = await sql`
+	WITH firsts AS (
+		SELECT COALESCE(user_id::text, client_id) AS id, MIN(created_at)::date AS cohort
+		FROM feature_events
+		WHERE COALESCE(user_id::text, client_id) IS NOT NULL
+		GROUP BY 1
+	),
+	activity AS (
+		SELECT DISTINCT COALESCE(user_id::text, client_id) AS id, created_at::date AS day
+		FROM feature_events
+		WHERE COALESCE(user_id::text, client_id) IS NOT NULL
+	)
+	SELECT
+		f.cohort,
+		COUNT(DISTINCT f.id)::int AS cohort_size,
+		COUNT(DISTINCT a.id) FILTER (WHERE a.day = f.cohort + 1)::int AS d1,
+		COUNT(DISTINCT a.id) FILTER (WHERE a.day > f.cohort AND a.day <= f.cohort + 7)::int AS d7
+	FROM firsts f
+	JOIN activity a USING (id)
+	WHERE f.cohort >= CURRENT_DATE - 14
+	GROUP BY 1
+	ORDER BY 1
+`;
+printTable(cohortRows, [
+	{ key: 'cohort', label: 'cohort' },
+	{ key: 'cohort_size', label: 'size' },
+	{ key: 'd1', label: 'D1' },
+	{ key: 'd7', label: 'D7' },
+]);
+const cohortSize = cohortRows.reduce((sum, row) => sum + row.cohort_size, 0);
+const d1Count = cohortRows.reduce((sum, row) => sum + row.d1, 0);
+const d7Count = cohortRows.reduce((sum, row) => sum + row.d7, 0);
+const d1Rate = cohortSize > 0 ? d1Count / cohortSize : 0;
+const d7Rate = cohortSize > 0 ? d7Count / cohortSize : 0;
+console.log(
+	`  aggregate: ${cohortSize} identities, D1 ${(d1Rate * 100).toFixed(1)}%, D7 ${(d7Rate * 100).toFixed(1)}%`
+);
+
 section('Activation funnel (distinct identities)');
 printTable(
 	await sql`
@@ -282,6 +321,110 @@ console.log(
 );
 console.log(`  server 5xx:             ${serverErrors.server_errors}`);
 
+section('Content quality (last 7 days)');
+const positionRows = await sql`
+	SELECT (opt.idx - 1)::int AS position, COUNT(*)::int AS n
+	FROM ai_test t
+	CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q
+	CROSS JOIN LATERAL (
+		SELECT ordinality AS idx
+		FROM jsonb_array_elements_text(q->'options') WITH ORDINALITY AS o(value, ordinality)
+		WHERE o.value = q->>'answer'
+	) AS opt
+	WHERE t.created_at >= NOW() - INTERVAL '7 days'
+	GROUP BY 1
+	ORDER BY 1
+`;
+printTable(
+	positionRows.map((row) => ({
+		position: ['A', 'B', 'C', 'D', 'E'][row.position] ?? row.position,
+		n: row.n,
+	})),
+	[
+		{ key: 'position', label: 'answer at' },
+		{ key: 'n', label: 'questions' },
+	]
+);
+const positionTotal = positionRows.reduce((sum, row) => sum + row.n, 0);
+const earlyPositions = positionRows
+	.filter((row) => row.position <= 1)
+	.reduce((sum, row) => sum + row.n, 0);
+const earlyShare = positionTotal > 0 ? earlyPositions / positionTotal : 0;
+
+const lengthTell = (
+	await sql`
+		SELECT
+			COUNT(*)::int AS total,
+			COUNT(*) FILTER (WHERE is_longest)::int AS longest
+		FROM (
+			SELECT (
+				SELECT bool_or(
+					length(opt.value) = (SELECT MAX(length(v)) FROM jsonb_array_elements_text(q->'options') v)
+					AND opt.value = q->>'answer'
+				)
+				FROM jsonb_array_elements_text(q->'options') AS opt(value)
+			) AS is_longest
+			FROM ai_test t
+			CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q
+			WHERE t.created_at >= NOW() - INTERVAL '7 days'
+		) x
+	`
+)[0];
+const longestShare = lengthTell.total > 0 ? lengthTell.longest / lengthTell.total : 0;
+
+const duplicateExtras = (
+	await sql`
+		SELECT COALESCE(SUM(n - 1), 0)::int AS extras
+		FROM (
+			SELECT COUNT(*)::int AS n
+			FROM ai_test t
+			CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q
+			WHERE t.created_at >= NOW() - INTERVAL '7 days'
+			GROUP BY q->>'question'
+			HAVING COUNT(*) > 1
+		) x
+	`
+)[0].extras;
+
+const itemStats = (
+	await sql`
+		WITH items AS (
+			SELECT t.id AS test_id, (q.ord - 1)::int AS qidx, q.value->>'answer' AS correct_answer
+			FROM ai_test t
+			CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') WITH ORDINALITY AS q(value, ord)
+			WHERE t.created_at >= NOW() - INTERVAL '90 days'
+		),
+		answers AS (
+			SELECT a.test_id, (kv.key)::int AS qidx, kv.value AS user_answer
+			FROM ai_test_attempts a
+			CROSS JOIN LATERAL jsonb_each_text(a.user_answers) AS kv
+			WHERE a.user_answers IS NOT NULL AND a.created_at >= NOW() - INTERVAL '90 days'
+		),
+		per_item AS (
+			SELECT COUNT(*)::int AS attempts,
+				ROUND(100.0 * COUNT(*) FILTER (WHERE a.user_answer = i.correct_answer) / COUNT(*))::int AS pct
+			FROM answers a
+			JOIN items i ON i.test_id = a.test_id AND i.qidx = a.qidx
+			GROUP BY a.test_id, a.qidx
+			HAVING COUNT(*) >= 4
+		)
+		SELECT
+			COUNT(*)::int AS repeated_items,
+			COUNT(*) FILTER (WHERE pct <= 20)::int AS too_hard,
+			COUNT(*) FILTER (WHERE pct >= 95)::int AS too_easy,
+			COUNT(*) FILTER (WHERE pct BETWEEN 30 AND 80)::int AS healthy
+		FROM per_item
+	`
+)[0];
+
+console.log(`  questions (7d):            ${positionTotal}`);
+console.log(`  correct answer at A/B:     ${(earlyShare * 100).toFixed(1)}%`);
+console.log(`  longest option is the key: ${(longestShare * 100).toFixed(1)}%`);
+console.log(`  duplicate questions (7d):  ${duplicateExtras}`);
+console.log(
+	`  repeated items (90d):      ${itemStats.repeated_items} (too hard ${itemStats.too_hard}, too easy ${itemStats.too_easy}, healthy ${itemStats.healthy})`
+);
+
 const latency = (
 	await sql`
 		SELECT
@@ -340,6 +483,38 @@ const gates = [
 		label: '>10s requests < 2%',
 		passed: slowShare < 0.02,
 		detail: `${(slowShare * 100).toFixed(1)}% (${slowRequests.slow}/${slowRequests.total})`,
+	},
+	{
+		label: 'answer at A/B < 60%',
+		passed: earlyShare < 0.6,
+		detail: `${(earlyShare * 100).toFixed(1)}%`,
+	},
+	{
+		label: 'longest-option tell < 35%',
+		passed: longestShare < 0.35,
+		detail: `${(longestShare * 100).toFixed(1)}%`,
+	},
+	{
+		label: 'duplicate questions = 0',
+		passed: duplicateExtras === 0,
+		detail: String(duplicateExtras),
+	},
+	{
+		label: 'non-discriminating items < 35%',
+		passed:
+			itemStats.repeated_items === 0 ||
+			(itemStats.too_easy + itemStats.too_hard) / itemStats.repeated_items < 0.35,
+		detail: `${itemStats.too_easy + itemStats.too_hard}/${itemStats.repeated_items}`,
+	},
+	{
+		label: 'D1 retention >= 15%',
+		passed: cohortSize === 0 || d1Rate >= 0.15,
+		detail: `${(d1Rate * 100).toFixed(1)}%`,
+	},
+	{
+		label: 'D7 retention >= 8%',
+		passed: cohortSize === 0 || d7Rate >= 0.08,
+		detail: `${(d7Rate * 100).toFixed(1)}%`,
 	},
 ];
 for (const gate of gates) {

@@ -8,6 +8,7 @@ import {
 	createTestRecord,
 	findReusableFullExamRecord,
 	getClientKey,
+	getRecentQuestionsForTopic,
 	getStateForIdentity,
 	getTestRecordsByIds,
 	logApiEvent,
@@ -33,6 +34,11 @@ import {
 	comparableText,
 } from '$lib/server/quizValidation';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
+import { applyQualityFixes, inspectQuestionBatch } from '$lib/server/questionQuality';
+import {
+	answerVerificationSchema,
+	buildAnswerVerificationPrompt,
+} from '$lib/server/answerVerifier';
 import {
 	API_LIMIT_ERROR_CODE,
 	API_TIMEOUT_ERROR_CODE,
@@ -41,7 +47,8 @@ import {
 	classifyApiError,
 } from '$lib/shared/apiLimitError';
 
-const MODEL_NAME = 'gemini-flash-lite-latest';
+const MODEL_NAME = env.GEMINI_GENERATION_MODEL || 'gemini-flash-latest';
+const FALLBACK_MODEL_NAME = 'gemini-flash-lite-latest';
 const BATCH_SIZE = 25;
 const MAX_BATCH_VALIDATION_ATTEMPTS = 3;
 const GENERATION_TIMEOUT_MS = 180000;
@@ -62,6 +69,43 @@ function assertWithinDeadline(deadlineMs) {
 	if (getRemainingTimeMs(deadlineMs) <= 0) {
 		throw new GenerationTimeoutError();
 	}
+}
+
+function isModelUnavailableError(error) {
+	return /503|UNAVAILABLE|429|RESOURCE_EXHAUSTED|overloaded/iu.test(String(error?.message || ''));
+}
+
+/**
+ * Generates with the primary model and falls back to the lite model when the
+ * primary is overloaded or rate limited. Thinking level is chosen per model:
+ * the full Flash model supports 'low', lite only 'minimal'.
+ */
+async function generateWithFallback({ ai, contents, config }) {
+	const models = [MODEL_NAME, FALLBACK_MODEL_NAME].filter(
+		(model, index, list) => model && list.indexOf(model) === index
+	);
+	let lastError = null;
+	for (const model of models) {
+		try {
+			return await ai.models.generateContent({
+				model,
+				contents,
+				config: {
+					...config,
+					thinkingConfig: {
+						thinkingLevel: model.includes('lite') ? 'minimal' : 'low',
+					},
+				},
+			});
+		} catch (error) {
+			lastError = error;
+			if (!isModelUnavailableError(error)) {
+				throw error;
+			}
+			console.warn(`Model ${model} unavailable; trying fallback if available.`);
+		}
+	}
+	throw lastError;
 }
 
 function normalizeGeneratedPaper(questionPaper) {
@@ -152,15 +196,12 @@ async function generateQuestionBatch({
 	let timeoutHandle;
 	try {
 		const response = await Promise.race([
-			ai.models.generateContent({
-				model: MODEL_NAME,
+			generateWithFallback({
+				ai,
 				contents: prompt,
 				config: {
 					responseMimeType: 'application/json',
 					responseJsonSchema: z.toJSONSchema(paperSchema),
-					thinkingConfig: {
-						thinkingLevel: 'minimal',
-					},
 				},
 			}),
 			new Promise((_, reject) => {
@@ -178,6 +219,50 @@ async function generateQuestionBatch({
 	}
 }
 
+async function verifyQuestionBatch({ ai, questions, language, deadlineMs }) {
+	const remainingMs = getRemainingTimeMs(deadlineMs);
+	if (remainingMs <= 5000 || questions.length === 0) {
+		return [];
+	}
+	let timeoutHandle;
+	try {
+		const response = await Promise.race([
+			generateWithFallback({
+				ai,
+				contents: buildAnswerVerificationPrompt({ questions, language }),
+				config: {
+					responseMimeType: 'application/json',
+					responseJsonSchema: z.toJSONSchema(answerVerificationSchema),
+				},
+			}),
+			new Promise((_, reject) => {
+				timeoutHandle = setTimeout(() => {
+					reject(new GenerationTimeoutError());
+				}, remainingMs);
+			}),
+		]);
+		const validated = answerVerificationSchema.safeParse(parseJsonResponse(response.text));
+		if (!validated.success) {
+			return [];
+		}
+		return validated.data.answers
+			.map((answer, index) => ({
+				index,
+				matches: comparableText(answer) === comparableText(questions[index]?.answer),
+			}))
+			.filter((entry) => !entry.matches)
+			.map((entry) => entry.index);
+	} catch (error) {
+		// Verification is best-effort: an API hiccup must not fail generation.
+		console.error('Answer verification skipped:', error?.message);
+		return [];
+	} finally {
+		if (timeoutHandle) {
+			clearTimeout(timeoutHandle);
+		}
+	}
+}
+
 async function generatePaper({
 	ai,
 	resolvedTopic,
@@ -188,6 +273,7 @@ async function generatePaper({
 	examName,
 	syllabusFocus,
 	previousQuestions,
+	recentQuestions = [],
 	language,
 	testMode,
 	objectiveOnly,
@@ -213,6 +299,7 @@ async function generatePaper({
 			.join('\n');
 		const cumulativePrevious = [
 			...previousQuestions,
+			...recentQuestions,
 			...generatedQuestions.map((question) => ({
 				question: question.question,
 				answer: question.answer,
@@ -256,7 +343,43 @@ async function generatePaper({
 					testType,
 					numQuestions: batchQuestions,
 				});
-				batchPaper = repairedPaper;
+
+				// Deterministic quality pass: shuffle options (fixes the
+				// answer-position bias) and reject length/duplicate/language
+				// defects that prompt-level checks miss.
+				const qualityResult = applyQualityFixes(repairedPaper.questions, {
+					previousQuestionTexts: [
+						...previousQuestions.map((question) => question.question),
+						...recentQuestions.map((question) => question.question),
+						...generatedQuestions.map((question) => question.question),
+					],
+					language,
+				});
+				if (qualityResult.issues.length > 0) {
+					const sample = qualityResult.issues
+						.slice(0, 3)
+						.map((entry) => `${entry.issue}@Q${entry.index + 1}`)
+						.join(', ');
+					throw new Error(`Content quality checks failed (${sample})`);
+				}
+
+				// Independent verification: a second call solves the questions
+				// without the key; disagreements are regenerated.
+				const mismatchedAnswers = await verifyQuestionBatch({
+					ai,
+					questions: qualityResult.questions,
+					language,
+					deadlineMs,
+				});
+				if (mismatchedAnswers.length > 0) {
+					throw new Error(
+						`Answer verification disagreed on question(s) ${mismatchedAnswers
+							.map((index) => index + 1)
+							.join(', ')}`
+					);
+				}
+
+				batchPaper = { ...repairedPaper, questions: qualityResult.questions };
 				break;
 			} catch (validationError) {
 				if (
@@ -456,28 +579,49 @@ export async function POST({ request, cookies }) {
 					: null;
 
 			if (reusableRecord?.id && reusablePaper) {
-				await logApiEvent({
-					route: '/api/generate',
-					action: 'reuse_exam_paper',
-					clientKey,
-					request,
-					statusCode: 200,
-					durationMs: Date.now() - startedAt,
-					metadata: {
-						testMode,
-						examId,
-						examName,
-						language,
-						reusedTestId: reusableRecord.id,
-						userId: null,
-					},
-				});
+				// Never reuse a defective paper: structural issues force a
+				// fresh generation instead.
+				const reusableIssues = inspectQuestionBatch(
+					Array.isArray(reusablePaper.questions) ? reusablePaper.questions : [],
+					{ language }
+				);
+				if (reusableIssues.length > 0) {
+					await logApiEvent({
+						route: '/api/generate',
+						action: 'reuse_exam_paper_rejected',
+						clientKey,
+						request,
+						statusCode: 200,
+						durationMs: Date.now() - startedAt,
+						metadata: {
+							reusedTestId: reusableRecord.id,
+							issues: reusableIssues.slice(0, 5),
+						},
+					});
+				} else {
+					await logApiEvent({
+						route: '/api/generate',
+						action: 'reuse_exam_paper',
+						clientKey,
+						request,
+						statusCode: 200,
+						durationMs: Date.now() - startedAt,
+						metadata: {
+							testMode,
+							examId,
+							examName,
+							language,
+							reusedTestId: reusableRecord.id,
+							userId: null,
+						},
+					});
 
-				return json({
-					...stripAnswerKey(reusablePaper),
-					id: reusableRecord.id,
-					reusedExisting: true,
-				});
+					return json({
+						...stripAnswerKey(reusablePaper),
+						id: reusableRecord.id,
+						reusedExisting: true,
+					});
+				}
 			}
 		}
 
@@ -520,6 +664,11 @@ export async function POST({ request, cookies }) {
 			}
 		}
 
+		const recentTopicQuestions = await getRecentQuestionsForTopic({
+			topic: resolvedTopic,
+			language,
+		}).catch(() => []);
+
 		const apiKey = env.GEMINI_API_KEY;
 		if (!apiKey) {
 			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
@@ -539,6 +688,7 @@ export async function POST({ request, cookies }) {
 				examName,
 				syllabusFocus,
 				previousQuestions,
+				recentQuestions: recentTopicQuestions,
 				language,
 				testMode,
 				objectiveOnly,

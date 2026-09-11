@@ -21,6 +21,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'preview:edit-chip',
 	'home:manual-expand',
 	'home:resume-test',
+	'streak:view',
 
 	// Generation
 	'generate:start',
@@ -62,6 +63,9 @@ export const TELEMETRY_EVENTS = new Set([
 	'results:print',
 	'results:share',
 	'results:auto-explain-toggle',
+	'results:practice-weak',
+	'question:report',
+	'test:rating',
 
 	// Bookmarks / history
 	'bookmarks:view',
@@ -93,4 +97,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'profile:save',
 	'profile:reset',
 	'profile:opt-out',
+
+	// Reminders
+	'reminder:opt-in',
 ]);

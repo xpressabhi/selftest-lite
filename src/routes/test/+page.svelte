@@ -49,6 +49,7 @@
 	let questionCardWidth = $state(0);
 	let questionCardEstimate = $state(null);
 	let autoAdvanceTimer = null;
+	let liveAnnouncement = $state('');
 	let elapsedSeconds = $state(0);
 	let timerInterval = null;
 	let swipeStartX = null;
@@ -268,6 +269,7 @@
 				[index]: option,
 			};
 		}
+		liveAnnouncement = `${$t('optionSelected', { option })}`;
 		track('test:answer', { q: index });
 		if (!isClearing && $autoAdvance && index < totalQuestions - 1) {
 			window.clearTimeout(autoAdvanceTimer);
@@ -423,6 +425,10 @@
 		track('test:jump', { to: nextIndex });
 		navigationDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
 		currentQuestionIndex = nextIndex;
+		liveAnnouncement = $t('questionOf', {
+			current: nextIndex + 1,
+			total: questionPaper?.questions?.length || 0,
+		});
 	}
 
 	function jumpFromSheet(index) {
@@ -489,6 +495,7 @@
 <svelte:window onkeydown={handleTestKeydown} />
 
 <section class="test-shell">
+	<div class="visually-hidden" aria-live="polite">{liveAnnouncement}</div>
 	{#if loading}
 		<div class="py-5 text-center">
 			<div class="thinking-dots" role="status" aria-label={$t('loading')}>

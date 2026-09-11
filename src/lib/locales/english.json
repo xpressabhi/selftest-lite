@@ -774,5 +774,22 @@
 	"reviewWrongAnswers": "Review wrong answers",
 	"autoExplainWrong": "Auto-explain wrong answers",
 	"explainingProgress": "Explaining…",
-	"browseTopicsExams": "Browse topics & exams"
+	"browseTopicsExams": "Browse topics & exams",
+	"welcomeBack": "Welcome back",
+	"streakLabel": "{count}-day streak",
+	"lastTest": "Continue last test",
+	"practiceWeak": "Practice {count} weak",
+	"optionSelected": "Selected: {option}",
+	"questionOf": "Question {current} of {total}",
+	"rateTest": "Was this test useful?",
+	"rateTestUp": "Yes, useful",
+	"rateTestDown": "No, not useful",
+	"ratingThanks": "Thanks for the feedback!",
+	"reportQuestion": "Report question",
+	"reportWrongAnswer": "Wrong answer key",
+	"reportAmbiguous": "Ambiguous",
+	"reportOffSyllabus": "Off syllabus",
+	"reportThanks": "Report received, thank you",
+	"dailyReminder": "Daily practice reminder",
+	"reminderDenied": "Notifications are blocked in your browser settings"
 }

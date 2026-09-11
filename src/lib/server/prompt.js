@@ -34,11 +34,14 @@ export function generatePrompt({
       "questions": [
         {
           "question": "Question text with formatting",
+          "rationale": "Private reasoning: why the key is right and the closest distractor is wrong",
           "options": ["Option A", "Option B", "Option C", "Option D"],
           "answer": "Must match exactly one of the options"
         }
       ]
     }
+
+    For every question, decide the correct answer first, then write the rationale, then build the options around it.
     
     IMPORTANT RULES:
     1. Response must be ONLY the JSON object - no other text
@@ -60,10 +63,10 @@ export function generatePrompt({
 	}
     10. Do not include explanation fields for questions. Explanations are generated later on demand.
     11. Before returning, verify that every answer is exactly equal to one of its options.
-    12. Do a silent final quality-control pass before returning the JSON. Re-check every question from scratch: solve it independently, confirm that the keyed answer is factually correct, confirm that only one option is correct, and replace any ambiguous, contradictory, duplicated, or incorrectly keyed question with a new one.
-    13. In the same final pass, verify the exact question count, required keys, option count, selected language, difficulty, test type, syllabus coverage, and non-overlap with previous questions.
-    14. Validate every markdown/code/math string before returning. Check that JSON is parseable, all strings use valid escaping, code blocks are closed, LaTeX delimiters are balanced, and every LaTeX expression is valid KaTeX. If anything fails this check, silently repair or regenerate that question before responding.
-    15. Never return a draft for inspection. Return the quiz only after all of these checks pass.
+    12. For each question, work out the correct answer first, then write the rationale, then build the distractors around it.
+    13. Distractors must be plausible and educational: common misconceptions, same category and difficulty as the key, and roughly similar length. Never use "all of the above", "none of the above", joke options, or obviously wrong options.
+    14. Exactly one option must be defensible. Never include two near-synonyms, two facts that are both true, or an option that is correct under a different interpretation.
+    15. Match the requested language and script: a Hindi paper uses Devanagari for question and options (standard English technical terms are allowed).
     
     CONTENT FORMATTING:
     For code questions (especially when testType is 'coding'):
@@ -202,14 +205,7 @@ export function generatePrompt({
           - Use proper unicode for symbols (Ω, μ, λ, θ)
           - Use LaTeX for complex formulas ($H_2SO_4$)
           
-          FINAL SELF-CHECK (do not describe this process in the response):
-          - Parse the complete response as JSON before sending it.
-          - Count the questions and options; fix the structure if either count is wrong.
-          - Solve every question independently and ensure its answer is the only defensible correct option.
-          - Copy the final answer character-for-character from its option after all edits.
-          - Check for duplicate or near-duplicate questions, accidental contradictions, unsupported claims, and ambiguity.
-          - Check markdown, code fences, Unicode, and every LaTeX expression for valid rendering.
-          - If a question fails any check, regenerate that question internally and check it again.
+          Note: The question count, option count, language, difficulty, and JSON validity are checked automatically after generation, so focus your effort on factual accuracy, a single defensible answer, and plausible distractors.
 
           Remember: Must Provide ONLY the VALID JSON response.
           Do not include any text outside of the JSON object.

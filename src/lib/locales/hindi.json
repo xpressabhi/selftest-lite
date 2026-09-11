@@ -774,5 +774,22 @@
 	"reviewWrongAnswers": "गलत उत्तर देखें",
 	"autoExplainWrong": "गलत उत्तरों की व्याख्या अपने-आप करें",
 	"explainingProgress": "व्याख्या बन रही है…",
-	"browseTopicsExams": "विषय और परीक्षाएँ देखें"
+	"browseTopicsExams": "विषय और परीक्षाएँ देखें",
+	"welcomeBack": "वापसी पर स्वागत है",
+	"streakLabel": "{count}-दिन की स्ट्रीक",
+	"lastTest": "पिछला टेस्ट जारी रखें",
+	"practiceWeak": "{count} कमज़ोर सवालों का अभ्यास",
+	"optionSelected": "चुना गया: {option}",
+	"questionOf": "प्रश्न {current} / {total}",
+	"rateTest": "क्या यह टेस्ट उपयोगी था?",
+	"rateTestUp": "हाँ, उपयोगी",
+	"rateTestDown": "नहीं, उपयोगी नहीं",
+	"ratingThanks": "प्रतिक्रिया के लिए धन्यवाद!",
+	"reportQuestion": "प्रश्न रिपोर्ट करें",
+	"reportWrongAnswer": "उत्तर कुंजी गलत है",
+	"reportAmbiguous": "अस्पष्ट",
+	"reportOffSyllabus": "पाठ्यक्रम से बाहर",
+	"reportThanks": "रिपोर्ट मिल गई, धन्यवाद",
+	"dailyReminder": "रोज़ाना अभ्यास रिमाइंडर",
+	"reminderDenied": "आपके ब्राउज़र सेटिंग्स में नोटिफिकेशन ब्लॉक हैं"
 }

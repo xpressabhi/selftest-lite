@@ -18,4 +18,6 @@ export const ARCHIVE_TABLE_STATEMENTS = [
 	`ALTER TABLE app_user_state_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 	`CREATE TABLE IF NOT EXISTS app_user_session_archive (LIKE app_user_session INCLUDING DEFAULTS)`,
 	`ALTER TABLE app_user_session_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
+	`CREATE TABLE IF NOT EXISTS push_subscription_archive (LIKE push_subscription INCLUDING DEFAULTS)`,
+	`ALTER TABLE push_subscription_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 ];

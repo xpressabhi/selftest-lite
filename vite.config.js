@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
 				manifest: false,
 				workbox: {
 					cleanupOutdatedCaches: true,
+					// Custom push notification handlers; loaded into the generated
+					// Workbox service worker as-is.
+					importScripts: ['push-handler.js'],
 					// No navigateFallback (explicitly null — the plugin's default
 					// 'index.html' also isn't precached): this app is server-rendered,
 					// so neither '/' nor 'index.html' exists as a static file.

@@ -56,7 +56,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -182,6 +182,28 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_app_user_session_expires_at
 			ON app_user_session (expires_at)
+		`);
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS push_subscription (
+				id BIGSERIAL PRIMARY KEY,
+				client_id TEXT,
+				user_id BIGINT,
+				endpoint TEXT NOT NULL UNIQUE,
+				p256dh TEXT NOT NULL,
+				auth TEXT NOT NULL,
+				timezone TEXT,
+				enabled BOOLEAN NOT NULL DEFAULT TRUE,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_sent_at TIMESTAMPTZ,
+				last_error TEXT
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_push_subscription_due
+			ON push_subscription (enabled, last_sent_at)
 		`);
 
 		await query(`
@@ -982,6 +1004,33 @@ export async function listTestRecords({
 	return result.rows;
 }
 
+export async function getRecentQuestionsForTopic({ topic, language, limit = 30 } = {}) {
+	await ensureStorageSchema();
+
+	const trimmedTopic = String(topic || '').trim();
+	if (!trimmedTopic) {
+		return [];
+	}
+	const cappedLimit = Math.min(Math.max(Number(limit) || 30, 1), 60);
+	const normalizedLanguage = String(language || 'english').toLowerCase();
+
+	const result = await query(
+		`SELECT
+			q.value->>'question' AS question,
+			q.value->>'answer' AS answer
+		 FROM ai_test t
+		 CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q(value)
+		 WHERE t.created_at >= NOW() - INTERVAL '90 days'
+			AND LOWER(COALESCE(t.topic, t.test::jsonb->>'topic', '')) = LOWER($1)
+			AND LOWER(COALESCE(t.language, t.test::jsonb->'requestParams'->>'language', 'english')) = $2
+		 ORDER BY t.created_at DESC
+		 LIMIT $3`,
+		[trimmedTopic, normalizedLanguage, cappedLimit]
+	);
+
+	return result.rows;
+}
+
 function extractClientContext(request) {
 	if (!request || typeof request.headers?.get !== 'function') {
 		return {
@@ -1048,6 +1097,96 @@ export async function logApiEvent({
 	} catch (error) {
 		console.error('Failed to log API event:', error);
 	}
+}
+
+export async function savePushSubscription({
+	clientId = null,
+	userId = null,
+	endpoint,
+	p256dh,
+	auth,
+	timezone = null,
+}) {
+	await ensureStorageSchema();
+
+	if (
+		typeof endpoint !== 'string' ||
+		!endpoint.startsWith('https://') ||
+		typeof p256dh !== 'string' ||
+		!p256dh ||
+		typeof auth !== 'string' ||
+		!auth
+	) {
+		return false;
+	}
+
+	const normalizedUserId = normalizeUserIdValue(userId);
+	const normalizedClientId =
+		typeof clientId === 'string' && clientId.length <= 64 ? clientId : null;
+	const normalizedTimezone =
+		typeof timezone === 'string' && timezone.length <= 64 ? timezone : null;
+
+	await query(
+		`INSERT INTO push_subscription (client_id, user_id, endpoint, p256dh, auth, timezone, enabled, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
+		 ON CONFLICT (endpoint) DO UPDATE SET
+			client_id = EXCLUDED.client_id,
+			user_id = COALESCE(EXCLUDED.user_id, push_subscription.user_id),
+			p256dh = EXCLUDED.p256dh,
+			auth = EXCLUDED.auth,
+			timezone = EXCLUDED.timezone,
+			enabled = TRUE,
+			updated_at = NOW()`,
+		[normalizedClientId, normalizedUserId, endpoint, p256dh, auth, normalizedTimezone]
+	);
+	return true;
+}
+
+export async function archivePushSubscription(endpoint) {
+	await ensureStorageSchema();
+	if (typeof endpoint !== 'string' || !endpoint) {
+		return false;
+	}
+	const result = await query(
+		`WITH moved AS (
+			DELETE FROM push_subscription WHERE endpoint = $1 RETURNING *
+		)
+		INSERT INTO push_subscription_archive
+		SELECT *, NOW() FROM moved`,
+		[endpoint]
+	);
+	return (result.rowCount || 0) > 0;
+}
+
+/**
+ * Subscriptions due for a reminder right now: enabled, not sent in the last
+ * 20 hours, and at a reminder hour in the subscriber's own timezone.
+ */
+export async function listDuePushSubscriptions() {
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT id, endpoint, p256dh, auth, timezone
+		 FROM push_subscription
+		 WHERE enabled = TRUE
+			AND (last_sent_at IS NULL OR last_sent_at < NOW() - INTERVAL '20 hours')
+			AND EXTRACT(
+				HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), 'Asia/Kolkata'))
+			)::int IN (7, 8, 20, 21)`
+	);
+	return result.rows;
+}
+
+export async function markPushSubscriptionSent(id, { error = null, disable = false } = {}) {
+	await ensureStorageSchema();
+	await query(
+		`UPDATE push_subscription
+		 SET last_sent_at = CASE WHEN $2::text IS NULL THEN NOW() ELSE last_sent_at END,
+			last_error = $2,
+			enabled = CASE WHEN $3 THEN FALSE ELSE enabled END,
+			updated_at = NOW()
+		 WHERE id = $1`,
+		[id, error ? String(error).slice(0, 300) : null, disable]
+	);
 }
 
 export async function archiveOldRateLimitEvents() {

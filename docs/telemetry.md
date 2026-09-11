@@ -63,6 +63,12 @@ It prints:
 | Null `test_mode` on generated tests | 0 |
 | `/api/user/state` and `/api/auth/me` p95 | <= 3000 ms |
 | Requests slower than 10s | < 2% |
+| Answer at A/B (served) | < 60% |
+| Longest-option tell | < 35% |
+| Duplicate questions (7d) | 0 |
+| Non-discriminating repeated items | < 35% |
+| D1 retention | >= 15% |
+| D7 retention | >= 8% |
 
 ## Weekly automation
 

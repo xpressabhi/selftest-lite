@@ -16,6 +16,12 @@
 		getWeekActivity,
 	} from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import {
+		disableReminders,
+		enableReminders,
+		isReminderEnabled,
+		remindersSupported,
+	} from '$lib/client/reminders';
 	import { showToast } from '$lib/client/toast';
 	import {
 		clearAttemptResult,
@@ -26,6 +32,7 @@
 		getHistory,
 		getQuestionBookmarks,
 		resolveTestRecord,
+		saveCurrentPaper,
 		toggleQuestionBookmark,
 		upsertHistory,
 	} from '$lib/client/storage';
@@ -49,6 +56,12 @@
 	let autoExplainEnabled = $state(false);
 	let autoExplainRunning = $state(false);
 	let autoExplainCanceled = false;
+	let reportTarget = $state(null);
+	let reportSent = $state({});
+	let ratingSent = $state(false);
+	let historyCount = $state(0);
+	let reminderEnabled = $state(false);
+	let reminderBusy = $state(false);
 
 	let wrongIndices = $derived(
 		(questionPaper?.questions || [])
@@ -126,6 +139,12 @@
 			autoExplainEnabled = window.localStorage.getItem(AUTO_EXPLAIN_KEY) === 'true';
 		} catch {
 			autoExplainEnabled = false;
+		}
+		historyCount = getHistory().length;
+		if (remindersSupported()) {
+			void isReminderEnabled().then((enabled) => {
+				reminderEnabled = enabled;
+			});
 		}
 		const testId = page.url.searchParams.get('id');
 		try {
@@ -240,6 +259,31 @@
 		});
 	}
 
+	function practiceWeakQuestions() {
+		const weakQuestions = wrongIndices
+			.map((index) => questionPaper.questions[index])
+			.filter(Boolean)
+			.map((question) => ({
+				question: question.question,
+				options: [...question.options],
+				answer: question.answer,
+			}));
+		if (weakQuestions.length === 0) {
+			return;
+		}
+		track('results:practice-weak', { count: weakQuestions.length });
+		saveCurrentPaper({
+			...questionPaper,
+			id: `review-${questionPaper.id}-${Date.now()}`,
+			topic: `${questionPaper.topic} — ${$t('reviewWrongAnswers')}`,
+			questions: weakQuestions,
+			userAnswers: undefined,
+			score: undefined,
+			totalQuestions: weakQuestions.length,
+		});
+		void goto('/test');
+	}
+
 	async function runAutoExplain() {
 		if (autoExplainRunning || !questionPaper || $isDataSaverActive) {
 			return;
@@ -277,6 +321,49 @@
 		} else {
 			autoExplainCanceled = true;
 		}
+	}
+
+	function reportQuestion(index) {
+		reportTarget = index;
+	}
+
+	function submitQuestionReport(reason) {
+		if (reportTarget === null || !questionPaper) {
+			return;
+		}
+		track('question:report', {
+			testId: questionPaper.id,
+			index: reportTarget,
+			reason,
+		});
+		reportSent = { ...reportSent, [reportTarget]: true };
+		reportTarget = null;
+		showToast($t('reportThanks'), 'success');
+	}
+
+	function rateTest(rating) {
+		if (ratingSent || !questionPaper) {
+			return;
+		}
+		ratingSent = true;
+		track('test:rating', {
+			rating,
+			testId: questionPaper.id,
+			score: questionPaper.score,
+			total: questionPaper.totalQuestions,
+		});
+		showToast($t('ratingThanks'), 'success');
+	}
+
+	async function toggleReminders() {
+		reminderBusy = true;
+		const result = reminderEnabled ? await disableReminders() : await enableReminders();
+		if (result.ok) {
+			reminderEnabled = !reminderEnabled;
+		} else if (result.reason === 'denied') {
+			showToast($t('reminderDenied'), 'warning');
+		}
+		reminderBusy = false;
 	}
 
 	function reviewHref(item) {
@@ -481,13 +568,20 @@
 				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={retakeTest}>
 					{$t('retakeTest')}
 				</button>
-				{#if incorrectCount > 0}
+				{#if wrongIndices.length > 0}
 					<button
 						class="btn btn-sm btn-outline-warning"
 						type="button"
 						onclick={reviewWrongAnswers}
 					>
 						{$t('reviewWrongAnswers')}
+					</button>
+					<button
+						class="btn btn-sm btn-warning"
+						type="button"
+						onclick={practiceWeakQuestions}
+					>
+						{$t('practiceWeak', { count: wrongIndices.length })}
 					</button>
 				{/if}
 				<a class="btn btn-sm btn-outline-primary" href={practiceMoreHref()}>
@@ -507,6 +601,36 @@
 					{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
 				</span>
 			</label>
+			<div class="d-flex flex-wrap align-items-center gap-2 mt-2 no-print">
+				<span class="small text-muted">{$t('rateTest')}</span>
+				<button
+					class="btn btn-sm btn-outline-success"
+					type="button"
+					aria-label={$t('rateTestUp')}
+					onclick={() => rateTest('up')}
+				>
+					👍
+				</button>
+				<button
+					class="btn btn-sm btn-outline-danger"
+					type="button"
+					aria-label={$t('rateTestDown')}
+					onclick={() => rateTest('down')}
+				>
+					👎
+				</button>
+			</div>
+			{#if remindersSupported() && historyCount >= 2}
+				<label class="d-inline-flex align-items-center gap-2 mt-2 no-print">
+					<input
+						type="checkbox"
+						checked={reminderEnabled}
+						disabled={reminderBusy}
+						onchange={toggleReminders}
+					/>
+					<span class="small text-muted">{$t('dailyReminder')}</span>
+				</label>
+			{/if}
 		</div>
 
 		<div
@@ -705,6 +829,43 @@
 										? $t('removeQuestionBookmark')
 										: $t('bookmarkQuestion')}
 								</button>
+								{#if reportSent[index]}
+									<span class="badge text-bg-secondary mb-2 ms-1 no-print"
+										>{$t('reportThanks')}</span
+									>
+								{:else if reportTarget === index}
+									<span class="d-inline-flex flex-wrap gap-1 mb-2 ms-1 no-print">
+										<button
+											class="btn btn-sm btn-outline-danger"
+											type="button"
+											onclick={() => submitQuestionReport('wrong-key')}
+										>
+											{$t('reportWrongAnswer')}
+										</button>
+										<button
+											class="btn btn-sm btn-outline-secondary"
+											type="button"
+											onclick={() => submitQuestionReport('ambiguous')}
+										>
+											{$t('reportAmbiguous')}
+										</button>
+										<button
+											class="btn btn-sm btn-outline-secondary"
+											type="button"
+											onclick={() => submitQuestionReport('off-syllabus')}
+										>
+											{$t('reportOffSyllabus')}
+										</button>
+									</span>
+								{:else}
+									<button
+										class="btn btn-sm btn-outline-secondary mb-2 ms-1 no-print"
+										type="button"
+										onclick={() => reportQuestion(index)}
+									>
+										{$t('reportQuestion')}
+									</button>
+								{/if}
 								<p class="mb-1">
 									<span class="fw-semibold">{$t('yourAnswer')}:</span>
 									<span

@@ -2,10 +2,19 @@ import * as z from 'zod';
 
 export const questionSchema = z.object({
 	question: z.string().describe('The question text with formatting'),
-	options: z.array(z.string()).describe('The answer options for the question'),
+	rationale: z
+		.string()
+		.describe(
+			'Private one-sentence reasoning: why the correct answer is factually right and why the closest distractor is wrong'
+		),
+	options: z
+		.array(z.string())
+		.describe(
+			'Four answer options. Distractors must be plausible misconceptions, same category and similar length as the key'
+		),
 	answer: z
 		.string()
-		.describe('The correct answer to the question, Must match exactly one of the options'),
+		.describe('The correct answer, copied exactly from one complete option string'),
 });
 
 export const paperSchema = z.object({

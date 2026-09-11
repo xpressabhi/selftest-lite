@@ -14,6 +14,7 @@
 	} from '$lib/client/storage';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
+	import { getStreak } from '$lib/client/learning';
 	import SmartIntentInput from '$lib/client/SmartIntentInput.svelte';
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
 	import QuickStart from '$lib/client/QuickStart.svelte';
@@ -60,6 +61,9 @@
 	let retryLabel = $state('');
 	let isOffline = $state(false);
 	let unsubmittedTest = $state(null);
+	let streak = $state(null);
+	let lastTestId = $state(null);
+	let showReturningCard = $state(false);
 	let difficultyTouched = $state(false);
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
@@ -118,6 +122,18 @@
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
+		const historyEntries = getHistory();
+		streak = getStreak();
+		lastTestId = historyEntries[0]?.id ? String(historyEntries[0].id) : null;
+		showReturningCard = Boolean(
+			!unsubmittedTest && (streak?.currentStreak > 0 || historyEntries.length > 0)
+		);
+		if (showReturningCard) {
+			track('streak:view', {
+				streak: streak?.currentStreak || 0,
+				hasHistory: historyEntries.length > 0,
+			});
+		}
 		const savedPaperLanguage = window.localStorage.getItem(STORAGE_KEYS.PAPER_LANGUAGE);
 		paperLanguage = ['english', 'hindi'].includes(savedPaperLanguage)
 			? savedPaperLanguage
@@ -141,6 +157,12 @@
 			testType = params.get('testType') || testType;
 			numQuestions = Number(params.get('numQuestions')) || numQuestions;
 			paperLanguage = params.get('paperLanguage') || paperLanguage;
+		}
+		if (params.get('daily') === '1') {
+			// Micro-win deep link: start the Daily 5 without any setup taps.
+			window.setTimeout(() => {
+				void startDailyFive();
+			}, 100);
 		}
 		const updateNetwork = () => {
 			isOffline = !navigator.onLine;
@@ -660,6 +682,26 @@
 			</div>
 		{/if}
 
+		{#if showReturningCard}
+			<div class="returning-card">
+				<div>
+					<div class="fw-bold">{$t('welcomeBack')}</div>
+					<div class="small text-muted">
+						{$t('streakLabel', { count: streak?.currentStreak || 0 })}
+					</div>
+				</div>
+				{#if lastTestId}
+					<a
+						class="btn btn-outline-secondary btn-sm fw-bold"
+						href={`/test?id=${lastTestId}`}
+						onclick={() => track('home:resume-test')}
+					>
+						{$t('lastTest')}
+					</a>
+				{/if}
+			</div>
+		{/if}
+
 		<QuickStart
 			{bookmarkedExams}
 			{bookmarkedQuizPresets}
@@ -856,6 +898,18 @@
 		margin: 20px 0 0;
 		text-align: center;
 		font-size: 0.82rem;
+	}
+
+	.returning-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 16px;
+		padding: 12px 14px;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--surface);
 	}
 
 	.manual-section {
