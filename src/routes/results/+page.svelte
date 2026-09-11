@@ -1,9 +1,10 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
+	import { isDataSaverActive } from '$lib/client/preferences';
 	import { track } from '$lib/client/telemetry';
 	import {
 		buildReviewQueue,
@@ -44,6 +45,24 @@
 	let filter = $state('all');
 	let expanded = $state({});
 	let expansionInitialized = false;
+	const AUTO_EXPLAIN_KEY = 'selftest_auto_explain';
+	let autoExplainEnabled = $state(false);
+	let autoExplainRunning = $state(false);
+	let autoExplainCanceled = false;
+
+	let wrongIndices = $derived(
+		(questionPaper?.questions || [])
+			.map((_question, index) => index)
+			.filter((index) => {
+				const userAnswer = questionPaper?.userAnswers?.[index];
+				if (userAnswer == null) {
+					return false;
+				}
+				const question = questionPaper.questions[index];
+				const isCorrect = question.correct ?? userAnswer === question.answer;
+				return isCorrect === false;
+			})
+	);
 
 	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
 	let percentage = $derived(
@@ -103,6 +122,11 @@
 	});
 
 	onMount(async () => {
+		try {
+			autoExplainEnabled = window.localStorage.getItem(AUTO_EXPLAIN_KEY) === 'true';
+		} catch {
+			autoExplainEnabled = false;
+		}
 		const testId = page.url.searchParams.get('id');
 		try {
 			let resolved = await resolveTestRecord(testId);
@@ -155,7 +179,14 @@
 			track('results:view', { id: testId });
 			refreshLearningPanels();
 			loading = false;
+			if (autoExplainEnabled) {
+				void runAutoExplain();
+			}
 		}
+	});
+
+	onDestroy(() => {
+		autoExplainCanceled = true;
 	});
 
 	function refreshLearningPanels() {
@@ -193,6 +224,59 @@
 			[index]: !expanded[index],
 		};
 		track('results:toggle-question', { q: index });
+	}
+
+	function reviewWrongAnswers() {
+		filter = 'incorrect';
+		const firstWrong = wrongIndices[0];
+		if (firstWrong === undefined) {
+			return;
+		}
+		expanded = { ...expanded, [firstWrong]: true };
+		requestAnimationFrame(() => {
+			document
+				.getElementById(`question-${firstWrong}`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		});
+	}
+
+	async function runAutoExplain() {
+		if (autoExplainRunning || !questionPaper || $isDataSaverActive) {
+			return;
+		}
+		const targets = wrongIndices
+			.filter((index) => !questionPaper.questions[index]?.explanation)
+			.slice(0, 5);
+		if (targets.length === 0) {
+			return;
+		}
+		autoExplainRunning = true;
+		autoExplainCanceled = false;
+		try {
+			for (const index of targets) {
+				if (autoExplainCanceled) {
+					break;
+				}
+				await fetchExplanation(index, questionPaper.questions[index]);
+			}
+		} finally {
+			autoExplainRunning = false;
+		}
+	}
+
+	function toggleAutoExplain() {
+		autoExplainEnabled = !autoExplainEnabled;
+		try {
+			window.localStorage.setItem(AUTO_EXPLAIN_KEY, String(autoExplainEnabled));
+		} catch {
+			// Preference persistence is best-effort.
+		}
+		track('results:auto-explain-toggle', { enabled: autoExplainEnabled });
+		if (autoExplainEnabled) {
+			void runAutoExplain();
+		} else {
+			autoExplainCanceled = true;
+		}
 	}
 
 	function reviewHref(item) {
@@ -397,11 +481,32 @@
 				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={retakeTest}>
 					{$t('retakeTest')}
 				</button>
+				{#if incorrectCount > 0}
+					<button
+						class="btn btn-sm btn-outline-warning"
+						type="button"
+						onclick={reviewWrongAnswers}
+					>
+						{$t('reviewWrongAnswers')}
+					</button>
+				{/if}
 				<a class="btn btn-sm btn-outline-primary" href={practiceMoreHref()}>
 					{$t('practiceMore')}
 				</a>
 				<a class="btn btn-sm btn-primary" href="/">{$t('startNewQuiz')}</a>
 			</div>
+			<label class="auto-explain-switch d-inline-flex align-items-center gap-2 mt-3 no-print">
+				<input
+					type="checkbox"
+					checked={autoExplainEnabled}
+					disabled={$isDataSaverActive}
+					onchange={toggleAutoExplain}
+				/>
+				<span class="small text-muted">
+					{$t('autoExplainWrong')}
+					{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
+				</span>
+			</label>
 		</div>
 
 		<div
@@ -560,7 +665,7 @@
 			{#each filteredQuestions as { question, index } (`${index}-${question.question}`)}
 				{@const userAnswer = questionPaper.userAnswers?.[index]}
 				{@const isCorrect = question.correct ?? userAnswer === question.answer}
-				<article class="bg-body border rounded-3 p-3 shadow-sm">
+				<article id={`question-${index}`} class="bg-body border rounded-3 p-3 shadow-sm">
 					<button
 						class="review-card-head"
 						type="button"

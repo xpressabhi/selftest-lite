@@ -294,6 +294,17 @@ const latency = (
 	`
 )[0];
 
+const slowRequests = (
+	await sql`
+		SELECT
+			COUNT(*)::int AS total,
+			COUNT(*) FILTER (WHERE duration_ms > 10000)::int AS slow
+		FROM api_request_events
+		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+	`
+)[0];
+const slowShare = slowRequests.total > 0 ? slowRequests.slow / slowRequests.total : 0;
+
 section('Quality gates');
 const generationSuccessRate =
 	generation.starts > 0 ? generation.successes / generation.starts : 1;
@@ -324,6 +335,11 @@ const gates = [
 		label: 'state/auth p95 <= 3000ms',
 		passed: latency.state_p95 <= 3000 && latency.auth_p95 <= 3000,
 		detail: `state ${latency.state_p95}ms / auth ${latency.auth_p95}ms`,
+	},
+	{
+		label: '>10s requests < 2%',
+		passed: slowShare < 0.02,
+		detail: `${(slowShare * 100).toFixed(1)}% (${slowRequests.slow}/${slowRequests.total})`,
 	},
 ];
 for (const gate of gates) {

@@ -16,7 +16,6 @@
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import SmartIntentInput from '$lib/client/SmartIntentInput.svelte';
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
-	import WelcomeBlock from '$lib/client/WelcomeBlock.svelte';
 	import QuickStart from '$lib/client/QuickStart.svelte';
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
@@ -68,6 +67,11 @@
 	let heroCollapsed = $state(false);
 	let isAndroidDevice = $state(false);
 	let isInCapacitorApp = $state(false);
+	let showManualConfig = $state(false);
+	let generationAbort = null;
+	let generationTimer = null;
+	let generationElapsed = $state(0);
+	let generationCanceled = false;
 
 	const currentProfile = $derived($profileStore);
 	const insights = $derived($profileInsights);
@@ -103,6 +107,9 @@
 	let canGenerate = $derived(
 		topic.trim().length > 0 || selectedTopics.length > 0 || examId !== ''
 	);
+	let showPreview = $derived(
+		Boolean(topic.trim() || examId || parsedFromIntent || intentParseFailed)
+	);
 
 	onMount(() => {
 		const ua = window.navigator.userAgent || '';
@@ -123,7 +130,7 @@
 			const exam = getIndianExamById(examParam);
 			if (exam) {
 				topic = `${exam.name} objective exam paper`;
-				numQuestions = Number(exam.defaultNumQuestions || 20);
+				numQuestions = Number(exam.defaultNumQuestions || 10);
 				difficulty = exam.defaultDifficulty || 'intermediate';
 			}
 		}
@@ -310,7 +317,7 @@
 			const exam = getIndianExamById(value);
 			if (exam) {
 				topic = `${exam.name} objective exam paper`;
-				numQuestions = Number(exam.defaultNumQuestions || 20);
+				numQuestions = Number(exam.defaultNumQuestions || 10);
 				difficulty = exam.defaultDifficulty || 'intermediate';
 			}
 		}
@@ -343,14 +350,11 @@
 		track(isAdding ? 'bookmark:add-exam' : 'bookmark:remove-exam', { examId: examIdToToggle });
 	}
 
-	function handleWelcomeDismiss() {
-		track('welcome:dismiss');
-	}
-
-	function handleShowExample() {
-		const example = 'Class 12 chemistry organic reactions for NEET';
-		intentValue = example;
-		void parseIntent(example);
+	function toggleManualConfig() {
+		if (!showManualConfig) {
+			track('home:manual-expand');
+		}
+		showManualConfig = !showManualConfig;
 	}
 
 	function getExamRequestParams(
@@ -425,16 +429,26 @@
 			});
 			const data = await response.json().catch(() => ({}));
 			if (!response.ok) {
-				throw new Error(localizedApiError(data, $t, response.status));
+				const apiError = new Error(localizedApiError(data, $t, response.status));
+				apiError.status = response.status;
+				apiError.retryable = response.status === 429 || response.status >= 500;
+				throw apiError;
 			}
 			return data;
 		} catch (caughtError) {
-			if (caughtError.name === 'AbortError') {
-				throw new Error($t('generationTimedOutRetry'), { cause: caughtError });
+			if (caughtError.name === 'AbortError' && !generationCanceled) {
+				const timeoutError = new Error($t('generationTimedOutRetry'), {
+					cause: caughtError,
+				});
+				timeoutError.retryable = true;
+				throw timeoutError;
 			}
 			throw caughtError;
 		} finally {
 			window.clearTimeout(timeoutId);
+			if (generationAbort === controller) {
+				generationAbort = null;
+			}
 		}
 	}
 
@@ -446,6 +460,13 @@
 		status = 'loading';
 		error = '';
 		retryLabel = '';
+		generationCanceled = false;
+		generationElapsed = 0;
+		const generationStartedAt = Date.now();
+		window.clearInterval(generationTimer);
+		generationTimer = window.setInterval(() => {
+			generationElapsed = Math.floor((Date.now() - generationStartedAt) / 1000);
+		}, 1000);
 
 		track('generate:start', {
 			mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
@@ -454,29 +475,49 @@
 			testType: requestParams.testType || testType,
 		});
 
-		for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
-			try {
-				if (attempt > 1) {
-					retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
-				}
-				const data = await postGenerate(requestParams);
-				track('generate:success', {
-					mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
-				});
-				saveCurrentPaper(data);
-				await goto(`/test?id=${data.id}`);
-				return;
-			} catch (caughtError) {
-				if (attempt === MAX_RETRIES) {
-					track('generate:fail', { attempt });
-					error = caughtError.message || $t('errorFailedGenerateAfterAttempts');
-				} else {
-					await new Promise((resolve) => window.setTimeout(resolve, 600 * attempt));
+		try {
+			for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+				try {
+					if (attempt > 1) {
+						retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
+					}
+					const data = await postGenerate(requestParams);
+					track('generate:success', {
+						mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
+					});
+					saveCurrentPaper(data);
+					await goto(`/test?id=${data.id}`);
+					return;
+				} catch (caughtError) {
+					if (generationCanceled) {
+						error = $t('generationCanceled');
+						break;
+					}
+					const canRetry = caughtError.retryable !== false;
+					if (attempt === MAX_RETRIES || !canRetry) {
+						track('generate:fail', { attempt });
+						error = caughtError.message || $t('errorFailedGenerateAfterAttempts');
+						break;
+					}
+					await new Promise((resolve) => window.setTimeout(resolve, 300 * attempt));
 				}
 			}
+		} finally {
+			window.clearInterval(generationTimer);
+			generationTimer = null;
+			generationCanceled = false;
+			status = 'idle';
+			retryLabel = '';
 		}
-		status = 'idle';
-		retryLabel = '';
+	}
+
+	function cancelGeneration() {
+		if (status !== 'loading') {
+			return;
+		}
+		generationCanceled = true;
+		generationAbort?.abort();
+		track('generate:cancel');
 	}
 
 	async function handleGenerate() {
@@ -515,7 +556,26 @@
 		const exam = getIndianExamById(examQuickId);
 		if (!exam) return;
 		track('generate:quick-start-exam', { examId: examQuickId });
-		await runGeneration(getExamRequestParams(exam, exam.syllabus || [], ''));
+		const params = getExamRequestParams(exam, exam.syllabus || [], '');
+		await runGeneration({
+			...params,
+			numQuestions: Math.min(Number(params.numQuestions) || 10, 10),
+		});
+	}
+
+	async function startDailyFive() {
+		const lastEntry = getHistory()[0];
+		const topicSeed = (lastEntry?.topic || '').trim() || $t('dailyFiveFallbackTopic');
+		track('generate:quick-start-daily');
+		await runGeneration({
+			...getQuizRequestParams(),
+			topic: topicSeed,
+			selectedTopics: [],
+			examId: null,
+			examName: null,
+			testMode: 'quiz-practice',
+			numQuestions: 5,
+		});
 	}
 
 	async function quickStartPreset(preset) {
@@ -554,7 +614,6 @@
 			class:hero-collapsed={heroCollapsed}
 			aria-hidden={heroCollapsed}
 		>
-			<p class="hero-tagline">{$t('aiPracticeForIndianExams')}</p>
 			<h1 class="hero-heading">{$t('createQuiz')}</h1>
 		</div>
 
@@ -567,6 +626,17 @@
 				disabled={status === 'loading'}
 				status={intentStatus}
 			/>
+			<div class="daily-five-row">
+				<button
+					class="daily-five-btn"
+					type="button"
+					disabled={status === 'loading'}
+					onclick={startDailyFive}
+				>
+					⚡ {$t('dailyFive')}
+				</button>
+				<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
+			</div>
 		</div>
 
 		{#if unsubmittedTest?.id}
@@ -580,13 +650,15 @@
 							$t('testPrefix')}" {$t('unsubmittedTestMessageSuffix')}
 					</div>
 				</div>
-				<a class="btn btn-warning btn-sm fw-bold" href={`/test?id=${unsubmittedTest.id}`}>
+				<a
+					class="btn btn-warning btn-sm fw-bold"
+					href={`/test?id=${unsubmittedTest.id}`}
+					onclick={() => track('home:resume-test')}
+				>
 					{$t('continueTest')}
 				</a>
 			</div>
 		{/if}
-
-		<WelcomeBlock onDismiss={handleWelcomeDismiss} onShowExample={handleShowExample} />
 
 		<QuickStart
 			{bookmarkedExams}
@@ -596,21 +668,23 @@
 			disabled={status === 'loading'}
 		/>
 
-		<PreviewCard
-			{topic}
-			{numQuestions}
-			{testType}
-			{difficulty}
-			language={paperLanguage}
-			{examId}
-			{isFullExam}
-			parsed={parsedFromIntent}
-			parsingFailed={intentParseFailed}
-			ongenerate={handleGenerate}
-			oneditchip={handleChipEdit}
-			disabled={status === 'loading'}
-			{status}
-		/>
+		{#if showPreview}
+			<PreviewCard
+				{topic}
+				{numQuestions}
+				{testType}
+				{difficulty}
+				language={paperLanguage}
+				{examId}
+				{isFullExam}
+				parsed={parsedFromIntent}
+				parsingFailed={intentParseFailed}
+				ongenerate={handleGenerate}
+				oneditchip={handleChipEdit}
+				disabled={status === 'loading'}
+				{status}
+			/>
+		{/if}
 
 		{#if tailoredSummary}
 			<div class="tailored-chip">
@@ -624,26 +698,50 @@
 		{/if}
 
 		<div class="manual-section">
-			<p class="manual-divider"><span>{$t('manualConfigHint')}</span></p>
-			<div class="manual-grid">
-				<TopicBrowser
-					{selectedCategory}
-					{selectedTopics}
-					ontopicchange={handleTopicBrowserChange}
-				/>
-				<ExamBrowser
-					{examSearchQuery}
-					{examGroupFilter}
-					{showBookmarkedExamsOnly}
-					{bookmarkedExamIds}
-					selectedExamId={examId}
-					onexamchange={handleExamBrowserChange}
-					onbookmarktoggle={toggleExamBookmark}
-					{visibleExams}
-				/>
-			</div>
+			<button
+				class="manual-toggle"
+				type="button"
+				aria-expanded={showManualConfig}
+				onclick={toggleManualConfig}
+			>
+				{$t('browseTopicsExams')}
+			</button>
+			{#if showManualConfig}
+				<div class="manual-grid">
+					<TopicBrowser
+						{selectedCategory}
+						{selectedTopics}
+						ontopicchange={handleTopicBrowserChange}
+					/>
+					<ExamBrowser
+						{examSearchQuery}
+						{examGroupFilter}
+						{showBookmarkedExamsOnly}
+						{bookmarkedExamIds}
+						selectedExamId={examId}
+						onexamchange={handleExamBrowserChange}
+						onbookmarktoggle={toggleExamBookmark}
+						{visibleExams}
+					/>
+				</div>
+			{/if}
 		</div>
 
+		{#if status === 'loading'}
+			<div class="generation-status">
+				<span>
+					{$t('generatingQuestionCount', { count: numQuestions })}
+					· {generationElapsed}s
+				</span>
+				<button
+					class="btn btn-outline-secondary btn-sm"
+					type="button"
+					onclick={cancelGeneration}
+				>
+					{$t('cancel')}
+				</button>
+			</div>
+		{/if}
 		{#if isOffline}
 			<div class="alert alert-warning mt-3 mb-0">{$t('offlineAccessHistory')}</div>
 		{/if}
@@ -653,31 +751,20 @@
 		{#if error}
 			<div class="alert alert-danger mt-3 mb-0">{error}</div>
 		{/if}
-	</div>
-</section>
 
-{#if isAndroidDevice && !isInCapacitorApp}
-	<section class="container pb-4">
-		<div class="mx-auto home-wrap">
-			<div class="bg-body border rounded-3 p-3 p-md-4 text-center">
-				<h2 class="h6 fw-bold mb-1">{$t('androidAppTitle')}</h2>
-				<p class="text-muted small mb-3">{$t('androidAppBody')}</p>
+		{#if isAndroidDevice && !isInCapacitorApp}
+			<p class="android-link-row">
 				<a
-					class="btn btn-primary"
 					href="/apk/selftest.apk"
 					download="selftest.apk"
 					onclick={() => track('apk:download')}
 				>
 					{$t('androidAppDownload')}
 				</a>
-				<p class="text-muted small mt-3 mb-0">
-					{$t('androidAppInstallHint')}
-					<span class="fw-semibold">{$t('androidAppAllowUnknownSources')}</span>
-				</p>
-			</div>
-		</div>
-	</section>
-{/if}
+			</p>
+		{/if}
+	</div>
+</section>
 
 {#if showProfileWizard && profileReadyForWizard}
 	<ProfileWizard
@@ -709,15 +796,6 @@
 		pointer-events: none;
 	}
 
-	.hero-tagline {
-		font-size: 0.78rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--text-muted);
-		font-weight: 600;
-		margin: 0 0 8px;
-	}
-
 	.hero-heading {
 		font-size: 1.5rem;
 		font-weight: 700;
@@ -729,33 +807,74 @@
 		margin-bottom: 20px;
 	}
 
+	.daily-five-row {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		margin-top: 10px;
+		flex-wrap: wrap;
+	}
+
+	.daily-five-btn {
+		border: 1px solid color-mix(in srgb, var(--color-brand-600) 35%, transparent);
+		background: color-mix(in srgb, var(--color-brand-600) 8%, transparent);
+		color: var(--color-brand-600);
+		font-weight: 600;
+		font-size: 0.85rem;
+		padding: 8px 14px;
+		border-radius: 999px;
+		min-height: 44px;
+		cursor: pointer;
+	}
+
+	.daily-five-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.daily-five-hint {
+		font-size: 0.76rem;
+		color: var(--text-muted);
+	}
+
+	.generation-status {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin-top: 12px;
+		padding: 10px 12px;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--surface-muted);
+		font-size: 0.85rem;
+		color: var(--text-muted);
+	}
+
+	.android-link-row {
+		margin: 20px 0 0;
+		text-align: center;
+		font-size: 0.82rem;
+	}
+
 	.manual-section {
 		margin-top: 16px;
 	}
 
-	.manual-divider {
-		text-align: center;
-		font-size: 0.78rem;
+	.manual-toggle {
+		display: block;
+		margin: 0 auto;
+		border: 0;
+		background: transparent;
 		color: var(--text-muted);
-		margin: 0 0 4px;
-		position: relative;
-	}
-
-	.manual-divider span {
-		background: var(--bg-body, #f8fafc);
-		padding: 0 12px;
-		position: relative;
-		z-index: 1;
-	}
-
-	.manual-divider::before {
-		content: '';
-		position: absolute;
-		left: 0;
-		right: 0;
-		top: 50%;
-		height: 1px;
-		background: var(--line);
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		min-height: 44px;
+		padding: 8px 12px;
+		cursor: pointer;
 	}
 
 	.manual-grid {

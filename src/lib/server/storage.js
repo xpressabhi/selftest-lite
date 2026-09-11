@@ -1295,7 +1295,7 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM ai_test`
 		),
 		query(
-			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_ms FROM ai_test_attempts`
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_seconds FROM ai_test_attempts`
 		),
 		query(
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user`
@@ -1335,7 +1335,7 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 				total: attempts.rows[0]?.total || 0,
 				recent: attempts.rows[0]?.recent || 0,
 				avg_score: attempts.rows[0]?.avg_score || 0,
-				avg_time_ms: attempts.rows[0]?.avg_time_ms || 0,
+				avg_time_seconds: attempts.rows[0]?.avg_time_seconds || 0,
 			},
 			app_user: { total: users.rows[0]?.total || 0, recent: users.rows[0]?.recent || 0 },
 			app_user_session: { active: activeSessions.rows[0]?.active || 0 },

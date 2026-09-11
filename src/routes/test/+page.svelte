@@ -459,8 +459,10 @@
 			return;
 		}
 		if (deltaX < 0) {
+			track('test:swipe', { direction: 'next' });
 			nextQuestion();
 		} else {
+			track('test:swipe', { direction: 'prev' });
 			previousQuestion();
 		}
 	}
@@ -534,8 +536,12 @@
 								<input
 									type="checkbox"
 									checked={$autoAdvance}
-									onchange={(event) =>
-										setAutoAdvance(event.currentTarget.checked)}
+									onchange={(event) => {
+										track('settings:auto-advance-toggle', {
+											enabled: event.currentTarget.checked,
+										});
+										setAutoAdvance(event.currentTarget.checked);
+									}}
 								/>
 								<span>{$t('autoAdvance')}</span>
 							</label>

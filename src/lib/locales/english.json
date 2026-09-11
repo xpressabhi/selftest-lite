@@ -764,5 +764,15 @@
 	"fewerQuestions": "Fewer questions",
 	"moreQuestions": "More questions",
 	"showAllCategories": "Show all categories",
-	"examSelected": "Selected"
+	"examSelected": "Selected",
+	"generatingYourTest": "Generating your test…",
+	"generatingQuestionCount": "Generating {count} questions…",
+	"generationCanceled": "Generation canceled.",
+	"dailyFive": "Daily 5",
+	"dailyFiveHint": "5 quick questions on your last topic",
+	"dailyFiveFallbackTopic": "General Knowledge",
+	"reviewWrongAnswers": "Review wrong answers",
+	"autoExplainWrong": "Auto-explain wrong answers",
+	"explainingProgress": "Explaining…",
+	"browseTopicsExams": "Browse topics & exams"
 }

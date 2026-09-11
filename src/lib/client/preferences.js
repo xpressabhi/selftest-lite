@@ -56,7 +56,7 @@ export function initializePreferences() {
 	document.documentElement.classList.toggle('reduce-motion', resolvedDataSaver);
 
 	const savedAutoAdvance = window.localStorage.getItem(AUTO_ADVANCE_KEY);
-	autoAdvance.set(savedAutoAdvance === null ? false : savedAutoAdvance === 'true');
+	autoAdvance.set(savedAutoAdvance === null ? true : savedAutoAdvance === 'true');
 }
 
 export async function setLanguage(nextLanguage, { persist = true } = {}) {

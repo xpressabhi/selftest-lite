@@ -110,10 +110,22 @@
 		initializePreferences();
 		startTelemetry();
 		void initDeepLinks();
-		refreshSession();
 		void handleAuthRedirect();
-		flushPendingAttempts().catch(() => {});
-		const stopStateSync = startStateSync();
+		// Session, state, and history hydration wait until the browser is idle
+		// so the first paint and first tap are never blocked by cold API calls.
+		let stopStateSync = () => {};
+		const scheduleIdle = (callback) => {
+			if (typeof window.requestIdleCallback === 'function') {
+				window.requestIdleCallback(callback, { timeout: 2000 });
+			} else {
+				window.setTimeout(callback, 1500);
+			}
+		};
+		scheduleIdle(() => {
+			refreshSession();
+			stopStateSync = startStateSync();
+			flushPendingAttempts().catch(() => {});
+		});
 
 		const handleOnlineFlush = () => {
 			flushPendingAttempts().catch(() => {});

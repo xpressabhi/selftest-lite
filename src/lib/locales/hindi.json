@@ -764,5 +764,15 @@
 	"fewerQuestions": "कम प्रश्न",
 	"moreQuestions": "अधिक प्रश्न",
 	"showAllCategories": "सभी श्रेणियां दिखाएं",
-	"examSelected": "चयनित"
+	"examSelected": "चयनित",
+	"generatingYourTest": "आपका टेस्ट बन रहा है…",
+	"generatingQuestionCount": "{count} सवाल बन रहे हैं…",
+	"generationCanceled": "टेस्ट बनाना रद्द कर दिया गया।",
+	"dailyFive": "डेली 5",
+	"dailyFiveHint": "आपके पिछले टॉपिक पर 5 तेज़ सवाल",
+	"dailyFiveFallbackTopic": "सामान्य ज्ञान",
+	"reviewWrongAnswers": "गलत उत्तर देखें",
+	"autoExplainWrong": "गलत उत्तरों की व्याख्या अपने-आप करें",
+	"explainingProgress": "व्याख्या बन रही है…",
+	"browseTopicsExams": "विषय और परीक्षाएँ देखें"
 }

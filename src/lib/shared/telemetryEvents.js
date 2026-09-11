@@ -19,14 +19,17 @@ export const TELEMETRY_EVENTS = new Set([
 	'intent:parsed',
 	'intent:parse-failed',
 	'preview:edit-chip',
-	'welcome:dismiss',
+	'home:manual-expand',
+	'home:resume-test',
 
 	// Generation
 	'generate:start',
 	'generate:success',
 	'generate:fail',
+	'generate:cancel',
 	'generate:quick-start-exam',
 	'generate:quick-start-preset',
+	'generate:quick-start-daily',
 
 	// Search (smart intent dropdown)
 	'search:open',
@@ -47,6 +50,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'test:submit',
 	'test:submit-fail',
 	'test:share',
+	'test:swipe',
 
 	// Results
 	'results:view',
@@ -57,6 +61,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'results:retake',
 	'results:print',
 	'results:share',
+	'results:auto-explain-toggle',
 
 	// Bookmarks / history
 	'bookmarks:view',
@@ -74,6 +79,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'settings:language-toggle',
 	'settings:theme-toggle',
 	'settings:data-saver-toggle',
+	'settings:auto-advance-toggle',
 
 	// PWA / distribution
 	'pwa:install-prompt',

@@ -62,6 +62,7 @@ It prints:
 | Server 5xx | 0 |
 | Null `test_mode` on generated tests | 0 |
 | `/api/user/state` and `/api/auth/me` p95 | <= 3000 ms |
+| Requests slower than 10s | < 2% |
 
 ## Weekly automation
 
