@@ -1034,7 +1034,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 		query(
 			`SELECT
 				COUNT(*)::INTEGER AS total,
-				COUNT(*) FILTER (WHERE status_code >= 400)::INTEGER AS errors,
+				COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::INTEGER AS errors,
 				COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms,
 				MIN(created_at) AS first_event,
 				MAX(created_at) AS last_event
@@ -1045,7 +1045,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			`SELECT
 				route,
 				COUNT(*)::INTEGER AS requests,
-				COUNT(*) FILTER (WHERE status_code >= 400)::INTEGER AS errors,
+				COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::INTEGER AS errors,
 				COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms
 			 FROM api_request_events
 			 ${durationWhere}
@@ -1254,7 +1254,7 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM api_rate_limit_events`
 		),
 		query(
-			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(*) FILTER (WHERE status_code >= 400 AND ${filter})::INTEGER AS errors FROM api_request_events`
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429) AND ${filter})::INTEGER AS errors FROM api_request_events`
 		),
 		query(
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COUNT(DISTINCT session_id) FILTER (WHERE ${filter})::INTEGER AS sessions FROM feature_events`

@@ -23,16 +23,11 @@ export async function GET({ request, cookies }) {
 
 		const session = await getSessionFromRequest(cookies, { refresh: true });
 		if (!session) {
+			// Anonymous visitors are the normal case, not an error: answer 200
+			// with a null user and skip API error telemetry so the admin error
+			// rate reflects real failures only.
 			clearSessionCookie(cookies);
-			await logApiEvent({
-				route: '/api/auth/me',
-				action: 'resolve_session',
-				clientKey,
-				request,
-				statusCode: 401,
-				durationMs: Date.now() - startedAt,
-			});
-			return json({ user: null }, { status: 401 });
+			return json({ user: null });
 		}
 
 		setSessionCookie(cookies, session.rawSessionToken, session.expiresAt);

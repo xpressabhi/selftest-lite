@@ -24,6 +24,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 | `npm run lint`    | ESLint static checks                                 |
 | `npm run check`   | SvelteKit sync + production build                    |
 | `npm run test`    | Run vitest unit tests                                |
+| `npm run telemetry:report -- --days=30` | Read-only DB telemetry snapshot (funnel, API hotspots, data quality) |
 | `npm run build`   | Production build                                     |
 | `npm run preview` | Preview the production build                         |
 | `gh pr view`      | View or create pull requests with GitHub CLI         |
@@ -70,6 +71,13 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 - **Tailwind**: Generated through the SvelteKit PostCSS pipeline.
 - **Custom CSS**: Shared variables and Tailwind component primitives live in `src/lib/styles/globals.css`.
 - **Animations**: Prefer subtle transforms and transitions for a "premium" feel. The `.data-saver` / `.reduce-motion` classes on `document.documentElement` disable heavy animations on low-end devices (managed by `src/lib/client/preferences.js`).
+
+### 5. Telemetry & Product Analytics
+
+- **Allowlist is mandatory**: every `track()` / `trackDebounced()` event must exist in `src/lib/shared/telemetryEvents.js`. `npm run test` scans the source and fails both for emitted-but-blocked events and for allowlisted events with no emit site.
+- **Regular practice**: run `npm run telemetry:report -- --days=30` weekly and before/after shipping a feature. Review the activation funnel, unseen events, error/latency hotspots, rate-limit trips, and data-quality checks.
+- **Reading it**: distinct identities (`client_id`) are the closest proxy for real users; traffic spikes with few identities are usually bots. Expected anonymous 401s and rate-limit 429s are excluded from error counts.
+- **Runbook**: [docs/telemetry.md](docs/telemetry.md) covers the pipeline, report command, and weekly checklist.
 
 ---
 

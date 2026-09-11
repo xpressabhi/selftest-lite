@@ -13,6 +13,8 @@
 		"format:check": "prettier --check .",
 		"check": "svelte-kit sync && vite build",
 		"test": "vitest run",
+		"telemetry:report": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/telemetry-report.mjs",
+		"telemetry:backfill": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-metadata.mjs",
 		"cap:sync": "cap sync android",
 		"cap:open": "cap open android",
 		"apk:debug": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug",

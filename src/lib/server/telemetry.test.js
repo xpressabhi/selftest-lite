@@ -99,9 +99,8 @@ describe('validateTelemetryPayload', () => {
 	it('allowlist covers all documented event families', () => {
 		const expected = [
 			'page:view',
-			'setup:mode',
+			'intent:parse',
 			'generate:start',
-			'search:keystroke',
 			'test:answer',
 			'results:explain',
 			'bookmark:add-exam',

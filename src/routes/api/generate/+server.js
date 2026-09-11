@@ -577,6 +577,10 @@ export async function POST({ request, cookies }) {
 				numQuestions,
 				difficulty: resolvedDifficulty,
 				language,
+				testMode,
+				examId,
+				objectiveOnly,
+				durationMinutes,
 				createdByUserId: user?.id || null,
 			});
 
