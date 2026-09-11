@@ -3,7 +3,7 @@ import { getAuthenticatedUser, getClientIdFromRequest, normalizeClientId } from 
 import { recordTelemetryEvents, validateTelemetryPayload } from '$lib/server/telemetry';
 import { rateLimiter } from '$lib/server/rateLimiter';
 
-const TELEMETRY_RATE_LIMIT = 120;
+const TELEMETRY_RATE_LIMIT = 240;
 
 export async function POST({ request, cookies }) {
 	const rateLimit = await rateLimiter(request, {

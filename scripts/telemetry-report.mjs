@@ -19,6 +19,7 @@ if (args.includes('--help') || args.includes('-h')) {
 
 const daysArgument = args.find((argument) => argument.startsWith('--days='));
 const days = Math.min(Math.max(Number(daysArgument?.split('=')[1]) || 30, 1), 365);
+const strict = args.includes('--strict');
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -100,6 +101,36 @@ printTable(
 		{ key: 'events', label: 'events' },
 		{ key: 'sessions', label: 'sessions' },
 		{ key: 'identities', label: 'identities' },
+	]
+);
+
+section('Retention (new vs returning identities)');
+printTable(
+	await sql`
+		WITH ids AS (
+			SELECT COALESCE(user_id::text, client_id) AS id, created_at
+			FROM feature_events
+			WHERE COALESCE(user_id::text, client_id) IS NOT NULL
+		),
+		first_seen AS (
+			SELECT id, MIN(created_at) AS first_at FROM ids GROUP BY id
+		)
+		SELECT
+			DATE_TRUNC('week', i.created_at)::date AS week,
+			COUNT(DISTINCT i.id)::int AS identities,
+			COUNT(DISTINCT i.id) FILTER (WHERE f.first_at >= DATE_TRUNC('week', i.created_at))::int AS new_ids,
+			COUNT(DISTINCT i.id) FILTER (WHERE f.first_at < DATE_TRUNC('week', i.created_at))::int AS returning
+		FROM ids i
+		JOIN first_seen f USING (id)
+		WHERE i.created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY 1
+		ORDER BY 1
+	`,
+	[
+		{ key: 'week', label: 'week' },
+		{ key: 'identities', label: 'identities' },
+		{ key: 'new_ids', label: 'new' },
+		{ key: 'returning', label: 'returning' },
 	]
 );
 
@@ -250,5 +281,60 @@ console.log(
 	`  explain ok/fail:        ${generation.explains} / ${generation.explain_failures} (${percent(generation.explain_failures, generation.explains + generation.explain_failures)} fail)`
 );
 console.log(`  server 5xx:             ${serverErrors.server_errors}`);
+
+const latency = (
+	await sql`
+		SELECT
+			COALESCE((SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)
+				FROM api_request_events
+				WHERE route = '/api/user/state' AND created_at >= NOW() - ${days}::int * INTERVAL '1 day')::int, 0) AS state_p95,
+			COALESCE((SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)
+				FROM api_request_events
+				WHERE route = '/api/auth/me' AND created_at >= NOW() - ${days}::int * INTERVAL '1 day')::int, 0) AS auth_p95
+	`
+)[0];
+
+section('Quality gates');
+const generationSuccessRate =
+	generation.starts > 0 ? generation.successes / generation.starts : 1;
+const explainTotal = generation.explains + generation.explain_failures;
+const explainFailRate = explainTotal > 0 ? generation.explain_failures / explainTotal : 0;
+const gates = [
+	{
+		label: 'generate success >= 95%',
+		passed: generation.starts === 0 || generationSuccessRate >= 0.95,
+		detail: `${(generationSuccessRate * 100).toFixed(1)}%`,
+	},
+	{
+		label: 'explain failure < 2%',
+		passed: explainFailRate < 0.02,
+		detail: `${(explainFailRate * 100).toFixed(1)}%`,
+	},
+	{
+		label: 'server 5xx = 0',
+		passed: serverErrors.server_errors === 0,
+		detail: String(serverErrors.server_errors),
+	},
+	{
+		label: 'null test_mode = 0',
+		passed: quality.mode_null === 0,
+		detail: `${quality.mode_null}/${quality.tests}`,
+	},
+	{
+		label: 'state/auth p95 <= 3000ms',
+		passed: latency.state_p95 <= 3000 && latency.auth_p95 <= 3000,
+		detail: `state ${latency.state_p95}ms / auth ${latency.auth_p95}ms`,
+	},
+];
+for (const gate of gates) {
+	console.log(`  ${gate.passed ? 'PASS' : 'FAIL'}  ${gate.label}  (${gate.detail})`);
+}
+const failedGates = gates.filter((gate) => !gate.passed);
+console.log(
+	failedGates.length === 0 ? '\nAll quality gates passed.' : `\n${failedGates.length} gate(s) failing.`
+);
+if (strict && failedGates.length > 0) {
+	process.exitCode = 1;
+}
 
 console.log('\nReview checklist: docs/telemetry.md');

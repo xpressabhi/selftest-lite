@@ -27,8 +27,8 @@ silently.
 - `src/lib/shared/telemetryEvents.test.js` scans every `track()` call under
   `src/` and fails when an emitted event is not allowlisted, or when an
   allowlisted event has no emit site anywhere.
-- Do not add speculative names. If a feature is deleted, delete its events in
-  the same change.
+- Do not add speculative names. If a feature is removed, remove its event names
+  in the same change (code only — recorded data stays archived).
 
 Run `npm run test` before shipping any telemetry change.
 
@@ -43,12 +43,52 @@ The script loads `DATABASE_URL` from `.env.local` / `.env` and is **read-only**.
 It prints:
 
 - database overview and weekly activity (events, sessions, identities)
+- retention: new vs returning identities per week
 - activation funnel: page view → generate → test start → submit → explain
 - top feature events, plus allowlisted events not seen in the window
 - API hotspots (requests, errors excluding expected 401/429, 401s, 429s, avg/p95 latency)
 - rate-limit trips per route
 - data-quality checks: null `test_mode`/`difficulty`/`language`, generate and
   explain success rates, server 5xx count
+- quality gates (PASS/FAIL). Pass `--strict` to exit non-zero when any gate
+  fails (used by the scheduled workflow).
+
+### Quality gates
+
+| Gate | Target |
+| --- | --- |
+| Generate success rate | >= 95% |
+| Explain failure rate | < 2% |
+| Server 5xx | 0 |
+| Null `test_mode` on generated tests | 0 |
+| `/api/user/state` and `/api/auth/me` p95 | <= 3000 ms |
+
+## Weekly automation
+
+`.github/workflows/telemetry-report.yml` runs every Monday (and on manual
+dispatch): it executes the report with `--strict`, archives old telemetry rows,
+and uploads both outputs as artifacts.
+
+Setup: add a repository secret named `DATABASE_URL` (Settings → Secrets and
+variables → Actions). Without it the workflow fails at the report step.
+
+## Archival (no deletions)
+
+Telemetry is never deleted. Rows past the retention window are moved into
+matching `*_archive` tables (with an `archived_at` timestamp) in a single
+`DELETE ... RETURNING` → `INSERT` statement, so a failed insert rolls back the
+delete and nothing can be lost. Archived rows stay queryable, e.g.
+`SELECT * FROM feature_events_archive`.
+
+```bash
+npm run telemetry:archive                 # dry run
+npm run telemetry:archive -- --apply      # move rows into archive tables
+```
+
+Defaults: feature events > 180 days, API events > 90 days, rate-limit events >
+2 days. The weekly workflow performs the archival automatically. The same
+archive-first pattern is used for superseded state rows (`app_user_state`),
+expired/revoked sessions (`app_user_session`), and legacy tables.
 
 ## Weekly review checklist
 
@@ -72,7 +112,7 @@ It prints:
   (distinct `client_id`) as the closest thing to real users.
 - `401` on `/api/auth/me` is expected for anonymous visitors and is excluded
   from the admin error metric.
-- There is no retention policy yet for `feature_events` or
-  `api_request_events`; delete old rows periodically if storage grows.
+- Data is archived, never deleted (see Archival above); archive tables grow
+  forever by design.
 - Stored context includes user agent and IP-derived country/city/timezone. The
   privacy page covers analytics; keep it in sync if tracking changes.

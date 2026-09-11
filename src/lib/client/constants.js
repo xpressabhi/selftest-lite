@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
 	PAPER_LANGUAGE: 'selftest_paper_language',
 	HOME_TOUR_COMPLETED: 'selftest_home_tour_completed',
 	PWA_INSTALL_DISMISSED_AT: 'selftest_pwa_install_dismissed_at',
+	PWA_INSTALL_PROMPTED_AT: 'selftest_pwa_install_prompted_at',
 	PENDING_ATTEMPTS: 'selftest_pending_attempts',
 	HIDDEN_HISTORY: 'selftest_hidden_history',
 };

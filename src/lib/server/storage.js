@@ -1,6 +1,7 @@
 import { Pool } from '@neondatabase/serverless';
 import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
+import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
 
 let poolInstance = null;
 let schemaReadyPromise = null;
@@ -55,12 +56,33 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
+const SCHEMA_VERSION = 2;
+
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
 		return schemaReadyPromise;
 	}
 
 	schemaReadyPromise = (async () => {
+		// Warm databases answer with one indexed lookup instead of replaying
+		// every DDL statement on each serverless cold start.
+		try {
+			const current = await query(`SELECT version FROM app_schema WHERE id = 1`);
+			if (Number(current.rows[0]?.version) === SCHEMA_VERSION) {
+				return;
+			}
+		} catch {
+			// app_schema is missing (first deploy or legacy database).
+		}
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS app_schema (
+				id SMALLINT PRIMARY KEY,
+				version INTEGER NOT NULL,
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
 		await query(`
 			CREATE TABLE IF NOT EXISTS ai_test (
 				id BIGSERIAL PRIMARY KEY,
@@ -226,7 +248,10 @@ export async function ensureStorageSchema() {
 						});
 					}
 				}
-				await query(`DROP TABLE app_user_state_legacy`);
+				// Never drop legacy data: rename it aside for forensics instead.
+				await query(
+					`ALTER TABLE app_user_state_legacy RENAME TO app_user_state_legacy_archive`
+				);
 			} catch (error) {
 				console.error('Failed to migrate legacy app_user_state:', error);
 			}
@@ -333,6 +358,19 @@ export async function ensureStorageSchema() {
 			CREATE INDEX IF NOT EXISTS idx_feature_events_created
 			ON feature_events (created_at)
 		`);
+
+		// Archive tables preserve anything that leaves a hot table; nothing
+		// is ever dropped (see src/lib/shared/dataArchive.js).
+		for (const statement of ARCHIVE_TABLE_STATEMENTS) {
+			await query(statement);
+		}
+
+		await query(
+			`INSERT INTO app_schema (id, version, updated_at)
+			 VALUES (1, $1, NOW())
+			 ON CONFLICT (id) DO UPDATE SET version = $1, updated_at = NOW()`,
+			[SCHEMA_VERSION]
+		);
 	})().catch((error) => {
 		schemaReadyPromise = null;
 		throw error;
@@ -707,9 +745,14 @@ export async function deleteStateForIdentity(identity, stateKey) {
 	}
 
 	const result = await query(
-		`DELETE FROM app_user_state
-		 WHERE state_key = $1
-			AND (user_id = $2 OR (user_id IS NULL AND client_id = $3))`,
+		`WITH moved AS (
+			DELETE FROM app_user_state
+			WHERE state_key = $1
+				AND (user_id = $2 OR (user_id IS NULL AND client_id = $3))
+			RETURNING *
+		)
+		INSERT INTO app_user_state_archive
+		SELECT *, NOW() FROM moved`,
 		[stateKey, userId, clientId]
 	);
 	return (result.rowCount || 0) > 0;
@@ -760,14 +803,20 @@ export async function backfillUserIdentity(userId, clientId) {
 			[normalizedUserId, clientId]
 		);
 		// A user row may already exist for a key (earlier login on another
-		// device): keep the newest row per (user_id, state_key).
+		// device): keep the newest row per (user_id, state_key) and archive
+		// the superseded rows instead of dropping them.
 		await query(
-			`DELETE FROM app_user_state a
-			 USING app_user_state b
-			 WHERE a.user_id = b.user_id
-				AND a.state_key = b.state_key
-				AND a.id <> b.id
-				AND (a.updated_at < b.updated_at OR (a.updated_at = b.updated_at AND a.id > b.id))`
+			`WITH moved AS (
+				DELETE FROM app_user_state a
+				USING app_user_state b
+				WHERE a.user_id = b.user_id
+					AND a.state_key = b.state_key
+					AND a.id <> b.id
+					AND (a.updated_at < b.updated_at OR (a.updated_at = b.updated_at AND a.id > b.id))
+				RETURNING a.*
+			)
+			INSERT INTO app_user_state_archive
+			SELECT *, NOW() FROM moved`
 		);
 	} catch (error) {
 		console.error('Failed to backfill user state:', error);
@@ -1001,11 +1050,16 @@ export async function logApiEvent({
 	}
 }
 
-export async function cleanupOldRateLimitEvents() {
+export async function archiveOldRateLimitEvents() {
 	await ensureStorageSchema();
 	await query(
-		`DELETE FROM api_rate_limit_events
-		 WHERE created_at < NOW() - INTERVAL '2 days'`
+		`WITH moved AS (
+			DELETE FROM api_rate_limit_events
+			WHERE created_at < NOW() - INTERVAL '2 days'
+			RETURNING *
+		)
+		INSERT INTO api_rate_limit_events_archive
+		SELECT *, NOW() FROM moved`
 	);
 }
 

@@ -14,6 +14,7 @@ import {
 } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { paperSchema } from '$lib/server/quizSchema';
+import { parseJsonResponse } from '$lib/server/jsonResponse';
 import { normalizeMathText } from '$lib/shared/latex';
 import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
 import {
@@ -105,9 +106,7 @@ function sanitizeQuestion(question) {
 }
 
 function parseGeneratedJson(text) {
-	const trimmedText = text.trim();
-	const fencedJson = trimmedText.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/iu);
-	return JSON.parse(fencedJson ? fencedJson[1] : trimmedText);
+	return parseJsonResponse(text);
 }
 
 async function generateQuestionBatch({

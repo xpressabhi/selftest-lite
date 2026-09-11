@@ -25,6 +25,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 | `npm run check`   | SvelteKit sync + production build                    |
 | `npm run test`    | Run vitest unit tests                                |
 | `npm run telemetry:report -- --days=30` | Read-only DB telemetry snapshot (funnel, API hotspots, data quality) |
+| `npm run telemetry:archive` | Dry-run archive old telemetry rows (`--apply` to move them) |
 | `npm run build`   | Production build                                     |
 | `npm run preview` | Preview the production build                         |
 | `gh pr view`      | View or create pull requests with GitHub CLI         |
@@ -75,6 +76,10 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 ### 5. Telemetry & Product Analytics
 
 - **Allowlist is mandatory**: every `track()` / `trackDebounced()` event must exist in `src/lib/shared/telemetryEvents.js`. `npm run test` scans the source and fails both for emitted-but-blocked events and for allowlisted events with no emit site.
+- **Never delete data**: rows that leave a hot table are archived into matching
+  `*_archive` tables via `npm run telemetry:archive` or archive-first SQL.
+  User-facing remove actions keep the archive copy; never add `DELETE` without
+  an `INSERT ... SELECT ... RETURNING` archival in the same statement.
 - **Regular practice**: run `npm run telemetry:report -- --days=30` weekly and before/after shipping a feature. Review the activation funnel, unseen events, error/latency hotspots, rate-limit trips, and data-quality checks.
 - **Reading it**: distinct identities (`client_id`) are the closest proxy for real users; traffic spikes with few identities are usually bots. Expected anonymous 401s and rate-limit 429s are excluded from error counts.
 - **Runbook**: [docs/telemetry.md](docs/telemetry.md) covers the pipeline, report command, and weekly checklist.

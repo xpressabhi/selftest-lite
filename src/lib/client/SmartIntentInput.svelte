@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import { track, trackDebounced } from '$lib/client/telemetry';
 
 	let {
 		value = '',
@@ -135,6 +136,10 @@
 		const q = query.trim();
 		const isSearchable = q.length >= 4 || /^\d+$/.test(q);
 
+		if (q.length > 0) {
+			trackDebounced('search:keystroke', { length: q.length }, 500);
+		}
+
 		if (!isSearchable) {
 			const cached = getFreshRecent();
 			if (cached && q === '') {
@@ -165,17 +170,30 @@
 		if (localSearchStatus !== 'done' || !localHasMore || localLoadingMore) return;
 		const q = value.trim();
 		const isSearchable = q.length >= 4 || /^\d+$/.test(q);
+		track('search:scroll-more', { offset: localResultsOffset });
 		void fetchSearchList(isSearchable ? q : '', localResultsOffset, true);
 	}
 
 	function openDropdown() {
+		if (!dropdownOpen) {
+			track('search:open');
+		}
 		dropdownOpen = true;
 		clearExampleInterval();
 		doSearch(value);
 	}
 
 	function closeDropdown() {
+		if (dropdownOpen) {
+			track('search:close');
+		}
 		dropdownOpen = false;
+	}
+
+	function generateFromSearch() {
+		closeDropdown();
+		track('search:submit', { mode: 'generate' });
+		onsubmit(trimmedValue);
 	}
 
 	function handleSubmit(e) {
@@ -185,17 +203,21 @@
 		closeDropdown();
 
 		if (exactTestIdMatch) {
+			track('search:submit', { mode: 'open-test' });
 			onnavigate(exactTestIdMatch.id);
 			return;
 		}
 		if (isTestId) {
+			track('search:submit', { mode: 'open-test' });
 			onnavigate(trimmedValue);
 			return;
 		}
 		if (searchDone && localSearchResults.length === 1) {
+			track('search:submit', { mode: 'open-test' });
 			onnavigate(localSearchResults[0].id);
 			return;
 		}
+		track('search:submit', { mode: 'generate' });
 		onsubmit(trimmedValue);
 	}
 
@@ -236,6 +258,7 @@
 	}
 
 	function handleResultClick(testId) {
+		track('search:result-click', { id: testId });
 		closeDropdown();
 		onnavigate(testId);
 	}
@@ -308,10 +331,7 @@
 					<button
 						class="dropdown-generate"
 						type="button"
-						onclick={() => {
-							closeDropdown();
-							onsubmit(trimmedValue);
-						}}
+						onclick={generateFromSearch}
 					>
 						<span class="generate-icon" aria-hidden="true">&#9889;</span>
 						<div class="generate-text">

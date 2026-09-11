@@ -12,3 +12,7 @@ export const paperSchema = z.object({
 	topic: z.string().describe('The topic of the test'),
 	questions: z.array(questionSchema).describe('An array of questions in the test'),
 });
+
+export const explanationSchema = z.object({
+	explanation: z.string().describe('A clear, concise explanation of the answer'),
+});

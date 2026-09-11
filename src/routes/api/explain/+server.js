@@ -1,10 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
+import * as z from 'zod';
 import { env } from '$env/dynamic/private';
 import { DEFAULT_RATE_LIMIT, rateLimiter } from '$lib/server/rateLimiter';
 import { generateExplanationPrompt } from '$lib/server/prompt';
 import { getClientKey, logApiEvent } from '$lib/server/storage';
 import { parseRequestBody } from '$lib/server/quizValidation';
+import { explanationSchema } from '$lib/server/quizSchema';
+import { parseJsonResponse } from '$lib/server/jsonResponse';
 import {
 	MAX_ANSWER_TEXT_LENGTH,
 	MAX_QUESTION_TEXT_LENGTH,
@@ -25,6 +28,36 @@ class ExplanationTimeoutError extends Error {
 		super('Explanation timed out after 45 seconds. Please retry.');
 		this.name = 'ExplanationTimeoutError';
 		this.code = API_TIMEOUT_ERROR_CODE;
+	}
+}
+
+async function requestExplanationText(ai, prompt, deadlineMs) {
+	const remainingMs = deadlineMs - Date.now();
+	if (remainingMs <= 0) {
+		throw new ExplanationTimeoutError();
+	}
+	let timeoutHandle;
+	try {
+		const response = await Promise.race([
+			ai.models.generateContent({
+				model: EXPLANATION_MODEL,
+				contents: prompt,
+				config: {
+					responseMimeType: 'application/json',
+					responseJsonSchema: z.toJSONSchema(explanationSchema),
+				},
+			}),
+			new Promise((_, reject) => {
+				timeoutHandle = setTimeout(() => {
+					reject(new ExplanationTimeoutError());
+				}, remainingMs);
+			}),
+		]);
+		return response.text;
+	} finally {
+		if (timeoutHandle) {
+			clearTimeout(timeoutHandle);
+		}
 	}
 }
 
@@ -117,26 +150,31 @@ export async function POST({ request }) {
 			language,
 		});
 
-		let timeoutHandle;
-		const response = await Promise.race([
-			ai.models.generateContent({
-				model: EXPLANATION_MODEL,
-				contents: prompt,
-				config: { responseMimeType: 'application/json' },
-			}),
-			new Promise((_, reject) => {
-				timeoutHandle = setTimeout(() => {
-					reject(new ExplanationTimeoutError());
-				}, EXPLANATION_TIMEOUT_MS);
-			}),
-		]).finally(() => {
-			if (timeoutHandle) {
-				clearTimeout(timeoutHandle);
+		const deadlineMs = startedAt + EXPLANATION_TIMEOUT_MS;
+		let parsed = null;
+		let lastError = null;
+
+		// One retry covers the rare case where the model still emits malformed
+		// JSON despite the response schema (these used to surface as 500s).
+		for (let attempt = 1; attempt <= 2; attempt += 1) {
+			try {
+				const text = await requestExplanationText(ai, prompt, deadlineMs);
+				const validated = explanationSchema.safeParse(parseJsonResponse(text));
+				if (validated.success) {
+					parsed = validated.data;
+					break;
+				}
+				lastError = new Error('Invalid explanation response from model');
+			} catch (error) {
+				lastError = error;
+				if (error instanceof ExplanationTimeoutError) {
+					throw error;
+				}
 			}
-		});
-		const parsed = JSON.parse(response.text.trim());
-		if (!parsed?.explanation || typeof parsed.explanation !== 'string') {
-			throw new Error('Invalid explanation response from model');
+		}
+
+		if (!parsed) {
+			throw lastError || new Error('Invalid explanation response from model');
 		}
 
 		await logApiEvent({

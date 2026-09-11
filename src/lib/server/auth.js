@@ -65,9 +65,17 @@ async function cleanupExpiredSessionsMaybe() {
 	}
 
 	try {
-		await query(`DELETE FROM app_user_session WHERE expires_at < NOW() - INTERVAL '7 days'`);
+		await query(
+			`WITH moved AS (
+				DELETE FROM app_user_session
+				WHERE expires_at < NOW() - INTERVAL '7 days'
+				RETURNING *
+			)
+			INSERT INTO app_user_session_archive
+			SELECT *, NOW() FROM moved`
+		);
 	} catch (error) {
-		console.error('Failed to cleanup expired auth sessions:', error);
+		console.error('Failed to archive expired auth sessions:', error);
 	}
 }
 
@@ -219,7 +227,16 @@ export async function revokeSessionByToken(rawSessionToken) {
 
 	await ensureStorageSchema();
 	const sessionTokenHash = hashSessionToken(rawSessionToken);
-	await query(`DELETE FROM app_user_session WHERE session_token_hash = $1`, [sessionTokenHash]);
+	await query(
+		`WITH moved AS (
+			DELETE FROM app_user_session
+			WHERE session_token_hash = $1
+			RETURNING *
+		)
+		INSERT INTO app_user_session_archive
+		SELECT *, NOW() FROM moved`,
+		[sessionTokenHash]
+	);
 }
 
 export async function getSessionFromRequest(cookies, options = {}) {

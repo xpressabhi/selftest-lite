@@ -25,6 +25,9 @@ import { mergeStateSnapshots, SYNCED_STATE_KEYS } from '../shared/userState';
 
 const PENDING_LIMIT = 50;
 const STATE_SYNC_DEBOUNCE_MS = 1500;
+// Pulling remote state on every tab focus trips the rate limiter and floods
+// the API; hydrate at most once a minute (concurrent calls are deduped).
+const STATE_HYDRATE_MIN_INTERVAL_MS = 60_000;
 const STATE_KEY_TO_STORAGE = {
 	selftest_bookmarked_exams: STORAGE_KEYS.BOOKMARKED_EXAMS,
 	selftest_bookmarked_quiz_presets: STORAGE_KEYS.BOOKMARKED_QUIZ_PRESETS,
@@ -299,6 +302,7 @@ function stateSnapshotHash(snapshot) {
 }
 
 let stateHydrationPromise = null;
+let lastHydrateAt = 0;
 
 /** Pulls server-side bookmarks/presets and merges them into localStorage. */
 export function hydrateUserState() {
@@ -308,6 +312,7 @@ export function hydrateUserState() {
 	if (stateHydrationPromise) {
 		return stateHydrationPromise;
 	}
+	lastHydrateAt = Date.now();
 
 	stateHydrationPromise = (async () => {
 		try {
@@ -440,7 +445,9 @@ export function startStateSync() {
 
 	const handleVisibilityChange = () => {
 		if (document.visibilityState === 'visible') {
-			hydrateUserState().catch(() => {});
+			if (Date.now() - lastHydrateAt >= STATE_HYDRATE_MIN_INTERVAL_MS) {
+				hydrateUserState().catch(() => {});
+			}
 			schedulePush();
 		}
 	};

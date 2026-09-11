@@ -46,6 +46,8 @@
 	let isSigningIn = $state(false);
 
 	const PWA_DISMISS_WINDOW = 7 * 24 * 60 * 60 * 1000;
+	const PWA_PROMPT_COOLDOWN = 14 * 24 * 60 * 60 * 1000;
+	const PWA_PROMPT_SESSION_KEY = 'selftest_pwa_prompt_shown';
 
 	function isPwaInstallDismissed() {
 		if (typeof window === 'undefined') return true;
@@ -53,6 +55,42 @@
 			window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_DISMISSED_AT) || 0
 		);
 		return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < PWA_DISMISS_WINDOW;
+	}
+
+	function wasPwaPromptShownRecently() {
+		if (typeof window === 'undefined') return true;
+		try {
+			if (window.sessionStorage.getItem(PWA_PROMPT_SESSION_KEY) === '1') {
+				return true;
+			}
+			const promptedAt = Number(
+				window.localStorage.getItem(STORAGE_KEYS.PWA_INSTALL_PROMPTED_AT) || 0
+			);
+			return Number.isFinite(promptedAt) && Date.now() - promptedAt < PWA_PROMPT_COOLDOWN;
+		} catch {
+			return true;
+		}
+	}
+
+	function markPwaPromptShown() {
+		try {
+			window.sessionStorage.setItem(PWA_PROMPT_SESSION_KEY, '1');
+			window.localStorage.setItem(STORAGE_KEYS.PWA_INSTALL_PROMPTED_AT, String(Date.now()));
+		} catch {
+			// Best effort: a missing marker only costs one extra prompt.
+		}
+	}
+
+	// Shown at most once per session and once per cooldown window. Telemetry is
+	// emitted here so it only counts prompts users actually saw.
+	function maybeShowInstallHint() {
+		if (isStandalone || isPwaInstallDismissed() || wasPwaPromptShownRecently()) {
+			return false;
+		}
+		showInstallHint = true;
+		track('pwa:install-prompt');
+		markPwaPromptShown();
+		return true;
 	}
 
 	// AdSense is intentionally NOT loaded: adsbygoogle.js is ~1.4MB (the heaviest
@@ -103,13 +141,12 @@
 		const handleBeforeInstallPrompt = (event) => {
 			event.preventDefault();
 			deferredInstallPrompt = event;
-			track('pwa:install-prompt');
 			// Android installs via the APK download card, not the PWA prompt —
 			// never show both to avoid confusing users.
 			if (isAndroidOS) {
 				return;
 			}
-			showInstallHint = !isPwaInstallDismissed() && !isStandalone;
+			maybeShowInstallHint();
 		};
 		const handleAppInstalled = () => {
 			deferredInstallPrompt = null;
@@ -140,10 +177,7 @@
 			}
 		}
 		if (isIOS && !isStandalone) {
-			if (!isPwaInstallDismissed()) {
-				track('pwa:install-prompt');
-				showInstallHint = true;
-			}
+			maybeShowInstallHint();
 		}
 
 		window.addEventListener('online', updateNetworkState);

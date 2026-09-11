@@ -1,4 +1,9 @@
-import { cleanupOldRateLimitEvents, ensureStorageSchema, getClientKey, query } from './storage';
+import {
+	archiveOldRateLimitEvents,
+	ensureStorageSchema,
+	getClientKey,
+	query,
+} from './storage';
 
 const DEFAULT_RATE_LIMIT = 10; // requests
 const DEFAULT_WINDOW_MS = 60 * 1000; // 1 minute
@@ -46,10 +51,11 @@ export async function rateLimiter(request, options = {}) {
 		const hitCount = result.rows[0]?.hit_count ?? 0;
 		const resetTime = Number(result.rows[0]?.reset_time_ms ?? Date.now() + windowMs);
 
-		// Opportunistic cleanup to keep rate-limit table small without a separate cron.
+		// Opportunistic archival keeps the rate-limit table small without a
+		// separate cron; rows move to the archive table, never deleted.
 		if (Math.random() < 0.02) {
-			cleanupOldRateLimitEvents().catch((error) => {
-				console.error('Rate limit cleanup failed:', error);
+			archiveOldRateLimitEvents().catch((error) => {
+				console.error('Rate limit archival failed:', error);
 			});
 		}
 

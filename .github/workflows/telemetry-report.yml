@@ -1,0 +1,40 @@
+name: Telemetry report
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Archive old telemetry rows
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run telemetry:archive -- --apply | tee telemetry-archive.txt
+
+      - name: Run telemetry report
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run telemetry:report -- --days=7 --strict | tee telemetry-report.txt
+
+      - name: Upload report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-report
+          path: |
+            telemetry-report.txt
+            telemetry-archive.txt

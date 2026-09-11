@@ -28,6 +28,14 @@ export const TELEMETRY_EVENTS = new Set([
 	'generate:quick-start-exam',
 	'generate:quick-start-preset',
 
+	// Search (smart intent dropdown)
+	'search:open',
+	'search:keystroke',
+	'search:submit',
+	'search:result-click',
+	'search:scroll-more',
+	'search:close',
+
 	// Test
 	'test:start',
 	'test:answer',
