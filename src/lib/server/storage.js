@@ -29,6 +29,17 @@ export async function query(text, params = []) {
 	return getPool().query(text, params);
 }
 
+export function getPoolStats() {
+	if (!poolInstance) {
+		return { total: 0, idle: 0, waiting: 0 };
+	}
+	return {
+		total: poolInstance.totalCount,
+		idle: poolInstance.idleCount,
+		waiting: poolInstance.waitingCount,
+	};
+}
+
 export function getClientIp(request) {
 	const forwarded = request.headers.get('x-forwarded-for');
 	if (forwarded) {
@@ -1504,4 +1515,76 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 		},
 		attemptStats: attemptScores.rows[0] || {},
 	};
+}
+
+export async function getRequestHealthMetrics({ windowSeconds = 60 } = {}) {
+	await ensureStorageSchema();
+
+	const cappedWindow = Math.min(Math.max(Number(windowSeconds) || 60, 5), 3600);
+	const result = await query(
+		`SELECT
+			COUNT(*)::INTEGER AS total,
+			COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::INTEGER AS errors,
+			COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_latency_ms,
+			COALESCE(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY duration_ms)::INTEGER, 0) AS p90_latency_ms,
+			COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms)::INTEGER, 0) AS p99_latency_ms
+		 FROM api_request_events
+		 WHERE created_at >= NOW() - ($1::text || ' seconds')::interval`,
+		[cappedWindow]
+	);
+
+	const row = result.rows[0] || {};
+	const total = row.total || 0;
+	const errors = row.errors || 0;
+
+	return {
+		scope: 'all-instances',
+		windowSeconds: cappedWindow,
+		total,
+		requestsPerSecond: Number((total / cappedWindow).toFixed(2)),
+		avgLatencyMs: row.avg_latency_ms || 0,
+		p90LatencyMs: row.p90_latency_ms || 0,
+		p99LatencyMs: row.p99_latency_ms || 0,
+		errors,
+		errorRate: total > 0 ? Number(((errors / total) * 100).toFixed(2)) : 0,
+	};
+}
+
+export async function getDatabaseHealth() {
+	await ensureStorageSchema();
+
+	const startedAt = Date.now();
+	await query('SELECT 1');
+	const latencyMs = Date.now() - startedAt;
+
+	let connections;
+	try {
+		const result = await query(
+			`SELECT
+				COUNT(*)::INTEGER AS total,
+				COUNT(*) FILTER (WHERE state = 'active')::INTEGER AS active,
+				COUNT(*) FILTER (WHERE state = 'idle')::INTEGER AS idle
+			 FROM pg_stat_activity
+			 WHERE datname = current_database()`
+		);
+		const row = result.rows[0] || {};
+		connections = {
+			scope: 'database',
+			total: row.total || 0,
+			active: row.active || 0,
+			idle: row.idle || 0,
+			instancePool: getPoolStats(),
+		};
+	} catch (error) {
+		console.error(error);
+		connections = {
+			scope: 'database',
+			total: null,
+			active: null,
+			idle: null,
+			instancePool: getPoolStats(),
+		};
+	}
+
+	return { latencyMs, connections };
 }

@@ -88,6 +88,7 @@ npm run test     # vitest unit tests
 | `/api/user/profile/insights`             | GET             | Computed learner signals: weak/strong topics, accuracy, suggested difficulty                                                                                 |
 | `/api/admin/login` / `/api/admin/logout` | POST            | Admin session management                                                                                                                                     |
 | `/api/admin/stats`                       | GET             | Usage analytics (admin only)                                                                                                                                 |
+| `/api/admin/health`                      | GET             | Live health metrics: requests/sec, latency p90/p99, error rate, CPU, memory, DB latency/connections (admin only; CPU/memory are per serverless instance)      |
 
 All endpoints are rate-limited. See `src/lib/server/rateLimiter.js`.
 

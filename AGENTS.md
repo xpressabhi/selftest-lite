@@ -138,6 +138,7 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 - **Localization (Mandatory)**:
     - Any new or changed user-facing UI text must be provided in **both English and Hindi**.
     - Store UI strings in `src/lib/locales/english.json` and `src/lib/locales/hindi.json`; look them up via `translate()`/`t` from `src/lib/client/i18n.js`. Do not hardcode text in components.
+    - **Exception**: the admin dashboard (`/admin` and `/api/admin/*`) is an internal tool and is English-only; do not add locale keys for it.
 
 ---
 

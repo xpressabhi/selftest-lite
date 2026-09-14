@@ -10,6 +10,9 @@
 	let error = $state('');
 	let stats = $state(null);
 	let featureUsage = $state(null);
+	let health = $state(null);
+	let healthWindow = $state(60);
+	let healthLoading = $state(false);
 	let days = $state(1);
 	let activeTab = $state('overview');
 
@@ -19,6 +22,14 @@
 		{ id: 'geo', label: 'Geo & Agents' },
 		{ id: 'recent', label: 'Recent Events' },
 		{ id: 'features', label: 'Feature Usage' },
+		{ id: 'health', label: 'Health' },
+	];
+
+	const HEALTH_WINDOWS = [
+		{ value: 60, label: '1m' },
+		{ value: 300, label: '5m' },
+		{ value: 900, label: '15m' },
+		{ value: 3600, label: '1h' },
 	];
 
 	const DURATION_OPTIONS = [
@@ -32,6 +43,32 @@
 	onMount(() => {
 		void loadAll();
 	});
+
+	$effect(() => {
+		if (!authed || activeTab !== 'health') return;
+		const interval = setInterval(() => void loadHealth(), 30000);
+		return () => clearInterval(interval);
+	});
+
+	async function loadHealth() {
+		healthLoading = true;
+		try {
+			const response = await fetch(`/api/admin/health?window=${healthWindow}`, {
+				cache: 'no-store',
+			});
+			if (response.status === 401) {
+				authed = false;
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error || 'Failed to load health');
+			health = data;
+		} catch (caughtError) {
+			console.error(caughtError);
+		} finally {
+			healthLoading = false;
+		}
+	}
 
 	async function loadAll() {
 		await Promise.all([loadStats(), loadFeatureUsage()]);
@@ -80,6 +117,7 @@
 	function switchTab(tabId) {
 		activeTab = tabId;
 		if (tabId === 'features' && !featureUsage) void loadFeatureUsage();
+		if (tabId === 'health') void loadHealth();
 	}
 
 	async function login() {
@@ -108,6 +146,7 @@
 		authed = false;
 		stats = null;
 		featureUsage = null;
+		health = null;
 	}
 
 	function onDurationChange() {
@@ -128,6 +167,23 @@
 	function formatNumber(n) {
 		if (n == null) return '0';
 		return Number(n).toLocaleString();
+	}
+
+	function formatBytes(bytes) {
+		if (bytes == null) return '-';
+		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		let value = Number(bytes);
+		let unit = 0;
+		while (value >= 1024 && unit < units.length - 1) {
+			value /= 1024;
+			unit += 1;
+		}
+		return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+	}
+
+	function formatValue(value, suffix = '') {
+		if (value == null) return '-';
+		return `${value}${suffix}`;
 	}
 
 	function agentFamily(userAgent) {
@@ -744,6 +800,166 @@
 										>
 											{$t('adminEmpty')}
 										</p>{/if}
+								</div>
+							</section>
+						</div>
+					{:else}
+						<div class="py-4 text-center">
+							<div class="thinking-dots" role="status">
+								<span></span><span></span><span></span>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- HEALTH TAB -->
+			{#if activeTab === 'health'}
+				<div class="bg-body border rounded-3 p-3 mb-4">
+					<div
+						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
+					>
+						<div class="d-flex align-items-center gap-2">
+							<h2 class="h6 fw-bold mb-0">Live health</h2>
+							{#if health}
+								<span
+									class="badge"
+									class:text-bg-success={health.status === 'ok'}
+									class:text-bg-warning={health.status !== 'ok'}
+								>
+									{health.status === 'ok' ? 'OK' : 'Degraded'}
+								</span>
+							{/if}
+						</div>
+						<div class="d-flex align-items-center gap-2">
+							<div class="btn-group btn-group-sm" role="group" aria-label="Window">
+								{#each HEALTH_WINDOWS as opt (opt.value)}
+									<button
+										class="btn"
+										class:btn-primary={healthWindow === opt.value}
+										class:btn-outline-secondary={healthWindow !== opt.value}
+										type="button"
+										onclick={() => {
+											healthWindow = opt.value;
+											void loadHealth();
+										}}>{opt.label}</button
+									>
+								{/each}
+							</div>
+							<button
+								class="btn btn-sm btn-outline-secondary"
+								type="button"
+								disabled={healthLoading}
+								onclick={() => void loadHealth()}>Refresh</button
+							>
+						</div>
+					</div>
+
+					{#if health}
+						<p class="text-muted small mb-3">
+							Deployment:
+							<span class="mono">
+								{health.deployment?.provider || '-'} · {health.deployment?.environment ||
+									'-'}
+								{#if health.deployment?.region}· {health.deployment.region}{/if}
+								{#if health.deployment?.commit}· {health.deployment.commit}{/if}
+								{#if health.deployment?.branch}· {health.deployment.branch}{/if}
+								{#if health.deployment?.runtime}· {health.deployment.runtime}{/if}
+							</span>
+						</p>
+
+						{#if health.status !== 'ok'}
+							<div class="alert alert-warning py-2 small mb-3">
+								Some metrics could not be loaded. Check the database connection and
+								server logs.
+							</div>
+						{/if}
+
+						<div class="stat-cards mb-4">
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.requests?.requestsPerSecond)}</strong>
+								<span>Requests/sec</span>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.requests?.avgLatencyMs, ' ms')}</strong>
+								<span>Avg latency</span>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.requests?.p90LatencyMs, ' ms')}</strong>
+								<span>p90 latency</span>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.requests?.p99LatencyMs, ' ms')}</strong>
+								<span>p99 latency</span>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.requests?.errorRate, '%')}</strong>
+								<span>Error rate</span>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.system?.cpu?.usagePercent, '%')}</strong>
+								<span>CPU usage (per core)</span>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatBytes(health.system?.memory?.rssBytes)}</strong>
+								<span>Memory usage</span>
+								{#if health.system?.memory?.rssPercentOfLimit != null}
+									<span class="text-muted small">
+										{health.system.memory.rssPercentOfLimit}% of {formatBytes(
+											health.system.memory.limitBytes
+										)}
+									</span>
+								{/if}
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatValue(health.database?.latencyMs, ' ms')}</strong>
+								<span>DB latency</span>
+							</div>
+						</div>
+
+						<div class="row g-3">
+							<section class="col-lg-6">
+								<div class="bg-body border rounded-3 p-3">
+									<h3 class="h6 fw-bold mb-2">DB connections</h3>
+									<div class="d-flex flex-wrap gap-3">
+										<span
+											>Total:
+											<strong
+												>{health.database?.connections?.total ?? '-'}</strong
+											></span
+										>
+										<span
+											>Active:
+											<strong
+												>{health.database?.connections?.active ?? '-'}</strong
+											></span
+										>
+										<span
+											>Idle:
+											<strong
+												>{health.database?.connections?.idle ?? '-'}</strong
+											></span
+										>
+									</div>
+									<p class="text-muted small mb-0 mt-2">
+										Instance pool:
+										{health.database?.connections?.instancePool?.total ?? '-'} total ·
+										{health.database?.connections?.instancePool?.idle ?? '-'} idle ·
+										{health.database?.connections?.instancePool?.waiting ?? '-'} waiting
+									</p>
+								</div>
+							</section>
+							<section class="col-lg-6">
+								<div class="bg-body border rounded-3 p-3">
+									<h3 class="h6 fw-bold mb-2">Health</h3>
+									<p class="text-muted small mb-0">
+										CPU and memory are for the serverless instance that served this
+										request. Requests and database metrics span all instances.
+									</p>
+									<p class="text-muted small mb-0 mt-2">
+										Deployment: {health.deployment?.environment || '-'}
+										{#if health.deployment?.region}· {health.deployment.region}{/if}
+									</p>
 								</div>
 							</section>
 						</div>
