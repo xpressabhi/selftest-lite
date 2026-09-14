@@ -47,7 +47,9 @@ It prints:
 - activation funnel: page view → generate → test start → submit → explain
 - top feature events, plus allowlisted events not seen in the window
 - API hotspots (requests, errors excluding expected 401/429, 401s, 429s, avg/p95 latency)
-- rate-limit trips per route
+- rate-limiter requests per route (every limiter call, not only blocked ones)
+- generation failures: stage/code/model breakdown, top issue codes per failing
+  batch, and client-reported `generate:fail` codes
 - data-quality checks: null `test_mode`/`difficulty`/`language`, generate and
   explain success rates, server 5xx count
 - quality gates (PASS/FAIL). Pass `--strict` to exit non-zero when any gate
@@ -64,11 +66,46 @@ It prints:
 | `/api/user/state` and `/api/auth/me` p95 | <= 3000 ms |
 | Requests slower than 10s | < 2% |
 | Answer at A/B (served) | < 60% |
-| Longest-option tell | < 35% |
+| Longest-answer tell (key >1.25x longest distractor) | < 35% |
 | Duplicate questions (7d) | 0 |
 | Non-discriminating repeated items | < 35% |
 | D1 retention | >= 15% |
 | D7 retention | >= 8% |
+
+## Generation failure diagnostics
+
+Failed `/api/generate` calls store a structured `metadata.generationFailure`
+object on `api_request_events` (in addition to the human-readable
+`error_message`):
+
+| Field | Meaning |
+| --- | --- |
+| `stage` | Where it failed: `quality`, `batch-validation`, `verification`, `count`, `api-limit`, `timeout`, `internal` |
+| `code` | Client-facing error code from `classifyApiError` |
+| `issues` | `[{ index, issue }]`, e.g. `longest-answer-tell` at question 3 (capped at 50) |
+| `questionStats` | Option-length aggregates for the failed batch: `count`, `tellCount`, `keyLongestCount`, `maxKeyToDistractorRatio`, `avgKeyToDistractorRatio` |
+| `batchIndex` / `batchTotal` / `validationAttempt` | Which batch and retry produced the failure |
+| `model` | Model used for the failing run |
+| `message` | Truncated error message (no question text) |
+
+Privacy rule: never add question or option text to this block. Indexes, issue
+codes and aggregate stats are enough for prompt and check tuning.
+
+```sql
+SELECT
+  metadata->'generationFailure'->>'stage' AS stage,
+  entry.value->>'issue' AS issue,
+  COUNT(*) AS n
+FROM api_request_events e
+CROSS JOIN LATERAL jsonb_array_elements(e.metadata->'generationFailure'->'issues') AS entry(value)
+WHERE e.route = '/api/generate' AND e.status_code >= 400
+  AND e.created_at >= NOW() - INTERVAL '7 days'
+GROUP BY 1, 2
+ORDER BY n DESC;
+```
+
+The client mirrors the final failure code, HTTP status, attempt and elapsed
+seconds in the `generate:fail` event props.
 
 ## Weekly automation
 
@@ -103,7 +140,8 @@ expired/revoked sessions (`app_user_session`), and legacy tables.
 2. **Dead events** — allowlisted but unseen means the feature is unused or
    instrumentation broke; decide to remove or fix.
 3. **Errors** — real errors exclude expected anonymous `401`s and rate-limit
-   `429`s. Look at the recent list in `/admin` for details.
+   `429`s. For generation, start from the `generationFailure` breakdown
+   (stage, issue codes, model) before reading raw logs.
 4. **Latency** — p95 for `/api/user/state`, `/api/auth/me`, `/api/test:list`
    is dominated by cold-start schema bootstrap; flag regressions.
 5. **Rate limits** — normal clients tripping limits means limits are too tight

@@ -453,6 +453,7 @@
 			if (!response.ok) {
 				const apiError = new Error(localizedApiError(data, $t, response.status));
 				apiError.status = response.status;
+				apiError.code = typeof data?.code === 'string' ? data.code : null;
 				apiError.retryable = response.status === 429 || response.status >= 500;
 				throw apiError;
 			}
@@ -462,6 +463,8 @@
 				const timeoutError = new Error($t('generationTimedOutRetry'), {
 					cause: caughtError,
 				});
+				timeoutError.code = 'GENERATION_TIMEOUT';
+				timeoutError.status = 408;
 				timeoutError.retryable = true;
 				throw timeoutError;
 			}
@@ -517,7 +520,13 @@
 					}
 					const canRetry = caughtError.retryable !== false;
 					if (attempt === MAX_RETRIES || !canRetry) {
-						track('generate:fail', { attempt });
+						track('generate:fail', {
+							attempt,
+							code: caughtError.code || 'UNKNOWN',
+							status: caughtError.status || 0,
+							retryable: canRetry,
+							elapsedSeconds: Math.floor((Date.now() - generationStartedAt) / 1000),
+						});
 						error = caughtError.message || $t('errorFailedGenerateAfterAttempts');
 						break;
 					}
@@ -539,7 +548,7 @@
 		}
 		generationCanceled = true;
 		generationAbort?.abort();
-		track('generate:cancel');
+		track('generate:cancel', { elapsedSeconds: generationElapsed });
 	}
 
 	async function handleGenerate() {

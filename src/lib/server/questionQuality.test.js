@@ -8,6 +8,7 @@ import {
 	inspectQuestionBatch,
 	normalizeQuestionText,
 	shuffleOptions,
+	summarizeQuestionLengths,
 	trigramSimilarity,
 } from './questionQuality';
 
@@ -66,6 +67,24 @@ describe('inspectQuestion', () => {
 		expect(tell).toContain('longest-answer-tell');
 	});
 
+	it('accepts options of equal length', () => {
+		const balanced = inspectQuestion({
+			question: 'Which vitamin prevents scurvy?',
+			options: ['Vitamin A', 'Vitamin D', 'Vitamin C', 'Vitamin K'],
+			answer: 'Vitamin C',
+		});
+		expect(balanced).not.toContain('longest-answer-tell');
+	});
+
+	it('accepts a key that ties the longest distractor', () => {
+		const tied = inspectQuestion({
+			question: 'Pick one',
+			options: ['2-Methylpropan-1-ol', '2-Methylpropan-2-ol', 'Propan-1-ol', 'Propan-2-ol'],
+			answer: '2-Methylpropan-2-ol',
+		});
+		expect(tied).not.toContain('longest-answer-tell');
+	});
+
 	it('flags unbalanced LaTeX', () => {
 		expect(inspectQuestion(baseQuestion({ question: 'Solve $x^2' }))).toContain('latex-unbalanced');
 		expect(
@@ -95,6 +114,38 @@ describe('inspectQuestion', () => {
 			previousQuestionTexts: ['What is the capital of France?'],
 		});
 		expect(duplicate).toContain('near-duplicate');
+	});
+});
+
+describe('summarizeQuestionLengths', () => {
+	it('reports counts and ratios without question text', () => {
+		const stats = summarizeQuestionLengths([
+			{
+				question: 'Which vitamin prevents scurvy?',
+				options: ['Vitamin A', 'Vitamin D', 'Vitamin C', 'Vitamin K'],
+				answer: 'Vitamin C',
+			},
+			{
+				question: 'Pick one',
+				options: ['short', 'tiny', 'small', 'x'.repeat(30)],
+				answer: 'x'.repeat(30),
+			},
+		]);
+		expect(stats.count).toBe(2);
+		expect(stats.tellCount).toBe(1);
+		expect(stats.keyLongestCount).toBe(2);
+		expect(stats.avgKeyToDistractorRatio).toBeGreaterThan(1);
+		expect(Object.keys(stats)).not.toContain('question');
+	});
+
+	it('returns zeroed stats for an empty batch', () => {
+		expect(summarizeQuestionLengths([])).toEqual({
+			count: 0,
+			tellCount: 0,
+			keyLongestCount: 0,
+			maxKeyToDistractorRatio: 0,
+			avgKeyToDistractorRatio: 0,
+		});
 	});
 });
 

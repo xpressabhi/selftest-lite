@@ -48,7 +48,7 @@ export function generatePrompt({
     2. Use double quotes for all strings
     3. Multiple choice questions must have exactly 4 options
     4. True/False questions must have exactly 2 options using localized equivalents of true/false
-    5. Copy each answer exactly from one complete option string, character-for-character
+    5. Copy each answer exactly from one complete option string, character-for-character. Never output a label (A/B), a combination (both A and B), or any prefix in the answer field
     6. Questions must match the specified difficulty level
     7. Do not repeat previous questions
     8. ${
@@ -64,9 +64,11 @@ export function generatePrompt({
     10. Do not include explanation fields for questions. Explanations are generated later on demand.
     11. Before returning, verify that every answer is exactly equal to one of its options.
     12. For each question, work out the correct answer first, then write the rationale, then build the distractors around it.
-    13. Distractors must be plausible and educational: common misconceptions, same category and difficulty as the key, and roughly similar length. Never use "all of the above", "none of the above", joke options, or obviously wrong options.
-    14. Exactly one option must be defensible. Never include two near-synonyms, two facts that are both true, or an option that is correct under a different interpretation.
-    15. Match the requested language and script: a Hindi paper uses Devanagari for question and options (standard English technical terms are allowed).
+    13. Distractors must be plausible and educational: common misconceptions, same category and difficulty as the key. Never use "all of the above", "none of the above", joke options, or obviously wrong options.
+    14. OPTION LENGTH BALANCE (automatically checked): keep all four options within about 20% of each other in character length. The correct option must never be the longest option. If the correct answer needs extra words, give the distractors the same level of detail instead of padding the key. Example - BAD: key "Oxidation of primary alcohols with acidified potassium dichromate" vs distractors "Reduction", "Hydration", "Substitution". GOOD: key "Oxidation of primary alcohols" vs distractors "Reduction of aldehydes", "Hydration of alkenes", "Substitution of alkanes".
+    15. Exactly one option must be defensible. Never include two near-synonyms, two facts that are both true, or an option that is correct under a different interpretation.
+    16. Match the requested language and script: a Hindi paper uses Devanagari for question and options (standard English technical terms are allowed).
+    17. FINAL LENGTH CHECK: before returning, compare the character length of the correct option with the longest distractor for every question. If the correct option is longer, rewrite that question's options until it is not.
     
     CONTENT FORMATTING:
     For code questions (especially when testType is 'coding'):

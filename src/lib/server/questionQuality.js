@@ -82,10 +82,58 @@ function hindiScriptRatio(text) {
 }
 
 function isUniquelyLongest(answer, options) {
-	const lengths = options.map((option) => String(option).length);
-	const answerLength = String(answer).length;
-	const maxOther = Math.max(...lengths.filter((length) => length !== answerLength), 0);
-	return answerLength > maxOther * LENGTH_RATIO_LIMIT;
+	const answerText = String(answer);
+	const maxDistractorLength = Math.max(
+		...options
+			.filter((option) => String(option) !== answerText)
+			.map((option) => String(option).length),
+		0
+	);
+	return answerText.length > maxDistractorLength * LENGTH_RATIO_LIMIT;
+}
+
+/**
+ * Aggregates option-length balance for failure telemetry. Only counts and
+ * ratios are returned; question/option text is never included.
+ */
+export function summarizeQuestionLengths(questions) {
+	let count = 0;
+	let tellCount = 0;
+	let keyLongestCount = 0;
+	let maxRatio = 0;
+	let ratioSum = 0;
+	for (const question of questions || []) {
+		const options = Array.isArray(question?.options) ? question.options : [];
+		const answerText = String(question?.answer || '');
+		const answerIndex = options.findIndex((option) => String(option) === answerText);
+		if (answerIndex === -1 || options.length < 3) {
+			continue;
+		}
+		const maxDistractorLength = Math.max(
+			...options
+				.filter((_, index) => index !== answerIndex)
+				.map((option) => String(option).length),
+			0
+		);
+		const answerLength = answerText.length;
+		const ratio = maxDistractorLength > 0 ? answerLength / maxDistractorLength : 1;
+		count += 1;
+		ratioSum += ratio;
+		maxRatio = Math.max(maxRatio, ratio);
+		if (answerLength >= maxDistractorLength) {
+			keyLongestCount += 1;
+		}
+		if (answerLength > maxDistractorLength * LENGTH_RATIO_LIMIT) {
+			tellCount += 1;
+		}
+	}
+	return {
+		count,
+		tellCount,
+		keyLongestCount,
+		maxKeyToDistractorRatio: Number(maxRatio.toFixed(2)),
+		avgKeyToDistractorRatio: count > 0 ? Number((ratioSum / count).toFixed(2)) : 0,
+	};
 }
 
 /** Fisher-Yates shuffle using an injectable RNG for tests. */

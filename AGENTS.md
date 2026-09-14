@@ -9,7 +9,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 ### Tech Stack Highlights:
 
 - **Framework**: SvelteKit 2 (Vite 8, Svelte 5)
-- **AI**: Gemini for paper generation (`/api/generate`) + Gemini Flash Lite for explanations (`/api/explain`)
+- **AI**: Gemini Flash Lite (`gemini-flash-lite-latest`) everywhere: paper generation (`/api/generate`), answer verification, explanations (`/api/explain`), intent parsing
 - **Database**: Neon PostgreSQL (via `@neondatabase/serverless`)
 - **UI**: Tailwind CSS 4 + Custom CSS (Mobile-first)
 - **PWA**: `vite-plugin-pwa` with custom runtime caching (config in `vite.config.js`)
@@ -81,7 +81,7 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
   `*_archive` tables via `npm run telemetry:archive` or archive-first SQL.
   User-facing remove actions keep the archive copy; never add `DELETE` without
   an `INSERT ... SELECT ... RETURNING` archival in the same statement.
-- **Regular practice**: run `npm run telemetry:report -- --days=30` weekly and before/after shipping a feature. Review the activation funnel, unseen events, error/latency hotspots, rate-limit trips, and data-quality checks. Content changes additionally run through `npm run eval:content -- --strict`.
+- **Regular practice**: run `npm run telemetry:report -- --days=30` weekly and before/after shipping a feature. Review the activation funnel, unseen events, error/latency hotspots, generation failures (stage/issue codes in `metadata.generationFailure`), and data-quality checks. Content changes additionally run through `npm run eval:content -- --strict`.
 - **Content quality**: generated papers are shuffled, structurally validated, near-duplicate checked, and independently verified before delivery (`docs/content-quality.md`). Never bypass these steps when touching generation.
 - **Reading it**: distinct identities (`client_id`) are the closest proxy for real users; traffic spikes with few identities are usually bots. Expected anonymous 401s and rate-limit 429s are excluded from error counts.
 - **Runbook**: [docs/telemetry.md](docs/telemetry.md) covers the pipeline, report command, and weekly checklist.

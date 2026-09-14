@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
+	answerMatchesOption,
 	parseRequestBody,
 	repairGeneratedPaper,
 	sanitizePreviousTestIds,
@@ -173,6 +174,74 @@ describe('repairGeneratedPaper', () => {
 			fallbackTopic: '  Fallback Topic  ',
 		});
 		expect(repaired.topic).toBe('Fallback Topic');
+	});
+
+	it('resolves a label-prefixed answer to option text', () => {
+		const repaired = repairGeneratedPaper({
+			questionPaper: {
+				topic: 'Biology',
+				questions: [
+					{
+						question: 'Q?',
+						options: [
+							'Secondary carotene',
+							'Primary chlorophyll',
+							'Cellular cytoplasm',
+							'Vascular cellulose',
+						],
+						answer: 'B. Primary chlorophyll',
+					},
+				],
+			},
+		});
+		expect(repaired.questions[0].answer).toBe('Primary chlorophyll');
+	});
+});
+
+describe('answerMatchesOption', () => {
+	const options = [
+		'Secondary carotene',
+		'Primary chlorophyll',
+		'Cellular cytoplasm',
+		'Vascular cellulose',
+	];
+
+	it('matches exact option text', () => {
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'Primary chlorophyll')).toBe(
+			true
+		);
+	});
+
+	it('matches bare option labels', () => {
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'B')).toBe(true);
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'Option B')).toBe(true);
+	});
+
+	it('matches a label followed by the option text', () => {
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'B. Primary chlorophyll')).toBe(
+			true
+		);
+	});
+
+	it('strips an AMBIGUOUS prefix', () => {
+		expect(
+			answerMatchesOption(options, 'Primary chlorophyll', 'AMBIGUOUS: B. Primary chlorophyll')
+		).toBe(true);
+	});
+
+	it('rejects a different option', () => {
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'Cellular cytoplasm')).toBe(
+			false
+		);
+		expect(
+			answerMatchesOption(options, 'Primary chlorophyll', 'C. Cellular cytoplasm')
+		).toBe(false);
+	});
+
+	it('rejects a label whose attached text matches no option', () => {
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'B. Something else')).toBe(
+			false
+		);
 	});
 });
 

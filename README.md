@@ -20,7 +20,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 | ---------- | ------------------------------------------------------------------- |
 | Framework  | SvelteKit 2 + Vite 8                                                |
 | UI         | Svelte 5 + Tailwind CSS 4                                           |
-| AI         | Google Gemini (`/api/generate`), Gemini Flash Lite (`/api/explain`) |
+| AI         | Google Gemini Flash Lite (`gemini-flash-lite-latest`) for generation, explanations, and intent parsing |
 | Database   | Neon PostgreSQL (`@neondatabase/serverless`)                        |
 | PWA        | `vite-plugin-pwa`                                                   |
 | Validation | Zod + structured JSON output                                        |

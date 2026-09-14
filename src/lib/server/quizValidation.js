@@ -71,22 +71,36 @@ export function comparableText(value) {
 }
 
 function findMatchingOption(options, answer) {
-	const normalizedAnswer = comparableText(answer);
+	const normalizedAnswer = comparableText(answer).replace(/^ambiguous\s*:\s*/iu, '');
 	const exactOption = options.find((option) => comparableText(option) === normalizedAnswer);
 	if (exactOption) {
 		return exactOption;
 	}
 
-	// Models sometimes return an option label ("A" or "Option A") instead of
-	// the complete option. This is safe to repair only when the label maps to
-	// exactly one existing option.
-	const labelMatch = normalizedAnswer.match(/^(?:option\s+)?([A-Z])$/iu);
+	// Models sometimes return an option label ("A", "Option A", "B. text")
+	// instead of the bare option text. A label resolves to exactly one option;
+	// when option text follows the label it must match that option.
+	const labelMatch = normalizedAnswer.match(/^(?:option\s+)?([A-Z])(?:\s*[.):-]?\s*(.*))?$/iu);
 	if (!labelMatch) {
 		return null;
 	}
 
+	const remainder = (labelMatch[2] || '').trim();
+	if (remainder) {
+		return options.find((option) => comparableText(option) === remainder) || null;
+	}
+
 	const optionIndex = labelMatch[1].toUpperCase().charCodeAt(0) - 65;
 	return optionIndex >= 0 && optionIndex < options.length ? options[optionIndex] : null;
+}
+
+/**
+ * True when `candidate` (for example a verifier's answer, which may carry an
+ * option label or an "AMBIGUOUS: " prefix) resolves to the keyed answer.
+ */
+export function answerMatchesOption(options, answer, candidate) {
+	const matched = findMatchingOption(Array.isArray(options) ? options : [], candidate);
+	return Boolean(matched) && comparableText(matched) === comparableText(answer);
 }
 
 /**

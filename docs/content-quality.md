@@ -8,9 +8,10 @@ verification pass before it reaches a user.
 1. **Answer-first prompt** (`src/lib/server/prompt.js`): the model must work out
    the correct answer, write a private `rationale`, then build distractors.
    Distractor rules forbid «all/none of the above», jokes, and near-synonyms.
-2. **Model + thinking**: `gemini-flash-latest` with `thinkingLevel: 'low'`
-   (`GEMINI_GENERATION_MODEL` overrides). If the model is overloaded (503/429),
-   the request automatically falls back to `gemini-flash-lite-latest`.
+2. **Model + thinking**: `gemini-flash-lite-latest` with
+   `thinkingLevel: 'minimal'` everywhere (generation, answer verification,
+   explanations, intent parsing). One bounded retry covers transient 503/429
+   overloads; there is no second model.
 3. **Schema** (`src/lib/server/quizSchema.js`): each question carries
    `question`, `rationale`, `options`, `answer`; the rationale is stripped
    before storage/redaction.
@@ -23,8 +24,9 @@ verification pass before it reaches a user.
 
 - **Option shuffle** — Fisher-Yates per question; fixes the answer-position
   bias (pre-fix production data: 76% of keys sat at A/B, only 4% at D).
-- **Longest-answer tell** — a key that is uniquely >25% longer than every
-  other option fails the batch.
+- **Longest-answer tell** — a key that is >25% longer than the longest
+  distractor fails the batch. Ties and equal-length options pass, and the
+  prompt carries a matching option-length rule.
 - **Structural checks** — empty/duplicate/lazy options, answer-in-options,
   unbalanced LaTeX, Hindi script ratio.
 - **Near-duplicates** — character-trigram similarity ≥0.8 within the paper,
@@ -39,6 +41,14 @@ Any failure regenerates the batch (bounded by `MAX_BATCH_VALIDATION_ATTEMPTS`).
 without seeing the key. Any disagreement (including `AMBIGUOUS:` answers)
 regenerates the batch. Verification failures from API errors are logged and
 skipped so they can never break generation.
+
+## Failure diagnostics
+
+When generation fails, the API records a `generationFailure` block in
+`api_request_events.metadata`: stage, error code, issue codes with question
+indexes, model, validation attempt, and option-length stats. Question and
+option text is never stored. `npm run telemetry:report` prints the breakdown;
+see [telemetry.md](telemetry.md#generation-failure-diagnostics).
 
 ## Evaluation harness
 

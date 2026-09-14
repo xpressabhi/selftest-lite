@@ -253,23 +253,93 @@ printTable(
 	]
 );
 
-section('Rate-limit trips');
+section('Rate-limiter requests (every call, not only trips)');
 printTable(
 	await sql`
 		SELECT
 			route,
-			COUNT(*)::int AS trips,
+			COUNT(*)::int AS requests,
 			COUNT(DISTINCT client_key)::int AS clients
 		FROM api_rate_limit_events
 		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
 		GROUP BY route
-		ORDER BY trips DESC
+		ORDER BY requests DESC
 		LIMIT 12
 	`,
 	[
 		{ key: 'route', label: 'route' },
-		{ key: 'trips', label: 'trips' },
+		{ key: 'requests', label: 'requests' },
 		{ key: 'clients', label: 'clients' },
+	]
+);
+
+section('Generation failures (server)');
+printTable(
+	await sql`
+		SELECT
+			COALESCE(metadata->'generationFailure'->>'stage', '(unspecified)') AS stage,
+			COALESCE(metadata->'generationFailure'->>'code', '(none)') AS code,
+			COUNT(*)::int AS events,
+			COALESCE(MAX(metadata->'generationFailure'->>'model'), '-') AS model,
+			MAX(created_at)::date AS last_seen
+		FROM api_request_events
+		WHERE route = '/api/generate'
+			AND status_code >= 400
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY stage, code
+		ORDER BY events DESC
+		LIMIT 12
+	`,
+	[
+		{ key: 'stage', label: 'stage' },
+		{ key: 'code', label: 'code' },
+		{ key: 'events', label: 'events' },
+		{ key: 'model', label: 'model' },
+		{ key: 'last_seen', label: 'last seen' },
+	]
+);
+
+section('Generation failure issues');
+printTable(
+	await sql`
+		SELECT
+			entry.value->>'issue' AS issue,
+			COUNT(*)::int AS occurrences,
+			COUNT(DISTINCT e.id)::int AS batches
+		FROM api_request_events e
+		CROSS JOIN LATERAL jsonb_array_elements(e.metadata->'generationFailure'->'issues') AS entry(value)
+		WHERE e.route = '/api/generate'
+			AND e.status_code >= 400
+			AND e.created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY issue
+		ORDER BY occurrences DESC
+		LIMIT 12
+	`,
+	[
+		{ key: 'issue', label: 'issue' },
+		{ key: 'occurrences', label: 'occurrences' },
+		{ key: 'batches', label: 'batches' },
+	]
+);
+
+section('Generation failures (client)');
+printTable(
+	await sql`
+		SELECT
+			COALESCE(props->>'code', '(none)') AS code,
+			COUNT(*)::int AS events,
+			COUNT(DISTINCT COALESCE(user_id::text, client_id))::int AS identities
+		FROM feature_events
+		WHERE event = 'generate:fail'
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY code
+		ORDER BY events DESC
+		LIMIT 10
+	`,
+	[
+		{ key: 'code', label: 'code' },
+		{ key: 'events', label: 'events' },
+		{ key: 'identities', label: 'identities' },
 	]
 );
 
@@ -355,15 +425,16 @@ const lengthTell = (
 	await sql`
 		SELECT
 			COUNT(*)::int AS total,
-			COUNT(*) FILTER (WHERE is_longest)::int AS longest
+			COUNT(*) FILTER (WHERE ratio > 1.25)::int AS longest
 		FROM (
 			SELECT (
-				SELECT bool_or(
-					length(opt.value) = (SELECT MAX(length(v)) FROM jsonb_array_elements_text(q->'options') v)
-					AND opt.value = q->>'answer'
-				)
-				FROM jsonb_array_elements_text(q->'options') AS opt(value)
-			) AS is_longest
+				SELECT length(o.value)::numeric / NULLIF((
+					SELECT MAX(length(v)) FROM jsonb_array_elements_text(q->'options') AS v
+					WHERE v <> q->>'answer'
+				), 0)
+				FROM jsonb_array_elements_text(q->'options') AS o(value)
+				WHERE o.value = q->>'answer'
+			) AS ratio
 			FROM ai_test t
 			CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q
 			WHERE t.created_at >= NOW() - INTERVAL '7 days'
@@ -419,7 +490,9 @@ const itemStats = (
 
 console.log(`  questions (7d):            ${positionTotal}`);
 console.log(`  correct answer at A/B:     ${(earlyShare * 100).toFixed(1)}%`);
-console.log(`  longest option is the key: ${(longestShare * 100).toFixed(1)}%`);
+console.log(
+	`  key >1.25x longest distractor: ${(longestShare * 100).toFixed(1)}%`
+);
 console.log(`  duplicate questions (7d):  ${duplicateExtras}`);
 console.log(
 	`  repeated items (90d):      ${itemStats.repeated_items} (too hard ${itemStats.too_hard}, too easy ${itemStats.too_easy}, healthy ${itemStats.healthy})`
@@ -490,7 +563,7 @@ const gates = [
 		detail: `${(earlyShare * 100).toFixed(1)}%`,
 	},
 	{
-		label: 'longest-option tell < 35%',
+		label: 'longest-answer tell (key >1.25x) < 35%',
 		passed: longestShare < 0.35,
 		detail: `${(longestShare * 100).toFixed(1)}%`,
 	},

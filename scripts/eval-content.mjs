@@ -33,8 +33,8 @@ const judge = hasFlag('judge');
 const questionsPerPaper = Math.min(Math.max(Number(getArg('questions', 10)) || 10, 1), 25);
 const difficulty = getArg('difficulty', 'intermediate');
 const language = getArg('language', 'english');
-const model = getArg('model', process.env.GEMINI_GENERATION_MODEL || 'gemini-flash-latest');
-const judgeModel = process.env.GEMINI_JUDGE_MODEL || model;
+const model = getArg('model', 'gemini-flash-lite-latest');
+const judgeModel = getArg('judge-model', model);
 const topics = getArg(
 	'topics',
 	'Class 12 chemistry organic reactions|NEET biology human physiology|UPSC polity fundamental rights'
@@ -50,35 +50,28 @@ if (!apiKey) {
 }
 const ai = new GoogleGenAI({ apiKey });
 
-const FALLBACK_MODEL = 'gemini-flash-lite-latest';
-
-async function generateTextWithFallback(prompt) {
-	const models = [model, FALLBACK_MODEL].filter(
-		(candidate, index, list) => candidate && list.indexOf(candidate) === index
-	);
+async function generateText(prompt) {
 	let lastError = null;
-	for (const candidate of models) {
-		for (let attempt = 0; attempt < 2; attempt += 1) {
-			try {
-				const response = await ai.models.generateContent({
-					model: candidate,
-					contents: prompt,
-					config: {
-						responseMimeType: 'application/json',
-						responseJsonSchema: z.toJSONSchema(paperSchema),
-						thinkingConfig: {
-							thinkingLevel: candidate.includes('lite') ? 'minimal' : 'low',
-						},
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		try {
+			const response = await ai.models.generateContent({
+				model,
+				contents: prompt,
+				config: {
+					responseMimeType: 'application/json',
+					responseJsonSchema: z.toJSONSchema(paperSchema),
+					thinkingConfig: {
+						thinkingLevel: 'minimal',
 					},
-				});
-				return response.text;
-			} catch (error) {
-				lastError = error;
-				if (!/503|UNAVAILABLE|429|RESOURCE_EXHAUSTED|overloaded/iu.test(String(error?.message || ''))) {
-					throw error;
-				}
-				await new Promise((resolve) => setTimeout(resolve, 2000));
+				},
+			});
+			return response.text;
+		} catch (error) {
+			lastError = error;
+			if (!/503|UNAVAILABLE|429|RESOURCE_EXHAUSTED|overloaded/iu.test(String(error?.message || ''))) {
+				throw error;
 			}
+			await new Promise((resolve) => setTimeout(resolve, 2000));
 		}
 	}
 	throw lastError;
@@ -124,7 +117,7 @@ ${list}`,
 		config: {
 			responseMimeType: 'application/json',
 			responseJsonSchema: z.toJSONSchema(JUDGE_SCHEMA),
-			thinkingConfig: { thinkingLevel: 'low' },
+			thinkingConfig: { thinkingLevel: 'minimal' },
 		},
 	});
 	const parsed = JUDGE_SCHEMA.safeParse(parseJsonResponse(response.text));
@@ -151,7 +144,7 @@ for (const topic of topics) {
 	});
 
 	try {
-		const text = await generateTextWithFallback(prompt);
+		const text = await generateText(prompt);
 		const parsed = paperSchema.safeParse(parseJsonResponse(text));
 		if (!parsed.success) {
 			perPaper.push({ topic, error: 'schema-invalid' });

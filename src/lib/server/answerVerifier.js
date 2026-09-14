@@ -30,6 +30,7 @@ LANGUAGE: ${language || 'english'}
 RULES:
 - Reason about each question before choosing an option.
 - Choose exactly one option per question.
+- Return exactly ${questions.length} entries in the answers array, one per question, in the same order.
 - If a question is ambiguous, has no correct option, or has more than one defensible option, still choose the most likely intended answer and prefix it with "AMBIGUOUS: ".
 - Copy the chosen option text exactly, character for character.
 

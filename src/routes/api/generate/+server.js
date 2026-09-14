@@ -32,9 +32,14 @@ import {
 	repairGeneratedPaper,
 	validateGeneratedPaper,
 	comparableText,
+	answerMatchesOption,
 } from '$lib/server/quizValidation';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
-import { applyQualityFixes, inspectQuestionBatch } from '$lib/server/questionQuality';
+import {
+	applyQualityFixes,
+	inspectQuestionBatch,
+	summarizeQuestionLengths,
+} from '$lib/server/questionQuality';
 import {
 	answerVerificationSchema,
 	buildAnswerVerificationPrompt,
@@ -47,8 +52,8 @@ import {
 	classifyApiError,
 } from '$lib/shared/apiLimitError';
 
-const MODEL_NAME = env.GEMINI_GENERATION_MODEL || 'gemini-flash-latest';
-const FALLBACK_MODEL_NAME = 'gemini-flash-lite-latest';
+const MODEL_NAME = 'gemini-flash-lite-latest';
+const MODEL_ATTEMPTS = 2;
 const BATCH_SIZE = 25;
 const MAX_BATCH_VALIDATION_ATTEMPTS = 3;
 const GENERATION_TIMEOUT_MS = 180000;
@@ -58,6 +63,18 @@ class GenerationTimeoutError extends Error {
 		super('Generation timed out after 180 seconds. Please retry.');
 		this.name = 'GenerationTimeoutError';
 		this.code = API_TIMEOUT_ERROR_CODE;
+	}
+}
+
+/**
+ * Carries structured diagnostics for telemetry. Never includes question or
+ * option text - only issue codes, indexes, counts and length ratios.
+ */
+class GenerationFailureError extends Error {
+	constructor(message, failure = {}) {
+		super(message);
+		this.name = 'GenerationFailureError';
+		this.failure = failure;
 	}
 }
 
@@ -76,33 +93,35 @@ function isModelUnavailableError(error) {
 }
 
 /**
- * Generates with the primary model and falls back to the lite model when the
- * primary is overloaded or rate limited. Thinking level is chosen per model:
- * the full Flash model supports 'low', lite only 'minimal'.
+ * Generates with Flash Lite (the only generation model). One bounded retry
+ * covers transient 503/429 overloads; anything longer is classified and
+ * surfaced to the client. `runState.model` records the model for diagnostics.
  */
-async function generateWithFallback({ ai, contents, config }) {
-	const models = [MODEL_NAME, FALLBACK_MODEL_NAME].filter(
-		(model, index, list) => model && list.indexOf(model) === index
-	);
+async function generateWithModel({ ai, contents, config, runState }) {
 	let lastError = null;
-	for (const model of models) {
+	for (let attempt = 1; attempt <= MODEL_ATTEMPTS; attempt += 1) {
 		try {
-			return await ai.models.generateContent({
-				model,
+			const response = await ai.models.generateContent({
+				model: MODEL_NAME,
 				contents,
 				config: {
 					...config,
 					thinkingConfig: {
-						thinkingLevel: model.includes('lite') ? 'minimal' : 'low',
+						thinkingLevel: 'minimal',
 					},
 				},
 			});
+			if (runState) {
+				runState.model = MODEL_NAME;
+			}
+			return response;
 		} catch (error) {
 			lastError = error;
-			if (!isModelUnavailableError(error)) {
+			error.model = MODEL_NAME;
+			if (attempt >= MODEL_ATTEMPTS || !isModelUnavailableError(error)) {
 				throw error;
 			}
-			console.warn(`Model ${model} unavailable; trying fallback if available.`);
+			console.warn(`Model ${MODEL_NAME} unavailable; retrying once.`);
 		}
 	}
 	throw lastError;
@@ -169,6 +188,7 @@ async function generateQuestionBatch({
 	userContext,
 	warmUpDifficulty,
 	deadlineMs,
+	runState,
 }) {
 	assertWithinDeadline(deadlineMs);
 
@@ -196,13 +216,14 @@ async function generateQuestionBatch({
 	let timeoutHandle;
 	try {
 		const response = await Promise.race([
-			generateWithFallback({
+			generateWithModel({
 				ai,
 				contents: prompt,
 				config: {
 					responseMimeType: 'application/json',
 					responseJsonSchema: z.toJSONSchema(paperSchema),
 				},
+				runState,
 			}),
 			new Promise((_, reject) => {
 				timeoutHandle = setTimeout(() => {
@@ -219,7 +240,7 @@ async function generateQuestionBatch({
 	}
 }
 
-async function verifyQuestionBatch({ ai, questions, language, deadlineMs }) {
+async function verifyQuestionBatch({ ai, questions, language, deadlineMs, runState }) {
 	const remainingMs = getRemainingTimeMs(deadlineMs);
 	if (remainingMs <= 5000 || questions.length === 0) {
 		return [];
@@ -227,13 +248,14 @@ async function verifyQuestionBatch({ ai, questions, language, deadlineMs }) {
 	let timeoutHandle;
 	try {
 		const response = await Promise.race([
-			generateWithFallback({
+			generateWithModel({
 				ai,
 				contents: buildAnswerVerificationPrompt({ questions, language }),
 				config: {
 					responseMimeType: 'application/json',
 					responseJsonSchema: z.toJSONSchema(answerVerificationSchema),
 				},
+				runState,
 			}),
 			new Promise((_, reject) => {
 				timeoutHandle = setTimeout(() => {
@@ -242,13 +264,17 @@ async function verifyQuestionBatch({ ai, questions, language, deadlineMs }) {
 			}),
 		]);
 		const validated = answerVerificationSchema.safeParse(parseJsonResponse(response.text));
-		if (!validated.success) {
+		if (!validated.success || validated.data.answers.length !== questions.length) {
 			return [];
 		}
 		return validated.data.answers
 			.map((answer, index) => ({
 				index,
-				matches: comparableText(answer) === comparableText(questions[index]?.answer),
+				matches: answerMatchesOption(
+					questions[index]?.options,
+					questions[index]?.answer,
+					answer
+				),
 			}))
 			.filter((entry) => !entry.matches)
 			.map((entry) => entry.index);
@@ -280,6 +306,7 @@ async function generatePaper({
 	userContext,
 	warmUpDifficulty,
 	deadlineMs,
+	runState,
 }) {
 	const totalBatches = Math.ceil(numQuestions / BATCH_SIZE);
 	const generatedQuestions = [];
@@ -311,7 +338,7 @@ async function generatePaper({
 		for (let attempt = 0; attempt < MAX_BATCH_VALIDATION_ATTEMPTS; attempt += 1) {
 			const retryContext =
 				attempt > 0
-					? `The previous draft failed validation (${lastValidationError?.message || 'quality checks'}). Regenerate any affected questions. For every question, solve it independently, copy the answer exactly from one complete option string, verify it is the only correct option, remove duplicates, and ensure every LaTeX expression is valid KaTeX before returning JSON.`
+					? `The previous draft failed validation (${lastValidationError?.message || 'quality checks'}). Regenerate every question. Keep all four options within about 20% of each other in character length and never make the correct option the longest. For every question, solve it independently, copy the answer exactly from one complete option string, verify it is the only correct option, remove duplicates, and ensure every LaTeX expression is valid KaTeX before returning JSON.`
 					: null;
 			try {
 				const candidatePaper = normalizeGeneratedPaper(
@@ -331,6 +358,7 @@ async function generatePaper({
 						userContext,
 						warmUpDifficulty,
 						deadlineMs,
+						runState,
 					})
 				);
 				const repairedPaper = repairGeneratedPaper({
@@ -360,7 +388,14 @@ async function generatePaper({
 						.slice(0, 3)
 						.map((entry) => `${entry.issue}@Q${entry.index + 1}`)
 						.join(', ');
-					throw new Error(`Content quality checks failed (${sample})`);
+					throw new GenerationFailureError(`Content quality checks failed (${sample})`, {
+						stage: 'quality',
+						issues: qualityResult.issues.slice(0, 50),
+						questionStats: summarizeQuestionLengths(qualityResult.questions),
+						batchIndex: index,
+						batchTotal: totalBatches,
+						validationAttempt: attempt + 1,
+					});
 				}
 
 				// Independent verification: a second call solves the questions
@@ -370,12 +405,23 @@ async function generatePaper({
 					questions: qualityResult.questions,
 					language,
 					deadlineMs,
+					runState,
 				});
 				if (mismatchedAnswers.length > 0) {
-					throw new Error(
+					throw new GenerationFailureError(
 						`Answer verification disagreed on question(s) ${mismatchedAnswers
 							.map((index) => index + 1)
-							.join(', ')}`
+							.join(', ')}`,
+						{
+							stage: 'verification',
+							issues: mismatchedAnswers.map((index) => ({
+								index,
+								issue: 'verification-disagreement',
+							})),
+							batchIndex: index,
+							batchTotal: totalBatches,
+							validationAttempt: attempt + 1,
+						}
 					);
 				}
 
@@ -390,7 +436,15 @@ async function generatePaper({
 				}
 				lastValidationError = validationError;
 				if (attempt === MAX_BATCH_VALIDATION_ATTEMPTS - 1) {
-					throw validationError;
+					if (validationError instanceof GenerationFailureError) {
+						throw validationError;
+					}
+					throw new GenerationFailureError(validationError.message, {
+						stage: 'batch-validation',
+						batchIndex: index,
+						batchTotal: totalBatches,
+						validationAttempt: attempt + 1,
+					});
 				}
 			}
 		}
@@ -405,8 +459,13 @@ async function generatePaper({
 	}
 
 	if (generatedQuestions.length !== numQuestions) {
-		throw new Error(
-			`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`
+		throw new GenerationFailureError(
+			`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`,
+			{
+				stage: 'count',
+				generatedCount: generatedQuestions.length,
+				requestedCount: numQuestions,
+			}
 		);
 	}
 
@@ -675,6 +734,7 @@ export async function POST({ request, cookies }) {
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
+		const generationRun = { model: null };
 		let questionPaper;
 
 		try {
@@ -695,6 +755,7 @@ export async function POST({ request, cookies }) {
 				userContext,
 				warmUpDifficulty,
 				deadlineMs: startedAt + GENERATION_TIMEOUT_MS,
+				runState: generationRun,
 			});
 
 			const storedPaper = {
@@ -768,6 +829,14 @@ export async function POST({ request, cookies }) {
 				fallbackMessage: 'Failed to generate valid quiz questions. Please try again.',
 				timeoutMessage: 'Generation timed out after 180 seconds. Please retry.',
 			});
+			const failure = parseError.failure || {};
+			const failureStage =
+				failure.stage ||
+				(isApiLimitExceededError(parseError)
+					? 'api-limit'
+					: isApiTimeoutError(parseError)
+						? 'timeout'
+						: 'internal');
 
 			await logApiEvent({
 				route: '/api/generate',
@@ -776,7 +845,7 @@ export async function POST({ request, cookies }) {
 				request,
 				statusCode,
 				durationMs: Date.now() - startedAt,
-				errorMessage: parseError.message,
+				errorMessage: String(parseError.message || '').slice(0, 500),
 				metadata: {
 					topic: resolvedTopic || null,
 					testMode,
@@ -785,6 +854,13 @@ export async function POST({ request, cookies }) {
 					numQuestions,
 					difficulty,
 					language,
+					generationFailure: {
+						code,
+						stage: failureStage,
+						message: String(parseError.message || '').slice(0, 300),
+						model: failure.model || parseError.model || generationRun.model || null,
+						...failure,
+					},
 				},
 			});
 
@@ -823,7 +899,7 @@ export async function POST({ request, cookies }) {
 			request,
 			statusCode,
 			durationMs: Date.now() - startedAt,
-			errorMessage: error.message,
+			errorMessage: String(error.message || '').slice(0, 500),
 		});
 
 		return json(
