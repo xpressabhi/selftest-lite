@@ -12,6 +12,7 @@ import {
 	parseRequestBody,
 } from '$lib/server/quizValidation';
 import { API_LIMIT_ERROR_CODE, classifyApiError } from '$lib/shared/apiLimitError';
+import { MAX_INTENT_CHARS } from '$lib/shared/inputLimits';
 import {
 	INTENT_MODEL,
 	MAX_RECENT_MESSAGES,
@@ -52,7 +53,7 @@ const planSchema = z
 const answerValueSchema = z.union([z.string().max(500), z.number(), z.null()]);
 
 const requestSchema = z.object({
-	intent: z.string().min(2).max(500),
+	intent: z.string().min(2).max(MAX_INTENT_CHARS),
 	mode: z.enum(['turn', 'preview']).optional(),
 	plan: planSchema,
 	explicit: z.record(z.string().max(40), z.boolean()).optional(),
@@ -132,7 +133,7 @@ export async function POST({ request, cookies }) {
 		if (!parsed.success) {
 			return json(
 				{
-					error: 'Intent must be a string between 2 and 500 characters',
+					error: `Intent must be a string between 2 and ${MAX_INTENT_CHARS} characters`,
 					code: 'INVALID_INTENT',
 				},
 				{ status: 400 }

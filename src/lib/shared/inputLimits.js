@@ -9,7 +9,7 @@
  */
 
 /** Planner composer ("What do you want to practice?") and plan-topic edits. */
-export const MAX_INTENT_CHARS = 300;
+export const MAX_INTENT_CHARS = 1000;
 
 /** Topic shown on the plan card / sent as the generated paper topic. */
 export const MAX_TOPIC_CHARS = 200;
