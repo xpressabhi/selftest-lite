@@ -1,13 +1,24 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import CtaBanner from '$lib/client/CtaBanner.svelte';
+	import FaqAccordion from '$lib/client/FaqAccordion.svelte';
+	import { FAQ_ITEMS, FAQ_SECTIONS } from '$lib/data/faqs';
+	import { jsonLdScript } from '$lib/shared/jsonLd';
 
-	const questions = [
-		['faqQWhatIs', 'faqAWhatIs1', 'faqAWhatIsHighlight', 'faqAWhatIs2'],
-		['faqQIsFree', 'faqAIsFree'],
-		['faqQStoreData', 'faqAStoreData'],
-		['faqQSaveQuizzes', 'faqASaveQuizzes'],
-		['faqQAiGeneration', 'faqAAiGeneration'],
-	];
+	const faqJsonLd = $derived(
+		jsonLdScript({
+			'@context': 'https://schema.org',
+			'@type': 'FAQPage',
+			mainEntity: FAQ_ITEMS.map((item) => ({
+				'@type': 'Question',
+				name: $t(item.questionKey),
+				acceptedAnswer: {
+					'@type': 'Answer',
+					text: item.answerKeys.map((key) => $t(key)).join(''),
+				},
+			})),
+		})
+	);
 </script>
 
 <svelte:head>
@@ -16,27 +27,107 @@
 		name="description"
 		content="Frequently asked questions about selftest.in quizzes, privacy, sync, and AI generation."
 	/>
+	<link rel="canonical" href="https://selftest.in/faq" />
+	{@html faqJsonLd}
 </svelte:head>
 
 <section class="container py-4 py-md-5">
-	<div class="mx-auto" style="max-width: 820px;">
-		<h1 class="h2 fw-bold">{$t('faqHeroTitle')}</h1>
-		<p class="text-muted mb-4">{$t('faqHeroBody')}</p>
-		<div class="accordion d-grid gap-3">
-			{#each questions as item (item[0])}
-				<article class="bg-body border rounded-3 p-3">
-					<h2 class="h5 fw-bold">{$t(item[0])}</h2>
-					{#if item.length === 4}
-						<p class="mb-0">{$t(item[1])}<strong>{$t(item[2])}</strong>{$t(item[3])}</p>
-					{:else}
-						<p class="mb-0 text-muted">{$t(item[1])}</p>
-					{/if}
-				</article>
+	<div class="faq-wrap">
+		<header class="faq-hero">
+			<h1 class="faq-title">{$t('faqHeroTitle')}</h1>
+			<p class="faq-subtitle">{$t('faqHeroBody')}</p>
+		</header>
+
+		<nav class="faq-nav" aria-label={$t('faqHeroTitle')}>
+			{#each FAQ_SECTIONS as section (section.id)}
+				<a class="faq-chip" href={`#section-${section.id}`}>{$t(section.titleKey)}</a>
+			{/each}
+		</nav>
+
+		<div class="faq-sections">
+			{#each FAQ_SECTIONS as section (section.id)}
+				<section class="faq-section" id={`section-${section.id}`}>
+					<h2 class="faq-section-title">{$t(section.titleKey)}</h2>
+					<FaqAccordion items={section.items} />
+				</section>
 			{/each}
 		</div>
-		<div class="mt-4">
-			<span class="text-muted">{$t('faqStillHaveQuestions')}</span>
-			<a class="ms-2" href="/contact">{$t('faqContactUs')}</a>
-		</div>
+
+		<CtaBanner
+			titleKey="faqStillHaveQuestions"
+			bodyKey="contactHeroBody"
+			buttonKey="faqContactUs"
+			href="/contact"
+		/>
 	</div>
 </section>
+
+<style>
+	.faq-wrap {
+		max-width: 52rem;
+		margin: 0 auto;
+		display: grid;
+		gap: 1.5rem;
+	}
+
+	.faq-hero {
+		text-align: center;
+	}
+
+	.faq-title {
+		margin: 0 0 0.35rem;
+		font-size: 1.85rem;
+		line-height: 1.2;
+		font-weight: 700;
+	}
+
+	.faq-subtitle {
+		margin: 0;
+		color: var(--text-muted);
+	}
+
+	.faq-nav {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.5rem;
+	}
+
+	.faq-chip {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 0 0.9rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: border-color 0.15s ease-out;
+	}
+
+	.faq-chip:hover {
+		border-color: var(--brand-text);
+		color: var(--brand-text);
+	}
+
+	.faq-sections {
+		display: grid;
+		gap: 2rem;
+	}
+
+	.faq-section {
+		scroll-margin-top: 5rem;
+	}
+
+	.faq-section-title {
+		margin: 0 0 0.75rem;
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+</style>
