@@ -11,6 +11,9 @@ const DEVANAGARI_PATTERN = /[\u0900-\u097F]/gu;
 const LATIN_PATTERN = /[a-z]/giu;
 
 export const NEAR_DUPLICATE_THRESHOLD = 0.8;
+// Against the user's earlier papers a slightly higher bar avoids false
+// positives on well-covered topics while still catching true repeats.
+export const CROSS_PAPER_DUPLICATE_THRESHOLD = 0.85;
 export const LENGTH_RATIO_LIMIT = 1.25;
 export const HINDI_SCRIPT_RATIO_MIN = 0.25;
 
@@ -151,7 +154,7 @@ export function shuffleOptions(question, random = Math.random) {
  * the question is acceptable. `previousQuestionTexts` enables near-duplicate
  * detection (within the paper and against recent papers for the topic).
  */
-export function inspectQuestion(question, { previousQuestionTexts = [], language } = {}) {
+export function inspectQuestion(question, { previousQuestionTexts = [], currentPaperTexts = [], language } = {}) {
 	const issues = [];
 	const options = Array.isArray(question?.options) ? question.options : [];
 	const answer = typeof question?.answer === 'string' ? question.answer : '';
@@ -186,10 +189,18 @@ export function inspectQuestion(question, { previousQuestionTexts = [], language
 	) {
 		issues.push('language-drift');
 	}
-	for (const previousText of previousQuestionTexts) {
+	for (const previousText of currentPaperTexts) {
 		if (trigramSimilarity(questionText, previousText) >= NEAR_DUPLICATE_THRESHOLD) {
 			issues.push('near-duplicate');
 			break;
+		}
+	}
+	if (!issues.includes('near-duplicate')) {
+		for (const previousText of previousQuestionTexts) {
+			if (trigramSimilarity(questionText, previousText) >= CROSS_PAPER_DUPLICATE_THRESHOLD) {
+				issues.push('near-duplicate');
+				break;
+			}
 		}
 	}
 	return issues;
@@ -210,13 +221,13 @@ export function improveQuestion(question, options = {}) {
 /** Runs inspectQuestion over a list, returning a flat list of `index: issue`. */
 export function inspectQuestionBatch(questions, options = {}) {
 	const issues = [];
-	const seenTexts = [...(options.previousQuestionTexts || [])];
+	const paperTexts = [...(options.currentPaperTexts || [])];
 	questions.forEach((question, index) => {
-		const found = inspectQuestion(question, { ...options, previousQuestionTexts: seenTexts });
+		const found = inspectQuestion(question, { ...options, currentPaperTexts: paperTexts });
 		for (const issue of found) {
 			issues.push({ index, issue });
 		}
-		seenTexts.push(String(question?.question || ''));
+		paperTexts.push(String(question?.question || ''));
 	});
 	return issues;
 }
@@ -228,17 +239,17 @@ export function inspectQuestionBatch(questions, options = {}) {
 export function applyQualityFixes(questions, options = {}) {
 	const fixed = [];
 	const issues = [];
-	const seenTexts = [...(options.previousQuestionTexts || [])];
+	const paperTexts = [...(options.currentPaperTexts || [])];
 	questions.forEach((question, index) => {
 		const { question: improved, issues: found } = improveQuestion(question, {
 			...options,
-			previousQuestionTexts: seenTexts,
+			currentPaperTexts: paperTexts,
 		});
 		fixed.push(improved);
 		for (const issue of found) {
 			issues.push({ index, issue });
 		}
-		seenTexts.push(String(improved?.question || ''));
+		paperTexts.push(String(improved?.question || ''));
 	});
 	return { questions: fixed, issues };
 }

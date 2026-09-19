@@ -32,6 +32,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'generate:success',
 	'generate:fail',
 	'generate:cancel',
+	'generate:trimmed',
 	'generate:quick-start-exam',
 	'generate:quick-start-preset',
 	'generate:quick-start-daily',

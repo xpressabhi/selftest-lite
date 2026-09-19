@@ -623,6 +623,14 @@
 							{testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}
 						</span>
 					</div>
+					{#if questionPaper.trimmed && Number(questionPaper.requestedCount) > totalQuestions}
+						<p class="test-trimmed-notice" role="status">
+							{$t('paperTrimmedNotice', {
+								done: totalQuestions,
+								total: Number(questionPaper.requestedCount),
+							})}
+						</p>
+					{/if}
 					<p class="test-summary-body">{$t('testSummaryBody')}</p>
 					<p class="test-summary-id">{$t('testId')}: {questionPaper.id}</p>
 					<div class="test-summary-actions">
@@ -1044,6 +1052,23 @@
 		color: var(--text-muted);
 		font-size: 0.9rem;
 		line-height: 1.55;
+	}
+
+	.test-trimmed-notice {
+		margin: 0 0 16px;
+		padding: 9px 12px;
+		border: 1px solid rgba(217, 119, 6, 0.35);
+		border-radius: 12px;
+		background: rgba(217, 119, 6, 0.08);
+		color: #b45309;
+		font-size: 0.8rem;
+		line-height: 1.45;
+	}
+
+	:global(.dark) .test-trimmed-notice {
+		border-color: rgba(252, 211, 77, 0.35);
+		background: rgba(252, 211, 77, 0.08);
+		color: #fcd34d;
 	}
 
 	.test-summary-id {

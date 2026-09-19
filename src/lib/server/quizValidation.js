@@ -300,20 +300,30 @@ export function validateTestRecordPayload(test) {
 	return null;
 }
 
-export function validateGeneratedPaper({ questionPaper, testType, numQuestions }) {
+/**
+ * Per-question structural inspection. Returns `[{ index, issue, message }]`
+ * (empty means valid); `index` is -1 for paper-level problems. The salvage
+ * path keeps the good questions with this; `validateGeneratedPaper` below
+ * preserves the original throwing contract.
+ */
+export function inspectGeneratedPaper({ questionPaper, testType, numQuestions }) {
 	if (!questionPaper?.topic || !Array.isArray(questionPaper.questions)) {
-		throw new Error('Invalid response structure');
+		return [{ index: -1, issue: 'invalid-structure', message: 'Invalid response structure' }];
 	}
 
+	const issues = [];
 	const questionTexts = new Set();
 	questionPaper.questions.forEach((q, index) => {
+		const add = (issue, message) => issues.push({ index, issue, message });
 		if (!q?.question || !Array.isArray(q.options) || !q?.answer) {
-			throw new Error(`Invalid question structure at index ${index}`);
+			add('invalid-structure', `Invalid question structure at index ${index}`);
+			return;
 		}
 
 		const normalizedQuestion = comparableText(q.question).toLocaleLowerCase();
 		if (questionTexts.has(normalizedQuestion)) {
-			throw new Error(`Question ${index + 1} duplicates another question`);
+			add('duplicate-question', `Question ${index + 1} duplicates another question`);
+			return;
 		}
 		questionTexts.add(normalizedQuestion);
 
@@ -321,34 +331,51 @@ export function validateGeneratedPaper({ questionPaper, testType, numQuestions }
 			(testType === 'multiple-choice' || testType === 'speed-challenge') &&
 			q.options.length !== 4
 		) {
-			throw new Error(`Question ${index + 1} must have exactly 4 options`);
+			add('option-count', `Question ${index + 1} must have exactly 4 options`);
+			return;
 		}
 
 		if (testType === 'true-false' && q.options.length !== 2) {
-			throw new Error(
-				`Question ${index + 1} must have exactly 2 options for true/false format`
-			);
+			add('option-count', `Question ${index + 1} must have exactly 2 options for true/false format`);
+			return;
 		}
 
 		if (!q.options.includes(q.answer)) {
-			throw new Error(`Question ${index + 1} answer must match one of the options`);
+			add('answer-mismatch', `Question ${index + 1} answer must match one of the options`);
+			return;
 		}
 
 		const normalizedOptions = q.options.map((option) => comparableText(option));
 		if (new Set(normalizedOptions).size !== normalizedOptions.length) {
-			throw new Error(`Question ${index + 1} contains duplicate options`);
+			add('duplicate-options', `Question ${index + 1} contains duplicate options`);
+			return;
 		}
 
-		validateMathSyntax(q.question, `Question ${index + 1}`);
-		q.options.forEach((option, optionIndex) => {
-			validateMathSyntax(option, `Question ${index + 1}, option ${optionIndex + 1}`);
-		});
-		validateMathSyntax(q.answer, `Question ${index + 1}, answer`);
+		try {
+			validateMathSyntax(q.question, `Question ${index + 1}`);
+			q.options.forEach((option, optionIndex) => {
+				validateMathSyntax(option, `Question ${index + 1}, option ${optionIndex + 1}`);
+			});
+			validateMathSyntax(q.answer, `Question ${index + 1}, answer`);
+		} catch (error) {
+			add('invalid-latex', error.message);
+		}
 	});
 
 	if (questionPaper.questions.length !== numQuestions) {
-		throw new Error(
-			`Expected ${numQuestions} questions but got ${questionPaper.questions.length}`
-		);
+		issues.push({
+			index: -1,
+			issue: 'count-mismatch',
+			message: `Expected ${numQuestions} questions but got ${questionPaper.questions.length}`,
+		});
+	}
+
+	return issues;
+}
+
+export function validateGeneratedPaper({ questionPaper, testType, numQuestions }) {
+	const issues = inspectGeneratedPaper({ questionPaper, testType, numQuestions });
+	if (issues.length > 0) {
+		throw new Error(issues[0].message);
 	}
 }

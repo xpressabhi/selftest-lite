@@ -421,6 +421,49 @@ printTable(
 	]
 );
 
+section('Generation salvage (server)');
+printTable(
+	await sql`
+		SELECT
+			COUNT(*)::int AS papers,
+			COUNT(*) FILTER (WHERE metadata->>'trimmed' = 'true')::int AS trimmed,
+			COALESCE(SUM((metadata->'salvage'->>'rounds')::int), 0)::int AS rounds,
+			COALESCE(SUM((metadata->'salvage'->>'rejected')::int), 0)::int AS rejected_drafts,
+			ROUND(AVG(COALESCE((metadata->'salvage'->>'rejected')::numeric, 0)), 2) AS avg_rejected
+		FROM api_request_events
+		WHERE route = '/api/generate'
+			AND status_code = 200
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+	`,
+	[
+		{ key: 'papers', label: 'papers' },
+		{ key: 'trimmed', label: 'trimmed' },
+		{ key: 'rounds', label: 'salvage rounds' },
+		{ key: 'rejected_drafts', label: 'rejected drafts' },
+		{ key: 'avg_rejected', label: 'avg rejected/paper' },
+	]
+);
+
+section('Generation trims (client)');
+printTable(
+	await sql`
+		SELECT
+			COUNT(*)::int AS events,
+			COALESCE(SUM((props->>'requested')::int), 0)::int AS requested,
+			COALESCE(SUM((props->>'generated')::int), 0)::int AS generated,
+			COUNT(DISTINCT COALESCE(user_id::text, client_id))::int AS identities
+		FROM feature_events
+		WHERE event = 'generate:trimmed'
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+	`,
+	[
+		{ key: 'events', label: 'events' },
+		{ key: 'requested', label: 'requested' },
+		{ key: 'generated', label: 'generated' },
+		{ key: 'identities', label: 'identities' },
+	]
+);
+
 section('Generation failures (client)');
 printTable(
 	await sql`

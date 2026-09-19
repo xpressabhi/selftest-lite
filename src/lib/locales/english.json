@@ -833,5 +833,7 @@
 	"classLabel": "Class {n}",
 	"profileSaveFailed": "Couldn't save your profile. Please try again.",
 	"previewStatusReady": "Ready",
-	"previewStatusFailed": "Needs input"
+	"previewStatusFailed": "Needs input",
+	"generatingProgress": "{done} of {total} questions ready",
+	"paperTrimmedNotice": "We generated {done} of {total} questions — a few drafts didn't pass our quality checks."
 }

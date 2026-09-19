@@ -12,6 +12,7 @@
 		needsJevPreview,
 		shouldRunPreview,
 	} from '$lib/client/livePreview';
+	import { parseSseBuffer, streamErrorToError } from '$lib/client/sse';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
@@ -116,6 +117,7 @@
 	let generationTimer = null;
 	let generationElapsed = $state(0);
 	let generationCanceled = false;
+	let generationProgress = $state(null);
 
 	const currentProfile = $derived($profileStore);
 	const insights = $derived($profileInsights);
@@ -861,7 +863,10 @@
 			};
 			const response = await fetch('/api/generate', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/event-stream',
+				},
 				body: JSON.stringify({
 					...requestParams,
 					previousTestIds: historyEntries
@@ -874,6 +879,14 @@
 				}),
 				signal: controller.signal,
 			});
+
+			// Progress streaming is best-effort: JSON responses (reused exams,
+			// pre-generation errors, proxies that buffer) still work as before.
+			const contentType = response.headers.get('content-type') || '';
+			if (response.ok && contentType.includes('text/event-stream') && response.body) {
+				return await readGenerationStream(response);
+			}
+
 			const data = await response.json().catch(() => ({}));
 			if (!response.ok) {
 				const apiError = new Error(localizedApiError(data, $t, response.status));
@@ -902,6 +915,39 @@
 		}
 	}
 
+	/** Consumes the SSE generation stream, updating progress as it arrives. */
+	async function readGenerationStream(response) {
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) {
+				break;
+			}
+			buffer += decoder.decode(value, { stream: true });
+			const { events, rest } = parseSseBuffer(buffer);
+			buffer = rest;
+			for (const { event, data } of events) {
+				if (event === 'progress') {
+					generationProgress = {
+						approved: Number(data?.approved) || 0,
+						requested: Number(data?.requested) || 0,
+					};
+				} else if (event === 'done') {
+					return data;
+				} else if (event === 'error') {
+					throw streamErrorToError(data);
+				}
+			}
+		}
+		throw streamErrorToError({
+			error: $t('failedToGenerateQuiz'),
+			code: 'GENERATION_STREAM_ENDED',
+			status: 500,
+		});
+	}
+
 	async function runGeneration(requestParams) {
 		if (isOffline) {
 			error = $t('offlineAccessHistory');
@@ -913,6 +959,7 @@
 		retryLabel = '';
 		generationCanceled = false;
 		generationElapsed = 0;
+		generationProgress = null;
 		const generationStartedAt = Date.now();
 		window.clearInterval(generationTimer);
 		generationTimer = window.setInterval(() => {
@@ -938,6 +985,15 @@
 						mode:
 							requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
 					});
+					if (data?.trimmed) {
+						track('generate:trimmed', {
+							requested: Number(data.requestedCount) || 0,
+							generated: Array.isArray(data.questions) ? data.questions.length : 0,
+							mode:
+								requestParams.testMode ||
+								(isFullExam ? 'full-exam' : 'quiz-practice'),
+						});
+					}
 					saveCurrentPaper(data);
 					plannerDraft = createPlannerDraft();
 					clearPlannerDraft();
@@ -967,6 +1023,7 @@
 			window.clearInterval(generationTimer);
 			generationTimer = null;
 			generationCanceled = false;
+			generationProgress = null;
 			status = 'idle';
 			retryLabel = '';
 		}
@@ -1222,7 +1279,14 @@
 		{#if status === 'loading'}
 			<div class="generation-status" role="status" aria-live="polite">
 				<span class="generation-timer">
-					{$t('generatingQuestionCount', { count: numQuestions })}
+					{#if generationProgress && generationProgress.requested > 0}
+						{$t('generatingProgress', {
+							done: Math.min(generationProgress.approved, generationProgress.requested),
+							total: generationProgress.requested,
+						})}
+					{:else}
+						{$t('generatingQuestionCount', { count: numQuestions })}
+					{/if}
 					· {generationElapsed}s
 				</span>
 				<button

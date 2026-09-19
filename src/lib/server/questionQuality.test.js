@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	CROSS_PAPER_DUPLICATE_THRESHOLD,
 	HINDI_SCRIPT_RATIO_MIN,
 	LENGTH_RATIO_LIMIT,
 	NEAR_DUPLICATE_THRESHOLD,
@@ -114,6 +115,23 @@ describe('inspectQuestion', () => {
 			previousQuestionTexts: ['What is the capital of France?'],
 		});
 		expect(duplicate).toContain('near-duplicate');
+	});
+
+	it('is stricter within the paper than against earlier papers', () => {
+		const base = 'Which pigment absorbs light energy during photosynthesis in green plants?';
+		const variant =
+			'Which pigment absorbs light energy during the process of photosynthesis in green plants?';
+		const similarity = trigramSimilarity(base, variant);
+		expect(similarity).toBeGreaterThanOrEqual(NEAR_DUPLICATE_THRESHOLD);
+		expect(similarity).toBeLessThan(CROSS_PAPER_DUPLICATE_THRESHOLD);
+
+		const question = { question: base, options: ['A', 'B', 'C', 'D'], answer: 'A' };
+		expect(inspectQuestion(question, { currentPaperTexts: [variant] })).toContain(
+			'near-duplicate'
+		);
+		expect(inspectQuestion(question, { previousQuestionTexts: [variant] })).not.toContain(
+			'near-duplicate'
+		);
 	});
 });
 

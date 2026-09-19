@@ -29,17 +29,38 @@ verification pass before it reaches a user.
   prompt carries a matching option-length rule.
 - **Structural checks** — empty/duplicate/lazy options, answer-in-options,
   unbalanced LaTeX, Hindi script ratio.
-- **Near-duplicates** — character-trigram similarity ≥0.8 within the paper,
-  against the user's previous questions, and against the topic's recent
-  questions from the last 90 days.
+- **Near-duplicates** — character-trigram similarity ≥0.8 within the paper and
+  ≥0.85 against the user's previous questions and the topic's recent questions
+  from the last 90 days (the cross-paper bar is slightly higher to avoid false
+  positives on well-covered topics).
 
-Any failure regenerates the batch (bounded by `MAX_BATCH_VALIDATION_ATTEMPTS`).
+## Salvage, top-up, and trim
+
+A defective draft no longer discards its batch. `src/lib/server/generationSalvage.js`
+splits every round into approved and rejected questions:
+
+- **Round 0** generates the whole batch. Rejected drafts keep their issue codes
+  (quality, structural, or verification disagreement).
+- **Top-up rounds** ask only for the missing count plus a 40% buffer, with the
+  rejected drafts and their reasons in the prompt, and verify only the new
+  candidates. Bounded by `MAX_GENERATION_ROUNDS` and a 20s deadline reserve.
+- **Trim** — if the good questions never reach the requested count, the paper
+  is returned at its real size as long as it meets the floor
+  (quizzes: `max(5, 60%)`; exams: `max(15, 75%)`). Trimmed papers carry
+  `trimmed: true` / `requestedCount`, are stored and counted at their real
+  size, and the test summary explains the reduction.
+
+Clients request `Accept: text/event-stream` and receive `progress` events
+(`approved/requested`) while the paper generates, then one `done` (or `error`)
+event with the same payload as the JSON response. Reused exam papers and
+pre-generation errors still come back as plain JSON, which the client handles.
 
 ## Independent verification
 
 `src/lib/server/answerVerifier.js` asks the model to solve every question
 without seeing the key. Any disagreement (including `AMBIGUOUS:` answers)
-regenerates the batch. Verification failures from API errors are logged and
+marks that question rejected so the salvage loop can replace it; the rest of
+the batch is kept. Verification failures from API errors are logged and
 skipped so they can never break generation.
 
 ## Failure diagnostics

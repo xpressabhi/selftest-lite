@@ -30,7 +30,7 @@ import {
 	sanitizePreviousTestIds,
 	validateGenerateRequest,
 	repairGeneratedPaper,
-	validateGeneratedPaper,
+	inspectGeneratedPaper,
 	comparableText,
 	answerMatchesOption,
 } from '$lib/server/quizValidation';
@@ -38,8 +38,17 @@ import { stripAnswerKey } from '$lib/server/paperRedaction';
 import {
 	applyQualityFixes,
 	inspectQuestionBatch,
-	summarizeQuestionLengths,
 } from '$lib/server/questionQuality';
+import {
+	BATCH_SIZE,
+	GENERATION_RESERVE_MS,
+	MAX_GENERATION_ROUNDS,
+	buildTopUpInstruction,
+	partitionRound,
+	salvageSummary,
+	shouldReturnTrimmed,
+	topUpBatchSize,
+} from '$lib/server/generationSalvage';
 import {
 	answerVerificationSchema,
 	buildAnswerVerificationPrompt,
@@ -54,8 +63,6 @@ import {
 
 const MODEL_NAME = 'gemini-flash-lite-latest';
 const MODEL_ATTEMPTS = 2;
-const BATCH_SIZE = 25;
-const MAX_BATCH_VALIDATION_ATTEMPTS = 3;
 const GENERATION_TIMEOUT_MS = 180000;
 
 class GenerationTimeoutError extends Error {
@@ -307,51 +314,77 @@ async function generatePaper({
 	warmUpDifficulty,
 	deadlineMs,
 	runState,
+	onProgress,
 }) {
 	const totalBatches = Math.ceil(numQuestions / BATCH_SIZE);
 	const generatedQuestions = [];
+	const salvage = { rounds: 0, rejected: 0, issueCounts: {}, trimmed: false };
+	const crossPaperTexts = [
+		...previousQuestions.map((question) => question.question),
+		...recentQuestions.map((question) => question.question),
+	];
 	let resolvedPaperTopic = resolvedTopic;
 
 	for (let index = 0; index < totalBatches; index += 1) {
 		assertWithinDeadline(deadlineMs);
 
-		const batchQuestions = Math.min(BATCH_SIZE, numQuestions - generatedQuestions.length);
-		const batchContext = [
-			topicContext,
-			totalBatches > 1
-				? `Batch ${index + 1} of ${totalBatches}: Generate exactly ${batchQuestions} new questions and avoid overlap with earlier batches.`
-				: null,
-		]
-			.filter(Boolean)
-			.join('\n');
-		const cumulativePrevious = [
-			...previousQuestions,
-			...recentQuestions,
-			...generatedQuestions.map((question) => ({
-				question: question.question,
-				answer: question.answer,
-			})),
-		];
+		const batchTarget = Math.min(BATCH_SIZE, numQuestions - generatedQuestions.length);
+		if (batchTarget <= 0) {
+			break;
+		}
 
-		let batchPaper;
-		let lastValidationError;
-		for (let attempt = 0; attempt < MAX_BATCH_VALIDATION_ATTEMPTS; attempt += 1) {
-			const retryContext =
-				attempt > 0
-					? `The previous draft failed validation (${lastValidationError?.message || 'quality checks'}). Regenerate every question. Keep all four options within about 20% of each other in character length and never make the correct option the longest. For every question, solve it independently, copy the answer exactly from one complete option string, verify it is the only correct option, remove duplicates, and ensure every LaTeX expression is valid KaTeX before returning JSON.`
-					: null;
+		const approvedInBatch = [];
+		let rejected = [];
+		let lastError = null;
+		let round = 0;
+
+		// Round 0 generates the whole batch; later rounds replace only the
+		// rejected drafts (plus a buffer) instead of regenerating everything.
+		while (approvedInBatch.length < batchTarget && round < MAX_GENERATION_ROUNDS) {
+			assertWithinDeadline(deadlineMs);
+			if (getRemainingTimeMs(deadlineMs) <= GENERATION_RESERVE_MS) {
+				break;
+			}
+
+			const missing = batchTarget - approvedInBatch.length;
+			const ask = round === 0 ? missing : topUpBatchSize(missing);
+			const approvedSoFar = [...generatedQuestions, ...approvedInBatch];
+			const roundContext = [
+				topicContext,
+				totalBatches > 1
+					? `Batch ${index + 1} of ${totalBatches}: Generate exactly ${ask} new questions and avoid overlap with earlier batches.`
+					: null,
+				round > 0
+					? buildTopUpInstruction({
+							rejected,
+							approvedTexts: approvedSoFar.map((question) => question.question),
+							round,
+							ask,
+						})
+					: null,
+			]
+				.filter(Boolean)
+				.join('\n');
+
 			try {
 				const candidatePaper = normalizeGeneratedPaper(
 					await generateQuestionBatch({
 						ai,
 						topic: resolvedTopic,
-						numQuestions: batchQuestions,
+						numQuestions: ask,
 						difficulty,
 						testType,
-						topicContext: [batchContext, retryContext].filter(Boolean).join('\n'),
+						topicContext: roundContext,
 						examName,
 						syllabusFocus,
-						previousQuestions: cumulativePrevious,
+						previousQuestions: [
+							...previousQuestions,
+							...recentQuestions,
+							...approvedSoFar.map((question) => ({
+								question: question.question,
+								answer: question.answer,
+							})),
+						],
 						language,
 						testMode,
 						objectiveOnly,
@@ -365,41 +398,36 @@ async function generatePaper({
 					questionPaper: candidatePaper,
 					fallbackTopic: resolvedTopic,
 				});
-
-				validateGeneratedPaper({
+				const structuralIssues = inspectGeneratedPaper({
 					questionPaper: repairedPaper,
 					testType,
-					numQuestions: batchQuestions,
+					numQuestions: ask,
 				});
-
-				// Deterministic quality pass: shuffle options (fixes the
-				// answer-position bias) and reject length/duplicate/language
-				// defects that prompt-level checks miss.
-				const qualityResult = applyQualityFixes(repairedPaper.questions, {
-					previousQuestionTexts: [
-						...previousQuestions.map((question) => question.question),
-						...recentQuestions.map((question) => question.question),
-						...generatedQuestions.map((question) => question.question),
-					],
-					language,
-				});
-				if (qualityResult.issues.length > 0) {
-					const sample = qualityResult.issues
-						.slice(0, 3)
-						.map((entry) => `${entry.issue}@Q${entry.index + 1}`)
-						.join(', ');
-					throw new GenerationFailureError(`Content quality checks failed (${sample})`, {
-						stage: 'quality',
-						issues: qualityResult.issues.slice(0, 50),
-						questionStats: summarizeQuestionLengths(qualityResult.questions),
+				const fatalStructureIssue = structuralIssues.find(
+					(issue) => issue.index < 0 && issue.issue === 'invalid-structure'
+				);
+				if (fatalStructureIssue) {
+					throw new GenerationFailureError(fatalStructureIssue.message, {
+						stage: 'structure',
+						issues: structuralIssues.slice(0, 5),
 						batchIndex: index,
 						batchTotal: totalBatches,
-						validationAttempt: attempt + 1,
+						validationAttempt: round + 1,
 					});
 				}
 
-				// Independent verification: a second call solves the questions
-				// without the key; disagreements are regenerated.
+				// Deterministic quality pass: shuffle options (fixes the
+				// answer-position bias) and reject length/duplicate/language
+				// defects that prompt-level checks miss. Duplicates are checked
+				// within this paper at 0.8 and against earlier papers at 0.85.
+				const qualityResult = applyQualityFixes(repairedPaper.questions, {
+					previousQuestionTexts: crossPaperTexts,
+					currentPaperTexts: approvedSoFar.map((question) => question.question),
+					language,
+				});
+
+				// Independent verification of this round's candidates only:
+				// already-approved questions were verified in their own round.
 				const mismatchedAnswers = await verifyQuestionBatch({
 					ai,
 					questions: qualityResult.questions,
@@ -407,72 +435,353 @@ async function generatePaper({
 					deadlineMs,
 					runState,
 				});
-				if (mismatchedAnswers.length > 0) {
-					throw new GenerationFailureError(
-						`Answer verification disagreed on question(s) ${mismatchedAnswers
-							.map((index) => index + 1)
-							.join(', ')}`,
-						{
-							stage: 'verification',
-							issues: mismatchedAnswers.map((index) => ({
-								index,
-								issue: 'verification-disagreement',
-							})),
-							batchIndex: index,
-							batchTotal: totalBatches,
-							validationAttempt: attempt + 1,
-						}
-					);
-				}
 
-				batchPaper = { ...repairedPaper, questions: qualityResult.questions };
-				break;
-			} catch (validationError) {
-				if (
-					isApiLimitExceededError(validationError) ||
-					isApiTimeoutError(validationError)
-				) {
-					throw validationError;
-				}
-				lastValidationError = validationError;
-				if (attempt === MAX_BATCH_VALIDATION_ATTEMPTS - 1) {
-					if (validationError instanceof GenerationFailureError) {
-						throw validationError;
-					}
-					throw new GenerationFailureError(validationError.message, {
-						stage: 'batch-validation',
+				const { approved, rejected: roundRejected } = partitionRound({
+					questions: qualityResult.questions,
+					structuralIssues: structuralIssues.filter((issue) => issue.index >= 0),
+					qualityIssues: qualityResult.issues,
+					mismatchIndexes: mismatchedAnswers,
+				});
+
+				if (approved.length === 0 && roundRejected.length === 0) {
+					throw new GenerationFailureError('The model returned no questions', {
+						stage: 'empty',
 						batchIndex: index,
 						batchTotal: totalBatches,
-						validationAttempt: attempt + 1,
+						validationAttempt: round + 1,
 					});
 				}
+
+				if (!resolvedPaperTopic && repairedPaper.topic) {
+					resolvedPaperTopic = repairedPaper.topic;
+				}
+
+				salvage.rounds += 1;
+				salvage.rejected += roundRejected.length;
+				for (const entry of roundRejected) {
+					for (const issue of entry.issues) {
+						salvage.issueCounts[issue] = (salvage.issueCounts[issue] || 0) + 1;
+					}
+				}
+				approvedInBatch.push(...approved.slice(0, missing));
+				rejected = roundRejected;
+				onProgress?.({
+					stage: round === 0 ? 'generating' : 'salvaging',
+					approved: generatedQuestions.length + approvedInBatch.length,
+					requested: numQuestions,
+					round: round + 1,
+				});
+			} catch (roundError) {
+				if (
+					isApiLimitExceededError(roundError) ||
+					isApiTimeoutError(roundError)
+				) {
+					throw roundError;
+				}
+				lastError = roundError;
 			}
+			round += 1;
 		}
 
-		if (!batchPaper) {
-			throw lastValidationError || new Error('Failed to validate generated batch');
+		if (approvedInBatch.length === 0) {
+			throw (
+				lastError ||
+				new GenerationFailureError('Failed to validate generated batch', {
+					stage: 'batch-validation',
+					batchIndex: index,
+					batchTotal: totalBatches,
+				})
+			);
 		}
-		if (!resolvedPaperTopic && batchPaper.topic) {
-			resolvedPaperTopic = batchPaper.topic;
-		}
-		generatedQuestions.push(...batchPaper.questions.map(sanitizeQuestion));
+		generatedQuestions.push(...approvedInBatch.map(sanitizeQuestion));
 	}
 
 	if (generatedQuestions.length !== numQuestions) {
-		throw new GenerationFailureError(
-			`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`,
-			{
-				stage: 'count',
-				generatedCount: generatedQuestions.length,
-				requestedCount: numQuestions,
-			}
-		);
+		if (
+			!shouldReturnTrimmed({
+				approved: generatedQuestions.length,
+				requested: numQuestions,
+				testMode,
+			})
+		) {
+			throw new GenerationFailureError(
+				`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`,
+				{
+					stage: 'count',
+					generatedCount: generatedQuestions.length,
+					requestedCount: numQuestions,
+					...salvageSummary({
+						requested: numQuestions,
+						approved: generatedQuestions.length,
+						rounds: salvage.rounds,
+						rejectedCount: salvage.rejected,
+						issueCounts: salvage.issueCounts,
+					}),
+				}
+			);
+		}
+		// Enough good questions to be useful: return the smaller paper rather
+		// than failing the whole generation.
+		salvage.trimmed = true;
 	}
 
 	return {
 		topic: normalizeMathText(resolvedPaperTopic || resolvedTopic || 'Generated Test'),
 		questions: generatedQuestions,
+		trimmed: salvage.trimmed,
+		requestedCount: salvage.trimmed ? numQuestions : undefined,
+		salvage: salvageSummary({
+			requested: numQuestions,
+			approved: generatedQuestions.length,
+			rounds: salvage.rounds,
+			rejectedCount: salvage.rejected,
+			trimmed: salvage.trimmed,
+			issueCounts: salvage.issueCounts,
+		}),
 	};
+}
+
+/**
+ * Runs generation, persistence, and success/failure telemetry once, returning
+ * a JSON-ready payload so the plain and the streaming response paths share
+ * exactly the same behaviour.
+ */
+async function runGenerationAndStore(context, onProgress) {
+	const {
+		ai,
+		startedAt,
+		request,
+		clientKey,
+		user,
+		clientId,
+		resolvedTopic,
+		numQuestions,
+		resolvedDifficulty,
+		difficulty,
+		testType,
+		topicContext,
+		examName,
+		examStream,
+		category,
+		selectedTopics,
+		syllabusFocus,
+		previousQuestions,
+		recentQuestions,
+		language,
+		testMode,
+		objectiveOnly,
+		userContext,
+		warmUpDifficulty,
+		personalized,
+		tailoredSummary,
+		deadlineMs,
+	} = context;
+	const generationRun = { model: null };
+
+	try {
+		const questionPaper = await generatePaper({
+			ai,
+			resolvedTopic,
+			numQuestions,
+			difficulty: resolvedDifficulty,
+			testType,
+			topicContext,
+			examName,
+			syllabusFocus,
+			previousQuestions,
+			recentQuestions,
+			language,
+			testMode,
+			objectiveOnly,
+			userContext,
+			warmUpDifficulty,
+			deadlineMs,
+			runState: generationRun,
+			onProgress,
+		});
+
+		const storedPaper = {
+			...questionPaper,
+			requestParams: {
+				topic: resolvedTopic,
+				testMode,
+				examId: context.examId,
+				examName,
+				examStream,
+				category: category || null,
+				selectedTopics,
+				syllabusFocus,
+				testType,
+				numQuestions,
+				difficulty: resolvedDifficulty,
+				requestedDifficulty: difficulty,
+				language,
+				objectiveOnly,
+				durationMinutes: context.durationMinutes,
+				clientId,
+			},
+		};
+
+		// A trimmed paper is stored (and counted) at its real size.
+		const questionCount = questionPaper.questions.length;
+		const testId = await createTestRecord(storedPaper, {
+			topic: resolvedTopic,
+			examName,
+			testType,
+			numQuestions: questionCount,
+			difficulty: resolvedDifficulty,
+			language,
+			testMode,
+			examId: context.examId,
+			objectiveOnly,
+			durationMinutes: context.durationMinutes,
+			createdByUserId: user?.id || null,
+		});
+
+		await logApiEvent({
+			route: '/api/generate',
+			action: 'generate_quiz',
+			clientKey,
+			request,
+			statusCode: 200,
+			durationMs: Date.now() - startedAt,
+			metadata: {
+				topic: questionPaper.topic,
+				testMode,
+				examName,
+				testType,
+				numQuestions,
+				difficulty: resolvedDifficulty,
+				requestedDifficulty: difficulty,
+				language,
+				personalized,
+				questionCount,
+				testId,
+				trimmed: questionPaper.trimmed === true,
+				salvage: questionPaper.salvage || null,
+			},
+		});
+
+		return {
+			status: 200,
+			payload: {
+				...stripAnswerKey(storedPaper),
+				id: testId,
+				personalized,
+				tailoredSummary,
+			},
+		};
+	} catch (parseError) {
+		console.error('Failed to parse or validate response:', parseError);
+		const { statusCode, code, message } = classifyApiError(parseError, {
+			fallbackCode: 'GENERATION_FAILED',
+			fallbackMessage: 'Failed to generate valid quiz questions. Please try again.',
+			timeoutMessage: 'Generation timed out after 180 seconds. Please retry.',
+		});
+		const failure = parseError.failure || {};
+		const failureStage =
+			failure.stage ||
+			(isApiLimitExceededError(parseError)
+				? 'api-limit'
+				: isApiTimeoutError(parseError)
+					? 'timeout'
+					: 'internal');
+
+		await logApiEvent({
+			route: '/api/generate',
+			action: 'generate_quiz',
+			clientKey,
+			request,
+			statusCode,
+			durationMs: Date.now() - startedAt,
+			errorMessage: String(parseError.message || '').slice(0, 500),
+			metadata: {
+				topic: resolvedTopic || null,
+				testMode,
+				examName,
+				testType,
+				numQuestions,
+				difficulty,
+				language,
+				generationFailure: {
+					code,
+					stage: failureStage,
+					message: String(parseError.message || '').slice(0, 300),
+					model: failure.model || parseError.model || generationRun.model || null,
+					...failure,
+				},
+			},
+		});
+
+		return {
+			status: statusCode,
+			payload: {
+				error: message,
+				code,
+				details: parseError.message,
+			},
+		};
+	}
+}
+
+/**
+ * Server-sent events variant of the same pipeline: progress events while the
+ * paper is generated, then a single `done` (or `error`) event carrying the
+ * same payload the JSON endpoint returns.
+ */
+function streamGenerate(context) {
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		start(controller) {
+			const send = (event, data) => {
+				try {
+					controller.enqueue(
+						encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+					);
+				} catch {
+					// The client disconnected; generation continues and is logged.
+				}
+			};
+			send('progress', {
+				stage: 'starting',
+				approved: 0,
+				requested: context.numQuestions,
+				round: 0,
+			});
+			runGenerationAndStore(context, (progress) => send('progress', progress))
+				.then((result) => {
+					if (result.status >= 200 && result.status < 300) {
+						send('done', result.payload);
+					} else {
+						send('error', { ...result.payload, status: result.status });
+					}
+				})
+				.catch((error) => {
+					send('error', {
+						error: 'Generation failed. Please try again.',
+						code: 'GENERATION_UNEXPECTED',
+						status: 500,
+						details: String(error?.message || ''),
+					});
+				})
+				.finally(() => {
+					try {
+						controller.close();
+					} catch {
+						// Already closed.
+					}
+				});
+		},
+	});
+	return new Response(stream, {
+		status: 200,
+		headers: {
+			'content-type': 'text/event-stream; charset=utf-8',
+			'cache-control': 'no-cache, no-transform',
+			connection: 'keep-alive',
+			'x-accel-buffering': 'no',
+		},
+	});
 }
 
 export async function POST({ request, cookies }) {
@@ -480,6 +789,9 @@ export async function POST({ request, cookies }) {
 	const clientKey = getClientKey(request);
 	const user = await getAuthenticatedUser(cookies);
 	const clientId = getClientIdFromRequest(request);
+	const wantsStream = String(request.headers.get('accept') || '').includes(
+		'text/event-stream'
+	);
 
 	try {
 		const {
@@ -734,145 +1046,43 @@ export async function POST({ request, cookies }) {
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
-		const generationRun = { model: null };
-		let questionPaper;
+		const generationContext = {
+			ai,
+			startedAt,
+			request,
+			clientKey,
+			user,
+			clientId,
+			resolvedTopic,
+			numQuestions,
+			resolvedDifficulty,
+			difficulty,
+			testType,
+			topicContext,
+			examName,
+			examStream,
+			category,
+			selectedTopics,
+			syllabusFocus,
+			previousQuestions,
+			recentQuestions: recentTopicQuestions,
+			language,
+			testMode,
+			objectiveOnly,
+			userContext,
+			warmUpDifficulty,
+			personalized,
+			tailoredSummary,
+			examId,
+			durationMinutes,
+			deadlineMs: startedAt + GENERATION_TIMEOUT_MS,
+		};
 
-		try {
-			questionPaper = await generatePaper({
-				ai,
-				resolvedTopic,
-				numQuestions,
-				difficulty: resolvedDifficulty,
-				testType,
-				topicContext,
-				examName,
-				syllabusFocus,
-				previousQuestions,
-				recentQuestions: recentTopicQuestions,
-				language,
-				testMode,
-				objectiveOnly,
-				userContext,
-				warmUpDifficulty,
-				deadlineMs: startedAt + GENERATION_TIMEOUT_MS,
-				runState: generationRun,
-			});
-
-			const storedPaper = {
-				...questionPaper,
-				requestParams: {
-					topic: resolvedTopic,
-					testMode,
-					examId,
-					examName,
-					examStream,
-					category: category || null,
-					selectedTopics,
-					syllabusFocus,
-					testType,
-					numQuestions,
-					difficulty: resolvedDifficulty,
-					requestedDifficulty: difficulty,
-					language,
-					objectiveOnly,
-					durationMinutes,
-					clientId,
-				},
-			};
-
-			const testId = await createTestRecord(storedPaper, {
-				topic: resolvedTopic,
-				examName,
-				testType,
-				numQuestions,
-				difficulty: resolvedDifficulty,
-				language,
-				testMode,
-				examId,
-				objectiveOnly,
-				durationMinutes,
-				createdByUserId: user?.id || null,
-			});
-
-			await logApiEvent({
-				route: '/api/generate',
-				action: 'generate_quiz',
-				clientKey,
-				request,
-				statusCode: 200,
-				durationMs: Date.now() - startedAt,
-				metadata: {
-					topic: questionPaper.topic,
-					testMode,
-					examName,
-					testType,
-					numQuestions,
-					difficulty: resolvedDifficulty,
-					requestedDifficulty: difficulty,
-					language,
-					personalized,
-					questionCount: questionPaper.questions.length,
-					testId,
-				},
-			});
-
-			return json({
-				...stripAnswerKey(storedPaper),
-				id: testId,
-				personalized,
-				tailoredSummary,
-			});
-		} catch (parseError) {
-			console.error('Failed to parse or validate response:', parseError);
-			const { statusCode, code, message } = classifyApiError(parseError, {
-				fallbackCode: 'GENERATION_FAILED',
-				fallbackMessage: 'Failed to generate valid quiz questions. Please try again.',
-				timeoutMessage: 'Generation timed out after 180 seconds. Please retry.',
-			});
-			const failure = parseError.failure || {};
-			const failureStage =
-				failure.stage ||
-				(isApiLimitExceededError(parseError)
-					? 'api-limit'
-					: isApiTimeoutError(parseError)
-						? 'timeout'
-						: 'internal');
-
-			await logApiEvent({
-				route: '/api/generate',
-				action: 'generate_quiz',
-				clientKey,
-				request,
-				statusCode,
-				durationMs: Date.now() - startedAt,
-				errorMessage: String(parseError.message || '').slice(0, 500),
-				metadata: {
-					topic: resolvedTopic || null,
-					testMode,
-					examName,
-					testType,
-					numQuestions,
-					difficulty,
-					language,
-					generationFailure: {
-						code,
-						stage: failureStage,
-						message: String(parseError.message || '').slice(0, 300),
-						model: failure.model || parseError.model || generationRun.model || null,
-						...failure,
-					},
-				},
-			});
-
-			return json(
-				{
-					error: message,
-					code,
-					details: parseError.message,
-				},
-				{ status: statusCode }
-			);
+		if (wantsStream) {
+			return streamGenerate(generationContext);
 		}
+		const result = await runGenerationAndStore(generationContext);
+		return json(result.payload, { status: result.status });
 	} catch (error) {
 		console.error(error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {
