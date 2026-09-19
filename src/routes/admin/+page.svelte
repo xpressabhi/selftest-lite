@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { t } from '$lib/client/i18n';
+	import { clampInputText, MAX_ADMIN_FIELD_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 
 	let authed = $state(false);
 	let checking = $state(true);
@@ -250,6 +251,12 @@
 					<input
 						class="form-control mt-1"
 						bind:value={username}
+						maxlength={MAX_ADMIN_FIELD_CHARS}
+						oninput={(event) =>
+							(username = sanitizeInputText(
+								event.currentTarget.value,
+								MAX_ADMIN_FIELD_CHARS
+							))}
 						autocomplete="username"
 					/></label
 				>
@@ -259,6 +266,12 @@
 						class="form-control mt-1"
 						type="password"
 						bind:value={password}
+						maxlength={MAX_ADMIN_FIELD_CHARS}
+						oninput={(event) =>
+							(password = clampInputText(
+								event.currentTarget.value,
+								MAX_ADMIN_FIELD_CHARS
+							))}
 						autocomplete="current-password"
 					/></label
 				>

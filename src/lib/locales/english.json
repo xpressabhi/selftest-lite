@@ -820,6 +820,7 @@
 	"plannerPastTests": "Past tests",
 	"plannerPastTestsCount": "{count} past tests found",
 	"clearSearchInput": "Clear search",
+	"characterCount": "{count} of {max} characters",
 	"plannerPreviewDraft": "Preview",
 	"plannerPreviewChecking": "Checking…",
 	"plannerEnterToPlan": "Press Enter to plan a new test instead",

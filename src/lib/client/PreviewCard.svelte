@@ -2,6 +2,11 @@
 	import { t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
+	import {
+		MAX_SEARCH_CHARS,
+		MAX_TOPIC_CHARS,
+		sanitizeInputText
+	} from '$lib/shared/inputLimits';
 
 	let {
 		topic = '',
@@ -341,6 +346,12 @@
 								class="topic-edit-input"
 								bind:value={topicDraft}
 								bind:this={topicInputRef}
+								maxlength={MAX_TOPIC_CHARS}
+								oninput={(event) =>
+									(topicDraft = sanitizeInputText(
+										event.currentTarget.value,
+										MAX_TOPIC_CHARS
+									))}
 								onkeydown={handleTopicKeydown}
 								aria-label={$t('plannerEditTopic')}
 								autocomplete="off"
@@ -624,6 +635,12 @@
 								name="examSearch"
 								autocomplete="off"
 								spellcheck="false"
+								maxlength={MAX_SEARCH_CHARS}
+								oninput={(event) =>
+									(examPickerQuery = sanitizeInputText(
+										event.currentTarget.value,
+										MAX_SEARCH_CHARS
+									))}
 								placeholder={$t('profileWizardSearchExam')}
 								aria-label={$t('profileWizardSearchExam')}
 								bind:value={examPickerQuery}

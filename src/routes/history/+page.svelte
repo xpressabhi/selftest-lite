@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { LOCAL_STORAGE_CHANGE_EVENT, STORAGE_KEYS } from '$lib/client/constants';
 	import { t } from '$lib/client/i18n';
+	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 	import { language } from '$lib/client/preferences';
 	import { focusTrap } from '$lib/client/focusTrap';
 	import { track, trackDebounced } from '$lib/client/telemetry';
@@ -193,8 +194,12 @@
 			autocomplete="off"
 			aria-label={$t('searchTests')}
 			bind:value={search}
+			maxlength={MAX_SEARCH_CHARS}
 			placeholder={$t('searchByTopic')}
-			oninput={() => trackDebounced('history:search', { q: search.trim().slice(0, 64) })}
+			oninput={(event) => {
+				search = sanitizeInputText(event.currentTarget.value, MAX_SEARCH_CHARS);
+				trackDebounced('history:search', { q: search.trim().slice(0, 64) });
+			}}
 		/>
 	</label>
 

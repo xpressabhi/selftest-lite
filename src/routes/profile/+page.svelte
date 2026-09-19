@@ -12,6 +12,11 @@
 	import { track } from '$lib/client/telemetry';
 	import { INDIAN_EXAMS } from '$lib/data/indianExams';
 	import { createDefaultProfile } from '$lib/shared/userProfile';
+	import {
+		MAX_PROFILE_FIELD_CHARS,
+		MAX_SEARCH_CHARS,
+		sanitizeInputText
+	} from '$lib/shared/inputLimits';
 
 	const CLASS_OPTIONS = $derived([
 		{ value: 'class-8', label: 'Class 8' },
@@ -340,7 +345,12 @@
 									type="text"
 									placeholder={$t('profileWizardSearchExam')}
 									bind:value={examQuery}
-									oninput={() => {
+									maxlength={MAX_SEARCH_CHARS}
+									oninput={(event) => {
+										examQuery = sanitizeInputText(
+											event.currentTarget.value,
+											MAX_SEARCH_CHARS
+										);
 										if (
 											draft.examTarget &&
 											examQuery !== draft.examTarget.name
@@ -399,6 +409,12 @@
 										type="text"
 										placeholder={$t('profileWizardAddSubjectPlaceholder')}
 										bind:value={subjectInput}
+										maxlength={MAX_PROFILE_FIELD_CHARS}
+										oninput={(event) =>
+											(subjectInput = sanitizeInputText(
+												event.currentTarget.value,
+												MAX_PROFILE_FIELD_CHARS
+											))}
 										onkeydown={(event) => {
 											if (event.key === 'Enter') {
 												event.preventDefault();
@@ -470,6 +486,12 @@
 								type="text"
 								placeholder={$t('profileWizardAddFocusPlaceholder')}
 								bind:value={focusInput}
+								maxlength={MAX_PROFILE_FIELD_CHARS}
+								oninput={(event) =>
+									(focusInput = sanitizeInputText(
+										event.currentTarget.value,
+										MAX_PROFILE_FIELD_CHARS
+									))}
 								onkeydown={(event) => {
 									if (event.key === 'Enter') {
 										event.preventDefault();

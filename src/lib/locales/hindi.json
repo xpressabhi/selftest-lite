@@ -820,6 +820,7 @@
 	"plannerPastTests": "पिछले टेस्ट",
 	"plannerPastTestsCount": "{count} पिछले टेस्ट मिले",
 	"clearSearchInput": "खोज साफ़ करें",
+	"characterCount": "{count} में से {max} अक्षर",
 	"plannerPreviewDraft": "प्रीव्यू",
 	"plannerPreviewChecking": "जाँच हो रही है…",
 	"plannerEnterToPlan": "नया टेस्ट प्लान करने के लिए Enter दबाएं",

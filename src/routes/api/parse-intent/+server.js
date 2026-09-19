@@ -6,6 +6,11 @@ import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/stor
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { PROFILE_STATE_KEY, parseProfileStateValue } from '$lib/shared/userProfile';
 import { buildStudentContext } from '$lib/server/profile';
+import {
+	InvalidRequestBodyError,
+	RequestBodyTooLargeError,
+	parseRequestBody,
+} from '$lib/server/quizValidation';
 import { API_LIMIT_ERROR_CODE, classifyApiError } from '$lib/shared/apiLimitError';
 import {
 	INTENT_MODEL,
@@ -96,12 +101,31 @@ export async function POST({ request, cookies }) {
 	try {
 		let body;
 		try {
-			body = await request.json();
-		} catch {
-			return json(
-				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
-				{ status: 400 }
-			);
+			// Bounded read: parses the raw text only up to MAX_REQUEST_BODY_BYTES
+			// so an oversized payload cannot force a large JSON.parse.
+			body = await parseRequestBody(request);
+		} catch (error) {
+			if (error instanceof RequestBodyTooLargeError) {
+				await logApiEvent({
+					route: '/api/parse-intent',
+					action: 'parse_intent',
+					clientKey,
+					request,
+					statusCode: 413,
+					durationMs: Date.now() - startedAt,
+				});
+				return json(
+					{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
+					{ status: 413 }
+				);
+			}
+			if (error instanceof InvalidRequestBodyError) {
+				return json(
+					{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
+					{ status: 400 }
+				);
+			}
+			throw error;
 		}
 
 		const parsed = requestSchema.safeParse(body);

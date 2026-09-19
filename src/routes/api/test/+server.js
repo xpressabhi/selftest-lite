@@ -9,8 +9,11 @@ import {
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
+import { MAX_SEARCH_CHARS } from '$lib/shared/inputLimits';
 
 const SEARCH_RATE_LIMIT = 60;
+// Deep paging has no product use and each page costs a DB round trip.
+const MAX_TEST_LIST_OFFSET = 5000;
 
 function rateLimitHeaders(rateLimit) {
 	return {
@@ -64,10 +67,16 @@ export async function GET({ request, url, cookies }) {
 
 		if (!id) {
 			const requestedLimit = Math.min(Math.max(Number(limit) || 10, 1), 10);
+			// Keep paging parameters inside sane bounds: a NaN/negative/huge
+			// offset used to reach the query builder unchecked.
+			const requestedOffset = Math.min(
+				Math.max(Number.isFinite(Number(offset)) ? Math.trunc(Number(offset)) : 0, 0),
+				MAX_TEST_LIST_OFFSET
+			);
 			const tests = await listTestRecords({
-				search,
+				search: search.slice(0, MAX_SEARCH_CHARS),
 				limit: requestedLimit + 1,
-				offset: Number(offset),
+				offset: requestedOffset,
 				language,
 				examType,
 			});

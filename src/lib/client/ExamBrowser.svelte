@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 	let {
 		examSearchQuery = '',
 		examGroupFilter = 'all',
@@ -49,7 +50,12 @@
 					autocomplete="off"
 					aria-label={$t('searchExamStreamSyllabus')}
 					value={examSearchQuery}
-					oninput={(e) => onexamchange('examSearchQuery', e.target.value)}
+					maxlength={MAX_SEARCH_CHARS}
+					oninput={(e) =>
+						onexamchange(
+							'examSearchQuery',
+							sanitizeInputText(e.target.value, MAX_SEARCH_CHARS)
+						)}
 					placeholder={$t('searchExamStreamSyllabus')}
 				/>
 				<select

@@ -2,6 +2,11 @@
 	import { t } from '$lib/client/i18n';
 	import { isDataSaverActive } from '$lib/client/preferences';
 	import { track } from '$lib/client/telemetry';
+	import {
+		isNearInputLimit,
+		MAX_INTENT_CHARS,
+		sanitizeInputText
+	} from '$lib/shared/inputLimits';
 	import TestSearchDropdown from './TestSearchDropdown.svelte';
 
 	let {
@@ -234,6 +239,10 @@
 		inputRef?.focus();
 	}
 
+	function handleIntentInput(event) {
+		value = sanitizeInputText(event.currentTarget.value, MAX_INTENT_CHARS);
+	}
+
 	function handleKeydown(event) {
 		if (event.key === 'Escape' && searchOpen) {
 			event.preventDefault();
@@ -281,6 +290,8 @@
 				type="text"
 				bind:value
 				bind:this={inputRef}
+				maxlength={MAX_INTENT_CHARS}
+				oninput={handleIntentInput}
 				placeholder={PARSING ? '' : $t('smartIntentPlaceholder')}
 				disabled={disabled || PARSING}
 				aria-label={$t('smartIntentPlaceholder')}
@@ -335,6 +346,15 @@
 			{/if}
 		</div>
 	</form>
+
+	{#if isNearInputLimit(value, MAX_INTENT_CHARS)}
+		<p class="composer-limit">
+			<span aria-hidden="true">{value.length}/{MAX_INTENT_CHARS}</span>
+			<span class="sr-only" role="status"
+				>{$t('characterCount', { count: value.length, max: MAX_INTENT_CHARS })}</span
+			>
+		</p>
+	{/if}
 
 	<!-- Rendered after the form for a logical tab order, shown above it via
 	     CSS `order` so forward Tab from the input reaches the results. -->
@@ -465,6 +485,14 @@
 	.composer-clear:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+
+	.composer-limit {
+		margin: 4px 6px 0;
+		text-align: right;
+		font-size: 0.72rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--text-muted);
 	}
 
 	.intent-input {
