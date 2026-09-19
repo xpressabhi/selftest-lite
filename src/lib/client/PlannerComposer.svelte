@@ -110,10 +110,18 @@
 		const viewport = window.visualViewport;
 		const anchor = formRef || inputRef;
 		if (!anchor) return;
-		// --search-top is consumed as `var(--search-top) - env(safe-area-inset-top)`
-		// so the CSS keeps owning the safe-area maths.
-		const top = anchor.getBoundingClientRect().top - (viewport?.offsetTop ?? 0);
+		// --search-top is consumed as `var(--search-top) - max(env(safe-area-inset-top),
+		// var(--search-block-top))` so the CSS keeps owning the safe-area maths while
+		// the sticky app header can also act as the visible top edge.
+		const offsetTop = viewport?.offsetTop ?? 0;
+		const top = anchor.getBoundingClientRect().top - offsetTop;
 		wrapperRef.style.setProperty('--search-top', `${Math.round(top)}px`);
+		const header = document.querySelector('.app-header');
+		const headerBottom = header ? header.getBoundingClientRect().bottom - offsetTop : 0;
+		wrapperRef.style.setProperty(
+			'--search-block-top',
+			`${Math.max(0, Math.round(headerBottom))}px`
+		);
 	}
 
 	function handleFocusOut(event) {
@@ -203,10 +211,12 @@
 		const sync = () => updateSearchSpace();
 		sync();
 		window.addEventListener('resize', sync);
+		window.addEventListener('scroll', sync, { passive: true });
 		window.visualViewport?.addEventListener('resize', sync);
 		window.visualViewport?.addEventListener('scroll', sync);
 		return () => {
 			window.removeEventListener('resize', sync);
+			window.removeEventListener('scroll', sync);
 			window.visualViewport?.removeEventListener('resize', sync);
 			window.visualViewport?.removeEventListener('scroll', sync);
 		};

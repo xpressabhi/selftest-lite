@@ -301,13 +301,17 @@
 		right: 0;
 		z-index: 40;
 		/* --search-top is measured by the composer: the real space between the
-		   input and the top of the visible area, so the panel never slides under
-		   the status bar or the Dynamic Island (safe area stays in CSS). */
+		   input and the top of the visible area. The visible top is whichever is
+		   lower: the safe area (status bar / Dynamic Island) or the sticky app
+		   header, so the panel's title never hides behind either. */
 		max-height: max(
 			140px,
 			min(
 				340px,
-				calc(var(--search-top, 100dvh) - env(safe-area-inset-top, 0px) - 20px)
+				calc(
+					var(--search-top, 100dvh) -
+						max(env(safe-area-inset-top, 0px), var(--search-block-top, 0px)) - 20px
+				)
 			)
 		);
 		overflow-y: auto;
