@@ -1,40 +1,47 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import { language } from '$lib/client/preferences';
 
 	const posts = [
-		[
-			'how-to-study-effectively',
-			'blogPost1Title',
-			'blogPost1Excerpt',
-			'blogPost1Category',
-			'blogPost1ReadTime',
-			'blogPost1Date',
-		],
-		[
-			'overcoming-exam-anxiety',
-			'blogPost2Title',
-			'blogPost2Excerpt',
-			'blogPost2Category',
-			'blogPost2ReadTime',
-			'blogPost2Date',
-		],
-		[
-			'spaced-repetition-explained',
-			'blogPost3Title',
-			'blogPost3Excerpt',
-			'blogPost3Category',
-			'blogPost3ReadTime',
-			'blogPost3Date',
-		],
-		[
-			'best-prompts-for-learning',
-			'blogPost4Title',
-			'blogPost4Excerpt',
-			'blogPost4Category',
-			'blogPost4ReadTime',
-			'blogPost4Date',
-		],
+		{
+			slug: 'how-to-study-effectively',
+			title: 'blogPost1Title',
+			excerpt: 'blogPost1Excerpt',
+			category: 'blogPost1Category',
+			readTime: 'blogPost1ReadTime',
+			date: '2024-11-24',
+		},
+		{
+			slug: 'overcoming-exam-anxiety',
+			title: 'blogPost2Title',
+			excerpt: 'blogPost2Excerpt',
+			category: 'blogPost2Category',
+			readTime: 'blogPost2ReadTime',
+			date: '2024-11-20',
+		},
+		{
+			slug: 'spaced-repetition-explained',
+			title: 'blogPost3Title',
+			excerpt: 'blogPost3Excerpt',
+			category: 'blogPost3Category',
+			readTime: 'blogPost3ReadTime',
+			date: '2024-11-15',
+		},
+		{
+			slug: 'best-prompts-for-learning',
+			title: 'blogPost4Title',
+			excerpt: 'blogPost4Excerpt',
+			category: 'blogPost4Category',
+			readTime: 'blogPost4ReadTime',
+			date: '2024-11-10',
+		},
 	];
+
+	const dateFormatter = $derived(
+		new Intl.DateTimeFormat($language === 'hindi' ? 'hi-IN' : 'en-IN', {
+			dateStyle: 'medium',
+		})
+	);
 </script>
 
 <svelte:head>
@@ -51,22 +58,36 @@
 		<p class="text-muted">{$t('blogPost1Excerpt')}</p>
 	</div>
 	<div class="row g-3">
-		{#each posts as post (post[0])}
+		{#each posts as post (post.slug)}
 			<article class="col-md-6 col-lg-4">
-				<div class="bg-body border rounded-3 p-3 h-100">
+				<div class="blog-card bg-body border rounded-3 p-3 h-100">
 					<div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
-						<span class="badge text-bg-primary">{$t(post[3])}</span>
-						<span class="small text-muted">{$t(post[5])}</span>
+						<span class="badge text-bg-primary">{$t(post.category)}</span>
+						<span class="small text-muted"
+							>{dateFormatter.format(new Date(`${post.date}T12:00:00`))}</span
+						>
 					</div>
 					<h2 class="h5 fw-bold">
-						<a class="stretched-link text-decoration-none" href={`/blog/${post[0]}`}
-							>{$t(post[1])}</a
+						<a class="stretched-link text-decoration-none" href={`/blog/${post.slug}`}
+							>{$t(post.title)}</a
 						>
 					</h2>
-					<p class="text-muted">{$t(post[2])}</p>
-					<p class="small text-muted mb-0">{$t(post[4])}</p>
+					<p class="text-muted">{$t(post.excerpt)}</p>
+					<p class="small text-muted mb-0">{$t(post.readTime)}</p>
 				</div>
 			</article>
 		{/each}
 	</div>
 </section>
+
+<style>
+	.blog-card {
+		position: relative;
+	}
+
+	.stretched-link::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+	}
+</style>

@@ -43,7 +43,8 @@ function printTable(rows, columns) {
 	const widths = columns.map((column) =>
 		Math.max(column.label.length, ...rows.map((row) => String(row[column.key] ?? '').length))
 	);
-	const line = (cells) => `  ${cells.map((cell, index) => String(cell).padEnd(widths[index])).join('  ')}`;
+	const line = (cells) =>
+		`  ${cells.map((cell, index) => String(cell).padEnd(widths[index])).join('  ')}`;
 	console.log(line(columns.map((column) => column.label)));
 	console.log(line(widths.map((width) => '-'.repeat(width))));
 	for (const row of rows) {
@@ -223,6 +224,104 @@ console.log(
 	unseenAllowlisted.length > 0
 		? `  ${unseenAllowlisted.join(', ')}\n  (rare path or feature no longer used; the allowlist doctor test catches dead entries)`
 		: '  (none - every allowlisted event fired)'
+);
+
+section('Conversational planner (client)');
+printTable(
+	await sql`
+		SELECT
+			event,
+			COUNT(*)::int AS events,
+			COUNT(DISTINCT COALESCE(user_id::text, client_id))::int AS identities,
+			MAX(created_at)::date AS last_seen
+		FROM feature_events
+		WHERE event IN (
+				'intent:parse',
+				'intent:parsed',
+				'intent:parse-failed',
+				'intent:clarification-asked',
+				'intent:clarification-answered'
+			)
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY event
+		ORDER BY events DESC
+	`,
+	[
+		{ key: 'event', label: 'event' },
+		{ key: 'events', label: 'events' },
+		{ key: 'identities', label: 'identities' },
+		{ key: 'last_seen', label: 'last seen' },
+	]
+);
+
+printTable(
+	await sql`
+		SELECT
+			COALESCE(props->>'field', '(none)') AS field,
+			COALESCE(props->>'outcome', '(asked)') AS outcome,
+			COUNT(*)::int AS events
+		FROM feature_events
+		WHERE event IN ('intent:clarification-asked', 'intent:clarification-answered')
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY field, outcome
+		ORDER BY events DESC
+		LIMIT 12
+	`,
+	[
+		{ key: 'field', label: 'field' },
+		{ key: 'outcome', label: 'outcome' },
+		{ key: 'events', label: 'events' },
+	]
+);
+
+printTable(
+	await sql`
+		SELECT
+			COALESCE(metadata->>'topicSource', '(unknown)') AS topic_source,
+			COALESCE(metadata->>'confidence', '(unknown)') AS confidence,
+			COALESCE(metadata->>'model', '(unknown)') AS model,
+			COUNT(*)::int AS turns,
+			COUNT(*) FILTER (WHERE metadata->>'clarifyField' IS NOT NULL)::int AS clarifications
+		FROM api_request_events
+		WHERE route = '/api/parse-intent'
+			AND status_code < 400
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY topic_source, confidence, model
+		ORDER BY turns DESC
+		LIMIT 15
+	`,
+	[
+		{ key: 'topic_source', label: 'topic source' },
+		{ key: 'confidence', label: 'confidence' },
+		{ key: 'model', label: 'model' },
+		{ key: 'turns', label: 'turns' },
+		{ key: 'clarifications', label: 'clarifications' },
+	]
+);
+
+printTable(
+	await sql`
+		SELECT
+			COALESCE(metadata->>'model', '(legacy)') AS model,
+			COALESCE(metadata->>'confidence', '(unknown)') AS confidence,
+			COUNT(*)::int AS turns,
+			COALESCE(ROUND(AVG(COALESCE((metadata->'usage'->>'input_tokens')::int, 0))), 0)::int AS avg_input_tokens,
+			COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p95_ms,
+			COUNT(*) FILTER (WHERE status_code >= 400)::int AS errors
+		FROM api_request_events
+		WHERE route = '/api/parse-intent'
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY model, confidence
+		ORDER BY model DESC, turns DESC
+	`,
+	[
+		{ key: 'model', label: 'model' },
+		{ key: 'confidence', label: 'confidence' },
+		{ key: 'turns', label: 'turns' },
+		{ key: 'avg_input_tokens', label: 'avg in tokens' },
+		{ key: 'p95_ms', label: 'p95 ms' },
+		{ key: 'errors', label: 'errors' },
+	]
 );
 
 section('API hotspots');
@@ -490,9 +589,7 @@ const itemStats = (
 
 console.log(`  questions (7d):            ${positionTotal}`);
 console.log(`  correct answer at A/B:     ${(earlyShare * 100).toFixed(1)}%`);
-console.log(
-	`  key >1.25x longest distractor: ${(longestShare * 100).toFixed(1)}%`
-);
+console.log(`  key >1.25x longest distractor: ${(longestShare * 100).toFixed(1)}%`);
 console.log(`  duplicate questions (7d):  ${duplicateExtras}`);
 console.log(
 	`  repeated items (90d):      ${itemStats.repeated_items} (too hard ${itemStats.too_hard}, too easy ${itemStats.too_easy}, healthy ${itemStats.healthy})`
@@ -522,8 +619,7 @@ const slowRequests = (
 const slowShare = slowRequests.total > 0 ? slowRequests.slow / slowRequests.total : 0;
 
 section('Quality gates');
-const generationSuccessRate =
-	generation.starts > 0 ? generation.successes / generation.starts : 1;
+const generationSuccessRate = generation.starts > 0 ? generation.successes / generation.starts : 1;
 const explainTotal = generation.explains + generation.explain_failures;
 const explainFailRate = explainTotal > 0 ? generation.explain_failures / explainTotal : 0;
 const gates = [
@@ -595,7 +691,9 @@ for (const gate of gates) {
 }
 const failedGates = gates.filter((gate) => !gate.passed);
 console.log(
-	failedGates.length === 0 ? '\nAll quality gates passed.' : `\n${failedGates.length} gate(s) failing.`
+	failedGates.length === 0
+		? '\nAll quality gates passed.'
+		: `\n${failedGates.length} gate(s) failing.`
 );
 if (strict && failedGates.length > 0) {
 	process.exitCode = 1;

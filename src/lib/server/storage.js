@@ -1006,7 +1006,7 @@ export async function listTestRecords({
 			created_at
 		 FROM ai_test
 		 ${whereSql}
-		 ORDER BY created_at DESC
+		 ORDER BY created_at DESC, id DESC
 		 LIMIT $${queryParams.length - 1}
 		 OFFSET $${queryParams.length}`,
 		queryParams

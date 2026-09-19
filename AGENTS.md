@@ -9,7 +9,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 ### Tech Stack Highlights:
 
 - **Framework**: SvelteKit 2 (Vite 8, Svelte 5)
-- **AI**: Gemini Flash Lite (`gemini-flash-lite-latest`) everywhere: paper generation (`/api/generate`), answer verification, explanations (`/api/explain`), intent parsing
+- **AI**: Gemini Flash Lite (`gemini-flash-lite-latest`) for paper generation (`/api/generate`), answer verification, and explanations (`/api/explain`); TypeSafe Jev (`jev-latest`) for conversational intent parsing (`/api/parse-intent`)
 - **Database**: Neon PostgreSQL (via `@neondatabase/serverless`)
 - **UI**: Tailwind CSS 4 + Custom CSS (Mobile-first)
 - **PWA**: `vite-plugin-pwa` with custom runtime caching (config in `vite.config.js`)

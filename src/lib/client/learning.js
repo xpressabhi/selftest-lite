@@ -75,11 +75,16 @@ export function getStats(history) {
 }
 
 export function formatDuration(seconds, minuteShort = 'min', hourShort = 'h') {
-	const safeSeconds = Number(seconds || 0);
+	const safeSeconds = Math.max(0, Number(seconds || 0));
 	const hours = Math.floor(safeSeconds / 3600);
 	const minutes = Math.floor((safeSeconds % 3600) / 60);
 	if (hours > 0) {
 		return `${hours}${hourShort} ${minutes}${minuteShort}`;
+	}
+	// A started attempt is never "0 min"; show the smallest whole unit so the
+	// value matches the results header instead of contradicting it.
+	if (safeSeconds > 0 && minutes === 0) {
+		return `1${minuteShort}`;
 	}
 	return `${minutes}${minuteShort}`;
 }

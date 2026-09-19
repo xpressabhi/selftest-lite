@@ -1,12 +1,21 @@
 <script>
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
 	import { track } from '$lib/client/telemetry';
 	import {
+		PREVIEW_DEBOUNCE_MS,
+		buildLocalPlanPatch,
+		buildLocalPreview,
+		isMeaningfulPreview,
+		needsJevPreview,
+		shouldRunPreview,
+	} from '$lib/client/livePreview';
+	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
+		getHiddenHistoryIds,
 		getHistory,
 		getUnsubmittedTest,
 		saveBookmarkedExamIds,
@@ -15,7 +24,22 @@
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import { getStreak } from '$lib/client/learning';
-	import SmartIntentInput from '$lib/client/SmartIntentInput.svelte';
+	import ChatThread from '$lib/client/ChatThread.svelte';
+	import PlannerComposer from '$lib/client/PlannerComposer.svelte';
+	import {
+		applyTurnFailure,
+		applyTurnResult,
+		beginClarifyAnswer,
+		beginTurn,
+		buildTurnRequest,
+		clearPlannerDraft,
+		createPlannerDraft,
+		hasDraftContent,
+		markPlanEdited,
+		readPlannerDraft,
+		skipClarify,
+		writePlannerDraft,
+	} from '$lib/client/plannerState';
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
 	import QuickStart from '$lib/client/QuickStart.svelte';
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
@@ -35,6 +59,22 @@
 	const PROFILE_WIZARD_DISMISS_KEY = 'selftest_profile_wizard_dismissed_at';
 	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
+	let plannerDraft = $state(createPlannerDraft());
+	let recentTests = $state([]);
+	let previewStatus = $state('idle');
+	let previewSeq = 0;
+	let previewAbort = null;
+	let previewTimer;
+	let lastPreviewText = '';
+	let lastPreviewAt = 0;
+	let previewPausedUntil = 0;
+	let lastLocalPreviewText = '';
+
+	const plannerExamples = [
+		{ key: 'plannerExample1' },
+		{ key: 'plannerExample2' },
+		{ key: 'plannerExample3' },
+	];
 	let topic = $state('');
 	let numQuestions = $state(10);
 	let paperLanguage = $state('english');
@@ -111,8 +151,20 @@
 	let canGenerate = $derived(
 		topic.trim().length > 0 || selectedTopics.length > 0 || examId !== ''
 	);
-	let showPreview = $derived(
+	const showPlanCard = $derived(
 		Boolean(topic.trim() || examId || parsedFromIntent || intentParseFailed)
+	);
+
+	// Derived so the meta strings re-render when the UI language changes,
+	// instead of being frozen at mount time.
+	const recentTestsView = $derived(
+		recentTests.map((test) => ({
+			id: test.id,
+			topic: test.topic,
+			meta: `${test.isFullExam ? $t('fullExamPaper') : $t('quizPractice')}${
+				test.totalQuestions ? ` · ${test.totalQuestions} ${$t('qsShort')}` : ''
+			} · ${$t('testId')}: ${test.id}`,
+		}))
 	);
 
 	onMount(() => {
@@ -123,6 +175,33 @@
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
 		const historyEntries = getHistory();
+		recentTests = historyEntries.slice(0, 5).map((entry) => ({
+			id: entry.id,
+			topic: entry.topic || '',
+			totalQuestions: Number(entry.totalQuestions || entry.questions?.length || 0),
+			isFullExam: entry.test_mode === 'full-exam',
+		}));
+		// Replace the local fallback with the newest tests (created_at/id DESC).
+		void (async () => {
+			try {
+				const response = await fetch('/api/test?q=&limit=5&offset=0');
+				if (!response.ok) return;
+				const payload = await response.json().catch(() => null);
+				const hidden = new Set(getHiddenHistoryIds());
+				const latest = Array.isArray(payload?.tests)
+					? payload.tests.filter((test) => !hidden.has(String(test.id)))
+					: [];
+				if (latest.length === 0) return;
+				recentTests = latest.map((test) => ({
+					id: test.id,
+					topic: test.topic || '',
+					totalQuestions: Number(test.num_questions || 0),
+					isFullExam: test.test_mode === 'full-exam',
+				}));
+			} catch {
+				// Offline or request failed: keep the local history list.
+			}
+		})();
 		streak = getStreak();
 		lastTestId = historyEntries[0]?.id ? String(historyEntries[0].id) : null;
 		showReturningCard = Boolean(
@@ -163,6 +242,19 @@
 			window.setTimeout(() => {
 				void startDailyFive();
 			}, 100);
+		}
+		const hasUrlConfig = Boolean(
+			params.get('exam') || params.get('mode') || params.get('daily')
+		);
+		if (!hasUrlConfig) {
+			const restoredDraft = readPlannerDraft();
+			if (hasDraftContent(restoredDraft)) {
+				plannerDraft = restoredDraft;
+				if (restoredDraft.plan) {
+					applyPlannerPlan(restoredDraft.plan);
+				}
+				intentStatus = restoredDraft.messages.length > 0 ? 'done' : 'idle';
+			}
 		}
 		const updateNetwork = () => {
 			isOffline = !navigator.onLine;
@@ -288,43 +380,376 @@
 		};
 	});
 
-	async function parseIntent(intentText) {
-		if (!intentText || isOffline) return;
-		intentStatus = 'parsing';
-		intentParseFailed = false;
-		track('intent:parse', { intent: intentText.slice(0, 64) });
+	const PLANNER_PLAN_FIELDS = [
+		'topic',
+		'testType',
+		'difficulty',
+		'numQuestions',
+		'language',
+		'examId',
+	];
+
+	function snapshotPlan() {
+		return {
+			topic,
+			testType,
+			difficulty,
+			numQuestions,
+			examId: examId || null,
+			isFullExam,
+			language: paperLanguage,
+		};
+	}
+
+	function persistPlannerDraft() {
+		if (hasDraftContent(plannerDraft)) {
+			writePlannerDraft(plannerDraft);
+		} else {
+			clearPlannerDraft();
+		}
+	}
+
+	function applyPlannerPlan(plan, { markParsed = true } = {}) {
+		if (!plan) return;
+		if (typeof plan.topic === 'string' && plan.topic) topic = plan.topic;
+		if (plan.testType) testType = plan.testType;
+		if (plan.difficulty) difficulty = plan.difficulty;
+		if (plan.numQuestions) numQuestions = plan.numQuestions;
+		if (plan.language) paperLanguage = plan.language;
+		if (plan.examId) {
+			isFullExam = true;
+			examId = plan.examId;
+		} else {
+			isFullExam = Boolean(plan.isFullExam);
+			examId = '';
+		}
+		if (markParsed) parsedFromIntent = true;
+	}
+
+	// -------------------------------------------------------------------------
+	// Live preview: Tier 0 is local and instant, Tier 1 is a slim Jev call
+	// -------------------------------------------------------------------------
+
+	function cancelPlannerPreview() {
+		previewSeq += 1;
+		previewAbort?.abort();
+		previewAbort = null;
+		window.clearTimeout(previewTimer);
+		previewStatus = 'idle';
+	}
+
+	function applyLocalPreviewFor(text) {
+		const local = buildLocalPreview(text);
+		if (!local) return null;
+		const patch = buildLocalPlanPatch(local, plannerDraft.explicit);
+		if (patch) {
+			if (patch.topic) topic = patch.topic;
+			if (patch.examId) {
+				examId = patch.examId;
+				isFullExam = true;
+				// The preview must match what generation will produce: full
+				// exams use the exam's default question count.
+				const exam = getIndianExamById(patch.examId);
+				if (exam?.defaultNumQuestions) {
+					numQuestions = Number(exam.defaultNumQuestions);
+				}
+			}
+			if (patch.difficulty) difficulty = patch.difficulty;
+			if (patch.language) paperLanguage = patch.language;
+			if (patch.testType) testType = patch.testType;
+			if (patch.numQuestions) numQuestions = patch.numQuestions;
+			if (isMeaningfulPreview(local)) parsedFromIntent = true;
+		}
+		if (!needsJevPreview(local)) {
+			previewStatus = 'ready';
+			if (lastLocalPreviewText !== local.text) {
+				lastLocalPreviewText = local.text;
+				track('intent:preview', {
+					source: 'local',
+					ok: true,
+					hasTopic: Boolean(local.topic),
+				});
+			}
+		}
+		return local;
+	}
+
+	function maybeRunJevPreview(text) {
+		const trimmed = String(text || '').trim();
+		if (!trimmed) return;
+		const shouldRun = shouldRunPreview({
+			text: trimmed,
+			lastText: lastPreviewText,
+			status: intentStatus,
+			offline: isOffline,
+			dataSaver: $isDataSaverActive,
+			lastAt: lastPreviewAt,
+			now: Date.now(),
+			pausedUntil: previewPausedUntil,
+		});
+		if (!shouldRun) return;
+		void runPlannerPreview(trimmed);
+	}
+
+	async function runPlannerPreview(text) {
+		previewSeq += 1;
+		const seq = previewSeq;
+		previewAbort?.abort();
+		const controller = new AbortController();
+		previewAbort = controller;
+		previewStatus = 'checking';
+		lastPreviewText = text;
+		lastPreviewAt = Date.now();
+		const startedAt = performance.now();
+		const latency = () => Math.round(performance.now() - startedAt);
 		try {
 			const response = await fetch('/api/parse-intent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ intent: intentText }),
+				body: JSON.stringify({
+					...buildTurnRequest(plannerDraft, text),
+					mode: 'preview',
+				}),
+				signal: controller.signal,
+			});
+			if (seq !== previewSeq) return;
+			if (response.status === 429) {
+				previewPausedUntil = Date.now() + 5000;
+				previewStatus = 'idle';
+				track('intent:preview', {
+					source: 'jev',
+					ok: false,
+					rateLimited: true,
+					latencyMs: latency(),
+				});
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (seq !== previewSeq) return;
+			if (!response.ok) {
+				previewStatus = 'idle';
+				track('intent:preview', {
+					source: 'jev',
+					ok: false,
+					latencyMs: latency(),
+					hasTopic: false,
+				});
+				return;
+			}
+			const plan = data.plan || null;
+			const meaningful = isMeaningfulPreview({
+				topic: plan?.topic,
+				examId: plan?.examId,
+				topicSource: data.topicSource,
+			});
+			// A preview whose topic is only the raw in-progress text must not
+			// surface the card as if a subject had been resolved.
+			applyPlannerPlan(
+				plan && !meaningful ? { ...plan, topic: '' } : plan,
+				{ markParsed: meaningful }
+			);
+			previewStatus = 'ready';
+			track('intent:preview', {
+				source: 'jev',
+				ok: true,
+				latencyMs: latency(),
+				hasTopic: Boolean(data.plan?.topic),
+				inputTokens: Number(data.usage?.input_tokens) || 0,
+			});
+		} catch (err) {
+			if (err?.name === 'AbortError' || seq !== previewSeq) return;
+			previewStatus = 'idle';
+			track('intent:preview', {
+				source: 'jev',
+				ok: false,
+				latencyMs: latency(),
+				hasTopic: false,
+			});
+		} finally {
+			if (seq === previewSeq) previewAbort = null;
+		}
+	}
+
+	$effect(() => {
+		const text = intentValue;
+		if (typeof window === 'undefined') return;
+		const local = untrack(() => applyLocalPreviewFor(text));
+		window.clearTimeout(previewTimer);
+		const trimmed = String(text || '').trim();
+		if (!trimmed) return;
+		// Nothing to ask the model when the local tier already resolved every
+		// field the message mentions.
+		if (local && !needsJevPreview(local)) return;
+		previewTimer = window.setTimeout(() => {
+			void maybeRunJevPreview(trimmed);
+		}, PREVIEW_DEBOUNCE_MS);
+		return () => window.clearTimeout(previewTimer);
+	});
+
+	async function runPlannerTurn(intentText) {
+		cancelPlannerPreview();
+		intentStatus = 'parsing';
+		intentParseFailed = false;
+		const requestPayload = buildTurnRequest(plannerDraft, intentText);
+		const round = plannerDraft.round;
+		track('intent:parse', { intent: intentText.slice(0, 64), round });
+		const controller = new AbortController();
+		const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+		try {
+			const response = await fetch('/api/parse-intent', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(requestPayload),
+				signal: controller.signal,
 			});
 			const data = await response.json().catch(() => ({}));
 			if (!response.ok) {
-				throw new Error(data.error || 'Failed to parse intent');
+				const apiError = new Error(data.error || 'Failed to parse intent');
+				apiError.statusCode = response.status;
+				throw apiError;
 			}
-			topic = data.topic || intentText;
-			testType = data.testType || 'multiple-choice';
-			difficulty = data.difficulty || 'intermediate';
-			numQuestions = data.numQuestions || 10;
-			paperLanguage = data.language || 'english';
-			isFullExam = data.isFullExam || false;
-			examId = data.examId || '';
-			parsedFromIntent = true;
+			const plan = data.plan || null;
+			const pendingTopicClarify = data.clarify?.id === 'topic';
+			const meaningful = isMeaningfulPreview({
+				topic: plan?.topic,
+				examId: plan?.examId,
+				topicSource: data.topicSource,
+			});
+			// While the planner is asking which subject the test should cover,
+			// do not present the raw message as if it were the topic.
+			if (plan && !meaningful && pendingTopicClarify) {
+				applyPlannerPlan({ ...plan, topic: '' }, { markParsed: false });
+			} else {
+				applyPlannerPlan(plan);
+			}
+			plannerDraft = applyTurnResult(plannerDraft, data);
+			persistPlannerDraft();
 			intentStatus = 'done';
-			track('intent:parsed', { confidence: data.confidence, isFullExam: data.isFullExam });
+			if (data.clarify) {
+				track('intent:clarification-asked', { field: data.clarify.id, round });
+			}
+			track('intent:parsed', {
+				confidence: data.confidence,
+				isFullExam: Boolean(data.plan?.isFullExam),
+				round,
+			});
 		} catch (err) {
 			console.error('Intent parsing error:', err);
+			const timedOut = err?.name === 'AbortError';
+			const rateLimited = err?.statusCode === 429;
 			intentStatus = 'idle';
-			intentParseFailed = true;
-			topic = intentText;
+			intentParseFailed = !rateLimited;
+			plannerDraft = applyTurnFailure(
+				plannerDraft,
+				rateLimited
+					? 'rateLimitExceededRetry'
+					: timedOut
+						? 'generationTimedOutRetry'
+						: 'plannerParseFailed'
+			);
+			persistPlannerDraft();
+			if (!rateLimited && !timedOut && !topic.trim()) {
+				topic = intentText;
+			}
 			parsedFromIntent = false;
-			track('intent:parse-failed');
+			track('intent:parse-failed', { round, rateLimited, timedOut });
+		} finally {
+			window.clearTimeout(timeoutId);
+		}
+	}
+
+	async function sendPlannerIntent(intentText) {
+		if (!intentText || isOffline) return;
+		plannerDraft = beginTurn(plannerDraft, intentText);
+		persistPlannerDraft();
+		intentValue = '';
+		await runPlannerTurn(intentText);
+	}
+
+	function applyLocalClarifyAnswer(field, value) {
+		if (field === 'topic') {
+			topic = value;
+			return;
+		}
+		if (field === 'examId') {
+			if (value === 'none') {
+				isFullExam = false;
+				examId = '';
+				return;
+			}
+			const exam = getIndianExamById(value);
+			if (exam) {
+				isFullExam = true;
+				examId = exam.id;
+				topic = `${exam.name} objective exam paper`;
+				numQuestions = Number(exam.defaultNumQuestions || numQuestions);
+				difficulty = exam.defaultDifficulty || difficulty;
+				difficultyTouched = true;
+			}
+			return;
+		}
+		if (field === 'difficulty') {
+			difficulty = value;
+			difficultyTouched = true;
+		}
+	}
+
+	async function answerClarification(option) {
+		if (!option || status === 'loading') return;
+		const field = plannerDraft.pendingClarify?.id;
+		track('intent:clarification-answered', {
+			field,
+			outcome: 'answered',
+			round: plannerDraft.round,
+		});
+		plannerDraft = beginClarifyAnswer(plannerDraft, option);
+		persistPlannerDraft();
+		applyLocalClarifyAnswer(field, option.value);
+		await runPlannerTurn(option.label || option.value);
+	}
+
+	function skipClarification() {
+		if (!plannerDraft.pendingClarify) return;
+		const field = plannerDraft.pendingClarify.id;
+		track('intent:clarification-answered', {
+			field,
+			outcome: 'skipped',
+			round: plannerDraft.round,
+		});
+		plannerDraft = skipClarify(plannerDraft);
+		persistPlannerDraft();
+	}
+
+	function resetPlanner() {
+		cancelPlannerPreview();
+		lastPreviewText = '';
+		lastLocalPreviewText = '';
+		plannerDraft = createPlannerDraft();
+		clearPlannerDraft();
+		intentValue = '';
+		topic = '';
+		parsedFromIntent = false;
+		intentParseFailed = false;
+		intentStatus = 'idle';
+		numQuestions = 10;
+		difficulty = 'intermediate';
+		testType = 'multiple-choice';
+		examId = '';
+		isFullExam = false;
+		difficultyTouched = false;
+	}
+
+	function handlePlannerChipEdit(field, value) {
+		handleChipEdit(field, value);
+		if (PLANNER_PLAN_FIELDS.includes(field)) {
+			plannerDraft = markPlanEdited(plannerDraft, snapshotPlan(), field);
+			persistPlannerDraft();
 		}
 	}
 
 	function handleChipEdit(field, value) {
 		track('preview:edit-chip', { field });
+		if (field === 'topic') topic = value;
 		if (field === 'difficulty') {
 			difficulty = value;
 			difficultyTouched = true;
@@ -482,6 +907,7 @@
 			error = $t('offlineAccessHistory');
 			return;
 		}
+		cancelPlannerPreview();
 		status = 'loading';
 		error = '';
 		retryLabel = '';
@@ -498,6 +924,7 @@
 			difficulty: requestParams.difficulty || difficulty,
 			language: requestParams.language || paperLanguage,
 			testType: requestParams.testType || testType,
+			source: plannerDraft.messages.length > 0 ? 'composer' : 'live-preview',
 		});
 
 		try {
@@ -508,9 +935,12 @@
 					}
 					const data = await postGenerate(requestParams);
 					track('generate:success', {
-						mode: requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
+						mode:
+							requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
 					});
 					saveCurrentPaper(data);
+					plannerDraft = createPlannerDraft();
+					clearPlannerDraft();
 					await goto(`/test?id=${data.id}`);
 					return;
 				} catch (caughtError) {
@@ -563,11 +993,7 @@
 		await runGeneration(params);
 	}
 
-	async function handleIntentSubmit(intentText) {
-		await parseIntent(intentText);
-	}
-
-	function handleWizardClose() {
+	async function handleWizardClose() {
 		showProfileWizard = false;
 		if (typeof window !== 'undefined') {
 			window.localStorage.setItem(PROFILE_WIZARD_DISMISS_KEY, String(Date.now()));
@@ -580,6 +1006,7 @@
 	}
 
 	function handleTestNavigate(testId) {
+		track('history:open-test', { id: testId, source: 'planner' });
 		void goto(`/test?id=${testId}`);
 	}
 
@@ -643,31 +1070,62 @@
 		<div
 			class="text-center mb-4 hero-block"
 			class:hero-collapsed={heroCollapsed}
-			aria-hidden={heroCollapsed}
 		>
 			<h1 class="hero-heading">{$t('createQuiz')}</h1>
 		</div>
 
-		<div class="intent-section mb-4">
-			<SmartIntentInput
-				bind:value={intentValue}
-				onsubmit={handleIntentSubmit}
-				onnavigate={handleTestNavigate}
-				oninput={() => {}}
+		{#snippet planCard()}
+			<PreviewCard
+				{topic}
+				{numQuestions}
+				{testType}
+				{difficulty}
+				language={paperLanguage}
+				{examId}
+				{isFullExam}
+				parsed={parsedFromIntent}
+				parsingFailed={intentParseFailed}
+				draft={plannerDraft.messages.length === 0}
+				checking={previewStatus === 'checking'}
+				ongenerate={handleGenerate}
+				oneditchip={handlePlannerChipEdit}
 				disabled={status === 'loading'}
+				{status}
+			/>
+		{/snippet}
+
+		<div class="intent-section planner-panel mb-4">
+			<ChatThread
+				messages={plannerDraft.messages}
+				pendingClarify={plannerDraft.pendingClarify}
+				status={intentStatus}
+				planCard={showPlanCard ? planCard : null}
+				recentTests={recentTestsView}
+				{plannerExamples}
+				onquickreply={answerClarification}
+				onskip={skipClarification}
+				onstartover={resetPlanner}
+				onopentest={handleTestNavigate}
+				onexample={sendPlannerIntent}
+			></ChatThread>
+			<PlannerComposer
+				bind:value={intentValue}
+				onsubmit={sendPlannerIntent}
+				onnavigate={handleTestNavigate}
+				disabled={status === 'loading' || isOffline}
 				status={intentStatus}
 			/>
-			<div class="daily-five-row">
-				<button
-					class="daily-five-btn"
-					type="button"
-					disabled={status === 'loading'}
-					onclick={startDailyFive}
-				>
-					⚡ {$t('dailyFive')}
-				</button>
-				<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
-			</div>
+		</div>
+		<div class="daily-five-row mb-4">
+			<button
+				class="daily-five-btn"
+				type="button"
+				disabled={status === 'loading'}
+				onclick={startDailyFive}
+			>
+				<span aria-hidden="true">⚡</span> {$t('dailyFive')}
+			</button>
+			<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
 		</div>
 
 		{#if unsubmittedTest?.id}
@@ -677,8 +1135,8 @@
 				<div>
 					<div class="fw-bold">{$t('unsubmittedTest')}</div>
 					<div class="small">
-						{$t('unsubmittedTestMessagePrefix')} "{unsubmittedTest.topic ||
-							$t('testPrefix')}" {$t('unsubmittedTestMessageSuffix')}
+						{$t('unsubmittedTestMessagePrefix')} “{unsubmittedTest.topic ||
+							$t('testPrefix')}” {$t('unsubmittedTestMessageSuffix')}
 					</div>
 				</div>
 				<a
@@ -719,24 +1177,6 @@
 			disabled={status === 'loading'}
 		/>
 
-		{#if showPreview}
-			<PreviewCard
-				{topic}
-				{numQuestions}
-				{testType}
-				{difficulty}
-				language={paperLanguage}
-				{examId}
-				{isFullExam}
-				parsed={parsedFromIntent}
-				parsingFailed={intentParseFailed}
-				ongenerate={handleGenerate}
-				oneditchip={handleChipEdit}
-				disabled={status === 'loading'}
-				{status}
-			/>
-		{/if}
-
 		{#if tailoredSummary}
 			<div class="tailored-chip">
 				<span class="tailored-badge" aria-hidden="true">🎯</span>
@@ -753,12 +1193,13 @@
 				class="manual-toggle"
 				type="button"
 				aria-expanded={showManualConfig}
+				aria-controls="manual-config-panel"
 				onclick={toggleManualConfig}
 			>
 				{$t('browseTopicsExams')}
 			</button>
 			{#if showManualConfig}
-				<div class="manual-grid">
+				<div class="manual-grid" id="manual-config-panel">
 					<TopicBrowser
 						{selectedCategory}
 						{selectedTopics}
@@ -779,8 +1220,8 @@
 		</div>
 
 		{#if status === 'loading'}
-			<div class="generation-status">
-				<span>
+			<div class="generation-status" role="status" aria-live="polite">
+				<span class="generation-timer">
 					{$t('generatingQuestionCount', { count: numQuestions })}
 					· {generationElapsed}s
 				</span>
@@ -794,13 +1235,15 @@
 			</div>
 		{/if}
 		{#if isOffline}
-			<div class="alert alert-warning mt-3 mb-0">{$t('offlineAccessHistory')}</div>
+			<div class="alert alert-warning mt-3 mb-0" role="status">
+				{$t('offlineAccessHistory')}
+			</div>
 		{/if}
 		{#if retryLabel}
-			<div class="alert alert-light border mt-3 mb-0">{retryLabel}</div>
+			<div class="alert alert-light border mt-3 mb-0" role="status">{retryLabel}</div>
 		{/if}
 		{#if error}
-			<div class="alert alert-danger mt-3 mb-0">{error}</div>
+			<div class="alert alert-danger mt-3 mb-0" role="alert">{error}</div>
 		{/if}
 
 		{#if isAndroidDevice && !isInCapacitorApp}
@@ -858,6 +1301,26 @@
 		margin-bottom: 20px;
 	}
 
+	.planner-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		height: clamp(440px, 68dvh, 720px);
+		padding: 14px;
+		border: 1px solid var(--line);
+		border-radius: 20px;
+		background: var(--surface);
+		box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+	}
+
+	@media (max-width: 480px) {
+		.planner-panel {
+			height: clamp(300px, calc(min(var(--vvh, 100dvh), 100dvh) * 0.62), 560px);
+			padding: 10px;
+			border-radius: 16px;
+		}
+	}
+
 	.daily-five-row {
 		display: flex;
 		align-items: center;
@@ -870,7 +1333,7 @@
 	.daily-five-btn {
 		border: 1px solid color-mix(in srgb, var(--color-brand-600) 35%, transparent);
 		background: color-mix(in srgb, var(--color-brand-600) 8%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-weight: 600;
 		font-size: 0.85rem;
 		padding: 8px 14px;
@@ -901,6 +1364,10 @@
 		background: var(--surface-muted);
 		font-size: 0.85rem;
 		color: var(--text-muted);
+	}
+
+	.generation-timer {
+		font-variant-numeric: tabular-nums;
 	}
 
 	.android-link-row {
@@ -970,7 +1437,7 @@
 	.tailored-edit {
 		flex: 0 0 auto;
 		padding: 8px 0 8px 8px;
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-size: 0.8rem;
 		font-weight: 700;
 		text-decoration: none;

@@ -6,6 +6,7 @@
 		initializePreferences,
 		isDataSaverActive,
 		language,
+		preferencesReady,
 		setDataSaver,
 		setLanguage,
 		setThemePreference,
@@ -13,6 +14,7 @@
 	} from '$lib/client/preferences';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { initDeepLinks } from '$lib/client/deepLink';
+	import { focusTrap } from '$lib/client/focusTrap';
 	import { initNativeShell } from '$lib/client/nativeShell';
 	import { startTelemetry, track } from '$lib/client/telemetry';
 	import {
@@ -39,11 +41,15 @@
 	let iosBrowser = $state('safari');
 	let isInstalling = $state(false);
 	let pullStartY = 0;
+	let pullRafId = 0;
+	let pullMoveY = 0;
 	let pullDistance = $state(0);
 	let isRefreshing = $state(false);
 	let isMenuOpen = $state(false);
 	let showSignInModal = $state(false);
 	let showUserMenu = $state(false);
+	let userMenuTrigger = $state(null);
+	let userMenuElement = $state(null);
 	let isSigningIn = $state(false);
 
 	const PWA_DISMISS_WINDOW = 7 * 24 * 60 * 60 * 1000;
@@ -136,7 +142,9 @@
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')
-				.then(() => {
+				.then(async () => {
+					// Wait for saved preferences so the toast uses the user's language.
+					await preferencesReady;
 					showToast($t('offlineReady'), 'success');
 				})
 				.catch(() => {
@@ -247,6 +255,49 @@
 		};
 	});
 
+	// Close the account menu on Escape or an outside click, and hand focus back
+	// to the trigger so keyboard users keep their place.
+	$effect(() => {
+		if (!showUserMenu) {
+			return;
+		}
+		const handleOutsidePointer = (event) => {
+			if (
+				userMenuElement?.contains(event.target) ||
+				userMenuTrigger?.contains(event.target)
+			) {
+				return;
+			}
+			showUserMenu = false;
+		};
+		const handleEscape = (event) => {
+			if (event.key === 'Escape') {
+				showUserMenu = false;
+			}
+		};
+		document.addEventListener('pointerdown', handleOutsidePointer);
+		document.addEventListener('keydown', handleEscape);
+		return () => {
+			document.removeEventListener('pointerdown', handleOutsidePointer);
+			document.removeEventListener('keydown', handleEscape);
+			if (userMenuTrigger?.isConnected) {
+				userMenuTrigger.focus({ preventScroll: true });
+			}
+		};
+	});
+
+	// Lock background scrolling while the sign-in dialog is open.
+	$effect(() => {
+		if (!showSignInModal) {
+			return;
+		}
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = previousOverflow;
+		};
+	});
+
 	function dismissInstallHint() {
 		showInstallHint = false;
 		showInstallGuide = false;
@@ -284,8 +335,18 @@
 		if (isImmersive || !pullStartY || window.scrollY > 0) {
 			return;
 		}
-		const distance = event.touches[0].clientY - pullStartY;
-		pullDistance = Math.max(0, Math.min(distance, 86));
+		pullMoveY = event.touches[0].clientY;
+		if (pullRafId) {
+			return;
+		}
+		pullRafId = window.requestAnimationFrame(() => {
+			pullRafId = 0;
+			if (isImmersive || !pullStartY || window.scrollY > 0) {
+				return;
+			}
+			const distance = pullMoveY - pullStartY;
+			pullDistance = Math.max(0, Math.min(distance, 86));
+		});
 	}
 
 	function handleTouchEnd() {
@@ -397,13 +458,13 @@
 					<span>selftest.in</span>
 				</a>
 
-				<div class="desktop-nav" aria-label={$t('mainNavigation')}>
+				<nav class="desktop-nav" aria-label={$t('mainNavigation')}>
 					<a href="/about">{$t('about')}</a>
 					<a href="/blog">{$t('blog')}</a>
 					<a href="/faq">{$t('faq')}</a>
 					<a href="/contact">{$t('contact')}</a>
 					<a class="create-link" href="/">{$t('createTab')}</a>
-				</div>
+				</nav>
 
 				<div class="header-actions">
 					<button
@@ -411,6 +472,7 @@
 						class="header-icon data-saver-control"
 						type="button"
 						aria-label={$t('dataSaver')}
+						aria-pressed={$isDataSaverActive}
 						title={$t('dataSaver')}
 						onclick={toggleDataSaver}
 					>
@@ -440,8 +502,10 @@
 							<button
 								class="user-chip"
 								type="button"
+								bind:this={userMenuTrigger}
 								aria-label={$t('signedInAs')}
 								aria-expanded={showUserMenu}
+								aria-controls="user-menu"
 								onclick={() => {
 									showUserMenu = !showUserMenu;
 									isMenuOpen = false;
@@ -464,7 +528,7 @@
 								{/if}
 							</button>
 							{#if showUserMenu}
-								<div class="user-menu">
+								<div class="user-menu" id="user-menu" bind:this={userMenuElement}>
 									<div class="user-menu-header">
 										<div class="fw-semibold">
 											{($user.name || $user.email).slice(0, 40)}
@@ -494,6 +558,8 @@
 						class="header-icon menu-control"
 						type="button"
 						aria-label={$t('toggleMenu')}
+						aria-expanded={isMenuOpen}
+						aria-controls="mobile-nav-menu"
 						onclick={() => (isMenuOpen = !isMenuOpen)}
 					>
 						<span aria-hidden="true">☰</span>
@@ -502,7 +568,7 @@
 			</nav>
 
 			{#if isMenuOpen}
-				<nav class="mobile-menu" aria-label={$t('navigationMenu')}>
+				<nav class="mobile-menu" id="mobile-nav-menu" aria-label={$t('navigationMenu')}>
 					{#if $user}
 						<div class="menu-user">
 							<span class="menu-user-initial"
@@ -516,6 +582,8 @@
 					<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
 					<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
 					<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
+					<a href="/privacy" onclick={() => (isMenuOpen = false)}>{$t('privacy')}</a>
+					<a href="/terms" onclick={() => (isMenuOpen = false)}>{$t('terms')}</a>
 					<div class="menu-section-label">{$t('menuSectionActions')}</div>
 					{#if $user}
 						<a href="/profile" onclick={() => (isMenuOpen = false)}
@@ -526,6 +594,7 @@
 					<button
 						type="button"
 						class:active={$isDataSaverActive}
+						aria-pressed={$isDataSaverActive}
 						onclick={toggleDataSaver}>⌁ {$t('dataSaver')}</button
 					>
 					{#if $user}
@@ -630,14 +699,23 @@
 
 	{#if !isImmersive}
 		<nav class="bottom-nav border-top bg-body" aria-label={$t('mobileNavigation')}>
-			<a class:active={activePath === '/'} href="/"
+			<a
+				class:active={activePath === '/'}
+				href="/"
+				aria-current={activePath === '/' ? 'page' : undefined}
 				><span aria-hidden="true">⌂</span>{$t('homeTab')}</a
 			>
-			<a class:active={activePath === '/bookmarks'} href="/bookmarks"
+			<a
+				class:active={activePath === '/bookmarks'}
+				href="/bookmarks"
+				aria-current={activePath === '/bookmarks' ? 'page' : undefined}
 				><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a
 			>
 			<a class="create-tab" href="/"><span aria-hidden="true">＋</span>{$t('createTab')}</a>
-			<a class:active={activePath === '/history'} href="/history"
+			<a
+				class:active={activePath === '/history'}
+				href="/history"
+				aria-current={activePath === '/history' ? 'page' : undefined}
 				><span aria-hidden="true">◷</span>{$t('historyTab')}</a
 			>
 		</nav>
@@ -676,42 +754,39 @@
 	{/if}
 
 	{#if showSignInModal}
-		<div class="modal-backdrop" role="presentation" onclick={() => (showSignInModal = false)}>
-			<div
-				class="sign-in-modal"
-				role="dialog"
-				tabindex="-1"
-				aria-modal="true"
-				aria-label={$t('signInTitle')}
-				onclick={(event) => event.stopPropagation()}
-				onkeydown={(event) => {
-					if (event.key === 'Escape') {
-						showSignInModal = false;
-					}
-				}}
+		<button
+			type="button"
+			class="modal-backdrop"
+			aria-label={$t('close')}
+			tabindex="-1"
+			onclick={() => (showSignInModal = false)}
+		></button>
+		<div
+			class="sign-in-modal"
+			role="dialog"
+			tabindex="-1"
+			aria-modal="true"
+			aria-label={$t('signInTitle')}
+			use:focusTrap={{ onEscape: () => (showSignInModal = false) }}
+		>
+			<button
+				class="modal-close"
+				type="button"
+				aria-label={$t('close')}
+				onclick={() => (showSignInModal = false)}
 			>
-				<button
-					class="modal-close"
-					type="button"
-					aria-label={$t('close')}
-					onclick={() => (showSignInModal = false)}
-				>
-					×
-				</button>
-				<div class="h5 fw-bold mb-1">{$t('signInTitle')}</div>
-				<p class="text-muted small">{$t('signInBody')}</p>
-				{#if isSigningIn}
-					<div class="text-center py-3 text-muted">{$t('signingIn')}</div>
-				{:else}
-					<div class="d-flex justify-content-center py-2">
-						<GoogleSignInButton
-							onCredential={handleGoogleCredential}
-							disabled={false}
-						/>
-					</div>
-				{/if}
-				<p class="small text-muted mt-2 mb-0">{$t('signInAnonymousNote')}</p>
-			</div>
+				×
+			</button>
+			<div class="h5 fw-bold mb-1">{$t('signInTitle')}</div>
+			<p class="text-muted small">{$t('signInBody')}</p>
+			{#if isSigningIn}
+				<div class="text-center py-3 text-muted">{$t('signingIn')}</div>
+			{:else}
+				<div class="d-flex justify-content-center py-2">
+					<GoogleSignInButton onCredential={handleGoogleCredential} disabled={false} />
+				</div>
+			{/if}
+			<p class="small text-muted mt-2 mb-0">{$t('signInAnonymousNote')}</p>
 		</div>
 	{/if}
 </div>
@@ -802,7 +877,7 @@
 		padding: 7px 15px;
 		border-radius: 999px;
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.header-actions {
@@ -829,7 +904,7 @@
 	.header-icon:focus-visible,
 	.header-icon.active {
 		background: color-mix(in srgb, var(--color-brand-600) 13%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.data-saver-control {
@@ -874,7 +949,7 @@
 		place-items: center;
 		border-radius: 50%;
 		background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-weight: 700;
 	}
 
@@ -898,7 +973,7 @@
 	.mobile-menu a:hover,
 	.mobile-menu button:hover,
 	.mobile-menu button.active {
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.mobile-menu button.active {
@@ -959,7 +1034,7 @@
 	}
 
 	.footer-links a:hover {
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.footer-copy {
@@ -975,6 +1050,10 @@
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		padding: 0 8px calc(6px + var(--sab, env(safe-area-inset-bottom, 0px)));
+	}
+
+	:global(html.keyboard-open) .bottom-nav {
+		display: none;
 	}
 
 	.bottom-nav a {
@@ -993,7 +1072,7 @@
 
 	.bottom-nav a.active,
 	.bottom-nav a:focus-visible {
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-weight: 700;
 	}
 
@@ -1003,7 +1082,7 @@
 	}
 
 	.create-tab {
-		color: var(--color-brand-600) !important;
+		color: var(--brand-text) !important;
 		font-weight: 700;
 	}
 
@@ -1093,7 +1172,7 @@
 		height: 100%;
 		place-items: center;
 		background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-weight: 700;
 	}
 
@@ -1140,22 +1219,28 @@
 	}
 
 	.sign-in-control {
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
 		z-index: 1120;
-		display: grid;
-		place-items: center;
-		padding: 20px;
+		display: block;
+		width: 100%;
+		height: 100%;
+		padding: 0;
+		border: 0;
 		background: rgba(15, 23, 42, 0.55);
 	}
 
 	.sign-in-modal {
-		position: relative;
-		width: 100%;
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		z-index: 1121;
+		translate: -50% -50%;
+		width: calc(100% - 40px);
 		max-width: 400px;
 		padding: 22px 20px 18px;
 		border: 1px solid var(--line);

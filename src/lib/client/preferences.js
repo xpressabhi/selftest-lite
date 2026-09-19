@@ -12,6 +12,14 @@ export const themePreference = writable('system');
 export const isDataSaverActive = writable(false);
 export const autoAdvance = writable(false);
 
+// Resolves once the saved preferences have been applied. Consumers that run
+// very early (service-worker callbacks, first-paint toasts) await this so they
+// read the user's language instead of the English default.
+let resolvePreferencesReady;
+export const preferencesReady = new Promise((resolve) => {
+	resolvePreferencesReady = resolve;
+});
+
 function getSystemLanguage() {
 	if (typeof navigator === 'undefined') {
 		return 'english';
@@ -29,22 +37,32 @@ function getSystemTheme() {
 	return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-export function initializePreferences() {
+export async function initializePreferences() {
 	if (typeof window === 'undefined') {
 		return;
 	}
 
-	const savedLanguage = window.localStorage.getItem(LANGUAGE_KEY);
+	// Storage can throw in private mode / when cookies are blocked; fall back
+	// to system defaults instead of breaking hydration.
+	const readStored = (key) => {
+		try {
+			return window.localStorage.getItem(key);
+		} catch {
+			return null;
+		}
+	};
+
+	const savedLanguage = readStored(LANGUAGE_KEY);
 	const resolvedLanguage = ['english', 'hindi'].includes(savedLanguage)
 		? savedLanguage
 		: getSystemLanguage();
-	void setLanguage(resolvedLanguage, { persist: false });
+	await setLanguage(resolvedLanguage, { persist: false });
 
-	const savedTheme = window.localStorage.getItem(THEME_KEY) || 'system';
+	const savedTheme = readStored(THEME_KEY) || 'system';
 	themePreference.set(savedTheme);
 	applyTheme(savedTheme);
 
-	const savedDataSaver = window.localStorage.getItem(DATA_SAVER_KEY);
+	const savedDataSaver = readStored(DATA_SAVER_KEY);
 	const connection =
 		navigator.connection || navigator.mozConnection || navigator.webkitConnection;
 	const slowConnection =
@@ -55,8 +73,10 @@ export function initializePreferences() {
 	document.documentElement.classList.toggle('data-saver', resolvedDataSaver);
 	document.documentElement.classList.toggle('reduce-motion', resolvedDataSaver);
 
-	const savedAutoAdvance = window.localStorage.getItem(AUTO_ADVANCE_KEY);
+	const savedAutoAdvance = readStored(AUTO_ADVANCE_KEY);
 	autoAdvance.set(savedAutoAdvance === null ? true : savedAutoAdvance === 'true');
+
+	resolvePreferencesReady?.();
 }
 
 export async function setLanguage(nextLanguage, { persist = true } = {}) {
@@ -67,7 +87,11 @@ export async function setLanguage(nextLanguage, { persist = true } = {}) {
 	language.set(nextLanguage);
 	if (typeof window !== 'undefined') {
 		if (persist) {
-			window.localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+			try {
+				window.localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+			} catch {
+				// Storage unavailable; the in-memory preference still applies.
+			}
 		}
 		document.documentElement.setAttribute('lang', nextLanguage === 'hindi' ? 'hi' : 'en');
 		if (persist) {

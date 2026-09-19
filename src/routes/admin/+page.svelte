@@ -1007,8 +1007,8 @@
 		color: var(--text);
 	}
 	.tab-btn.active {
-		color: var(--color-brand-600);
-		border-bottom-color: var(--color-brand-600);
+		color: var(--brand-text);
+		border-bottom-color: var(--brand-text);
 	}
 
 	.stat-cards {

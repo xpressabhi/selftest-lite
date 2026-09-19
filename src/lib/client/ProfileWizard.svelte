@@ -2,17 +2,18 @@
 	import { t } from './i18n';
 	import { saveProfile } from './profile';
 	import { track } from './telemetry';
+	import { focusTrap } from './focusTrap';
 	import { INDIAN_EXAMS } from '$lib/data/indianExams';
 	import { createDefaultProfile, normalizeProfile } from '$lib/shared/userProfile';
 
 	let { initial = null, onclose, onafterfinish } = $props();
 
 	const CLASS_OPTIONS = $derived([
-		{ value: 'class-8', label: 'Class 8' },
-		{ value: 'class-9', label: 'Class 9' },
-		{ value: 'class-10', label: 'Class 10' },
-		{ value: 'class-11', label: 'Class 11' },
-		{ value: 'class-12', label: 'Class 12' },
+		{ value: 'class-8', label: $t('classLabel', { n: 8 }) },
+		{ value: 'class-9', label: $t('classLabel', { n: 9 }) },
+		{ value: 'class-10', label: $t('classLabel', { n: 10 }) },
+		{ value: 'class-11', label: $t('classLabel', { n: 11 }) },
+		{ value: 'class-12', label: $t('classLabel', { n: 12 }) },
 		{ value: 'college', label: $t('profileWizardClassCollege') },
 		{ value: 'working-professional', label: $t('profileWizardClassProfessional') },
 		{ value: 'other', label: $t('profileWizardClassOther') },
@@ -62,6 +63,7 @@
 	let subjectInput = $state('');
 	let focusInput = $state('');
 	let saving = $state(false);
+	let saveError = $state(false);
 
 	const TOTAL_STEPS = 4;
 
@@ -146,6 +148,7 @@
 			return;
 		}
 		saving = true;
+		saveError = false;
 		try {
 			const saved = await saveProfile({
 				...draft,
@@ -156,6 +159,7 @@
 			closeModal();
 		} catch (error) {
 			console.error('Failed to save profile from wizard:', error);
+			saveError = true;
 		} finally {
 			saving = false;
 		}
@@ -174,6 +178,8 @@
 	class="profile-wizard-overlay"
 	role="dialog"
 	aria-modal="true"
+	tabindex="-1"
+	use:focusTrap={{ onEscape: closeModal }}
 	aria-label={$t('profileWizardTitle')}
 >
 	<div class="profile-wizard">
@@ -190,9 +196,14 @@
 			<p class="wizard-subtitle">{$t('profileWizardSubtitle')}</p>
 		</div>
 
-		<div class="wizard-progress" aria-hidden="true">
+		<div class="wizard-progress">
+			<span class="visually-hidden">{$t('tourStepLabel')} {step + 1}/{TOTAL_STEPS}</span>
 			{#each Array.from({ length: TOTAL_STEPS }, (_, index) => index) as stepIndex (stepIndex)}
-				<span class="wizard-progress-step" class:active={stepIndex <= step}></span>
+				<span
+					class="wizard-progress-step"
+					class:active={stepIndex <= step}
+					aria-hidden="true"
+				></span>
 			{/each}
 		</div>
 
@@ -206,6 +217,7 @@
 							type="button"
 							class="chip"
 							class:selected={draft.class === option.value}
+							aria-pressed={draft.class === option.value}
 							onclick={() => (draft.class = option.value)}
 						>
 							{option.label}
@@ -221,6 +233,7 @@
 								type="button"
 								class="chip"
 								class:selected={draft.profession === option.value}
+								aria-pressed={draft.profession === option.value}
 								onclick={() => (draft.profession = option.value)}
 							>
 								{option.label}
@@ -233,6 +246,10 @@
 				<input
 					class="form-control"
 					type="text"
+					role="combobox"
+					aria-autocomplete="list"
+					aria-expanded={filteredExams.length > 0}
+					aria-controls="wizard-exam-suggestions"
 					placeholder={$t('profileWizardSearchExam')}
 					aria-label={$t('profileWizardSearchExam')}
 					bind:value={examQuery}
@@ -243,10 +260,20 @@
 					}}
 				/>
 				{#if filteredExams.length > 0}
-					<ul class="exam-suggestions">
+					<ul
+						id="wizard-exam-suggestions"
+						class="exam-suggestions"
+						role="listbox"
+						aria-label={$t('profileWizardSearchExam')}
+					>
 						{#each filteredExams as exam (exam.id)}
-							<li>
-								<button type="button" onclick={() => selectExam(exam)}>
+							<li role="presentation">
+								<button
+									type="button"
+									role="option"
+									aria-selected={draft.examTarget?.examId === exam.id}
+									onclick={() => selectExam(exam)}
+								>
 									{exam.name}
 								</button>
 							</li>
@@ -269,6 +296,9 @@
 							type="button"
 							class="chip"
 							class:selected={draft.subjects.some(
+								(item) => item.toLowerCase() === subject.toLowerCase()
+							)}
+							aria-pressed={draft.subjects.some(
 								(item) => item.toLowerCase() === subject.toLowerCase()
 							)}
 							onclick={() => toggleSubject(subject)}
@@ -345,6 +375,7 @@
 							<button
 								type="button"
 								class="chip selected"
+								aria-pressed="true"
 								onclick={() => toggleFocus(topic)}
 							>
 								{topic} <span aria-hidden="true">×</span>
@@ -375,6 +406,10 @@
 					</button>
 				</div>
 			</section>
+		{/if}
+
+		{#if saveError}
+			<p class="wizard-error" role="alert">{$t('profileSaveFailed')}</p>
 		{/if}
 
 		<div class="wizard-footer">
@@ -436,8 +471,8 @@
 		position: absolute;
 		top: 10px;
 		right: 10px;
-		width: 40px;
-		height: 40px;
+		width: 44px;
+		height: 44px;
 		border: 0;
 		border-radius: 50%;
 		background: transparent;
@@ -499,6 +534,13 @@
 		font-size: 0.8rem;
 	}
 
+	.wizard-error {
+		margin: 10px 0 0;
+		color: #dc2626;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
 	.chip-grid {
 		display: flex;
 		flex-wrap: wrap;
@@ -518,9 +560,9 @@
 	}
 
 	.chip.selected {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.exam-suggestions {
@@ -562,7 +604,7 @@
 		border: 1px solid var(--color-brand-600);
 		border-radius: 999px;
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-weight: 600;
 	}
 

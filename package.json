@@ -32,6 +32,7 @@
 		"@chenglou/pretext": "^0.0.8",
 		"@google/genai": "^2.16.0",
 		"@neondatabase/serverless": "^1.1.0",
+		"@typesafe-ai/sdk": "^0.6.0",
 		"@vercel/analytics": "^2.0.1",
 		"katex": "^0.18.4",
 		"mermaid": "^11.16.1",

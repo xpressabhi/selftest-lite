@@ -4,7 +4,7 @@
 	import { t } from './i18n';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
 
-	let { content = '', tag = 'div' } = $props();
+	let { content = '', tag = 'div', links = 'allow' } = $props();
 	let html = $state('');
 	let containerElement = $state();
 	let mermaidObserver;
@@ -16,6 +16,12 @@
 			.replaceAll('>', '&gt;')
 			.replaceAll('"', '&quot;')
 			.replaceAll("'", '&#039;');
+	}
+
+	// Inside a <button> or other interactive host, anchors from model output
+	// would be nested interactive elements, so render them as plain text.
+	function stripLinks(value) {
+		return String(value || '').replace(/<a\b[^>]*>([\s\S]*?)<\/a>/g, '$1');
 	}
 
 	function needsRichRenderer(value) {
@@ -34,14 +40,15 @@
 		return /```mermaid\b/i.test(value);
 	}
 
-	async function renderMarkdown(value) {
+	async function renderMarkdown(value, shouldStripLinks) {
 		const normalizedValue = prepareMathTextForRendering(value || '');
 		if (needsRichRenderer(normalizedValue)) {
 			if (hasMath(normalizedValue)) {
 				await import('$lib/styles/katex.css');
 			}
 			const { renderRichMarkdown } = await import('./markdownRenderer.js');
-			html = await renderRichMarkdown(normalizedValue);
+			const rendered = await renderRichMarkdown(normalizedValue);
+			html = shouldStripLinks ? stripLinks(rendered) : rendered;
 		} else {
 			html = escapeHtml(normalizedValue).replaceAll('\n', '<br>');
 		}
@@ -138,21 +145,32 @@
 	}
 
 	let renderedContent = '';
+	let renderedLinks = null;
 	let rendering = false;
+	let rerenderQueued = false;
 
 	async function renderCurrent() {
 		const rawContent = String(content || '');
-		if (rendering || rawContent === renderedContent) {
+		const rawLinks = links;
+		if (rendering) {
+			// A newer value arrived mid-render; render it once this pass ends.
+			rerenderQueued = true;
+			return;
+		}
+		if (rawContent === renderedContent && rawLinks === renderedLinks) {
 			return;
 		}
 		rendering = true;
 		try {
-			await renderMarkdown(rawContent);
-			if (String(content || '') === rawContent) {
-				renderedContent = rawContent;
-			}
+			await renderMarkdown(rawContent, rawLinks === 'text');
+			renderedContent = rawContent;
+			renderedLinks = rawLinks;
 		} finally {
 			rendering = false;
+		}
+		if (rerenderQueued) {
+			rerenderQueued = false;
+			void renderCurrent();
 		}
 	}
 
@@ -178,7 +196,19 @@
 		margin-bottom: 0;
 	}
 
+	.markdown-content :global(img) {
+		max-width: 100%;
+		height: auto;
+	}
+
+	.markdown-content :global(table) {
+		display: block;
+		max-width: 100%;
+		overflow-x: auto;
+	}
+
 	.markdown-content :global(pre) {
+		max-width: 100%;
 		overflow-x: auto;
 		padding: 0.75rem;
 		border-radius: 0.5rem;

@@ -6,11 +6,11 @@ how to read it, and how to keep the data trustworthy.
 
 ## Pipeline
 
-| Layer | Source | Table | Notes |
-| --- | --- | --- | --- |
-| Feature events | `track()` / `trackDebounced()` in `src/lib/client/telemetry.js` | `feature_events` | Queued client-side, flushed every 30s / 20 events / on unload |
-| API events | `logApiEvent()` in `src/lib/server/storage.js` | `api_request_events` | Route, status, duration, country/city, user agent |
-| Rate limits | `rateLimiter()` | `api_rate_limit_events` | Cleaned up after 2 days |
+| Layer          | Source                                                          | Table                   | Notes                                                         |
+| -------------- | --------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------- |
+| Feature events | `track()` / `trackDebounced()` in `src/lib/client/telemetry.js` | `feature_events`        | Queued client-side, flushed every 30s / 20 events / on unload |
+| API events     | `logApiEvent()` in `src/lib/server/storage.js`                  | `api_request_events`    | Route, status, duration, country/city, user agent             |
+| Rate limits    | `rateLimiter()`                                                 | `api_rate_limit_events` | Cleaned up after 2 days                                       |
 
 Identity: a stable anonymous `client_id` (browser) plus an optional `user_id`
 after Google sign-in. Anonymous activity is backfilled to the user on login
@@ -46,6 +46,8 @@ It prints:
 - retention: new vs returning identities per week
 - activation funnel: page view → generate → test start → submit → explain
 - top feature events, plus allowlisted events not seen in the window
+- conversational planner: client parse/clarification counts, clarifications by
+  field/outcome, and server-side topic source + confidence + token usage
 - API hotspots (requests, errors excluding expected 401/429, 401s, 429s, avg/p95 latency)
 - rate-limiter requests per route (every limiter call, not only blocked ones)
 - generation failures: stage/code/model breakdown, top issue codes per failing
@@ -57,20 +59,20 @@ It prints:
 
 ### Quality gates
 
-| Gate | Target |
-| --- | --- |
-| Generate success rate | >= 95% |
-| Explain failure rate | < 2% |
-| Server 5xx | 0 |
-| Null `test_mode` on generated tests | 0 |
-| `/api/user/state` and `/api/auth/me` p95 | <= 3000 ms |
-| Requests slower than 10s | < 2% |
-| Answer at A/B (served) | < 60% |
-| Longest-answer tell (key >1.25x longest distractor) | < 35% |
-| Duplicate questions (7d) | 0 |
-| Non-discriminating repeated items | < 35% |
-| D1 retention | >= 15% |
-| D7 retention | >= 8% |
+| Gate                                                | Target     |
+| --------------------------------------------------- | ---------- |
+| Generate success rate                               | >= 95%     |
+| Explain failure rate                                | < 2%       |
+| Server 5xx                                          | 0          |
+| Null `test_mode` on generated tests                 | 0          |
+| `/api/user/state` and `/api/auth/me` p95            | <= 3000 ms |
+| Requests slower than 10s                            | < 2%       |
+| Answer at A/B (served)                              | < 60%      |
+| Longest-answer tell (key >1.25x longest distractor) | < 35%      |
+| Duplicate questions (7d)                            | 0          |
+| Non-discriminating repeated items                   | < 35%      |
+| D1 retention                                        | >= 15%     |
+| D7 retention                                        | >= 8%      |
 
 ## Generation failure diagnostics
 
@@ -78,15 +80,15 @@ Failed `/api/generate` calls store a structured `metadata.generationFailure`
 object on `api_request_events` (in addition to the human-readable
 `error_message`):
 
-| Field | Meaning |
-| --- | --- |
-| `stage` | Where it failed: `quality`, `batch-validation`, `verification`, `count`, `api-limit`, `timeout`, `internal` |
-| `code` | Client-facing error code from `classifyApiError` |
-| `issues` | `[{ index, issue }]`, e.g. `longest-answer-tell` at question 3 (capped at 50) |
-| `questionStats` | Option-length aggregates for the failed batch: `count`, `tellCount`, `keyLongestCount`, `maxKeyToDistractorRatio`, `avgKeyToDistractorRatio` |
-| `batchIndex` / `batchTotal` / `validationAttempt` | Which batch and retry produced the failure |
-| `model` | Model used for the failing run |
-| `message` | Truncated error message (no question text) |
+| Field                                             | Meaning                                                                                                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stage`                                           | Where it failed: `quality`, `batch-validation`, `verification`, `count`, `api-limit`, `timeout`, `internal`                                  |
+| `code`                                            | Client-facing error code from `classifyApiError`                                                                                             |
+| `issues`                                          | `[{ index, issue }]`, e.g. `longest-answer-tell` at question 3 (capped at 50)                                                                |
+| `questionStats`                                   | Option-length aggregates for the failed batch: `count`, `tellCount`, `keyLongestCount`, `maxKeyToDistractorRatio`, `avgKeyToDistractorRatio` |
+| `batchIndex` / `batchTotal` / `validationAttempt` | Which batch and retry produced the failure                                                                                                   |
+| `model`                                           | Model used for the failing run                                                                                                               |
+| `message`                                         | Truncated error message (no question text)                                                                                                   |
 
 Privacy rule: never add question or option text to this block. Indexes, issue
 codes and aggregate stats are enough for prompt and check tuning.
@@ -106,6 +108,38 @@ ORDER BY n DESC;
 
 The client mirrors the final failure code, HTTP status, attempt and elapsed
 seconds in the `generate:fail` event props.
+
+## Conversational planner diagnostics
+
+The home planner records one `api_request_events` row per
+`/api/parse-intent` turn (server) plus client feature events:
+
+| Client event                    | Props                                                                        | Meaning                               |
+| ------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------- |
+| `intent:parse`                  | `intent` (64 chars), `round`                                                 | A planner turn started                |
+| `intent:parsed`                 | `confidence`, `isFullExam`, `round`                                          | Jev returned a plan                   |
+| `intent:parse-failed`           | `round`                                                                      | The turn fell back to manual defaults |
+| `intent:clarification-asked`    | `field`, `round`                                                             | A clarification question was shown    |
+| `intent:clarification-answered` | `field`, `outcome` (`answered`/`skipped`), `round`                           | The user resolved it                  |
+| `intent:preview`                | `source` (`local`/`jev`), `ok`, `latencyMs`, `hasTopic`, `inputTokens` (jev) | Live plan preview tick                |
+| `preview:edit-toggle`           | `open`                                                                       | The plan card's Edit plan toggle      |
+
+Server metadata on each successful turn:
+
+| Field                | Meaning                                                                 |
+| -------------------- | ----------------------------------------------------------------------- |
+| `provider` / `model` | Always `typesafe` / the versioned Jev model that answered               |
+| `round`              | Clarification rounds used so far                                        |
+| `confidence`         | Min of the turn's Choice confidences, mapped to high/medium/low         |
+| `clarifyField`       | Field the turn asked about, or `null`                                   |
+| `answeredFields`     | Plan fields the user answered as clarifications on this turn            |
+| `topicSource`        | How the topic was produced: `span`, `exam`, `answer`, `previous`, `raw` |
+| `fieldConfidence`    | Per-field probability/confidence snapshot                               |
+| `usage`              | Jev input/output tokens                                                 |
+
+Use it to answer: how often does the planner ask questions (and about what),
+how often are topics span-extracted vs raw, is failure rate stable, and whether
+Hindi turns show lower confidence or more failures.
 
 ## Weekly automation
 
@@ -150,6 +184,9 @@ expired/revoked sessions (`app_user_session`), and legacy tables.
    stopped recording metadata.
 7. **Bot noise** — spikes with few identities are usually crawlers; do not read
    them as growth.
+8. **Planner health** — check `intent:parse-failed` stays near zero, the
+   clarification asked → answered ratio, and whether `topicSource` is mostly
+   `span`/`exam` (good) versus `raw` (the model found no subject).
 
 ## Caveats
 

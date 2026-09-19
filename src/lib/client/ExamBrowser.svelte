@@ -26,7 +26,13 @@
 </script>
 
 <div class="exam-browser">
-	<button class="browser-toggle" type="button" onclick={() => (expanded = !expanded)}>
+	<button
+		class="browser-toggle"
+		type="button"
+		aria-expanded={expanded}
+		aria-controls="exam-browser-body"
+		onclick={() => (expanded = !expanded)}
+	>
 		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
 		<span class="toggle-label">{$t('browseAllExams')}</span>
 		{#if selectedExamId}
@@ -35,17 +41,20 @@
 	</button>
 
 	{#if expanded}
-		<div class="browser-body">
+		<div class="browser-body" id="exam-browser-body">
 			<div class="exam-filters">
 				<input
 					class="exam-search-input"
-					type="text"
+					type="search"
+					autocomplete="off"
+					aria-label={$t('searchExamStreamSyllabus')}
 					value={examSearchQuery}
 					oninput={(e) => onexamchange('examSearchQuery', e.target.value)}
 					placeholder={$t('searchExamStreamSyllabus')}
 				/>
 				<select
 					class="exam-group-select"
+					aria-label={$t('group')}
 					value={examGroupFilter}
 					onchange={(e) => onexamchange('examGroupFilter', e.target.value)}
 				>
@@ -67,20 +76,12 @@
 
 			<div class="exam-list">
 				{#each DISPLAY_EXAMS as exam (exam.id)}
-					<div
-						class="exam-row"
-						class:selected={selectedExamId === exam.id}
-						role="button"
-						tabindex="0"
-						onclick={() => selectExam(exam.id)}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								selectExam(exam.id);
-							}
-						}}
-					>
-						<div class="exam-info">
+					<div class="exam-row" class:selected={selectedExamId === exam.id}>
+						<button
+							class="exam-select"
+							type="button"
+							onclick={() => selectExam(exam.id)}
+						>
 							<span class="exam-name">{exam.name}</span>
 							<span class="exam-meta">
 								{exam.stream || ''} · {$t('questionShort')}
@@ -88,15 +89,15 @@
 									'minuteShort'
 								)}
 							</span>
-						</div>
+						</button>
 						<button
 							class="exam-bookmark-btn"
 							type="button"
-							onclick={(e) => {
-								e.stopPropagation();
-								toggleBookmark(exam.id);
-							}}
-							aria-label={$t('bookmarkExam')}
+							onclick={() => toggleBookmark(exam.id)}
+							aria-pressed={bookmarkedExamIds.includes(exam.id)}
+							aria-label={bookmarkedExamIds.includes(exam.id)
+								? $t('removeBookmark')
+								: $t('bookmarkExam')}
 						>
 							{bookmarkedExamIds.includes(exam.id) ? '★' : '☆'}
 						</button>
@@ -143,7 +144,7 @@
 
 	.toggle-count {
 		font-size: 0.72rem;
-		color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
 		margin-left: auto;
 	}
 
@@ -223,7 +224,6 @@
 		background: transparent;
 		width: 100%;
 		text-align: left;
-		cursor: pointer;
 		transition: background 0.12s ease;
 		min-height: 52px;
 	}
@@ -240,11 +240,19 @@
 		background: rgba(var(--brand-rgb), 0.08);
 	}
 
-	.exam-info {
+	.exam-select {
 		display: flex;
+		min-width: 0;
 		flex-direction: column;
 		gap: 2px;
 		padding: 8px 12px;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+		min-height: 52px;
 	}
 
 	.exam-name {

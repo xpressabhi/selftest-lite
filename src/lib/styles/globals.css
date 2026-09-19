@@ -97,6 +97,11 @@ body {
 	--text-muted: #64748b;
 	--line: #e2e8f0;
 	--brand-rgb: 79, 70, 229;
+	/* Brand color for text/iconography on surfaces. Dark mode swaps to a
+	   lighter tint so contrast holds on dark backgrounds; fills keep using
+	   --brand-rgb (white text stays readable). */
+	--brand-text-rgb: 79, 70, 229;
+	--brand-text: #4f46e5;
 }
 
 :root.dark {
@@ -106,6 +111,8 @@ body {
 	--text: #f8fafc;
 	--text-muted: #94a3b8;
 	--line: #334155;
+	--brand-text-rgb: 165, 180, 252;
+	--brand-text: #a5b4fc;
 }
 
 html {
@@ -113,7 +120,7 @@ html {
 }
 
 :focus-visible {
-	outline: 2px solid var(--color-brand-600);
+	outline: 2px solid var(--brand-text);
 	outline-offset: 2px;
 }
 
@@ -124,6 +131,18 @@ html.reduce-motion *::after {
 	animation-iteration-count: 1 !important;
 	scroll-behavior: auto !important;
 	transition-duration: 0.01ms !important;
+}
+
+/* Honour the OS setting too, not only the in-app data-saver class. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+	}
 }
 
 body {
@@ -234,10 +253,13 @@ select {
 	}
 	.bg-success,
 	.text-bg-success {
-		@apply bg-emerald-600 text-white;
+		@apply bg-emerald-700 text-white;
 	}
 	.bg-warning {
 		@apply bg-amber-400;
+	}
+	.text-bg-warning {
+		@apply bg-amber-400 text-slate-950;
 	}
 	.text-bg-primary {
 		@apply bg-brand-600 text-white;
@@ -367,7 +389,7 @@ select {
 		@apply text-red-600 dark:text-red-400;
 	}
 	.text-dark {
-		@apply text-slate-950 dark:text-slate-50;
+		@apply text-slate-950;
 	}
 	.text-truncate {
 		@apply truncate;

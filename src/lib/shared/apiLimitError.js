@@ -37,12 +37,23 @@ function collectErrorText(errorLike) {
 }
 
 export function isApiLimitExceededError(errorLike) {
+	const status = Number(errorLike?.status ?? errorLike?.statusCode);
+	if (status === 429) {
+		return true;
+	}
 	const details = collectErrorText(errorLike).toLowerCase();
 	if (!details) return false;
 	return API_LIMIT_PATTERNS.some((pattern) => pattern.test(details));
 }
 
 export function isApiTimeoutError(errorLike) {
+	if (errorLike?.name === 'APITimeoutError') {
+		return true;
+	}
+	const status = Number(errorLike?.status ?? errorLike?.statusCode);
+	if (status === 408) {
+		return true;
+	}
 	const details = collectErrorText(errorLike).toLowerCase();
 	if (!details) return false;
 	return API_TIMEOUT_PATTERNS.some((pattern) => pattern.test(details));

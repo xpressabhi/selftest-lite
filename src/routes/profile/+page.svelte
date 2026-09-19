@@ -625,9 +625,9 @@
 	}
 
 	.chip.selected {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.chip-selected {
@@ -639,7 +639,7 @@
 		border: 1px solid var(--color-brand-600);
 		border-radius: 999px;
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-weight: 600;
 	}
 

@@ -1,5 +1,4 @@
 <script>
-	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
@@ -102,13 +101,12 @@
 									</div>
 								</div>
 								<div class="d-flex gap-2">
-									<button
+									<a
 										class="btn btn-sm btn-outline-primary"
-										type="button"
-										onclick={() => goto(`/?exam=${exam.id}`)}
+										href={`/?exam=${exam.id}`}
 									>
 										{$t('select')}
-									</button>
+									</a>
 									<button
 										class="btn btn-sm btn-outline-danger"
 										type="button"
@@ -169,7 +167,7 @@
 				{#each questionBookmarks as bookmark (`${bookmark.question}-${bookmark.answer}`)}
 					<article class="border rounded-3 p-3">
 						<div class="d-flex align-items-start justify-content-between gap-3">
-							<div>
+							<div class="min-w-0">
 								<p class="small text-muted mb-1">
 									{bookmark.topic || $t('quizPractice')}
 								</p>
@@ -183,10 +181,10 @@
 								{$t('removeBookmark')}
 							</button>
 						</div>
-						<p class="small text-success mt-2 mb-0">
+						<div class="small text-success mt-2 mb-0">
 							<strong>{$t('correctAnswer')}:</strong>
-							{bookmark.answer}
-						</p>
+							<MarkdownContent content={bookmark.answer} />
+						</div>
 					</article>
 				{/each}
 			</div>

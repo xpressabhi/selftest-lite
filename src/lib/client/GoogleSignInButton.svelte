@@ -144,13 +144,7 @@
 		{googleClientId ? $t('googleLoginUnavailable') : $t('googleClientMissing')}
 	</div>
 {:else}
-	<div
-		bind:this={buttonRef}
-		class="google-sign-in-button"
-		role="button"
-		aria-label={$t('signInWithGoogle')}
-		aria-disabled={disabled || status !== 'ready'}
-	></div>
+	<div bind:this={buttonRef} class="google-sign-in-button"></div>
 {/if}
 
 <style>

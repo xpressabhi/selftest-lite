@@ -23,7 +23,13 @@
 </script>
 
 <div class="topic-browser">
-	<button class="browser-toggle" type="button" onclick={() => (expanded = !expanded)}>
+	<button
+		class="browser-toggle"
+		type="button"
+		aria-expanded={expanded}
+		aria-controls="topic-browser-body"
+		onclick={() => (expanded = !expanded)}
+	>
 		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
 		<span class="toggle-label">{$t('browseTopics')}</span>
 		{#if selectedTopics.length > 0}
@@ -32,13 +38,14 @@
 	</button>
 
 	{#if expanded}
-		<div class="browser-body">
+		<div class="browser-body" id="topic-browser-body">
 			<div class="category-grid">
 				{#each CATEGORIES as [category, topics] (category)}
 					<button
 						class="category-btn"
 						class:selected={selectedCategory === category}
 						type="button"
+						aria-pressed={selectedCategory === category}
 						onclick={() => toggleCategory(category)}
 					>
 						{category}
@@ -50,6 +57,7 @@
 									class="topic-chip"
 									class:active={selectedTopics.includes(topicName)}
 									type="button"
+									aria-pressed={selectedTopics.includes(topicName)}
 									onclick={() => toggleTopic(topicName)}
 								>
 									{topicName}
@@ -105,7 +113,7 @@
 
 	.toggle-count {
 		font-size: 0.72rem;
-		color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
 		margin-left: auto;
 	}
 
@@ -148,14 +156,14 @@
 	}
 
 	.category-btn:hover {
-		border-color: rgb(var(--brand-rgb));
-		color: rgb(var(--brand-rgb));
+		border-color: rgb(var(--brand-text-rgb));
+		color: rgb(var(--brand-text-rgb));
 	}
 
 	.category-btn.selected {
-		border-color: rgb(var(--brand-rgb));
+		border-color: rgb(var(--brand-text-rgb));
 		background: rgba(var(--brand-rgb), 0.08);
-		color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
 	}
 
 	.topic-chips {
@@ -186,14 +194,14 @@
 	}
 
 	.topic-chip:hover {
-		border-color: rgb(var(--brand-rgb));
-		color: rgb(var(--brand-rgb));
+		border-color: rgb(var(--brand-text-rgb));
+		color: rgb(var(--brand-text-rgb));
 	}
 
 	.topic-chip.active {
-		border-color: rgb(var(--brand-rgb));
+		border-color: rgb(var(--brand-text-rgb));
 		background: rgba(var(--brand-rgb), 0.1);
-		color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
 		font-weight: 600;
 	}
 
@@ -201,7 +209,7 @@
 		padding: 4px 8px;
 		border: 0;
 		background: transparent;
-		color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
 		font-size: 0.8rem;
 		font-weight: 600;
 		cursor: pointer;

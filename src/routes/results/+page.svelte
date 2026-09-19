@@ -1,10 +1,10 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
-	import { isDataSaverActive } from '$lib/client/preferences';
+	import { isDataSaverActive, language } from '$lib/client/preferences';
 	import { track } from '$lib/client/telemetry';
 	import {
 		buildReviewQueue,
@@ -62,6 +62,9 @@
 	let historyCount = $state(0);
 	let reminderEnabled = $state(false);
 	let reminderBusy = $state(false);
+	let showRetakeConfirm = $state(false);
+	let retakeTrigger = $state();
+	let retakeConfirmButton = $state();
 
 	let wrongIndices = $derived(
 		(questionPaper?.questions || [])
@@ -228,6 +231,23 @@
 		return `${question.question}::${question.answer}`;
 	}
 
+	const activityDateFormatters = new Map();
+
+	function formatActivityDate(value) {
+		const locale = $language === 'hindi' ? 'hi-IN' : 'en-IN';
+		let formatter = activityDateFormatters.get(locale);
+		if (!formatter) {
+			formatter = new Intl.DateTimeFormat(locale, {
+				weekday: 'short',
+				day: 'numeric',
+				month: 'short',
+			});
+			activityDateFormatters.set(locale, formatter);
+		}
+		const date = new Date(`${value}T00:00:00`);
+		return Number.isNaN(date.getTime()) ? value : formatter.format(date);
+	}
+
 	function toggleBookmark(question) {
 		toggleQuestionBookmark(question, {
 			testId: questionPaper.id,
@@ -253,9 +273,13 @@
 		}
 		expanded = { ...expanded, [firstWrong]: true };
 		requestAnimationFrame(() => {
-			document
-				.getElementById(`question-${firstWrong}`)
-				?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			const prefersReducedMotion = window.matchMedia(
+				'(prefers-reduced-motion: reduce)'
+			).matches;
+			document.getElementById(`question-${firstWrong}`)?.scrollIntoView({
+				behavior: prefersReducedMotion ? 'auto' : 'smooth',
+				block: 'start',
+			});
 		});
 	}
 
@@ -441,7 +465,7 @@
 	async function shareResult() {
 		track('results:share');
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
-		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
+		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
 		const text = $t('shareResultText', {
 			score: questionPaper.score ?? 0,
 			total: questionPaper.totalQuestions ?? totalQuestions,
@@ -473,10 +497,23 @@
 		return `/?${params.toString()}`;
 	}
 
+	async function requestRetake() {
+		showRetakeConfirm = true;
+		await tick();
+		retakeConfirmButton?.focus({ preventScroll: true });
+	}
+
+	async function cancelRetake() {
+		showRetakeConfirm = false;
+		await tick();
+		retakeTrigger?.focus({ preventScroll: true });
+	}
+
 	function retakeTest() {
 		if (!questionPaper?.id) {
 			return;
 		}
+		showRetakeConfirm = false;
 		track('results:retake', { id: questionPaper.id });
 		const stripped = { ...questionPaper };
 		delete stripped.userAnswers;
@@ -505,7 +542,7 @@
 			<p class="text-muted mt-3">{$t('loading')}</p>
 		</div>
 	{:else if error}
-		<div class="alert alert-warning">{error}</div>
+		<div class="alert alert-warning" role="alert">{error}</div>
 		<div class="d-flex flex-wrap gap-2">
 			{#if questionPaper?.id && !questionPaper.userAnswers}
 				<a
@@ -546,8 +583,11 @@
 						{questionPaper.score} / {questionPaper.totalQuestions}
 					</div>
 					<p class="text-muted mb-0">
-						{$t('timeSpent')}: {Math.round((questionPaper.timeTaken || 0) / 60)}
-						{$t('minuteShort')}
+						{$t('timeSpent')}: {formatDuration(
+							questionPaper.timeTaken || 0,
+							$t('minuteShort'),
+							$t('hourShort')
+						)}
 					</p>
 				</div>
 			</div>
@@ -565,9 +605,42 @@
 				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
 					{$t('share')}
 				</button>
-				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={retakeTest}>
-					{$t('retakeTest')}
-				</button>
+				{#if showRetakeConfirm}
+					<div
+						class="retake-confirm no-print"
+						role="group"
+						aria-label={$t('retakeConfirmTitle')}
+					>
+						<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
+						<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
+						<div class="d-flex flex-wrap gap-2">
+							<button
+								bind:this={retakeConfirmButton}
+								class="btn btn-sm btn-danger"
+								type="button"
+								onclick={retakeTest}
+							>
+								{$t('retakeTest')}
+							</button>
+							<button
+								class="btn btn-sm btn-outline-secondary"
+								type="button"
+								onclick={cancelRetake}
+							>
+								{$t('cancel')}
+							</button>
+						</div>
+					</div>
+				{:else}
+					<button
+						bind:this={retakeTrigger}
+						class="btn btn-sm btn-outline-secondary"
+						type="button"
+						onclick={requestRetake}
+					>
+						{$t('retakeTest')}
+					</button>
+				{/if}
 				{#if wrongIndices.length > 0}
 					<button
 						class="btn btn-sm btn-outline-warning"
@@ -601,6 +674,9 @@
 					{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
 				</span>
 			</label>
+			{#if $isDataSaverActive}
+				<p class="small text-muted mt-1 mb-0 no-print">{$t('autoExplainDataSaver')}</p>
+			{/if}
 			<div class="d-flex flex-wrap align-items-center gap-2 mt-2 no-print">
 				<span class="small text-muted">{$t('rateTest')}</span>
 				<button
@@ -642,6 +718,7 @@
 				class="filter-chip"
 				class:active={filter === 'all'}
 				type="button"
+				aria-pressed={filter === 'all'}
 				onclick={() => (filter = 'all')}
 			>
 				{$t('filterAll')}<span class="filter-count">{totalQuestions}</span>
@@ -650,6 +727,7 @@
 				class="filter-chip"
 				class:active={filter === 'correct'}
 				type="button"
+				aria-pressed={filter === 'correct'}
 				onclick={() => (filter = 'correct')}
 			>
 				{$t('filterCorrect')}<span class="filter-count">{correctCount}</span>
@@ -658,6 +736,7 @@
 				class="filter-chip"
 				class:active={filter === 'incorrect'}
 				type="button"
+				aria-pressed={filter === 'incorrect'}
 				onclick={() => (filter = 'incorrect')}
 			>
 				{$t('filterIncorrect')}<span class="filter-count">{incorrectCount}</span>
@@ -666,6 +745,7 @@
 				class="filter-chip"
 				class:active={filter === 'unanswered'}
 				type="button"
+				aria-pressed={filter === 'unanswered'}
 				onclick={() => (filter = 'unanswered')}
 			>
 				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
@@ -689,6 +769,8 @@
 							<span
 								class:active={day.active}
 								class:today={day.isToday}
+								role="img"
+								aria-label={formatActivityDate(day.date)}
 								title={day.date}
 							></span>
 						{/each}
@@ -798,7 +880,7 @@
 					>
 						<span class="review-card-question">
 							<span class="review-card-number">{index + 1}.</span>
-							<MarkdownContent content={question.question} />
+							<MarkdownContent content={question.question} links="text" />
 						</span>
 						<span
 							class="badge"
@@ -883,13 +965,30 @@
 											{$t('options')}
 										</div>
 										{#each question.options as option, optionIndex (optionIndex)}
+											{@const optionIsCorrect = option === question.answer}
+											{@const optionIsUserAnswer = option === userAnswer}
 											<div
 												class="review-option"
-												class:correct-option={option === question.answer}
-												class:user-option={option === userAnswer &&
-													option !== question.answer}
+												class:correct-option={optionIsCorrect}
+												class:user-option={optionIsUserAnswer &&
+													!optionIsCorrect}
 											>
+												{#if optionIsCorrect || optionIsUserAnswer}
+													<span
+														class="review-option-glyph"
+														aria-hidden="true"
+													>
+														{optionIsCorrect ? '✓' : '✗'}
+													</span>
+												{/if}
 												<MarkdownContent content={option} />
+												<span class="visually-hidden">
+													{optionIsCorrect
+														? $t('correct')
+														: optionIsUserAnswer
+															? $t('incorrect')
+															: ''}
+												</span>
 											</div>
 										{/each}
 									</div>
@@ -927,8 +1026,18 @@
 									{/if}
 								</AnimatedHeight>
 								{#if explanationError[index]}
-									<div class="text-danger small mt-2">
-										{explanationError[index]}
+									<div
+										class="text-danger small mt-2 d-flex flex-wrap align-items-center gap-2"
+										role="status"
+									>
+										<span>{explanationError[index]}</span>
+										<button
+											class="btn btn-sm btn-outline-danger"
+											type="button"
+											onclick={() => fetchExplanation(index, question)}
+										>
+											{$t('tryAgain')}
+										</button>
 									</div>
 								{/if}
 							</div>
@@ -1048,9 +1157,50 @@
 	}
 
 	.review-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 6px;
 		padding: 8px 10px;
 		border: 1px solid var(--line);
 		border-radius: 8px;
+	}
+
+	.review-option :global(.markdown-content) {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.review-option-glyph {
+		flex: 0 0 auto;
+		font-weight: 700;
+	}
+
+	.correct-option .review-option-glyph {
+		color: #059669;
+	}
+
+	.user-option .review-option-glyph {
+		color: #dc2626;
+	}
+
+	.retake-confirm {
+		flex: 1 1 100%;
+		padding: 10px 12px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--surface-muted);
+	}
+
+	.retake-confirm-title {
+		margin: 0;
+		font-size: 0.9rem;
+		font-weight: 700;
+	}
+
+	.retake-confirm-body {
+		margin: 2px 0 10px;
+		color: var(--text-muted);
+		font-size: 0.8rem;
 	}
 
 	.correct-option {
@@ -1090,9 +1240,9 @@
 	}
 
 	.filter-chip.active {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.filter-count {
@@ -1161,7 +1311,7 @@
 
 	.review-card-head:hover .review-card-question,
 	.review-card-head:focus-visible .review-card-question {
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.review-card-question {

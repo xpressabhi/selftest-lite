@@ -1,7 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
@@ -46,6 +46,10 @@
 	let showOverflowMenu = $state(false);
 	let navigationDirection = $state('forward');
 	let questionCardHost = $state();
+	let questionHeading = $state();
+	let overflowTrigger = $state();
+	let overflowWrapper = $state();
+	let overflowMenuElement = $state();
 	let questionCardWidth = $state(0);
 	let questionCardEstimate = $state(null);
 	let autoAdvanceTimer = null;
@@ -197,7 +201,32 @@
 		return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 	}
 
+	function closeOverflowMenu({ restoreFocus = false } = {}) {
+		if (!showOverflowMenu) {
+			return;
+		}
+		showOverflowMenu = false;
+		if (restoreFocus) {
+			overflowTrigger?.focus({ preventScroll: true });
+		}
+	}
+
+	function handleDocumentClick(event) {
+		if (!showOverflowMenu || overflowWrapper?.contains(event.target)) {
+			return;
+		}
+		// Keep keyboard focus meaningful when the menu itself had focus.
+		closeOverflowMenu({
+			restoreFocus: overflowMenuElement?.contains(document.activeElement),
+		});
+	}
+
 	function handleTestKeydown(event) {
+		if (event.key === 'Escape' && showOverflowMenu && !showReviewSheet && !showExitModal) {
+			event.preventDefault();
+			closeOverflowMenu({ restoreFocus: true });
+			return;
+		}
 		if (!testStarted || loading || submitting || showReviewSheet || showExitModal) {
 			return;
 		}
@@ -392,7 +421,7 @@
 		track('test:share');
 
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
-		const title = `${questionPaper.topic} - ${questionPaper.questions.length} questions`;
+		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
 		if (navigator.share) {
 			await navigator.share({
 				title,
@@ -422,6 +451,11 @@
 			return;
 		}
 		window.clearTimeout(autoAdvanceTimer);
+		// The keyed question card is swapped below; if focus lived inside it the
+		// node disappears and focus would fall back to <body>.
+		const activeElement = document.activeElement;
+		const shouldRestoreFocus =
+			activeElement instanceof HTMLElement && questionCardHost?.contains(activeElement);
 		track('test:jump', { to: nextIndex });
 		navigationDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
 		currentQuestionIndex = nextIndex;
@@ -429,6 +463,11 @@
 			current: nextIndex + 1,
 			total: questionPaper?.questions?.length || 0,
 		});
+		if (shouldRestoreFocus) {
+			void tick().then(() => {
+				questionHeading?.focus({ preventScroll: true });
+			});
+		}
 	}
 
 	function jumpFromSheet(index) {
@@ -492,7 +531,7 @@
 	<title>{questionPaper?.topic || $t('testPrefix')} | selftest.in</title>
 </svelte:head>
 
-<svelte:window onkeydown={handleTestKeydown} />
+<svelte:window onkeydown={handleTestKeydown} onclick={handleDocumentClick} />
 
 <section class="test-shell">
 	<div class="visually-hidden" aria-live="polite">{liveAnnouncement}</div>
@@ -526,19 +565,21 @@
 					{formatElapsed(elapsedSeconds)}
 				</span>
 			{/if}
-			<div class="test-header-actions">
+			<div class="test-header-actions" bind:this={overflowWrapper}>
 				{#if testStarted}
 					<button
+						bind:this={overflowTrigger}
 						class="test-overflow-btn"
 						type="button"
 						aria-label={$t('menu')}
+						aria-haspopup="menu"
 						aria-expanded={showOverflowMenu}
 						onclick={() => (showOverflowMenu = !showOverflowMenu)}
 					>
 						⋯
 					</button>
 					{#if showOverflowMenu}
-						<div class="test-overflow-menu">
+						<div class="test-overflow-menu" bind:this={overflowMenuElement}>
 							<label class="overflow-switch">
 								<input
 									type="checkbox"
@@ -646,7 +687,7 @@
 								class:question-content-forward={navigationDirection === 'forward'}
 								class:question-content-backward={navigationDirection === 'backward'}
 							>
-								<h2 class="test-question-text">
+								<h2 class="test-question-text" bind:this={questionHeading} tabindex="-1">
 									<MarkdownContent content={question.question} />
 								</h2>
 								<div class="d-grid gap-2">
@@ -656,13 +697,14 @@
 											class:selected={answers[currentQuestionIndex] ===
 												option}
 											type="button"
+											aria-pressed={answers[currentQuestionIndex] === option}
 											onclick={() => setAnswer(currentQuestionIndex, option)}
 										>
 											<span class="test-option-letter" aria-hidden="true">
 												{String.fromCharCode(65 + optionIndex)}
 											</span>
 											<span class="test-option-text">
-												<MarkdownContent content={option} />
+												<MarkdownContent content={option} links="text" />
 											</span>
 											{#if answers[currentQuestionIndex] === option}
 												<span class="test-option-check" aria-hidden="true"
@@ -909,7 +951,7 @@
 	.overflow-switch input {
 		width: 18px;
 		height: 18px;
-		accent-color: var(--color-brand-600);
+		accent-color: var(--brand-text);
 	}
 
 	.test-progress-track {
@@ -1042,7 +1084,9 @@
 		width: 100%;
 		max-width: 860px;
 		margin: 0 auto;
-		padding: 16px 12px 24px;
+		/* Clear the sticky footer (~64px) plus safe area so focused options and
+		   the last question are never covered. */
+		padding: 16px 12px calc(96px + var(--sab, 0px));
 		flex: 1 1 auto;
 	}
 
@@ -1058,6 +1102,7 @@
 		color: var(--text-muted);
 		font-size: 0.8rem;
 		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.test-flag {
@@ -1121,7 +1166,7 @@
 	}
 
 	.test-option.selected {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
 	}
 
@@ -1140,7 +1185,7 @@
 	}
 
 	.test-option.selected .test-option-letter {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: var(--color-brand-600);
 		color: #fff;
 	}
@@ -1205,6 +1250,7 @@
 
 	.pill-label {
 		position: relative;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.test-flag-badge {

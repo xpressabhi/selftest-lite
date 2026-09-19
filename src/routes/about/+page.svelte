@@ -76,7 +76,7 @@
 			<h2 class="h4 fw-bold">{$t('aboutCtaTitle')}</h2>
 			<p class="text-muted">{$t('aboutCtaBody')}</p>
 			<a
-				class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors inline-block text-center"
+				class="about-cta bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors inline-block text-center"
 				href="/">{$t('aboutCtaButton')}</a
 			>
 		</div>
@@ -86,5 +86,12 @@
 <style>
 	.content-wrap {
 		max-width: 920px;
+	}
+
+	.about-cta {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		justify-content: center;
 	}
 </style>

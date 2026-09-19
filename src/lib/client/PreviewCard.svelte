@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import { track } from '$lib/client/telemetry';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 
 	let {
@@ -12,6 +13,8 @@
 		isFullExam = false,
 		parsed = false,
 		parsingFailed = false,
+		draft = false,
+		checking = false,
 		ongenerate = () => {},
 		oneditchip = () => {},
 		status = 'idle',
@@ -22,10 +25,42 @@
 	let showQuestionsPicker = $state(false);
 	let showLanguagePicker = $state(false);
 	let showExamPicker = $state(false);
+	let examPickerQuery = $state('');
+	let cardRef = $state(null);
 
 	let selectedExam = $derived(getIndianExamById(examId));
 
-	const FORMATS = [
+	const anyPickerOpen = $derived(
+		showDifficultyPicker ||
+			showFormatPicker ||
+			showQuestionsPicker ||
+			showLanguagePicker ||
+			showExamPicker
+	);
+
+	const filteredPickerExams = $derived.by(() => {
+		const query = examPickerQuery.trim().toLowerCase();
+		if (!query) return OBJECTIVE_ONLY_EXAMS;
+		return OBJECTIVE_ONLY_EXAMS.filter((exam) =>
+			[exam.name, exam.stream, exam.group, ...(exam.syllabus || [])]
+				.join(' ')
+				.toLowerCase()
+				.includes(query)
+		);
+	});
+
+	$effect(() => {
+		if (!anyPickerOpen || typeof document === 'undefined') return;
+		const handlePointerDown = (event) => {
+			if (cardRef && !cardRef.contains(event.target)) {
+				dismissPickers();
+			}
+		};
+		document.addEventListener('pointerdown', handlePointerDown);
+		return () => document.removeEventListener('pointerdown', handlePointerDown);
+	});
+
+	const FORMATS = $derived.by(() => [
 		{
 			value: 'multiple-choice',
 			label: $t('multipleChoice'),
@@ -40,26 +75,23 @@
 			icon: '⚡',
 			desc: $t('speedChallenge'),
 		},
-	];
+	]);
 
-	const DIFFICULTIES = [
+	const DIFFICULTIES = $derived.by(() => [
 		{ value: 'beginner', label: $t('beginner'), emoji: '🌱' },
 		{ value: 'intermediate', label: $t('intermediate'), emoji: '🔥' },
 		{ value: 'advanced', label: $t('advanced'), emoji: '💎' },
 		{ value: 'expert', label: $t('expert'), emoji: '👑' },
-	];
+	]);
 
-	const DIFFICULTY_ICON = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d.emoji]));
-	const DIFFICULTY_LABEL = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d.label]));
+	const DIFFICULTY_LABEL = $derived(
+		Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d.label]))
+	);
 
-	const FORMAT_ICON = Object.fromEntries(FORMATS.map((f) => [f.value, f.icon]));
-	const FORMAT_LABEL = Object.fromEntries(FORMATS.map((f) => [f.value, f.label]));
+	const FORMAT_LABEL = $derived(Object.fromEntries(FORMATS.map((f) => [f.value, f.label])));
 
 	function handleGenerate() {
-		showDifficultyPicker = false;
-		showFormatPicker = false;
-		showQuestionsPicker = false;
-		showLanguagePicker = false;
+		closeAllPickers();
 		ongenerate();
 	}
 
@@ -95,282 +127,563 @@
 		showQuestionsPicker = false;
 		showLanguagePicker = false;
 		showExamPicker = false;
+		examPickerQuery = '';
 	}
 
-	function handlePickerClick(picker) {
+	/** Escape / outside click while a picker is open. */
+	function dismissPickers() {
+		if (anyPickerOpen) {
+			track('preview:edit-toggle', { open: false });
+		}
 		closeAllPickers();
+	}
+
+	function pickerOpen(picker) {
+		if (picker === 'difficulty') return showDifficultyPicker;
+		if (picker === 'format') return showFormatPicker;
+		if (picker === 'questions') return showQuestionsPicker;
+		if (picker === 'language') return showLanguagePicker;
+		if (picker === 'exam') return showExamPicker;
+		return false;
+	}
+
+	/** Parameter tiles toggle their picker; the event keeps plan-edit usage tracked. */
+	function handlePickerClick(picker) {
+		const wasOpen = pickerOpen(picker);
+		closeAllPickers();
+		if (wasOpen) {
+			track('preview:edit-toggle', { open: false });
+			return;
+		}
 		if (picker === 'difficulty') showDifficultyPicker = true;
 		if (picker === 'format') showFormatPicker = true;
 		if (picker === 'questions') showQuestionsPicker = true;
 		if (picker === 'language') showLanguagePicker = true;
 		if (picker === 'exam') showExamPicker = true;
+		track('preview:edit-toggle', { open: true });
 	}
 
-	function handleChipKeydown(e, picker) {
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			handlePickerClick(picker);
+	let editingTopic = $state(false);
+	let topicDraft = $state('');
+	let topicInputRef = $state(null);
+
+	$effect(() => {
+		if (editingTopic && topicInputRef) {
+			topicInputRef.focus();
+		}
+	});
+
+	function startTopicEdit() {
+		topicDraft = topic;
+		editingTopic = true;
+	}
+
+	function commitTopicEdit() {
+		const nextTopic = topicDraft.trim();
+		editingTopic = false;
+		if (nextTopic && nextTopic !== topic) {
+			oneditchip('topic', nextTopic);
 		}
 	}
 
-	function handleOptionKeydown(e, action) {
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			action();
+	function cancelTopicEdit() {
+		editingTopic = false;
+	}
+
+	function handleTopicKeydown(event) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			commitTopicEdit();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			cancelTopicEdit();
 		}
 	}
 
 	const EMPTY = $derived(!topic && !parsingFailed);
 	const GENERATING = $derived(status === 'loading');
+	const showNote = $derived(!checking && !parsingFailed && parsed && !draft);
+	const examSubline = $derived(
+		selectedExam
+			? `${selectedExam.name}${selectedExam.stream ? ` · ${selectedExam.stream}` : ''} · ${
+					selectedExam.defaultNumQuestions || selectedExam.fullLengthQuestions
+				} ${$t('questionShort')} · ${selectedExam.durationMinutes}${$t('minuteShort')}`
+			: ''
+	);
 </script>
 
-<div class="preview-card" class:empty={EMPTY} class:parsing-failed={parsingFailed}>
-	<div class="preview-header">
-		<h2 class="preview-title">{$t('yourTestPreview')}</h2>
-		{#if parsed}
-			<span class="preview-badge parsed">{$t('smartIntentParsed')}</span>
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key !== 'Escape') return;
+		if (anyPickerOpen) {
+			event.preventDefault();
+			dismissPickers();
+		} else if (editingTopic) {
+			event.preventDefault();
+			cancelTopicEdit();
+		}
+	}}
+/>
+
+<div
+	class="preview-card"
+	class:empty={EMPTY}
+	class:parsing-failed={parsingFailed}
+	bind:this={cardRef}
+>
+	<div class="preview-top">
+		<span class="preview-eyebrow">{$t('yourTestPreview')}</span>
+		{#if checking}
+			<span class="status-pill is-checking">
+				<span class="status-dot" aria-hidden="true"></span>
+				{$t('plannerPreviewChecking')}
+			</span>
+		{:else if draft}
+			<span class="status-pill is-draft">{$t('plannerPreviewDraft')}</span>
+		{:else if parsed}
+			<span class="status-pill is-ready">
+				<svg class="status-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path
+						d="M5 12.5l4.5 4.5L19 7.5"
+						stroke="currentColor"
+						stroke-width="3"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+				{$t('previewStatusReady')}
+			</span>
 		{:else if parsingFailed}
-			<span class="preview-badge failed">{$t('intentParseFailed')}</span>
+			<span class="status-pill is-failed">
+				<svg class="status-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path
+						d="M12 4.5L21 20H3L12 4.5z"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linejoin="round"
+					/>
+					<path
+						d="M12 10v4.5M12 17.2v.3"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					/>
+				</svg>
+				{$t('previewStatusFailed')}
+			</span>
 		{/if}
 	</div>
 
 	{#if EMPTY}
 		<div class="preview-empty">
-			<span class="preview-empty-icon">✨</span>
+			<span class="preview-empty-icon" aria-hidden="true">
+				<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path
+						d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"
+						stroke="currentColor"
+						stroke-width="1.6"
+						stroke-linejoin="round"
+					/>
+					<path
+						d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"
+						fill="currentColor"
+					/>
+				</svg>
+			</span>
 			<p>{$t('previewEmptyHint')}</p>
 		</div>
 	{:else}
 		<div class="preview-body">
 			<div class="preview-topic-row">
 				<div class="preview-topic-icon" aria-hidden="true">
-					{isFullExam && selectedExam ? '🏛️' : '📚'}
+					{#if isFullExam && selectedExam}
+						<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M4 21h16M6 21V8l6-4 6 4v13"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linejoin="round"
+							/>
+							<path
+								d="M9.5 21v-4h5v4"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linejoin="round"
+							/>
+							<path
+								d="M9.5 11h1.5M13 11h1.5M9.5 14h1.5M13 14h1.5"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linecap="round"
+							/>
+						</svg>
+					{:else}
+						<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5V5.5z"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linejoin="round"
+							/>
+							<path
+								d="M8 7.5h7M8 11h5"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linecap="round"
+							/>
+						</svg>
+					{/if}
 				</div>
 				<div class="preview-topic-text">
-					<div class="preview-topic-main">{topic || $t('untitledTest')}</div>
-					{#if selectedExam}
-						<div class="preview-topic-sub">
-							{selectedExam.stream || ''} · {$t('questionShort')}
-							{selectedExam.defaultNumQuestions || selectedExam.fullLengthQuestions} · {selectedExam.durationMinutes}{$t(
-								'minuteShort'
-							)}
+					{#if editingTopic}
+						<div class="topic-edit-row">
+							<input
+								class="topic-edit-input"
+								bind:value={topicDraft}
+								bind:this={topicInputRef}
+								onkeydown={handleTopicKeydown}
+								aria-label={$t('plannerEditTopic')}
+								autocomplete="off"
+							/>
+							<button
+								class="topic-edit-apply"
+								type="button"
+								onclick={commitTopicEdit}
+							>
+								{$t('plannerApplyTopic')}
+							</button>
 						</div>
+					{:else}
+						<button
+							class="preview-topic-main"
+							type="button"
+							onclick={startTopicEdit}
+							title={$t('plannerEditTopic')}
+						>
+							<span class="preview-topic-label">{topic || $t('untitledTest')}</span>
+							<svg
+								class="topic-edit-icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								aria-hidden="true"
+							>
+								<path
+									d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"
+									stroke="currentColor"
+									stroke-width="1.8"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+					{/if}
+					{#if isFullExam && selectedExam}
+						<div class="preview-topic-sub" title={examSubline}>
+							{examSubline}
+						</div>
+					{/if}
+					{#if showNote}
+						<p class="preview-note">{$t('smartIntentParsed')}</p>
+					{:else if parsingFailed}
+						<p class="preview-note is-warning">{$t('intentParseFailed')}</p>
 					{/if}
 				</div>
 			</div>
 
-			<div class="preview-chips">
+			<div class="preview-specs">
 				<button
-					class="preview-chip chip-questions"
+					class="spec-tile"
 					class:active={showQuestionsPicker}
-					onclick={() => handlePickerClick('questions')}
-					onkeydown={(e) => handleChipKeydown(e, 'questions')}
 					type="button"
+					aria-expanded={showQuestionsPicker}
+					aria-controls="preview-picker-panel"
 					aria-label={$t('previewQuestions')}
+					onclick={() => handlePickerClick('questions')}
 				>
-					<span class="chip-icon">📝</span>
-					<span class="chip-label">{numQuestions} {$t('qsShort')}</span>
+					<span class="spec-value">{numQuestions}</span>
+					<span class="spec-label">
+						{$t('previewQuestions')}
+						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M6 9.5l6 6 6-6"
+								stroke="currentColor"
+								stroke-width="2.4"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</span>
 				</button>
 
 				<button
-					class="preview-chip chip-format"
+					class="spec-tile"
 					class:active={showFormatPicker}
-					onclick={() => handlePickerClick('format')}
-					onkeydown={(e) => handleChipKeydown(e, 'format')}
 					type="button"
+					aria-expanded={showFormatPicker}
+					aria-controls="preview-picker-panel"
 					aria-label={$t('previewFormat')}
+					onclick={() => handlePickerClick('format')}
 				>
-					<span class="chip-icon">{FORMAT_ICON[testType] || '📊'}</span>
-					<span class="chip-label">{FORMAT_LABEL[testType] || testType}</span>
+					<span class="spec-value">{FORMAT_LABEL[testType] || testType}</span>
+					<span class="spec-label">
+						{$t('previewFormat')}
+						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M6 9.5l6 6 6-6"
+								stroke="currentColor"
+								stroke-width="2.4"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</span>
 				</button>
 
 				<button
-					class="preview-chip chip-difficulty"
+					class="spec-tile"
 					class:active={showDifficultyPicker}
-					onclick={() => handlePickerClick('difficulty')}
-					onkeydown={(e) => handleChipKeydown(e, 'difficulty')}
 					type="button"
+					aria-expanded={showDifficultyPicker}
+					aria-controls="preview-picker-panel"
 					aria-label={$t('previewDifficulty')}
+					onclick={() => handlePickerClick('difficulty')}
 				>
-					<span class="chip-icon">{DIFFICULTY_ICON[difficulty] || '🔥'}</span>
-					<span class="chip-label">{DIFFICULTY_LABEL[difficulty] || difficulty}</span>
+					<span class="spec-value">{DIFFICULTY_LABEL[difficulty] || difficulty}</span>
+					<span class="spec-label">
+						{$t('previewDifficulty')}
+						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M6 9.5l6 6 6-6"
+								stroke="currentColor"
+								stroke-width="2.4"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</span>
 				</button>
 
 				<button
-					class="preview-chip chip-language"
+					class="spec-tile"
 					class:active={showLanguagePicker}
-					onclick={() => handlePickerClick('language')}
-					onkeydown={(e) => handleChipKeydown(e, 'language')}
 					type="button"
+					aria-expanded={showLanguagePicker}
+					aria-controls="preview-picker-panel"
 					aria-label={$t('previewLanguage')}
+					onclick={() => handlePickerClick('language')}
 				>
-					<span class="chip-icon">{language === 'hindi' ? '🇮🇳' : '🇬🇧'}</span>
-					<span class="chip-label"
+					<span class="spec-value"
 						>{language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}</span
 					>
+					<span class="spec-label">
+						{$t('previewLanguage')}
+						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M6 9.5l6 6 6-6"
+								stroke="currentColor"
+								stroke-width="2.4"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</span>
 				</button>
 
 				{#if isFullExam && selectedExam}
 					<button
-						class="preview-chip chip-exam"
+						class="spec-tile spec-tile-exam"
 						class:active={showExamPicker}
-						onclick={() => handlePickerClick('exam')}
-						onkeydown={(e) => handleChipKeydown(e, 'exam')}
 						type="button"
+						aria-expanded={showExamPicker}
+						aria-controls="preview-picker-panel"
 						aria-label={$t('previewExam')}
+						onclick={() => handlePickerClick('exam')}
 					>
-						<span class="chip-icon">🎯</span>
-						<span class="chip-label">{selectedExam.name}</span>
+						<span class="spec-value">{selectedExam.name}</span>
+						<span class="spec-label">
+							{$t('previewExam')}
+							<svg
+								class="spec-caret"
+								viewBox="0 0 24 24"
+								fill="none"
+								aria-hidden="true"
+							>
+								<path
+									d="M6 9.5l6 6 6-6"
+									stroke="currentColor"
+									stroke-width="2.4"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</span>
 					</button>
 				{/if}
 			</div>
+
+			{#if anyPickerOpen}
+				<div class="picker-panel" id="preview-picker-panel">
+					{#if showQuestionsPicker}
+						<div class="picker-block questions-picker">
+							<div class="picker-stepper">
+								<button
+									type="button"
+									class="stepper-btn"
+									onclick={() => pickQuestions(numQuestions - 5)}
+									aria-label={$t('fewerQuestions')}>−</button
+								>
+								<span class="stepper-value">{numQuestions}</span>
+								<button
+									type="button"
+									class="stepper-btn"
+									onclick={() => pickQuestions(numQuestions + 5)}
+									aria-label={$t('moreQuestions')}>+</button
+								>
+							</div>
+							<div class="picker-presets">
+								{#each [5, 10, 15, 20, 25, 30] as n (n)}
+									<button
+										class="preset-btn"
+										class:active={numQuestions === n}
+										type="button"
+										onclick={() => pickQuestions(n)}
+									>
+										{n}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					{#if showFormatPicker}
+						<div class="picker-options format-picker">
+							{#each FORMATS as f (f.value)}
+								<button
+									class="picker-option"
+									class:selected={testType === f.value}
+									type="button"
+									aria-pressed={testType === f.value}
+									onclick={() => pickFormat(f.value)}
+								>
+									<span class="picker-emoji" aria-hidden="true">{f.icon}</span>
+									<span class="picker-label">{f.label}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+
+					{#if showDifficultyPicker}
+						<div class="picker-options difficulty-picker">
+							{#each DIFFICULTIES as d (d.value)}
+								<button
+									class="picker-option"
+									class:selected={difficulty === d.value}
+									type="button"
+									aria-pressed={difficulty === d.value}
+									onclick={() => pickDifficulty(d.value)}
+								>
+									<span class="picker-emoji" aria-hidden="true">{d.emoji}</span>
+									<span class="picker-label">{d.label}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+
+					{#if showLanguagePicker}
+						<div class="picker-options language-picker">
+							<button
+								class="picker-option"
+								class:selected={language === 'english'}
+								type="button"
+								aria-pressed={language === 'english'}
+								onclick={() => pickLanguage('english')}
+							>
+								<span class="picker-emoji" aria-hidden="true">🇬🇧</span>
+								<span class="picker-label">{$t('englishLabel')}</span>
+							</button>
+							<button
+								class="picker-option"
+								class:selected={language === 'hindi'}
+								type="button"
+								aria-pressed={language === 'hindi'}
+								onclick={() => pickLanguage('hindi')}
+							>
+								<span class="picker-emoji" aria-hidden="true">🇮🇳</span>
+								<span class="picker-label">{$t('hindiLabel')}</span>
+							</button>
+						</div>
+					{/if}
+
+					{#if showExamPicker}
+						<div class="picker-block exam-picker">
+							<input
+								class="exam-picker-search"
+								type="search"
+								name="examSearch"
+								autocomplete="off"
+								spellcheck="false"
+								placeholder={$t('profileWizardSearchExam')}
+								aria-label={$t('profileWizardSearchExam')}
+								bind:value={examPickerQuery}
+							/>
+							<div class="exam-picker-list">
+								{#each filteredPickerExams as exam (exam.id)}
+									<button
+										class="exam-picker-row"
+										class:selected={examId === exam.id}
+										type="button"
+										aria-pressed={examId === exam.id}
+										onclick={() => pickExam(exam.id)}
+									>
+										<span class="exam-picker-name">{exam.name}</span>
+										<span class="exam-picker-meta">{exam.stream || ''}</span>
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 
-		{#if showDifficultyPicker}
-			<div class="chip-picker difficulty-picker">
-				{#each DIFFICULTIES as d (d.value)}
-					<button
-						class="picker-option"
-						class:selected={difficulty === d.value}
-						type="button"
-						onclick={() => pickDifficulty(d.value)}
-						onkeydown={(e) => handleOptionKeydown(e, () => pickDifficulty(d.value))}
-					>
-						<span class="picker-emoji">{d.emoji}</span>
-						<span class="picker-label">{d.label}</span>
-					</button>
-				{/each}
-			</div>
-		{/if}
-
-		{#if showFormatPicker}
-			<div class="chip-picker format-picker">
-				{#each FORMATS as f (f.value)}
-					<button
-						class="picker-option"
-						class:selected={testType === f.value}
-						type="button"
-						onclick={() => pickFormat(f.value)}
-						onkeydown={(e) => handleOptionKeydown(e, () => pickFormat(f.value))}
-					>
-						<span class="picker-emoji">{f.icon}</span>
-						<span class="picker-label">{f.label}</span>
-					</button>
-				{/each}
-			</div>
-		{/if}
-
-		{#if showQuestionsPicker}
-			<div class="chip-picker questions-picker">
-				<div class="picker-stepper">
-					<button
-						type="button"
-						class="stepper-btn"
-						onclick={() => pickQuestions(numQuestions - 5)}
-						aria-label={$t('fewerQuestions')}>−</button
-					>
-					<span class="stepper-value">{numQuestions}</span>
-					<button
-						type="button"
-						class="stepper-btn"
-						onclick={() => pickQuestions(numQuestions + 5)}
-						aria-label={$t('moreQuestions')}>+</button
-					>
-				</div>
-				<div class="picker-presets">
-					{#each [5, 10, 15, 20, 25, 30] as n (n)}
-						<button
-							class="preset-btn"
-							class:active={numQuestions === n}
-							type="button"
-							onclick={() => pickQuestions(n)}
-							onkeydown={(e) => handleOptionKeydown(e, () => pickQuestions(n))}
-						>
-							{n}
-						</button>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
-		{#if showLanguagePicker}
-			<div class="chip-picker language-picker">
-				<button
-					class="picker-option"
-					class:selected={language === 'english'}
-					type="button"
-					onclick={() => pickLanguage('english')}
-					onkeydown={(e) => handleOptionKeydown(e, () => pickLanguage('english'))}
-				>
-					<span class="picker-emoji">🇬🇧</span>
-					<span class="picker-label">{$t('englishLabel')}</span>
-				</button>
-				<button
-					class="picker-option"
-					class:selected={language === 'hindi'}
-					type="button"
-					onclick={() => pickLanguage('hindi')}
-					onkeydown={(e) => handleOptionKeydown(e, () => pickLanguage('hindi'))}
-				>
-					<span class="picker-emoji">🇮🇳</span>
-					<span class="picker-label">{$t('hindiLabel')}</span>
-				</button>
-			</div>
-		{/if}
-
-		{#if showExamPicker}
-			<div class="chip-picker exam-picker">
-				<div class="exam-picker-list">
-					{#each OBJECTIVE_ONLY_EXAMS.slice(0, 20) as exam (exam.id)}
-						<button
-							class="exam-picker-row"
-							class:selected={examId === exam.id}
-							type="button"
-							onclick={() => pickExam(exam.id)}
-							onkeydown={(e) => handleOptionKeydown(e, () => pickExam(exam.id))}
-						>
-							<span class="exam-picker-name">{exam.name}</span>
-							<span class="exam-picker-meta">{exam.stream || ''}</span>
-						</button>
-					{/each}
-				</div>
-			</div>
-		{/if}
+		<div class="preview-footer">
+			<button
+				class="generate-btn"
+				class:ai-shimmer={GENERATING}
+				disabled={GENERATING || !topic}
+				onclick={handleGenerate}
+				type="button"
+			>
+				{#if GENERATING}
+					<span class="thinking-dots" role="status" aria-label={$t('generating')}>
+						<span></span><span></span><span></span>
+					</span>
+				{:else}
+					<span>{$t('previewGenerate')}</span>
+					<span class="generate-time">{$t('previewGeneratingTime')}</span>
+				{/if}
+			</button>
+		</div>
+		<p class="preview-reassurance">{$t('previewReassurance')}</p>
 	{/if}
-
-	<div class="preview-footer">
-		<button
-			class="generate-btn"
-			class:ai-shimmer={GENERATING}
-			disabled={GENERATING || (!topic && !parsingFailed)}
-			onclick={handleGenerate}
-			type="button"
-		>
-			{#if GENERATING}
-				<span class="thinking-dots" aria-label={$t('generating')}>
-					<span></span><span></span><span></span>
-				</span>
-			{:else}
-				{$t('previewGenerate')}
-				<span class="generate-time">{$t('previewGeneratingTime')}</span>
-			{/if}
-		</button>
-		{#if !EMPTY}
-			<p class="preview-reassurance">{$t('previewReassurance')}</p>
-		{/if}
-	</div>
 </div>
 
 <style>
 	.preview-card {
+		position: relative;
+		overflow: hidden;
 		background: var(--surface);
 		border: 1px solid var(--line);
 		border-radius: 20px;
-		padding: 20px 24px;
+		padding: 14px 14px 12px;
 		transition:
 			border-color 0.2s ease,
 			box-shadow 0.2s ease;
-		position: relative;
-		overflow: hidden;
+	}
+
+	@media (min-width: 480px) {
+		.preview-card {
+			padding: 18px 20px 14px;
+		}
 	}
 
 	.preview-card::before {
@@ -380,7 +693,7 @@
 		left: 0;
 		right: 0;
 		height: 3px;
-		background: linear-gradient(90deg, rgb(var(--brand-rgb)), rgba(var(--brand-rgb), 0.3));
+		background: linear-gradient(90deg, rgb(var(--brand-rgb)), rgba(var(--brand-rgb), 0.25));
 		opacity: 0;
 		transition: opacity 0.3s ease;
 	}
@@ -389,77 +702,121 @@
 		opacity: 1;
 	}
 
-	.preview-card:not(.empty):hover {
-		border-color: rgba(var(--brand-rgb), 0.3);
-	}
-
-	.preview-card.empty {
-		text-align: center;
-		padding: 32px 24px;
-	}
-
 	.preview-card.parsing-failed::before {
-		background: linear-gradient(90deg, #f59e0b, rgba(245, 158, 11, 0.3));
+		background: linear-gradient(90deg, #d97706, rgba(217, 119, 6, 0.25));
 	}
 
-	.preview-header {
+	.preview-top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		margin-bottom: 16px;
-		flex-wrap: wrap;
+		gap: 10px;
+		margin-bottom: 12px;
 	}
 
-	.preview-title {
-		font-size: 0.85rem;
+	.preview-eyebrow {
+		font-size: 0.66rem;
 		font-weight: 700;
+		letter-spacing: 0.09em;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
 		color: var(--text-muted);
-		margin: 0;
 	}
 
-	.preview-badge {
-		font-size: 0.72rem;
-		padding: 3px 10px;
-		border-radius: 8px;
-		font-weight: 600;
+	.status-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 4px 10px;
+		border-radius: 999px;
+		border: 1px solid transparent;
+		font-size: 0.68rem;
+		font-weight: 700;
+		white-space: nowrap;
 	}
 
-	.preview-badge.parsed {
-		background: rgba(var(--brand-rgb), 0.1);
-		color: rgb(var(--brand-rgb));
+	.status-icon {
+		width: 12px;
+		height: 12px;
+		flex-shrink: 0;
 	}
 
-	.preview-badge.failed {
-		background: rgba(245, 158, 11, 0.1);
+	.status-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+		animation: status-pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes status-pulse {
+		0%,
+		100% {
+			opacity: 0.35;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+
+	.status-pill.is-draft {
+		background: var(--surface-muted);
+		border-color: var(--line);
+		color: var(--text-muted);
+	}
+
+	.status-pill.is-checking {
+		background: rgba(var(--brand-rgb), 0.08);
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.status-pill.is-ready {
+		background: rgba(16, 185, 129, 0.12);
+		color: #047857;
+	}
+
+	.status-pill.is-failed {
+		background: rgba(217, 119, 6, 0.14);
 		color: #b45309;
+	}
+
+	:global(.dark) .status-pill.is-ready {
+		color: #6ee7b7;
+	}
+
+	:global(.dark) .status-pill.is-failed {
+		color: #fcd34d;
 	}
 
 	.preview-empty {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 8px;
-		padding: 16px 0;
+		gap: 10px;
+		padding: 16px 8px 8px;
+		text-align: center;
 	}
 
 	.preview-empty-icon {
-		font-size: 2rem;
-		opacity: 0.5;
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		border-radius: 14px;
+		background: rgba(var(--brand-rgb), 0.08);
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.preview-empty-icon svg {
+		width: 22px;
+		height: 22px;
 	}
 
 	.preview-empty p {
-		color: var(--text-muted);
-		font-size: 0.9rem;
 		margin: 0;
-	}
-
-	.preview-body {
-		display: flex;
-		flex-direction: column;
-		gap: 14px;
+		max-width: 34ch;
+		font-size: 0.82rem;
+		line-height: 1.45;
+		color: var(--text-muted);
 	}
 
 	.preview-topic-row {
@@ -469,92 +826,223 @@
 	}
 
 	.preview-topic-icon {
-		font-size: 1.5rem;
-		line-height: 1;
 		flex-shrink: 0;
-		margin-top: 2px;
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 13px;
+		background: rgba(var(--brand-rgb), 0.08);
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.preview-topic-icon svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.preview-topic-text {
+		flex: 1;
 		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
 	}
 
 	.preview-topic-main {
-		font-size: 1.05rem;
-		font-weight: 700;
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		max-width: 100%;
+		padding: 0;
+		border: 0;
+		background: transparent;
 		color: var(--text);
-		line-height: 1.4;
-		word-break: break-word;
+		font-size: 1.02rem;
+		font-weight: 700;
+		line-height: 1.25;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.preview-topic-label {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.topic-edit-icon {
+		flex-shrink: 0;
+		width: 13px;
+		height: 13px;
+		opacity: 0.4;
+		transition: opacity 0.15s ease;
+	}
+
+	.preview-topic-main:hover .topic-edit-icon,
+	.preview-topic-main:focus-visible .topic-edit-icon {
+		opacity: 0.85;
 	}
 
 	.preview-topic-sub {
-		font-size: 0.8rem;
+		font-size: 0.76rem;
+		line-height: 1.35;
 		color: var(--text-muted);
-		margin-top: 2px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	.preview-chips {
+	.preview-note {
+		margin: 2px 0 0;
+		font-size: 0.74rem;
+		line-height: 1.4;
+		color: var(--text-muted);
+	}
+
+	.preview-note.is-warning {
+		color: #b45309;
+	}
+
+	:global(.dark) .preview-note.is-warning {
+		color: #fcd34d;
+	}
+
+	.topic-edit-row {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		position: relative;
+		gap: 6px;
 	}
 
-	.preview-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 7px 14px;
-		border-radius: 12px;
+	.topic-edit-input {
+		flex: 1;
+		min-width: 0;
+		padding: 10px 12px;
 		border: 1px solid var(--line);
+		border-radius: 11px;
 		background: var(--surface-muted);
 		color: var(--text);
-		font-size: 0.82rem;
-		font-weight: 500;
+		font-size: 0.92rem;
+	}
+
+	.topic-edit-input:focus-visible {
+		outline: 2px solid var(--brand-text);
+		outline-offset: 1px;
+	}
+
+	.topic-edit-apply {
+		flex-shrink: 0;
+		min-height: 44px;
+		padding: 0 14px;
+		border: 0;
+		border-radius: 11px;
+		background: rgb(var(--brand-rgb));
+		color: #fff;
+		font-size: 0.8rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.preview-specs {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px;
+		margin-top: 14px;
+	}
+
+	@media (min-width: 560px) {
+		.preview-specs {
+			grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+		}
+	}
+
+	.spec-tile {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+		width: 100%;
+		min-height: 58px;
+		padding: 9px 11px;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--surface-muted);
+		color: var(--text);
+		text-align: left;
 		cursor: pointer;
 		transition:
 			border-color 0.15s ease,
 			background 0.15s ease,
-			transform 0.12s ease;
-		min-height: 44px;
+			transform 0.1s ease;
 	}
 
-	.preview-chip:hover {
+	.spec-tile:hover {
+		border-color: rgba(var(--brand-rgb), 0.5);
+	}
+
+	.spec-tile:active {
+		transform: scale(0.985);
+	}
+
+	.spec-tile.active {
 		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.04);
-		transform: translateY(-1px);
+		background: rgba(var(--brand-rgb), 0.06);
 	}
 
-	.preview-chip.active {
-		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.08);
-		box-shadow: 0 0 0 2px rgba(var(--brand-rgb), 0.15);
+	.spec-value {
+		font-size: 0.86rem;
+		font-weight: 700;
+		line-height: 1.25;
+		overflow-wrap: anywhere;
 	}
 
-	.chip-icon {
-		font-size: 0.95rem;
-		line-height: 1;
+	.spec-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 0.62rem;
+		font-weight: 700;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		color: var(--text-muted);
 	}
 
-	.chip-label {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 140px;
+	.spec-caret {
+		width: 10px;
+		height: 10px;
+		opacity: 0.55;
+		transition: transform 0.15s ease;
 	}
 
-	.chip-picker {
-		padding: 12px 0 4px;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		animation: slide-down 0.2s ease;
+	.spec-tile.active .spec-caret {
+		transform: rotate(180deg);
 	}
 
-	@keyframes slide-down {
+	.spec-tile.active .spec-label {
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.spec-tile-exam {
+		grid-column: 1 / -1;
+	}
+
+	@media (min-width: 560px) {
+		.spec-tile-exam {
+			grid-column: auto;
+		}
+	}
+
+	.picker-panel {
+		margin-top: 10px;
+		padding: 10px;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--surface-muted);
+		animation: picker-in 0.14s ease;
+	}
+
+	@keyframes picker-in {
 		from {
 			opacity: 0;
-			transform: translateY(-6px);
+			transform: translateY(-4px);
 		}
 		to {
 			opacity: 1;
@@ -562,117 +1050,127 @@
 		}
 	}
 
-	.picker-option {
+	.picker-block {
 		display: flex;
-		align-items: center;
+		flex-direction: column;
 		gap: 8px;
-		padding: 10px 16px;
-		border-radius: 12px;
-		border: 1px solid var(--line);
-		background: var(--surface);
-		color: var(--text);
-		font-size: 0.85rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition:
-			border-color 0.15s ease,
-			background 0.15s ease;
-		min-height: 44px;
 	}
 
-	.picker-option:hover {
-		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.04);
-	}
-
-	.picker-option.selected {
-		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.1);
-		color: rgb(var(--brand-rgb));
-		font-weight: 600;
-	}
-
-	.picker-emoji {
-		font-size: 1.1rem;
-		line-height: 1;
-	}
-
-	.picker-stepper {
-		display: flex;
-		align-items: center;
-		gap: 16px;
-		padding: 8px 0;
-	}
-
-	.stepper-btn {
-		width: 44px;
-		height: 44px;
-		border-radius: 12px;
-		border: 1px solid var(--line);
-		background: var(--surface);
-		color: var(--text);
-		font-size: 1.3rem;
-		font-weight: 600;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition:
-			border-color 0.15s ease,
-			background 0.15s ease;
-	}
-
-	.stepper-btn:hover {
-		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.06);
-	}
-
-	.stepper-value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--text);
-		min-width: 40px;
-		text-align: center;
-	}
-
-	.picker-presets {
+	.picker-options {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-		margin-top: 8px;
 	}
 
-	.preset-btn {
-		padding: 8px 16px;
-		border-radius: 10px;
+	.picker-option {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 40px;
+		padding: 7px 12px;
 		border: 1px solid var(--line);
+		border-radius: 11px;
 		background: var(--surface);
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-weight: 500;
+		color: var(--text);
+		font-size: 0.82rem;
+		font-weight: 600;
 		cursor: pointer;
 		transition:
 			border-color 0.15s ease,
 			background 0.15s ease,
 			color 0.15s ease;
-		min-height: 44px;
-		min-width: 44px;
+	}
+
+	.picker-option:hover {
+		border-color: rgba(var(--brand-rgb), 0.45);
+	}
+
+	.picker-option.selected {
+		border-color: rgb(var(--brand-rgb));
+		background: rgba(var(--brand-rgb), 0.07);
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.picker-emoji {
+		font-size: 0.95rem;
+		line-height: 1;
+	}
+
+	.picker-label {
+		white-space: nowrap;
+	}
+
+	.picker-stepper {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.stepper-btn {
+		width: 40px;
+		height: 40px;
+		border: 1px solid var(--line);
+		border-radius: 11px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 1.1rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.stepper-btn:hover {
+		border-color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.stepper-value {
+		min-width: 2.4ch;
+		text-align: center;
+		font-size: 1rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.picker-presets {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 6px;
+	}
+
+	.preset-btn {
+		min-height: 40px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.82rem;
+		font-weight: 600;
+		cursor: pointer;
 	}
 
 	.preset-btn:hover {
-		border-color: rgb(var(--brand-rgb));
-		color: rgb(var(--brand-rgb));
+		border-color: rgba(var(--brand-rgb), 0.45);
 	}
 
 	.preset-btn.active {
 		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.1);
-		color: rgb(var(--brand-rgb));
-		font-weight: 600;
+		background: rgba(var(--brand-rgb), 0.07);
+		color: rgb(var(--brand-text-rgb));
 	}
 
-	.questions-picker {
-		flex-direction: column;
+	.exam-picker-search {
+		width: 100%;
+		padding: 10px 12px;
+		border: 1px solid var(--line);
+		border-radius: 11px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.85rem;
+	}
+
+	.exam-picker-search:focus-visible {
+		outline: 2px solid var(--brand-text);
+		outline-offset: 1px;
 	}
 
 	.exam-picker-list {
@@ -686,35 +1184,35 @@
 
 	.exam-picker-row {
 		display: flex;
+		flex: 1 0 auto;
 		flex-direction: column;
 		gap: 2px;
+		min-width: 160px;
+		min-height: 44px;
 		padding: 8px 14px;
-		border-radius: 10px;
 		border: 1px solid var(--line);
+		border-radius: 11px;
 		background: var(--surface);
 		color: var(--text);
 		font-size: 0.82rem;
-		cursor: pointer;
 		text-align: left;
+		cursor: pointer;
 		transition:
 			border-color 0.15s ease,
 			background 0.15s ease;
-		min-height: 44px;
-		flex: 1 0 auto;
-		min-width: 160px;
 	}
 
 	.exam-picker-row:hover {
-		border-color: rgb(var(--brand-rgb));
+		border-color: rgba(var(--brand-rgb), 0.45);
 	}
 
 	.exam-picker-row.selected {
 		border-color: rgb(var(--brand-rgb));
-		background: rgba(var(--brand-rgb), 0.08);
+		background: rgba(var(--brand-rgb), 0.07);
 	}
 
 	.exam-picker-name {
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.exam-picker-meta {
@@ -723,76 +1221,101 @@
 	}
 
 	.preview-footer {
-		margin-top: 18px;
-		text-align: center;
+		display: flex;
+		gap: 8px;
+		margin-top: 14px;
 	}
 
 	.generate-btn {
-		width: 100%;
-		padding: 14px 24px;
-		border-radius: 14px;
-		border: 0;
-		background: rgb(var(--brand-rgb));
-		color: #fff;
-		font-size: 1.05rem;
-		font-weight: 700;
-		cursor: pointer;
-		display: flex;
+		flex: 1;
+		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		gap: 10px;
+		gap: 8px;
+		min-height: 48px;
+		padding: 0 16px;
+		border: 0;
+		border-radius: 14px;
+		background: rgb(var(--brand-rgb));
+		color: #fff;
+		font-size: 0.92rem;
+		font-weight: 700;
+		cursor: pointer;
 		transition:
 			background 0.2s ease,
-			transform 0.12s ease,
+			transform 0.15s ease,
 			opacity 0.15s ease;
-		min-height: 52px;
 	}
 
 	.generate-btn:hover:not(:disabled) {
 		background: rgba(var(--brand-rgb), 0.88);
-		transform: translateY(-1px);
 	}
 
 	.generate-btn:active:not(:disabled) {
-		transform: translateY(0);
+		transform: scale(0.985);
 	}
 
 	.generate-btn:disabled {
-		opacity: 0.4;
+		opacity: 0.45;
 		cursor: not-allowed;
 	}
 
+	.generate-btn.ai-shimmer {
+		background: linear-gradient(
+			100deg,
+			rgb(var(--brand-rgb)) 30%,
+			rgba(var(--brand-rgb), 0.72) 50%,
+			rgb(var(--brand-rgb)) 70%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 2s linear infinite;
+	}
+
 	.generate-time {
-		font-size: 0.75rem;
-		font-weight: 400;
-		opacity: 0.7;
+		font-size: 0.72rem;
+		font-weight: 600;
+		opacity: 0.8;
 	}
 
 	.preview-reassurance {
-		font-size: 0.78rem;
-		color: var(--text-muted);
 		margin: 8px 0 0;
+		text-align: center;
+		font-size: 0.72rem;
+		color: var(--text-muted);
 	}
 
-	@media (max-width: 480px) {
-		.preview-card {
-			padding: 16px 16px;
-		}
+	.thinking-dots {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+	}
 
-		.preview-card.empty {
-			padding: 24px 16px;
-		}
+	.thinking-dots span {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: #fff;
+		animation: thinking-bounce 1.2s ease-in-out infinite;
+	}
 
-		.chip-label {
-			max-width: 100px;
-		}
+	.thinking-dots span:nth-child(2) {
+		animation-delay: 0.15s;
+	}
 
-		.preview-chips {
-			gap: 6px;
-		}
+	.thinking-dots span:nth-child(3) {
+		animation-delay: 0.3s;
+	}
 
-		.preview-chip {
-			padding: 6px 10px;
+	@keyframes thinking-bounce {
+		0%,
+		60%,
+		100% {
+			opacity: 0.35;
+			transform: translateY(0);
+		}
+		30% {
+			opacity: 1;
+			transform: translateY(-3px);
 		}
 	}
 </style>

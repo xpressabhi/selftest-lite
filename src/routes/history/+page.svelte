@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { LOCAL_STORAGE_CHANGE_EVENT, STORAGE_KEYS } from '$lib/client/constants';
 	import { t } from '$lib/client/i18n';
+	import { language } from '$lib/client/preferences';
+	import { focusTrap } from '$lib/client/focusTrap';
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
 	import { getHistory, removeFromHistory, saveHistory } from '$lib/client/storage';
@@ -27,6 +29,12 @@
 	);
 	let stats = $derived(getStats(history));
 	let reviewQueue = $derived(buildReviewQueue(history));
+	const dateFormatter = $derived(
+		new Intl.DateTimeFormat($language === 'hindi' ? 'hi-IN' : 'en-IN', {
+			dateStyle: 'medium',
+			timeStyle: 'short',
+		})
+	);
 
 	function refreshHistory() {
 		history = getHistory();
@@ -62,6 +70,12 @@
 
 	function handleDeleteKeydown(event) {
 		if (event.key === 'Escape' && pendingDelete && !deleting) {
+			pendingDelete = null;
+		}
+	}
+
+	function cancelDelete() {
+		if (!deleting) {
 			pendingDelete = null;
 		}
 	}
@@ -174,6 +188,10 @@
 		<span class="fw-semibold">{$t('searchTests')}</span>
 		<input
 			class="form-control mt-1"
+			type="search"
+			name="search"
+			autocomplete="off"
+			aria-label={$t('searchTests')}
 			bind:value={search}
 			placeholder={$t('searchByTopic')}
 			oninput={() => trackDebounced('history:search', { q: search.trim().slice(0, 64) })}
@@ -200,12 +218,14 @@
 							})}
 					>
 						<div>
-							<div class="fw-semibold">{entry.topic || $t('testNotFound')}</div>
+							<div class="fw-semibold">{entry.topic || $t('untitledTest')}</div>
 							<div class="text-muted small">
 								{entry.questions?.length || entry.totalQuestions || 0}
 								{$t('questions')}
 								{#if entry.timestamp}
-									<span> · {new Date(entry.timestamp).toLocaleString()}</span>
+									<span>
+										· {dateFormatter.format(new Date(entry.timestamp))}</span
+									>
 								{/if}
 							</div>
 						</div>
@@ -250,6 +270,7 @@
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"
+			use:focusTrap={{ onEscape: cancelDelete }}
 			aria-label={$t('deleteTestConfirmTitle')}
 		>
 			<h2 class="h5 fw-bold mb-1">{$t('deleteTestConfirmTitle')}</h2>

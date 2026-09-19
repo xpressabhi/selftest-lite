@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import { focusTrap } from '$lib/client/focusTrap';
 
 	let {
 		total = 0,
@@ -13,6 +14,8 @@
 		onSubmit,
 	} = $props();
 
+	const titleId = 'review-sheet-title';
+
 	let answeredCount = $derived(Object.keys(answers).length);
 	let unansweredCount = $derived(Math.max(0, total - answeredCount));
 	let firstUnanswered = $derived(
@@ -20,12 +23,6 @@
 			(index) => answers[index] === undefined
 		)
 	);
-
-	function handleKeydown(event) {
-		if (event.key === 'Escape') {
-			onClose?.();
-		}
-	}
 
 	$effect(() => {
 		const previousOverflow = document.body.style.overflow;
@@ -35,8 +32,6 @@
 		};
 	});
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 <div
 	class="sheet-backdrop"
@@ -52,12 +47,13 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
-		aria-label={$t('reviewAnswers')}
+		aria-labelledby={titleId}
+		use:focusTrap={{ onEscape: onClose }}
 	>
 		<div class="sheet-handle" aria-hidden="true"></div>
 
 		<header class="sheet-header">
-			<h2 class="sheet-title">{$t('reviewAnswers')}</h2>
+			<h2 class="sheet-title" id={titleId}>{$t('reviewAnswers')}</h2>
 			<span class="sheet-count">
 				<strong>{answeredCount}</strong> / {total}
 				{$t('answeredLabel')}
@@ -80,7 +76,11 @@
 						class:answered={answers[index] !== undefined}
 						class:flagged={flagged.includes(index)}
 						class:current={index === currentIndex}
-						aria-label={$t('goToQuestion', { count: index + 1 })}
+						aria-label={`${$t('question')} ${index + 1} · ${
+							answers[index] !== undefined
+								? $t('answeredLabel')
+								: $t('unansweredLabel')
+						}${flagged.includes(index) ? ` · ${$t('flaggedLabel')}` : ''}`}
 						type="button"
 						onclick={() => onJump?.(index)}
 					>
@@ -187,7 +187,7 @@
 	}
 
 	.sheet-count strong {
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 	}
 
 	.sheet-close {
@@ -236,7 +236,7 @@
 	}
 
 	.sheet-tile.answered {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: var(--color-brand-600);
 		color: #fff;
 	}
@@ -286,7 +286,7 @@
 	}
 
 	.legend-dot.answered {
-		border-color: var(--color-brand-600);
+		border-color: var(--brand-text);
 		background: var(--color-brand-600);
 	}
 

@@ -82,7 +82,7 @@
 	}
 
 	.quickstart-chip:hover:not(:disabled) {
-		border-color: rgb(var(--brand-rgb));
+		border-color: rgb(var(--brand-text-rgb));
 		background: rgba(var(--brand-rgb), 0.04);
 		transform: translateY(-1px);
 	}
@@ -97,7 +97,7 @@
 	}
 
 	.preset-chip .chip-star {
-		color: rgb(var(--brand-rgb));
+		color: rgb(var(--brand-text-rgb));
 	}
 
 	.chip-text {
