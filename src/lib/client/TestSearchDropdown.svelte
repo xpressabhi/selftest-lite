@@ -8,6 +8,7 @@
 		variant = 'overlay',
 		onnavigate = () => {},
 		ongenerate = () => {},
+		onlistcount = () => {},
 	} = $props();
 
 	const SEARCH_DEBOUNCE_MS = 350;
@@ -144,11 +145,16 @@
 	}
 
 	$effect(() => {
-		if (!open) return;
 		const nextQuery = query;
-		// Track only open/query; state writes inside doSearch must not re-trigger
+		// Track only query; state writes inside doSearch must not re-trigger
 		// this effect (a failing request would otherwise loop forever).
 		untrack(() => doSearch(nextQuery));
+	});
+
+	// Lets the composer keep `aria-expanded` honest about the suggestion list
+	// (both variants render inside the same panel slot it controls).
+	$effect(() => {
+		onlistcount(status === 'done' ? results.length : 0);
 	});
 
 	function handleLoadMore() {
@@ -176,6 +182,9 @@
 {#if variant === 'strip'}
 	{#if isSearchable && status === 'done' && results.length > 0}
 		<div class="search-strip" role="group" aria-labelledby="planner-past-tests-label">
+			<span class="sr-only" role="status" aria-live="polite">
+				{$t('plannerPastTestsCount', { count: results.length })}
+			</span>
 			<span class="strip-label" id="planner-past-tests-label">{$t('plannerPastTests')}</span>
 			<div class="strip-items">
 				{#each results.slice(0, STRIP_MAX_RESULTS) as test (test.id)}
@@ -291,7 +300,16 @@
 		left: 0;
 		right: 0;
 		z-index: 40;
-		max-height: min(340px, calc(min(var(--vvh, 100dvh), 100dvh) * 0.45));
+		/* --search-top is measured by the composer: the real space between the
+		   input and the top of the visible area, so the panel never slides under
+		   the status bar or the Dynamic Island (safe area stays in CSS). */
+		max-height: max(
+			140px,
+			min(
+				340px,
+				calc(var(--search-top, 100dvh) - env(safe-area-inset-top, 0px) - 20px)
+			)
+		);
 		overflow-y: auto;
 		background: var(--surface);
 		border: 1px solid var(--line);

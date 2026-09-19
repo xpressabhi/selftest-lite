@@ -359,6 +359,7 @@
 							type="button"
 							onclick={startTopicEdit}
 							title={$t('plannerEditTopic')}
+							aria-label={`${$t('plannerEditTopic')}: ${topic || $t('untitledTest')}`}
 						>
 							<span class="preview-topic-label">{topic || $t('untitledTest')}</span>
 							<svg
@@ -396,7 +397,7 @@
 					type="button"
 					aria-expanded={showQuestionsPicker}
 					aria-controls="preview-picker-panel"
-					aria-label={$t('previewQuestions')}
+					aria-label={`${$t('previewQuestions')}: ${numQuestions}`}
 					onclick={() => handlePickerClick('questions')}
 				>
 					<span class="spec-value">{numQuestions}</span>
@@ -420,7 +421,7 @@
 					type="button"
 					aria-expanded={showFormatPicker}
 					aria-controls="preview-picker-panel"
-					aria-label={$t('previewFormat')}
+					aria-label={`${$t('previewFormat')}: ${FORMAT_LABEL[testType] || testType}`}
 					onclick={() => handlePickerClick('format')}
 				>
 					<span class="spec-value">{FORMAT_LABEL[testType] || testType}</span>
@@ -444,7 +445,7 @@
 					type="button"
 					aria-expanded={showDifficultyPicker}
 					aria-controls="preview-picker-panel"
-					aria-label={$t('previewDifficulty')}
+					aria-label={`${$t('previewDifficulty')}: ${DIFFICULTY_LABEL[difficulty] || difficulty}`}
 					onclick={() => handlePickerClick('difficulty')}
 				>
 					<span class="spec-value">{DIFFICULTY_LABEL[difficulty] || difficulty}</span>
@@ -468,7 +469,9 @@
 					type="button"
 					aria-expanded={showLanguagePicker}
 					aria-controls="preview-picker-panel"
-					aria-label={$t('previewLanguage')}
+					aria-label={`${$t('previewLanguage')}: ${
+						language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')
+					}`}
 					onclick={() => handlePickerClick('language')}
 				>
 					<span class="spec-value"
@@ -495,7 +498,7 @@
 						type="button"
 						aria-expanded={showExamPicker}
 						aria-controls="preview-picker-panel"
-						aria-label={$t('previewExam')}
+						aria-label={`${$t('previewExam')}: ${selectedExam.name}`}
 						onclick={() => handlePickerClick('exam')}
 					>
 						<span class="spec-value">{selectedExam.name}</span>
@@ -854,7 +857,8 @@
 		align-items: center;
 		gap: 7px;
 		max-width: 100%;
-		padding: 0;
+		min-height: 44px;
+		padding: 4px 0;
 		border: 0;
 		background: transparent;
 		color: var(--text);
@@ -920,7 +924,8 @@
 		border-radius: 11px;
 		background: var(--surface-muted);
 		color: var(--text);
-		font-size: 0.92rem;
+		/* 16px keeps iOS Safari from zooming the page when the field is focused. */
+		font-size: 1rem;
 	}
 
 	.topic-edit-input:focus-visible {
@@ -1066,7 +1071,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		min-height: 40px;
+		min-height: 44px;
 		padding: 7px 12px;
 		border: 1px solid var(--line);
 		border-radius: 11px;
@@ -1107,8 +1112,8 @@
 	}
 
 	.stepper-btn {
-		width: 40px;
-		height: 40px;
+		width: 44px;
+		height: 44px;
 		border: 1px solid var(--line);
 		border-radius: 11px;
 		background: var(--surface);
@@ -1138,7 +1143,7 @@
 	}
 
 	.preset-btn {
-		min-height: 40px;
+		min-height: 44px;
 		border: 1px solid var(--line);
 		border-radius: 10px;
 		background: var(--surface);
@@ -1165,7 +1170,8 @@
 		border-radius: 11px;
 		background: var(--surface);
 		color: var(--text);
-		font-size: 0.85rem;
+		/* 16px keeps iOS Safari from zooming the page when the field is focused. */
+		font-size: 1rem;
 	}
 
 	.exam-picker-search:focus-visible {

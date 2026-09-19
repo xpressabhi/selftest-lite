@@ -818,6 +818,8 @@
 	"plannerDoneEditing": "Done",
 	"plannerGenerateNew": "Create a new test",
 	"plannerPastTests": "Past tests",
+	"plannerPastTestsCount": "{count} past tests found",
+	"clearSearchInput": "Clear search",
 	"plannerPreviewDraft": "Preview",
 	"plannerPreviewChecking": "Checking…",
 	"plannerEnterToPlan": "Press Enter to plan a new test instead",

@@ -818,6 +818,8 @@
 	"plannerDoneEditing": "हो गया",
 	"plannerGenerateNew": "नया टेस्ट बनाएं",
 	"plannerPastTests": "पिछले टेस्ट",
+	"plannerPastTestsCount": "{count} पिछले टेस्ट मिले",
+	"clearSearchInput": "खोज साफ़ करें",
 	"plannerPreviewDraft": "प्रीव्यू",
 	"plannerPreviewChecking": "जाँच हो रही है…",
 	"plannerEnterToPlan": "नया टेस्ट प्लान करने के लिए Enter दबाएं",

@@ -427,11 +427,14 @@
 
 	.recent-all {
 		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 2px;
 		font-size: 0.78rem;
 		font-weight: 600;
 		color: var(--brand-text);
 		text-decoration: none;
-		padding: 6px 0;
 	}
 
 	.example-chips {

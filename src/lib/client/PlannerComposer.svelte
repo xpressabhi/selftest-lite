@@ -14,6 +14,9 @@
 
 	let searchOpen = $state(false);
 	let wrapperRef = $state(null);
+	let formRef = $state(null);
+	let inputRef = $state(null);
+	let listCount = $state(0);
 	let baselineHeight = 0;
 	let blurTimer;
 
@@ -92,6 +95,25 @@
 	function handleFocusIn() {
 		window.clearTimeout(blurTimer);
 		enableKeyboardMode();
+		updateSearchSpace();
+	}
+
+	/**
+	 * The suggestion panel is anchored above the composer, so its height must
+	 * fit between the input and the top of what the user can actually see
+	 * (safe area / status bar, plus the visual-viewport offset once the
+	 * keyboard is up). Without this the panel's first rows slide under the
+	 * status bar and the section title becomes unreachable.
+	 */
+	function updateSearchSpace() {
+		if (typeof window === 'undefined' || !wrapperRef) return;
+		const viewport = window.visualViewport;
+		const anchor = formRef || inputRef;
+		if (!anchor) return;
+		// --search-top is consumed as `var(--search-top) - env(safe-area-inset-top)`
+		// so the CSS keeps owning the safe-area maths.
+		const top = anchor.getBoundingClientRect().top - (viewport?.offsetTop ?? 0);
+		wrapperRef.style.setProperty('--search-top', `${Math.round(top)}px`);
 	}
 
 	function handleFocusOut(event) {
@@ -172,6 +194,36 @@
 		}
 	}
 
+	/**
+	 * Keep the suggestion panel's max height in sync while it is open — the
+	 * keyboard and Safari's collapsing toolbars both change the visible area.
+	 */
+	$effect(() => {
+		if (typeof window === 'undefined' || !searchOpen) return;
+		const sync = () => updateSearchSpace();
+		sync();
+		window.addEventListener('resize', sync);
+		window.visualViewport?.addEventListener('resize', sync);
+		window.visualViewport?.addEventListener('scroll', sync);
+		return () => {
+			window.removeEventListener('resize', sync);
+			window.visualViewport?.removeEventListener('resize', sync);
+			window.visualViewport?.removeEventListener('scroll', sync);
+		};
+	});
+
+	function handleClearMouseDown(event) {
+		// Keep the caret (and the iOS keyboard) in the field while tapping clear.
+		// `mousedown` is the safe event for this: `pointerdown` + preventDefault
+		// suppresses the synthesized click on iOS.
+		event.preventDefault();
+	}
+
+	function clearInput() {
+		value = '';
+		inputRef?.focus();
+	}
+
 	function handleKeydown(event) {
 		if (event.key === 'Escape' && searchOpen) {
 			event.preventDefault();
@@ -194,7 +246,7 @@
 	onfocusin={handleFocusIn}
 	onfocusout={handleFocusOut}
 >
-	<form class="composer-form" onsubmit={handleSubmit}>
+	<form class="composer-form" bind:this={formRef} onsubmit={handleSubmit}>
 		<div class="composer-group" class:parsing={PARSING}>
 			<button
 				class="composer-search"
@@ -218,12 +270,37 @@
 				class="intent-input"
 				type="text"
 				bind:value
+				bind:this={inputRef}
 				placeholder={PARSING ? '' : $t('smartIntentPlaceholder')}
 				disabled={disabled || PARSING}
 				aria-label={$t('smartIntentPlaceholder')}
 				autocomplete="off"
 				enterkeyhint="send"
+				role="combobox"
+				aria-expanded={searchOpen || listCount > 0}
+				aria-controls="planner-search-panel"
+				aria-autocomplete="list"
+				aria-haspopup="listbox"
 			/>
+			{#if trimmedValue && !PARSING}
+				<button
+					class="composer-clear"
+					type="button"
+					disabled={disabled}
+					aria-label={$t('clearSearchInput')}
+					onmousedown={handleClearMouseDown}
+					onclick={clearInput}
+				>
+					<svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+						<path
+							d="M5.5 5.5l9 9M14.5 5.5l-9 9"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+						/>
+					</svg>
+				</button>
+			{/if}
 			{#if PARSING}
 				<span class="composer-thinking" role="status" aria-label={$t('plannerThinking')}>
 					<span></span><span></span><span></span>
@@ -258,6 +335,7 @@
 				variant={searchOpen ? 'overlay' : 'strip'}
 				onnavigate={handleResultNavigate}
 				ongenerate={handleGenerateNew}
+				onlistcount={(n) => (listCount = n)}
 			/>
 		{/if}
 	</div>
@@ -349,6 +427,34 @@
 	.composer-search[aria-expanded='true'] {
 		color: rgb(var(--brand-text-rgb));
 		background: rgba(var(--brand-rgb), 0.08);
+	}
+
+	.composer-clear {
+		flex-shrink: 0;
+		width: 44px;
+		height: 44px;
+		border: 0;
+		border-radius: 14px;
+		background: transparent;
+		color: var(--text-muted);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition:
+			color 0.15s ease,
+			background 0.15s ease;
+	}
+
+	.composer-clear:hover,
+	.composer-clear:active {
+		color: var(--text);
+		background: var(--surface-muted);
+	}
+
+	.composer-clear:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
 	}
 
 	.intent-input {
