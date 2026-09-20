@@ -13,6 +13,7 @@
 		onstartover = () => {},
 		onopentest = () => {},
 		onexample = () => {},
+		onrecenttouch = () => {},
 	} = $props();
 
 	let logRef = $state(null);
@@ -44,11 +45,14 @@
 	$effect(() => {
 		// Keep growing content (plan card, quick replies, chips) in view when the
 		// reader is already at the bottom; never yank them down while reading.
+		// Idle-state rows (recent tests, examples) must never trigger a scroll:
+		// a scroll between touchstart and click moves the tapped row and opens
+		// the wrong test.
 		const log = logRef;
 		if (!log || typeof MutationObserver === 'undefined') return;
 		let frame = 0;
 		const schedule = () => {
-			if (!pinnedToBottom || frame) return;
+			if (!pinnedToBottom || frame || !hasConversation) return;
 			frame = requestAnimationFrame(() => {
 				frame = 0;
 				scrollLogToBottom();
@@ -109,7 +113,7 @@
 		{#if showIdleState}
 			<div class="chat-idle">
 				{#if recentTests.length > 0}
-					<div class="recent-block">
+					<div class="recent-block" onpointerdown={onrecenttouch}>
 						<span class="recent-title">{$t('plannerRecentTests')}</span>
 						{#each recentTests as test (test.id)}
 							<button

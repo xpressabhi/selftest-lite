@@ -103,6 +103,10 @@
 	let isOffline = $state(false);
 	let unsubmittedTest = $state(null);
 	let streak = $state(null);
+	// Set the moment the user touches the recent-tests list. The async
+	// server refresh must not swap rows under an in-flight tap (it opened
+	// the wrong test); when touched, the local list stays put.
+	let recentListTouched = false;
 	let lastTestId = $state(null);
 	let showReturningCard = $state(false);
 	let difficultyTouched = $state(false);
@@ -158,9 +162,11 @@
 	);
 
 	// Derived so the meta strings re-render when the UI language changes,
-	// instead of being frozen at mount time.
+	// instead of being frozen at mount time. Displayed oldest-first (newest
+	// at the bottom) so new arrivals append below instead of shoving rows
+	// under the user's finger.
 	const recentTestsView = $derived(
-		recentTests.map((test) => ({
+		[...recentTests].reverse().map((test) => ({
 			id: test.id,
 			topic: test.topic,
 			meta: `${test.isFullExam ? $t('fullExamPaper') : $t('quizPractice')}${
@@ -193,7 +199,7 @@
 				const latest = Array.isArray(payload?.tests)
 					? payload.tests.filter((test) => !hidden.has(String(test.id)))
 					: [];
-				if (latest.length === 0) return;
+				if (latest.length === 0 || recentListTouched) return;
 				recentTests = latest.map((test) => ({
 					id: test.id,
 					topic: test.topic || '',
@@ -1185,6 +1191,9 @@
 				onskip={skipClarification}
 				onstartover={resetPlanner}
 				onopentest={handleTestNavigate}
+				onrecenttouch={() => {
+					recentListTouched = true;
+				}}
 				onexample={sendPlannerIntent}
 			></ChatThread>
 			<PlannerComposer
