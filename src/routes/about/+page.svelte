@@ -11,11 +11,11 @@
 			'@type': 'AboutPage',
 			name: $t('aboutHeroTitle'),
 			description: $t('aboutHeroBody'),
-			url: 'https://selftest.in/about',
+			url: 'https://www.selftest.in/about',
 			mainEntity: {
 				'@type': 'Organization',
 				name: 'selftest.in',
-				url: 'https://selftest.in',
+				url: 'https://www.selftest.in',
 			},
 		})
 	);

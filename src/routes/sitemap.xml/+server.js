@@ -29,13 +29,13 @@ function urlEntry(loc, lastmod) {
 export function GET() {
 	const entries = [
 		...STATIC_PATHS.map((path) =>
-			urlEntry(`https://selftest.in${path}`, STATIC_LASTMOD)
+			urlEntry(`https://www.selftest.in${path}`, STATIC_LASTMOD)
 		),
 		...OBJECTIVE_ONLY_EXAMS.map((exam) =>
-			urlEntry(`https://selftest.in/practice/${exam.id}`, STATIC_LASTMOD)
+			urlEntry(`https://www.selftest.in/practice/${exam.id}`, STATIC_LASTMOD)
 		),
 		...BLOG_POSTS_BY_DATE.map((post) =>
-			urlEntry(`https://selftest.in/blog/${post.slug}`, post.modified || post.date)
+			urlEntry(`https://www.selftest.in/blog/${post.slug}`, post.modified || post.date)
 		),
 	];
 	const xml = [

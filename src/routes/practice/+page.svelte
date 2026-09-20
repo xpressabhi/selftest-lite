@@ -9,7 +9,7 @@
 			'@type': 'CollectionPage',
 			name: $t('practiceTitle'),
 			description: $t('practiceHeroBody'),
-			url: 'https://selftest.in/practice',
+			url: 'https://www.selftest.in/practice',
 		})
 	);
 </script>

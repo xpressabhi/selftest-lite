@@ -26,11 +26,11 @@
 			'@type': 'Blog',
 			name: $t('blogHeroTitle'),
 			description: $t('blogHeroBody'),
-			url: 'https://selftest.in/blog',
+			url: 'https://www.selftest.in/blog',
 			blogPost: BLOG_POSTS_BY_DATE.map((post) => ({
 				'@type': 'BlogPosting',
 				headline: $t(post.titleKey),
-				url: `https://selftest.in/blog/${post.slug}`,
+				url: `https://www.selftest.in/blog/${post.slug}`,
 				datePublished: post.date,
 			})),
 		})

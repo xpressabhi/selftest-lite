@@ -406,8 +406,8 @@
 	{/if}
 	<meta name="author" content="selftest.in" />
 	<meta property="og:site_name" content="selftest.in" />
-	<meta property="og:url" content={`https://selftest.in${page.url.pathname}`} />
-	<meta property="og:image" content="https://selftest.in/og-cover.png" />
+	<meta property="og:url" content={`https://www.selftest.in${page.url.pathname}`} />
+	<meta property="og:image" content="https://www.selftest.in/og-cover.png" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta
@@ -417,24 +417,24 @@
 	<meta property="og:locale" content="en_IN" />
 	<meta property="og:locale:alternate" content="hi_IN" />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:image" content="https://selftest.in/og-cover.png" />
+	<meta name="twitter:image" content="https://www.selftest.in/og-cover.png" />
 	<meta
 		name="twitter:image:alt"
 		content="selftest.in — AI Quiz and Exam Paper Generator for India"
 	/>
-	<link rel="canonical" href={`https://selftest.in${page.url.pathname}`} />
+	<link rel="canonical" href={`https://www.selftest.in${page.url.pathname}`} />
 	<link
 		rel="alternate"
 		hreflang="x-default"
-		href={`https://selftest.in${page.url.pathname}`}
+		href={`https://www.selftest.in${page.url.pathname}`}
 	/>
 	<script type="application/ld+json">
 		{
 			"@context": "https://schema.org",
 			"@type": "Organization",
 			"name": "selftest.in",
-			"url": "https://selftest.in",
-			"logo": "https://selftest.in/icons/512.png",
+			"url": "https://www.selftest.in",
+			"logo": "https://www.selftest.in/icons/512.png",
 			"sameAs": ["https://x.com/selftest_in"]
 		}
 	</script>
@@ -443,7 +443,7 @@
 			"@context": "https://schema.org",
 			"@type": "WebSite",
 			"name": "selftest.in",
-			"url": "https://selftest.in",
+			"url": "https://www.selftest.in",
 			"inLanguage": ["en-IN", "hi-IN"]
 		}
 	</script>

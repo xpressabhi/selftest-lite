@@ -2,14 +2,6 @@
 	"framework": "sveltekit",
 	"buildCommand": "vite build",
 	"outputDirectory": ".svelte-kit/output",
-	"redirects": [
-		{
-			"source": "/:path*",
-			"has": [{ "type": "host", "value": "www.selftest.in" }],
-			"destination": "https://selftest.in/:path*",
-			"permanent": true
-		}
-	],
 	"headers": [
 		{
 			"source": "/(.*)",

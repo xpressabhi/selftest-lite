@@ -9,7 +9,7 @@
 			'@type': 'ContactPage',
 			name: $t('contactHeroTitle'),
 			description: $t('contactHeroBody'),
-			url: 'https://selftest.in/contact',
+			url: 'https://www.selftest.in/contact',
 		})
 	);
 

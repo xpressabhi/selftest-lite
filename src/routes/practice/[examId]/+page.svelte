@@ -17,11 +17,11 @@
 			'@type': 'LearningResource',
 			name: `${exam.name} Mock Tests & Practice Papers`,
 			description: pageDescription,
-			url: `https://selftest.in/practice/${exam.id}`,
+			url: `https://www.selftest.in/practice/${exam.id}`,
 			inLanguage: ['en-IN', 'hi-IN'],
 			teaches: exam.syllabus || [],
 			educationalLevel: exam.group || exam.stream,
-			provider: { '@type': 'Organization', name: 'selftest.in', url: 'https://selftest.in' },
+			provider: { '@type': 'Organization', name: 'selftest.in', url: 'https://www.selftest.in' },
 		})
 	);
 
@@ -30,18 +30,18 @@
 			'@context': 'https://schema.org',
 			'@type': 'BreadcrumbList',
 			itemListElement: [
-				{ '@type': 'ListItem', position: 1, name: 'Home', item: 'https://selftest.in/' },
+				{ '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.selftest.in/' },
 				{
 					'@type': 'ListItem',
 					position: 2,
 					name: $t('practiceTitle'),
-					item: 'https://selftest.in/practice',
+					item: 'https://www.selftest.in/practice',
 				},
 				{
 					'@type': 'ListItem',
 					position: 3,
 					name: exam.name,
-					item: `https://selftest.in/practice/${exam.id}`,
+					item: `https://www.selftest.in/practice/${exam.id}`,
 				},
 			],
 		})

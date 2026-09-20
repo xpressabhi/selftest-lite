@@ -16,16 +16,16 @@
 			headline: $t(data.post.titleKey),
 			description: $t(data.post.excerptKey),
 			articleBody: (data.post.bodyKeys || []).map((key) => $t(key)).join('\n\n'),
-			image: 'https://selftest.in/og-cover.png',
+			image: 'https://www.selftest.in/og-cover.png',
 			datePublished: data.post.date,
 			dateModified: data.post.modified || data.post.date,
 			inLanguage: $language === 'hindi' ? 'hi-IN' : 'en-IN',
-			mainEntityOfPage: `https://selftest.in/blog/${data.slug}`,
-			author: { '@type': 'Organization', name: 'selftest.in', url: 'https://selftest.in' },
+			mainEntityOfPage: `https://www.selftest.in/blog/${data.slug}`,
+			author: { '@type': 'Organization', name: 'selftest.in', url: 'https://www.selftest.in' },
 			publisher: {
 				'@type': 'Organization',
 				name: 'selftest.in',
-				logo: { '@type': 'ImageObject', url: 'https://selftest.in/icons/512.png' },
+				logo: { '@type': 'ImageObject', url: 'https://www.selftest.in/icons/512.png' },
 			},
 		})
 	);

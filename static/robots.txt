@@ -9,4 +9,4 @@ Disallow: /profile
 Disallow: /admin
 Disallow: /auth/
 
-Sitemap: https://selftest.in/sitemap.xml
+Sitemap: https://www.selftest.in/sitemap.xml
