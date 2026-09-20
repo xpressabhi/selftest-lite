@@ -376,9 +376,13 @@
 		const handleHeroInteraction = (event) => {
 			const target = event.target;
 			if (!(target instanceof Element)) return;
+			// Taps inside the planner (recent tests, examples, composer) must
+			// not collapse the hero: the layout shift between pointerdown and
+			// click swallows the tap, forcing a second click. Collapse only
+			// for content below the planner.
 			if (
 				target.closest('.home-wrap') &&
-				!target.closest('.intent-wrap') &&
+				!target.closest('.planner-panel') &&
 				!target.closest('.hero-block')
 			) {
 				heroCollapsed = true;
