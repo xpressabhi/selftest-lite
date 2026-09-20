@@ -47,6 +47,7 @@
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
 	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
 	import { user } from '$lib/client/auth';
+	import { requestPersonalize } from '$lib/client/personalize';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
@@ -212,6 +213,21 @@
 		})();
 		streak = getStreak();
 		lastTestId = historyEntries[0]?.id ? String(historyEntries[0].id) : null;
+		// Central personalization (fail-open, once per load): Jev picks one
+		// entry point to promote; hides stay behind existing toggles/links.
+		void requestPersonalize('home', {
+			hasUnsubmitted: Boolean(unsubmittedTest),
+			historyCount: historyEntries.length,
+			streak: streak?.currentStreak || 0,
+		}).then((decision) => {
+			if (!decision?.applied) return;
+			if (decision.hide?.includes('manual-browsers')) {
+				showManualConfig = false;
+			}
+			if (decision.promote?.includes('exam-browser')) {
+				showManualConfig = true;
+			}
+		});
 		showReturningCard = Boolean(
 			!unsubmittedTest && (streak?.currentStreak > 0 || historyEntries.length > 0)
 		);

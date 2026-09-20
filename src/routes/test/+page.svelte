@@ -31,6 +31,7 @@
 	} from '$lib/client/storage';
 	import { pushAttempt } from '$lib/client/sync';
 	import { showToast } from '$lib/client/toast';
+	import { requestPersonalize } from '$lib/client/personalize';
 
 	let questionPaper = $state(null);
 	let answers = $state({});
@@ -58,6 +59,8 @@
 	let timerInterval = null;
 	let swipeStartX = null;
 	let swipeStartY = null;
+	let testMomentFired = false;
+	let navCount = 0;
 
 	const SWIPE_THRESHOLD_PX = 64;
 	const START_HAPTIC = 15;
@@ -446,6 +449,35 @@
 		selectQuestion(Math.max(currentQuestionIndex - 1, 0));
 	}
 
+	function maybeFireTestMoment() {
+		// Micro trigger (fail-open, once per test): after repeated navigation
+		// on an unanswered question, ask Jev whether the learner is stuck. A
+		// stuck verdict only flags the question for review — never advances,
+		// submits, or reveals answers.
+		if (!testStarted || testMomentFired || navCount < 4) {
+			return;
+		}
+		if (answers[currentQuestionIndex] != null || totalQuestions === 0) {
+			return;
+		}
+		testMomentFired = true;
+		void requestPersonalize('test-moment', {
+			dwellSec: elapsedSeconds,
+			skips: navCount,
+			flags: flagged.length,
+			answeredRatio:
+				Math.round((Object.keys(answers).length / Math.max(1, totalQuestions)) * 100) / 100,
+		}).then((decision) => {
+			if (!decision?.applied) return;
+			if (
+				decision.promote?.includes('hint') &&
+				!flagged.includes(currentQuestionIndex)
+			) {
+				toggleFlag(currentQuestionIndex);
+			}
+		});
+	}
+
 	function selectQuestion(nextIndex) {
 		if (nextIndex === currentQuestionIndex) {
 			return;
@@ -459,6 +491,8 @@
 		track('test:jump', { to: nextIndex });
 		navigationDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
 		currentQuestionIndex = nextIndex;
+		navCount += 1;
+		maybeFireTestMoment();
 		liveAnnouncement = $t('questionOf', {
 			current: nextIndex + 1,
 			total: questionPaper?.questions?.length || 0,

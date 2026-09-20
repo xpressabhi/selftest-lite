@@ -23,6 +23,7 @@
 		remindersSupported,
 	} from '$lib/client/reminders';
 	import { showToast } from '$lib/client/toast';
+	import { requestPersonalize } from '$lib/client/personalize';
 	import {
 		clearAttemptResult,
 		clearDraftAnswers,
@@ -50,6 +51,7 @@
 	let reviewQueue = $state({ today: [], upcoming: [] });
 	let bookmarkedQuestionKeys = $state([]);
 	let filter = $state('all');
+	let resultsHide = $state([]);
 	let expanded = $state({});
 	let expansionInitialized = false;
 	const AUTO_EXPLAIN_KEY = 'selftest_auto_explain';
@@ -201,6 +203,28 @@
 			track('results:view', { id: testId });
 			refreshLearningPanels();
 			loading = false;
+			// Central focus (fail-open, once): expand the Jev-picked panel and
+			// collapse low-value ones; the full review list stays available.
+			if (questionPaper?.questions?.length) {
+				const total = questionPaper.questions.length;
+				const wrong = questionPaper.questions.filter(
+					(question, index) =>
+						(question.correct ?? questionPaper.userAnswers?.[index] === question.answer) === false
+				).length;
+				void requestPersonalize('results', {
+					scorePct: total > 0 ? Math.round(((total - wrong) / total) * 100) : 0,
+					wrongCount: wrong,
+					total,
+				}).then((decision) => {
+					if (!decision?.applied) return;
+					if (decision.action === 'fix_mistakes' && wrong > 0) {
+						filter = 'incorrect';
+					}
+					if (Array.isArray(decision.hide) && decision.hide.length > 0) {
+						resultsHide = decision.hide;
+					}
+				});
+			}
 			if (autoExplainEnabled) {
 				void runAutoExplain();
 			}
@@ -813,7 +837,8 @@
 
 		{#if achievements.some((item) => item.unlocked) || topicMastery.length > 0}
 			<div class="row g-3 mb-4">
-				<section class="col-lg-6">
+				{#if !resultsHide.includes('achievements')}
+					<section class="col-lg-6">
 					<div class="result-panel bg-body border rounded-3 p-3">
 						<h2 class="h6 fw-bold">{$t('achievements')}</h2>
 						<div class="d-flex flex-wrap gap-2">
@@ -827,6 +852,7 @@
 						</div>
 					</div>
 				</section>
+				{/if}
 				<section class="col-lg-6">
 					<div class="result-panel bg-body border rounded-3 p-3">
 						<h2 class="h6 fw-bold">{$t('topicMasteryTitle')}</h2>
@@ -847,7 +873,7 @@
 			</div>
 		{/if}
 
-		{#if reviewQueue.today.length > 0 || reviewQueue.upcoming.length > 0}
+		{#if (reviewQueue.today.length > 0 || reviewQueue.upcoming.length > 0) && !resultsHide.includes('review-queue')}
 			<section class="bg-body border rounded-3 p-3 mb-4">
 				<h2 class="h6 fw-bold">{$t('reviewQueueTitle')}</h2>
 				<p class="text-muted small">{$t('reviewQueueBody')}</p>

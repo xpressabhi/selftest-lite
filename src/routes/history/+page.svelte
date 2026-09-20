@@ -8,6 +8,7 @@
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
 	import { getHistory, removeFromHistory, saveHistory } from '$lib/client/storage';
+	import { requestPersonalize } from '$lib/client/personalize';
 	import {
 		flushPendingAttempts,
 		getPendingAttemptCount,
@@ -22,6 +23,7 @@
 	let pendingCount = $state(0);
 	let pendingDelete = $state(null);
 	let deleting = $state(false);
+	let historyReranked = false;
 
 	let filteredHistory = $derived(
 		history.filter((entry) =>
@@ -40,6 +42,23 @@
 	function refreshHistory() {
 		history = getHistory();
 		pendingCount = getPendingAttemptCount();
+		// Central rerank (fail-open, once): move the Jev-picked item to the
+		// top; the full list and search stay intact below it.
+		const ids = history
+			.slice(0, 8)
+			.map((entry) => String(entry.id))
+			.filter(Boolean);
+		if (ids.length >= 2 && !historyReranked) {
+			historyReranked = true;
+			void requestPersonalize('history', { ids }).then((decision) => {
+				if (!decision?.applied || !decision.action || decision.action === 'none') return;
+				const index = history.findIndex((entry) => String(entry.id) === String(decision.action));
+				if (index > 0) {
+					const promoted = history[index];
+					history = [promoted, ...history.slice(0, index), ...history.slice(index + 1)];
+				}
+			});
+		}
 	}
 
 	function clearHistory() {

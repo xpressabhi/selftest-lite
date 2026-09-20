@@ -1,7 +1,32 @@
 <script>
+	import { onMount } from 'svelte';
 	import { t } from '$lib/client/i18n';
 	import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+	import { requestPersonalize } from '$lib/client/personalize';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+
+	let promotedExamId = $state(null);
+	let orderedExams = $derived(
+		promotedExamId
+			? [
+					...OBJECTIVE_ONLY_EXAMS.filter((exam) => exam.id === promotedExamId),
+					...OBJECTIVE_ONLY_EXAMS.filter((exam) => exam.id !== promotedExamId),
+				]
+			: OBJECTIVE_ONLY_EXAMS
+	);
+
+	onMount(() => {
+		// Practice promote (fail-open, once): move the Jev-picked exam to the
+		// top; the full grid stays intact below it.
+		void requestPersonalize('practice', {
+			ids: OBJECTIVE_ONLY_EXAMS.map((exam) => exam.id),
+		}).then((decision) => {
+			if (!decision?.applied || !decision.action || decision.action === 'none') return;
+			if (OBJECTIVE_ONLY_EXAMS.some((exam) => exam.id === decision.action)) {
+				promotedExamId = decision.action;
+			}
+		});
+	});
 
 	const hubJsonLd = $derived(
 		jsonLdScript({
@@ -33,7 +58,7 @@
 			<p class="practice-hub-sub">{$t('practiceHeroBody')}</p>
 		</header>
 		<div class="practice-grid">
-			{#each OBJECTIVE_ONLY_EXAMS as exam (exam.id)}
+			{#each orderedExams as exam (exam.id)}
 				<a class="practice-card" href={`/practice/${exam.id}`}>
 					<strong>{exam.name}</strong>
 					<span
