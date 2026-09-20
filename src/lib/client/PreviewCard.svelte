@@ -111,7 +111,8 @@
 	}
 
 	function pickQuestions(n) {
-		const clamped = Math.max(1, Math.min(50, Number(n) || 10));
+		// Matches the server cap (1..200) so full-length mocks are selectable.
+		const clamped = Math.max(1, Math.min(200, Number(n) || 10));
 		oneditchip('numQuestions', clamped);
 		showQuestionsPicker = false;
 	}
@@ -564,6 +565,18 @@
 										{n}
 									</button>
 								{/each}
+								{#if isFullExam && (selectedExam?.fullLengthQuestions || 0) > 30}
+									<button
+										class="preset-btn preset-full"
+										class:active={numQuestions ===
+											Math.min(selectedExam.fullLengthQuestions, 200)}
+										type="button"
+										onclick={() =>
+											pickQuestions(Math.min(selectedExam.fullLengthQuestions, 200))}
+									>
+										{Math.min(selectedExam.fullLengthQuestions, 200)}
+									</button>
+								{/if}
 							</div>
 						</div>
 					{/if}

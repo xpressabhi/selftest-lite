@@ -229,6 +229,12 @@
 				topic = `${exam.name} objective exam paper`;
 				numQuestions = Number(exam.defaultNumQuestions || 10);
 				difficulty = exam.defaultDifficulty || 'intermediate';
+				// Practice pages link full mocks as ?exam=id&numQuestions=N.
+				// Honor an explicit count so "full mock (100)" really means 100.
+				const requestedCount = Number(params.get('numQuestions'));
+				if (Number.isFinite(requestedCount) && requestedCount > 0) {
+					numQuestions = Math.max(1, Math.min(200, Math.round(requestedCount)));
+				}
 			}
 		}
 		if (params.get('mode') === 'quiz-practice') {

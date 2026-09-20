@@ -7,7 +7,9 @@
 import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
 
 export const MIN_QUESTIONS = 5;
-export const MAX_QUESTIONS = 50;
+// Matches the server cap (quizConfig MAX_QUESTIONS = 200) so planner-typed
+// counts like "100 questions" survive instead of being clamped to 50.
+export const MAX_QUESTIONS = 200;
 export const DEFAULT_QUIZ_QUESTIONS = 10;
 export const DEFAULT_EXAM_QUESTIONS = 20;
 export const MAX_TOPIC_CANDIDATES = 200;
@@ -41,6 +43,7 @@ const NUMBER_WORDS = {
 	thirty: 30,
 	forty: 40,
 	fifty: 50,
+	hundred: 100,
 	dozen: 12,
 	एक: 1,
 	दो: 2,
@@ -59,6 +62,7 @@ const NUMBER_WORDS = {
 	तीस: 30,
 	चालीस: 40,
 	पचास: 50,
+	सौ: 100,
 };
 
 const QUESTION_WORDS = 'questions?|ques|qs?|mcqs?|problems?|प्रश्न(?:ों)?';

@@ -21,7 +21,8 @@ describe('buildLocalPreview', () => {
 	});
 
 	it('clamps a question count to the server range', () => {
-		expect(buildLocalPreview('200 questions on photosynthesis').numQuestions).toBe(50);
+		expect(buildLocalPreview('500 questions on photosynthesis').numQuestions).toBe(200);
+		expect(buildLocalPreview('100 questions on photosynthesis').numQuestions).toBe(100);
 		expect(buildLocalPreview('2 questions on photosynthesis').numQuestions).toBe(5);
 	});
 

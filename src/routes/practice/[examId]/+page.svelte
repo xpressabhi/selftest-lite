@@ -6,6 +6,9 @@
 	let { data } = $props();
 
 	const exam = $derived(data.exam);
+	const fullCount = $derived(
+		Math.max(1, Math.min(200, Number(exam.fullLengthQuestions || exam.defaultNumQuestions || 20)))
+	);
 	const pageTitle = $derived(`${exam.name} ${$t('practiceH1Suffix')} | selftest.in`);
 	const pageDescription = $derived(
 		`${exam.name} (${exam.stream}): free AI-generated mock tests and sectional quizzes. ${exam.syllabus?.slice(0, 4).join(', ') || ''}. Practice in English and Hindi.`
@@ -72,9 +75,14 @@
 			<p class="practice-lead">
 				{$t('practiceIntro', { name: exam.name, stream: exam.stream })}
 			</p>
-			<a class="btn btn-primary" href={`/?exam=${exam.id}`}>
-				{$t('practiceCta', { name: exam.name })}
-			</a>
+			<div class="practice-cta-row">
+				<a class="btn btn-primary" href={`/?exam=${exam.id}&numQuestions=${fullCount}`}>
+					{$t('practiceFullMock', { count: fullCount })}
+				</a>
+				<a class="practice-sectional-link" href={`/?exam=${exam.id}`}>
+					{$t('practiceSectionalLink')}
+				</a>
+			</div>
 		</header>
 
 		<section class="practice-section" aria-label={$t('practicePatternTitle')}>
@@ -182,6 +190,23 @@
 		color: var(--text-muted);
 		font-size: 1.05rem;
 		line-height: 1.65;
+	}
+
+	.practice-cta-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 1rem;
+	}
+
+	.practice-sectional-link {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		color: var(--brand-text);
+		font-weight: 600;
+		font-size: 0.9rem;
+		text-decoration: none;
 	}
 
 	.practice-section {
