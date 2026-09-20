@@ -3,6 +3,22 @@
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
 	import FaqAccordion from '$lib/client/FaqAccordion.svelte';
 	import { getFaqItems } from '$lib/data/faqs';
+	import { jsonLdScript } from '$lib/shared/jsonLd';
+
+	const aboutJsonLd = $derived(
+		jsonLdScript({
+			'@context': 'https://schema.org',
+			'@type': 'AboutPage',
+			name: $t('aboutHeroTitle'),
+			description: $t('aboutHeroBody'),
+			url: 'https://selftest.in/about',
+			mainEntity: {
+				'@type': 'Organization',
+				name: 'selftest.in',
+				url: 'https://selftest.in',
+			},
+		})
+	);
 
 	const whyItWorks = [
 		{ titleKey: 'aboutWhyWorksPoint1Title', bodyKey: 'aboutWhyWorksPoint1Body' },
@@ -59,9 +75,24 @@
 	<title>{$t('aboutHeroTitle')} | selftest.in</title>
 	<meta
 		name="description"
-		content="Learn how selftest.in helps learners practice with AI-generated quizzes and exam papers."
+		content="Learn how selftest.in helps UPSC, SSC, Banking, Railway, NEET, JEE and board aspirants practice with AI-generated quizzes and exam papers in Hindi and English."
 	/>
-	<link rel="canonical" href="https://selftest.in/about" />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta
+		property="og:title"
+		content={`${$t('aboutHeroTitle')} | selftest.in`}
+	/>
+	<meta
+		property="og:description"
+		content="AI-generated quizzes and full-length objective exam papers for Indian competitive exams in Hindi and English."
+	/>
+	<meta name="twitter:title" content={`${$t('aboutHeroTitle')} | selftest.in`} />
+	<meta
+		name="twitter:description"
+		content="AI-generated quizzes and full-length objective exam papers for Indian competitive exams."
+	/>
+	{@html aboutJsonLd}
 </svelte:head>
 
 <section class="container py-4 py-md-5">

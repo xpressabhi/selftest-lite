@@ -531,6 +531,7 @@
 
 <svelte:head>
 	<title>{questionPaper?.topic || $t('testResults')} | selftest.in</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <section class="container py-4">

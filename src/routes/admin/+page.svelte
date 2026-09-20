@@ -208,6 +208,7 @@
 
 <svelte:head>
 	<title>Admin | selftest.in</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <section class="container py-4">

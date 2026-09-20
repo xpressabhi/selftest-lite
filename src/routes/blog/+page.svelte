@@ -50,9 +50,20 @@
 	<title>{$t('blog')} | selftest.in</title>
 	<meta
 		name="description"
-		content="Study tips, active recall guides, spaced repetition, and AI quiz generation advice from selftest.in."
+		content="Study tips, active recall guides, spaced repetition, board exam plans and SSC/Banking/Railway mock-test strategy from selftest.in."
 	/>
-	<link rel="canonical" href="https://selftest.in/blog" />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={`${$t('blog')} | selftest.in`} />
+	<meta
+		property="og:description"
+		content="Study tips, active recall, spaced repetition and AI quiz strategy for Indian exams."
+	/>
+	<meta name="twitter:title" content={`${$t('blog')} | selftest.in`} />
+	<meta
+		name="twitter:description"
+		content="Study tips and AI quiz strategy for Indian competitive and board exams."
+	/>
 	{@html blogJsonLd}
 </svelte:head>
 

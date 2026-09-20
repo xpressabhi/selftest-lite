@@ -1,6 +1,17 @@
 <script>
 	import { t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
+	import { jsonLdScript } from '$lib/shared/jsonLd';
+
+	const contactJsonLd = $derived(
+		jsonLdScript({
+			'@context': 'https://schema.org',
+			'@type': 'ContactPage',
+			name: $t('contactHeroTitle'),
+			description: $t('contactHeroBody'),
+			url: 'https://selftest.in/contact',
+		})
+	);
 
 	const tips = ['contactTip1', 'contactTip2', 'contactTip3'];
 </script>
@@ -8,7 +19,19 @@
 <svelte:head>
 	<title>{$t('contactHeroTitle')} | selftest.in</title>
 	<meta name="description" content="Contact selftest.in for feedback, questions, and support." />
-	<link rel="canonical" href="https://selftest.in/contact" />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={`${$t('contactHeroTitle')} | selftest.in`} />
+	<meta
+		property="og:description"
+		content="Contact selftest.in for feedback, questions, and support."
+	/>
+	<meta name="twitter:title" content={`${$t('contactHeroTitle')} | selftest.in`} />
+	<meta
+		name="twitter:description"
+		content="Contact selftest.in for feedback, questions, and support."
+	/>
+	{@html contactJsonLd}
 </svelte:head>
 
 <section class="container py-4 py-md-5">
@@ -34,7 +57,7 @@
 					class="btn btn-outline-primary contact-action"
 					href="https://x.com/selftest_in"
 					target="_blank"
-					rel="noreferrer"
+					rel="noopener noreferrer"
 				>
 					{$t('connectOnX')}
 				</a>

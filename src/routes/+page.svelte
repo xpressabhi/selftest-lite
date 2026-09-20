@@ -1116,7 +1116,22 @@
 </script>
 
 <svelte:head>
-	<title>AI Quiz & Exam Paper Generator for India | selftest.in</title>
+	<meta
+		name="description"
+		content="Create AI-powered quizzes and full-length objective exam papers for UPSC, SSC, Banking, Railways, NEET, JEE and board exams in Hindi and English."
+	/>
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="AI Quiz & Exam Paper Generator for India" />
+	<meta
+		property="og:description"
+		content="Generate objective quiz practice and full-length exam papers for UPSC, SSC, Banking, Railways, NEET, JEE and board exams with AI. Supports Hindi and English."
+	/>
+	<meta name="twitter:title" content="AI Quiz & Exam Paper Generator for India" />
+	<meta
+		name="twitter:description"
+		content="Generate objective quiz practice and full-length exam papers for Indian exams with AI. UPSC, SSC, Banking, Railways, NEET, JEE. Hindi and English."
+	/>
 </svelte:head>
 
 <section
@@ -1128,7 +1143,8 @@
 			class="text-center mb-4 hero-block"
 			class:hero-collapsed={heroCollapsed}
 		>
-			<h1 class="hero-heading">{$t('createQuiz')}</h1>
+			<h1 class="hero-heading">{$t('homeH1')}</h1>
+			<p class="hero-sub">{$t('homeSeoIntro')}</p>
 		</div>
 
 		{#snippet planCard()}
@@ -1234,6 +1250,17 @@
 			disabled={status === 'loading'}
 		/>
 
+		<nav class="popular-exams" aria-label={$t('practiceTitle')}>
+			<span class="popular-exams-label">{$t('practiceTitle')}:</span>
+			<a href="/practice/ssc-cgl">SSC CGL</a>
+			<a href="/practice/ibps-po">IBPS PO</a>
+			<a href="/practice/rrb-ntpc-graduate">RRB NTPC</a>
+			<a href="/practice/upsc-cse-prelims">UPSC Prelims</a>
+			<a href="/practice/neet-ug">NEET</a>
+			<a href="/practice/jee-main">JEE Main</a>
+			<a class="popular-exams-more" href="/practice">{$t('practiceAllExams')}</a>
+		</nav>
+
 		{#if tailoredSummary}
 			<div class="tailored-chip">
 				<span class="tailored-badge" aria-hidden="true">🎯</span>
@@ -1338,7 +1365,7 @@
 	}
 
 	.hero-block {
-		max-height: 160px;
+		max-height: 260px;
 		overflow: hidden;
 		opacity: 1;
 		transition:
@@ -1359,6 +1386,14 @@
 		font-weight: 700;
 		color: var(--text);
 		margin: 0;
+	}
+
+	.hero-sub {
+		margin: 0.5rem auto 0;
+		max-width: 36rem;
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		line-height: 1.6;
 	}
 
 	.intent-section {
@@ -1414,6 +1449,36 @@
 	.daily-five-hint {
 		font-size: 0.76rem;
 		color: var(--text-muted);
+	}
+
+	.popular-exams {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem 0.5rem;
+		margin-top: 12px;
+		font-size: 0.8rem;
+	}
+
+	.popular-exams-label {
+		color: var(--text-muted);
+		font-weight: 600;
+	}
+
+	.popular-exams a {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 0 0.6rem;
+		color: var(--brand-text);
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.popular-exams-more {
+		text-decoration: underline !important;
+		text-underline-offset: 3px;
 	}
 
 	.generation-status {

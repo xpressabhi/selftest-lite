@@ -30,7 +30,7 @@
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import '$lib/styles/globals.css';
 
-	let { children } = $props();
+	let { children, data } = $props();
 	let isOffline = $state(false);
 	let deferredInstallPrompt = $state(null);
 	let showInstallHint = $state(false);
@@ -401,27 +401,33 @@
 
 <svelte:head>
 	<title>AI Quiz & Exam Paper Generator for India | selftest.in</title>
-	<meta
-		name="description"
-		content="Create AI-powered quiz practice and full objective exam papers for Indian competitive exams in Hindi and English."
-	/>
+	{#if data?.googleSiteVerification}
+		<meta name="google-site-verification" content={data.googleSiteVerification} />
+	{/if}
+	<meta name="author" content="selftest.in" />
 	<meta property="og:site_name" content="selftest.in" />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://selftest.in" />
-	<meta property="og:title" content="AI Quiz & Exam Paper Generator for India" />
+	<meta property="og:url" content={`https://selftest.in${page.url.pathname}`} />
+	<meta property="og:image" content="https://selftest.in/og-cover.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
 	<meta
-		property="og:description"
-		content="Generate objective quiz practice and full-length exam papers for Indian exams with AI. Supports Hindi and English."
+		property="og:image:alt"
+		content="selftest.in — AI Quiz and Exam Paper Generator for India"
 	/>
-	<meta property="og:image" content="https://selftest.in/icons/512.png" />
+	<meta property="og:locale" content="en_IN" />
+	<meta property="og:locale:alternate" content="hi_IN" />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="AI Quiz & Exam Paper Generator for India" />
+	<meta name="twitter:image" content="https://selftest.in/og-cover.png" />
 	<meta
-		name="twitter:description"
-		content="Generate objective quiz practice and full-length exam papers for Indian exams with AI."
+		name="twitter:image:alt"
+		content="selftest.in — AI Quiz and Exam Paper Generator for India"
 	/>
-	<meta name="twitter:image" content="https://selftest.in/icons/512.png" />
 	<link rel="canonical" href={`https://selftest.in${page.url.pathname}`} />
+	<link
+		rel="alternate"
+		hreflang="x-default"
+		href={`https://selftest.in${page.url.pathname}`}
+	/>
 	<script type="application/ld+json">
 		{
 			"@context": "https://schema.org",
@@ -438,12 +444,7 @@
 			"@type": "WebSite",
 			"name": "selftest.in",
 			"url": "https://selftest.in",
-			"inLanguage": ["en-IN", "hi-IN"],
-			"potentialAction": {
-				"@type": "SearchAction",
-				"target": "https://selftest.in/?q={search_term_string}",
-				"query-input": "required name=search_term_string"
-			}
+			"inLanguage": ["en-IN", "hi-IN"]
 		}
 	</script>
 </svelte:head>
@@ -460,6 +461,7 @@
 
 				<nav class="desktop-nav" aria-label={$t('mainNavigation')}>
 					<a href="/about">{$t('about')}</a>
+					<a href="/practice">{$t('practiceTitle')}</a>
 					<a href="/blog">{$t('blog')}</a>
 					<a href="/faq">{$t('faq')}</a>
 					<a href="/contact">{$t('contact')}</a>
@@ -579,6 +581,9 @@
 					{/if}
 					<div class="menu-section-label">{$t('menuSectionExplore')}</div>
 					<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
+					<a href="/practice" onclick={() => (isMenuOpen = false)}
+						>{$t('practiceTitle')}</a
+					>
 					<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
 					<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
 					<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
@@ -731,6 +736,7 @@
 				<p class="footer-tagline small text-muted">{$t('footerTagline')}</p>
 				<nav class="footer-links" aria-label={$t('footerNav')}>
 					<a href="/about">{$t('about')}</a>
+					<a href="/practice">{$t('practiceTitle')}</a>
 					<a href="/blog">{$t('blog')}</a>
 					<a href="/faq">{$t('faq')}</a>
 					<a href="/contact">{$t('contact')}</a>
@@ -1003,7 +1009,7 @@
 	}
 
 	.site-footer {
-		display: none;
+		display: block;
 	}
 
 	.footer-inner {

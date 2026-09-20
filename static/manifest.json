@@ -53,7 +53,19 @@
 			"icons": [{ "src": "/icons/192.png", "sizes": "192x192" }]
 		}
 	],
-	"screenshots": [],
+	"screenshots": [
+		{
+			"src": "/og-cover.png",
+			"sizes": "1200x630",
+			"type": "image/png",
+			"form_factor": "wide"
+		},
+		{
+			"src": "/icons/512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	],
 	"related_applications": [],
 	"scope": "/",
 	"lang": "en",

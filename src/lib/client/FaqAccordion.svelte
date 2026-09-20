@@ -52,6 +52,13 @@
 </script>
 
 <div class="faq-list">
+	<noscript>
+		<style>
+			.faq-answer[hidden] {
+				display: block !important;
+			}
+		</style>
+	</noscript>
 	{#each items as item (item.id)}
 		{@const open = openId === item.id}
 		{@const anchor = faqAnchorId(item.id)}

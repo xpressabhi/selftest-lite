@@ -5,5 +5,8 @@ Disallow: /test
 Disallow: /results
 Disallow: /history
 Disallow: /bookmarks
+Disallow: /profile
+Disallow: /admin
+Disallow: /auth/
 
 Sitemap: https://selftest.in/sitemap.xml

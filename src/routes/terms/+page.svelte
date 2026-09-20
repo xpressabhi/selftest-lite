@@ -5,6 +5,18 @@
 <svelte:head>
 	<title>{$t('termsHeroTitle')} | selftest.in</title>
 	<meta name="description" content="Terms of service for using selftest.in." />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={`${$t('termsHeroTitle')} | selftest.in`} />
+	<meta
+		property="og:description"
+		content="Terms of service for using selftest.in AI quizzes and exam papers."
+	/>
+	<meta name="twitter:title" content={`${$t('termsHeroTitle')} | selftest.in`} />
+	<meta
+		name="twitter:description"
+		content="Terms of service for using selftest.in AI quizzes and exam papers."
+	/>
 </svelte:head>
 
 <section class="container py-4 py-md-5">

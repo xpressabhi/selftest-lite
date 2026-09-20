@@ -529,6 +529,7 @@
 
 <svelte:head>
 	<title>{questionPaper?.topic || $t('testPrefix')} | selftest.in</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <svelte:window onkeydown={handleTestKeydown} onclick={handleDocumentClick} />

@@ -1,5 +1,9 @@
 import { injectAnalytics } from '@vercel/analytics/sveltekit';
 
+// Single canonical URL per page: /about serves, /about/ redirects.
+// Prevents trailing-slash duplicate content in the index.
+export const trailingSlash = 'never';
+
 const isLocalDevelopment =
 	typeof window !== 'undefined' &&
 	['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);

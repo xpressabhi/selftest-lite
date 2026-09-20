@@ -69,7 +69,7 @@
 
 <svelte:head>
 	<title>{$t('bookmarks')} | selftest.in</title>
-	<meta name="description" content="Open or manage saved selftest.in exams and quiz presets." />
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <section class="container py-4">

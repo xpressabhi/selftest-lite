@@ -15,11 +15,18 @@
 			'@type': 'BlogPosting',
 			headline: $t(data.post.titleKey),
 			description: $t(data.post.excerptKey),
+			articleBody: (data.post.bodyKeys || []).map((key) => $t(key)).join('\n\n'),
+			image: 'https://selftest.in/og-cover.png',
 			datePublished: data.post.date,
+			dateModified: data.post.modified || data.post.date,
 			inLanguage: $language === 'hindi' ? 'hi-IN' : 'en-IN',
 			mainEntityOfPage: `https://selftest.in/blog/${data.slug}`,
-			author: { '@type': 'Organization', name: 'selftest.in' },
-			publisher: { '@type': 'Organization', name: 'selftest.in' },
+			author: { '@type': 'Organization', name: 'selftest.in', url: 'https://selftest.in' },
+			publisher: {
+				'@type': 'Organization',
+				name: 'selftest.in',
+				logo: { '@type': 'ImageObject', url: 'https://selftest.in/icons/512.png' },
+			},
 		})
 	);
 
@@ -29,7 +36,12 @@
 <svelte:head>
 	<title>{$t(data.post.titleKey)} | selftest.in</title>
 	<meta name="description" content={$t(data.post.excerptKey)} />
-	<link rel="canonical" href={`https://selftest.in/blog/${data.slug}`} />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="article" />
+	<meta property="og:title" content={`${$t(data.post.titleKey)} | selftest.in`} />
+	<meta property="og:description" content={$t(data.post.excerptKey)} />
+	<meta name="twitter:title" content={`${$t(data.post.titleKey)} | selftest.in`} />
+	<meta name="twitter:description" content={$t(data.post.excerptKey)} />
 	{@html postJsonLd}
 </svelte:head>
 
@@ -72,6 +84,14 @@
 				{/each}
 			</ul>
 		</section>
+
+		{#if data.post.bodyKeys?.length}
+			<div class="post-body">
+				{#each data.post.bodyKeys as bodyKey (bodyKey)}
+					<p>{$t(bodyKey)}</p>
+				{/each}
+			</div>
+		{/if}
 
 		<CtaBanner
 			titleKey="blogPracticeCtaTitle"
@@ -181,6 +201,43 @@
 		background: var(--surface);
 	}
 
+	.post-body {
+		display: grid;
+		gap: 1rem;
+		line-height: 1.75;
+	}
+
+	.post-body p {
+		margin: 0;
+	}
+
+	.post-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.post-point {
+		display: flex;
+		gap: 0.6rem;
+		align-items: flex-start;
+		line-height: 1.65;
+	}
+
+	.post-check {
+		display: inline-flex;
+		width: 1.35rem;
+		height: 1.35rem;
+		flex-shrink: 0;
+		margin-top: 0.15rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+		background: rgba(79, 70, 229, 0.12);
+		color: var(--brand-text);
+	}
 	.post-points-title {
 		margin: 0;
 		font-size: 0.85rem;

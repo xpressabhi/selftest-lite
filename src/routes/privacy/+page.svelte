@@ -18,6 +18,18 @@
 		name="description"
 		content="Privacy policy for selftest.in learning data, local storage, analytics, and contact information."
 	/>
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={`${$t('privacyHeroTitle')} | selftest.in`} />
+	<meta
+		property="og:description"
+		content="How selftest.in handles learning data, local storage, analytics and contact information."
+	/>
+	<meta name="twitter:title" content={`${$t('privacyHeroTitle')} | selftest.in`} />
+	<meta
+		name="twitter:description"
+		content="How selftest.in handles learning data, local storage and analytics."
+	/>
 </svelte:head>
 
 <section class="container py-4 py-md-5">

@@ -25,9 +25,20 @@
 	<title>{$t('faqHeroTitle')} | selftest.in</title>
 	<meta
 		name="description"
-		content="Frequently asked questions about selftest.in quizzes, privacy, sync, and AI generation."
+		content="Frequently asked questions about selftest.in AI quizzes, UPSC/SSC/Banking/Railway exam papers, privacy, sync, and generation in Hindi and English."
 	/>
-	<link rel="canonical" href="https://selftest.in/faq" />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={`${$t('faqHeroTitle')} | selftest.in`} />
+	<meta
+		property="og:description"
+		content="How selftest.in AI quiz generation, exam papers, pricing, privacy and offline mode work."
+	/>
+	<meta name="twitter:title" content={`${$t('faqHeroTitle')} | selftest.in`} />
+	<meta
+		name="twitter:description"
+		content="FAQ about AI quizzes, exam papers, privacy, sync and generation."
+	/>
 	{@html faqJsonLd}
 </svelte:head>
 

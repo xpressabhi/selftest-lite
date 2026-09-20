@@ -30,6 +30,7 @@ describe('locales', () => {
 			keys.add(post.excerptKey);
 			keys.add(post.readTimeKey);
 			post.pointKeys.forEach((key) => keys.add(key));
+			(post.bodyKeys || []).forEach((key) => keys.add(key));
 		}
 		const missing = [...keys].filter((key) => !(key in english) || !(key in hindi));
 		expect(missing).toEqual([]);

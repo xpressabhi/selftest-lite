@@ -249,6 +249,7 @@
 
 <svelte:head>
 	<title>{$t('profilePageTitle')} | selftest.in</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <section
