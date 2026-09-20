@@ -12,6 +12,8 @@ npm run dev
 
 ## Before you submit
 
+Run `npm run smoke` (ESLint + vitest + Playwright e2e smoke on installed Chrome — no browser download needed) — or install it as a pre-commit hook once with `npm run hooks:install` so it runs before every commit.
+
 1. Run `npm run lint` — ESLint must pass (semicolons required, single quotes preferred).
 2. Run `npm run check` — SvelteKit sync + production build must succeed.
 3. Run `npm run test` — existing vitest unit tests must pass.

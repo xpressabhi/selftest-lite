@@ -1,0 +1,10 @@
+#!/bin/sh
+# Pre-commit smoke test: fast ESLint + vitest unit tests.
+# Enable with: npm run hooks:install
+# Bypass only to save work-in-progress (never to land): git commit --no-verify
+set -e
+
+if ! npm run smoke; then
+	echo "pre-commit smoke failed: fix lint/tests before committing." >&2
+	exit 1
+fi
