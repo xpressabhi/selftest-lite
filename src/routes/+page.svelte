@@ -19,9 +19,16 @@
 		getHiddenHistoryIds,
 		getHistory,
 		getUnsubmittedTest,
+		readJson,
 		saveBookmarkedExamIds,
 		saveCurrentPaper,
+		writeJson,
 	} from '$lib/client/storage';
+	import {
+		isCacheFresh,
+		mergeRecentTests,
+		readRecentCache,
+	} from '$lib/client/recentTests';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import { getStreak } from '$lib/client/learning';
@@ -184,33 +191,40 @@
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
 		const historyEntries = getHistory();
-		recentTests = historyEntries.slice(0, 5).map((entry) => ({
-			id: entry.id,
-			topic: entry.topic || '',
-			totalQuestions: Number(entry.totalQuestions || entry.questions?.length || 0),
-			isFullExam: entry.test_mode === 'full-exam',
-		}));
-		// Replace the local fallback with the newest tests (created_at/id DESC).
-		void (async () => {
-			try {
-				const response = await fetch('/api/test?q=&limit=5&offset=0');
-				if (!response.ok) return;
-				const payload = await response.json().catch(() => null);
-				const hidden = new Set(getHiddenHistoryIds());
-				const latest = Array.isArray(payload?.tests)
-					? payload.tests.filter((test) => !hidden.has(String(test.id)))
-					: [];
-				if (latest.length === 0 || recentListTouched) return;
-				recentTests = latest.map((test) => ({
-					id: test.id,
-					topic: test.topic || '',
-					totalQuestions: Number(test.num_questions || 0),
-					isFullExam: test.test_mode === 'full-exam',
-				}));
-			} catch {
-				// Offline or request failed: keep the local history list.
-			}
-		})();
+		const hiddenIds = getHiddenHistoryIds();
+		// Merge, don't replace: the server list (when we have one) sets the
+		// order and local-only rows survive, so rows never vanish mid-read.
+		// A fresh server cache paints merged data immediately; a stale or
+		// missing cache triggers one refetch that merges on arrival.
+		const paintMerged = (serverRows) => {
+			if (recentListTouched) return;
+			recentTests = mergeRecentTests({
+				local: historyEntries,
+				server: serverRows,
+				hidden: hiddenIds,
+			});
+		};
+		const cached = readRecentCache(readJson(STORAGE_KEYS.SERVER_RECENT_TESTS, null));
+		const cachedRows = cached && isCacheFresh(cached.at) ? cached.tests : [];
+		paintMerged(cachedRows);
+		if (cachedRows.length === 0) {
+			void (async () => {
+				try {
+					const response = await fetch('/api/test?q=&limit=5&offset=0');
+					if (!response.ok) return;
+					const payload = await response.json().catch(() => null);
+					const latest = Array.isArray(payload?.tests) ? payload.tests : [];
+					if (latest.length === 0) return;
+					writeJson(STORAGE_KEYS.SERVER_RECENT_TESTS, {
+						at: Date.now(),
+						tests: latest,
+					});
+					paintMerged(latest);
+				} catch {
+					// Offline or request failed: keep the merged local paint.
+				}
+			})();
+		}
 		streak = getStreak();
 		lastTestId = historyEntries[0]?.id ? String(historyEntries[0].id) : null;
 		// Central personalization (fail-open, once per load): Jev picks one
