@@ -23,7 +23,14 @@
 		remindersSupported,
 	} from '$lib/client/reminders';
 	import { showToast } from '$lib/client/toast';
+	import { user } from '$lib/client/auth';
 	import { requestPersonalize } from '$lib/client/personalize';
+	import {
+		buildChallengeUrl,
+		compareScores,
+		parseChallengeParams,
+	} from '$lib/client/challenge';
+	import { CARD_HEIGHT, CARD_WIDTH, drawScoreCard } from '$lib/client/scoreCard';
 	import {
 		clearAttemptResult,
 		clearDraftAnswers,
@@ -52,6 +59,8 @@
 	let bookmarkedQuestionKeys = $state([]);
 	let filter = $state('all');
 	let resultsHide = $state([]);
+	let challenge = $state(null);
+	let challengeViewTracked = false;
 	let expanded = $state({});
 	let expansionInitialized = false;
 	const AUTO_EXPLAIN_KEY = 'selftest_auto_explain';
@@ -67,6 +76,19 @@
 	let showRetakeConfirm = $state(false);
 	let retakeTrigger = $state();
 	let retakeConfirmButton = $state();
+
+	let challengeOutcome = $derived(
+		challenge && questionPaper?.userAnswers
+			? compareScores(questionPaper.score ?? 0, challenge.score)
+			: null
+	);
+
+	$effect(() => {
+		if (challengeOutcome && !challengeViewTracked) {
+			challengeViewTracked = true;
+			track('results:challenge-view', { outcome: challengeOutcome });
+		}
+	});
 
 	let wrongIndices = $derived(
 		(questionPaper?.questions || [])
@@ -152,6 +174,10 @@
 			});
 		}
 		const testId = page.url.searchParams.get('id');
+		challenge = parseChallengeParams(page.url.search);
+		if (challenge) {
+			track('results:challenge-accept', {});
+		}
 		try {
 			let resolved = await resolveTestRecord(testId);
 			if (!resolved) {
@@ -486,9 +512,18 @@
 		}
 	}
 
+	function challengeShareUrl() {
+		const base = `/test?id=${encodeURIComponent(questionPaper.id)}`;
+		if (!/^\d+$/.test(String(questionPaper.id))) {
+			return `${window.location.origin}${base}`;
+		}
+		const name = ($user?.name || '').trim() || $t('challengeDefault');
+		return `${window.location.origin}${buildChallengeUrl(base, questionPaper.score ?? 0, name)}`;
+	}
+
 	async function shareResult() {
 		track('results:share');
-		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
+		const url = challengeShareUrl();
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
 		const text = $t('shareResultText', {
 			score: questionPaper.score ?? 0,
@@ -506,6 +541,61 @@
 		}
 		await navigator.clipboard.writeText(`${text}\n${url}`);
 		showToast($t('shareLinkCopied'), 'success');
+	}
+
+	async function shareCard() {
+		if (!questionPaper) {
+			return;
+		}
+		track('results:share-card');
+		try {
+			const canvas = document.createElement('canvas');
+			canvas.width = CARD_WIDTH;
+			canvas.height = CARD_HEIGHT;
+			const numericId = /^\d+$/.test(String(questionPaper.id));
+			const drawn = drawScoreCard(canvas, {
+				topic: questionPaper.topic || '',
+				score: questionPaper.score ?? 0,
+				total: questionPaper.totalQuestions ?? totalQuestions,
+				pct: percentage,
+				timeLabel: `${$t('timeSpent')}: ${formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}`,
+				brand: 'selftest.in',
+				challenge: $t('challengeCta', {
+					score: questionPaper.score ?? 0,
+					total: questionPaper.totalQuestions ?? totalQuestions,
+				}),
+				link: numericId ? challengeShareUrl() : '',
+			});
+			if (!drawn) {
+				throw new Error('card');
+			}
+			const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+			if (!blob) {
+				throw new Error('card');
+			}
+			const file = new File([blob], 'selftest-score.png', { type: 'image/png' });
+			if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+				await navigator.share({
+					files: [file],
+					title: questionPaper.topic,
+					text: $t('shareResultText', {
+						score: questionPaper.score ?? 0,
+						total: questionPaper.totalQuestions ?? totalQuestions,
+						percentage,
+						topic: questionPaper.topic,
+					}),
+				});
+				return;
+			}
+			const anchor = document.createElement('a');
+			anchor.href = URL.createObjectURL(blob);
+			anchor.download = 'selftest-score.png';
+			anchor.click();
+			window.setTimeout(() => URL.revokeObjectURL(anchor.href), 5000);
+			showToast($t('cardSaved'), 'success');
+		} catch {
+			showToast($t('failedToLoadResult'), 'warning');
+		}
 	}
 
 	function practiceMoreHref() {
@@ -630,6 +720,9 @@
 				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
 					{$t('share')}
 				</button>
+				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareCard}>
+					{$t('shareCard')}
+				</button>
 				{#if showRetakeConfirm}
 					<div
 						class="retake-confirm no-print"
@@ -733,6 +826,33 @@
 				</label>
 			{/if}
 		</div>
+
+		{#if challengeOutcome}
+			<section class="challenge-card bg-body border rounded-3 p-3 mb-4" aria-live="polite">
+				<p class="fw-bold mb-1">
+					{$t('challengeVs', { by: challenge.by, score: challenge.score })}
+				</p>
+				<p class="mb-2">
+					{$t(
+						challengeOutcome === 'win'
+							? 'challengeWin'
+							: challengeOutcome === 'lose'
+								? 'challengeLose'
+								: 'challengeDraw'
+					)}
+					<span class="text-muted small">
+						({questionPaper.score ?? 0}/{questionPaper.totalQuestions ?? totalQuestions})
+					</span>
+				</p>
+				<button
+					class="btn btn-sm btn-warning"
+					type="button"
+					onclick={shareResult}
+				>
+					{$t('challengeBack')}
+				</button>
+			</section>
+		{/if}
 
 		<div
 			class="filter-bar bg-body border rounded-3 p-2 mb-4"
@@ -1151,6 +1271,11 @@
 		border-radius: 8px;
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.challenge-card {
+		max-width: 860px;
+		border-color: color-mix(in srgb, var(--color-brand-600) 35%, transparent);
 	}
 
 	.answer-options {
