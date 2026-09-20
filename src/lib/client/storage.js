@@ -103,6 +103,7 @@ export function removeFromHistory(testId) {
 	}
 	removeKey(getDraftAnswerKey(testId));
 	removeKey(getDraftFlagsKey(testId));
+	removeKey(getDraftHintsKey(testId));
 	removeKey(getAttemptResultKey(testId));
 	clearUnsubmittedTest(testId);
 }
@@ -244,6 +245,37 @@ export function clearDraftFlags(testId) {
 	removeKey(getDraftFlagsKey(testId));
 }
 
+export function getDraftHintsKey(testId) {
+	return `${STORAGE_KEYS.UNSUBMITTED_TEST}_hints_${testId || 'current'}`;
+}
+
+function isHintsMap(value) {
+	return (
+		value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.values(value).every(
+			(entry) =>
+				Array.isArray(entry) &&
+				entry.length === 2 &&
+				entry.every((index) => Number.isInteger(index) && index >= 0)
+		)
+	);
+}
+
+export function readDraftHints(testId) {
+	const hints = readJson(getDraftHintsKey(testId), {});
+	return isHintsMap(hints) ? hints : {};
+}
+
+export function writeDraftHints(testId, hints) {
+	writeJson(getDraftHintsKey(testId), isHintsMap(hints) ? hints : {});
+}
+
+export function clearDraftHints(testId) {
+	removeKey(getDraftHintsKey(testId));
+}
+
 export function getUnsubmittedTest() {
 	return readJson(STORAGE_KEYS.UNSUBMITTED_TEST, null);
 }
@@ -337,11 +369,11 @@ export function clearAttemptResult(testId) {
 	removeKey(getAttemptResultKey(testId));
 }
 
-export async function submitTestAnswers({ id, answers = {}, timeTaken = 0 }) {
+export async function submitTestAnswers({ id, answers = {}, timeTaken = 0, hintedIndexes = {} }) {
 	const response = await fetch('/api/test/submit', {
 		method: 'POST',
 		headers: getClientHeaders(),
-		body: JSON.stringify({ id, answers, timeTaken }),
+		body: JSON.stringify({ id, answers, timeTaken, hintedIndexes }),
 	});
 	const data = await response.json().catch(() => ({}));
 	if (!response.ok) {

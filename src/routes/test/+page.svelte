@@ -17,10 +17,12 @@
 	import {
 		clearDraftAnswers,
 		clearDraftFlags,
+		clearDraftHints,
 		clearUnsubmittedTest,
 		getHistory,
 		readDraftAnswers,
 		readDraftFlags,
+		readDraftHints,
 		resolveTestRecord,
 		saveAttemptResult,
 		saveUnsubmittedTest,
@@ -28,6 +30,7 @@
 		upsertHistory,
 		writeDraftAnswers,
 		writeDraftFlags,
+		writeDraftHints,
 	} from '$lib/client/storage';
 	import { pushAttempt } from '$lib/client/sync';
 	import { showToast } from '$lib/client/toast';
@@ -61,12 +64,48 @@
 	let swipeStartY = null;
 	let testMomentFired = false;
 	let navCount = 0;
+	// 50-50 hint: thresholds mirror src/lib/server/hint.js (client cannot
+	// import $lib/server/*, so the numbers are duplicated, not derived).
+	const HINT_DWELL_SEC = 45;
+	const HINT_SKIP_STREAK = 2;
+	const MAX_HINTS = 3;
+	let eliminated = $state({});
+	let hintUnlocked = $state({});
+	let hintLoading = $state(false);
+	let skipStreak = $state(0);
+	let questionStartElapsed = $state(0);
 
 	const SWIPE_THRESHOLD_PX = 64;
 	const START_HAPTIC = 15;
 	const SUBMIT_HAPTIC = [25, 50, 25];
 
 	let answeredCount = $derived(Object.keys(answers).length);
+	let hintsUsedCount = $derived(Object.keys(eliminated).length);
+	let canUseHint = $derived(
+		testStarted &&
+			!submitting &&
+			!!hintUnlocked[currentQuestionIndex] &&
+			!eliminated[currentQuestionIndex] &&
+			!hintLoading &&
+			hintsUsedCount < MAX_HINTS &&
+			answers[currentQuestionIndex] == null
+	);
+	let showHintSoon = $derived(
+		testStarted &&
+			!eliminated[currentQuestionIndex] &&
+			!hintUnlocked[currentQuestionIndex] &&
+			(elapsedSeconds - questionStartElapsed > 15 || skipStreak >= 1)
+	);
+	// Charge bar (indication only, never seconds): fills as the unlock nears.
+	let hintCharge = $derived(
+		Math.min(
+			1,
+			Math.max(
+				(elapsedSeconds - questionStartElapsed) / HINT_DWELL_SEC,
+				skipStreak / HINT_SKIP_STREAK
+			)
+		)
+	);
 	let totalQuestions = $derived(questionPaper?.questions?.length || 0);
 	let flaggedCount = $derived(flagged.length);
 	let hasDraftAnswers = $derived(Object.keys(answers).length > 0);
@@ -131,6 +170,12 @@
 	});
 
 	$effect(() => {
+		if (questionPaper?.id) {
+			writeDraftHints(questionPaper.id, eliminated);
+		}
+	});
+
+	$effect(() => {
 		if (!questionPaper?.questions?.length) {
 			return;
 		}
@@ -159,6 +204,7 @@
 			}
 			answers = readDraftAnswers(questionPaper.id);
 			flagged = readDraftFlags(questionPaper.id);
+			eliminated = readDraftHints(questionPaper.id);
 			saveUnsubmittedTest(questionPaper);
 		} catch (caughtError) {
 			error = caughtError.message || $t('testNotFound');
@@ -173,8 +219,11 @@
 		}
 		startedAt = Date.now();
 		elapsedSeconds = 0;
+		questionStartElapsed = 0;
+		skipStreak = 0;
 		timerInterval = window.setInterval(() => {
 			elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+			checkHintUnlock();
 		}, 1000);
 		showOverflowMenu = false;
 		track('test:start', {
@@ -290,6 +339,11 @@
 	}
 
 	function setAnswer(index, option) {
+		const options = questionPaper?.questions?.[index]?.options || [];
+		const optionIndex = options.indexOf(option);
+		if (optionIndex !== -1 && (eliminated[index] || []).includes(optionIndex)) {
+			return;
+		}
 		const isClearing = answers[index] === option;
 		if (isClearing) {
 			const next = { ...answers };
@@ -303,6 +357,7 @@
 		}
 		liveAnnouncement = `${$t('optionSelected', { option })}`;
 		track('test:answer', { q: index });
+		skipStreak = 0;
 		if (!isClearing && $autoAdvance && index < totalQuestions - 1) {
 			window.clearTimeout(autoAdvanceTimer);
 			autoAdvanceTimer = window.setTimeout(() => {
@@ -357,6 +412,7 @@
 							id: questionPaper.id,
 							answers: finalAnswers,
 							timeTaken,
+							hintedIndexes: eliminated,
 						});
 				saveAttemptResult(questionPaper.id, gradedResult);
 				const submittedPaper = {
@@ -369,6 +425,7 @@
 				};
 				clearDraftAnswers(questionPaper.id);
 				clearDraftFlags(questionPaper.id);
+				clearDraftHints(questionPaper.id);
 				clearUnsubmittedTest(questionPaper.id);
 				// Locally-graded attempts never hit /api/test/submit; push them to
 				// the server (best-effort, offline-safe) so history survives across
@@ -379,6 +436,7 @@
 					score: gradedResult.score,
 					totalQuestions: gradedResult.totalQuestions,
 					timeTaken,
+					hintedIndexes: eliminated,
 					submittedAt: new Date().toISOString(),
 				});
 				const nextHistory = upsertHistory(submittedPaper, getHistory());
@@ -475,7 +533,104 @@
 			) {
 				toggleFlag(currentQuestionIndex);
 			}
+			// Jev agrees the learner is stuck: unlock the 50-50 button too.
+			if (decision.promote?.includes('hint')) {
+				unlockHint(currentQuestionIndex, 'jev');
+			}
 		});
+	}
+
+	function unlockHint(index, source) {
+		if (eliminated[index] || hintUnlocked[index]) {
+			return;
+		}
+		if (answers[index] != null) {
+			return;
+		}
+		if (Object.keys(eliminated).length >= MAX_HINTS) {
+			return;
+		}
+		hintUnlocked = { ...hintUnlocked, [index]: true };
+		track('test:hint-offer', { q: index, source });
+	}
+
+	function checkHintUnlock() {
+		if (!testStarted || submitting) {
+			return;
+		}
+		const index = currentQuestionIndex;
+		if (eliminated[index] || hintUnlocked[index]) {
+			return;
+		}
+		if (answers[index] != null) {
+			return;
+		}
+		if (Object.keys(eliminated).length >= MAX_HINTS) {
+			return;
+		}
+		const dwellSec = elapsedSeconds - questionStartElapsed;
+		if (dwellSec >= HINT_DWELL_SEC || skipStreak >= HINT_SKIP_STREAK) {
+			unlockHint(index, 'local');
+		}
+	}
+
+	function localElimination(question) {
+		const options = Array.isArray(question?.options) ? question.options : [];
+		const answer = typeof question?.answer === 'string' ? question.answer.trim() : null;
+		if (answer === null) {
+			return [];
+		}
+		const wrong = [];
+		for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+			const text = typeof options[optionIndex] === 'string' ? options[optionIndex].trim() : '';
+			if (text !== answer) {
+				wrong.push(optionIndex);
+			}
+			if (wrong.length === 2) {
+				break;
+			}
+		}
+		return wrong.length === 2 ? wrong : [];
+	}
+
+	function isEliminated(optionIndex) {
+		return (eliminated[currentQuestionIndex] || []).includes(optionIndex);
+	}
+
+	async function useHint() {
+		const index = currentQuestionIndex;
+		if (!canUseHint || eliminated[index]) {
+			return;
+		}
+		hintLoading = true;
+		track('test:hint-use', { q: index });
+		try {
+			const question = questionPaper.questions[index];
+			if (typeof question?.answer === 'string' && question.answer.length > 0) {
+				// Review paper: the key is already local, no network needed.
+				const picked = localElimination(question);
+				if (picked.length !== 2) {
+					throw new Error($t('failedToGenerateExplanation'));
+				}
+				eliminated = { ...eliminated, [index]: picked };
+			} else {
+				const response = await fetch('/api/test/hint', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: questionPaper.id, index }),
+				});
+				const data = await response.json().catch(() => ({}));
+				if (!response.ok || !Array.isArray(data?.eliminated)) {
+					throw new Error(data?.error || $t('failedToGenerateExplanation'));
+				}
+				eliminated = { ...eliminated, [index]: data.eliminated };
+			}
+		} catch (caughtError) {
+			track('test:hint-fail', { q: index });
+			showToast(caughtError?.message || $t('failedToGenerateExplanation'), 'warning');
+		} finally {
+			hintLoading = false;
+		}
 	}
 
 	function selectQuestion(nextIndex) {
@@ -489,9 +644,17 @@
 		const shouldRestoreFocus =
 			activeElement instanceof HTMLElement && questionCardHost?.contains(activeElement);
 		track('test:jump', { to: nextIndex });
+		const leavingUnanswered = answers[currentQuestionIndex] == null;
 		navigationDirection = nextIndex > currentQuestionIndex ? 'forward' : 'backward';
+		if (nextIndex > currentQuestionIndex && leavingUnanswered) {
+			skipStreak += 1;
+		} else {
+			skipStreak = 0;
+		}
 		currentQuestionIndex = nextIndex;
+		questionStartElapsed = elapsedSeconds;
 		navCount += 1;
+		checkHintUnlock();
 		maybeFireTestMoment();
 		liveAnnouncement = $t('questionOf', {
 			current: nextIndex + 1,
@@ -702,8 +865,33 @@
 							{$t('of')}
 							{totalQuestions}
 						</span>
-						<button
-							class="test-flag"
+						<div class="test-card-tools">
+							<span class="hint-btn">
+								<button
+									class="test-hint"
+									class:ready={canUseHint}
+									class:used={eliminated[currentQuestionIndex]}
+									type="button"
+									disabled={!canUseHint}
+									aria-label={eliminated[currentQuestionIndex]
+										? $t('hintUsed')
+										: $t('hintFiftyFifty')}
+									title={canUseHint ? $t('hintFiftyFifty') : $t('hintUnlockSoon')}
+									onclick={useHint}
+								>
+									<span aria-hidden="true">50-50</span>
+									<span class="visually-hidden">
+										{eliminated[currentQuestionIndex] ? $t('hintUsed') : $t('hintFiftyFifty')}
+									</span>
+								</button>
+								{#if showHintSoon && !eliminated[currentQuestionIndex]}
+									<span class="hint-charge" aria-hidden="true">
+										<span style={`width: ${Math.round(hintCharge * 100)}%`}></span>
+									</span>
+								{/if}
+							</span>
+							<button
+								class="test-flag"
 							class:active={flagged.includes(currentQuestionIndex)}
 							type="button"
 							aria-pressed={flagged.includes(currentQuestionIndex)}
@@ -719,6 +907,10 @@
 									: $t('flagForReview')}</span
 							>
 						</button>
+						{#if showHintSoon}
+							<span class="hint-soon" role="status">{$t('hintUnlockSoon')}</span>
+						{/if}
+						</div>
 					</div>
 					<AnimatedHeight
 						class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
@@ -739,8 +931,11 @@
 											class="test-option"
 											class:selected={answers[currentQuestionIndex] ===
 												option}
+											class:eliminated={isEliminated(optionIndex)}
 											type="button"
 											aria-pressed={answers[currentQuestionIndex] === option}
+											aria-disabled={isEliminated(optionIndex)}
+											disabled={isEliminated(optionIndex)}
 											onclick={() => setAnswer(currentQuestionIndex, option)}
 										>
 											<span class="test-option-letter" aria-hidden="true">
@@ -1158,6 +1353,76 @@
 		margin-bottom: 10px;
 	}
 
+	.test-card-tools {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.hint-btn {
+		position: relative;
+		display: inline-flex;
+	}
+
+	.hint-charge {
+		position: absolute;
+		left: 12px;
+		right: 12px;
+		bottom: 7px;
+		height: 2px;
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--text-muted) 25%, transparent);
+		overflow: hidden;
+		pointer-events: none;
+	}
+
+	.hint-charge > span {
+		display: block;
+		height: 100%;
+		border-radius: 2px;
+		background: var(--brand-text);
+		transition: width 1s linear;
+	}
+
+	:global(html.data-saver) .hint-charge > span,
+	:global(html.reduce-motion) .hint-charge > span {
+		transition: none;
+	}
+
+	.test-hint {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		gap: 6px;
+		padding: 0 12px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		font-weight: 700;
+		opacity: 0.65;
+	}
+
+	.test-hint.ready {
+		border-color: var(--brand-text);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
+		color: var(--brand-text);
+		opacity: 1;
+	}
+
+	.test-hint.used {
+		border-color: var(--line);
+		background: var(--surface-muted);
+		opacity: 0.7;
+	}
+
+	.hint-soon {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+
 	.test-question-no {
 		color: var(--text-muted);
 		font-size: 0.8rem;
@@ -1228,6 +1493,16 @@
 	.test-option.selected {
 		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
+	}
+
+	.test-option.eliminated {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+
+	.test-option.eliminated .test-option-text {
+		text-decoration: line-through;
+		text-decoration-thickness: 1px;
 	}
 
 	.test-option-letter {

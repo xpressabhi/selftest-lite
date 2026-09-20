@@ -2,6 +2,7 @@ import { Pool } from '@neondatabase/serverless';
 import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
+import { sanitizeHintedIndexes } from './hint.js';
 
 let poolInstance = null;
 let schemaReadyPromise = null;
@@ -141,6 +142,9 @@ export async function ensureStorageSchema() {
 		`);
 		await query(`
 			ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS user_answers JSONB
+		`);
+		await query(`
+			ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS hinted_indexes JSONB
 		`);
 
 		await query(`
@@ -490,6 +494,7 @@ export async function createTestAttempt({
 	userId = null,
 	clientId = null,
 	userAnswers = null,
+	hintedIndexes = null,
 }) {
 	await ensureStorageSchema();
 
@@ -500,11 +505,15 @@ export async function createTestAttempt({
 		userAnswers && typeof userAnswers === 'object' && !Array.isArray(userAnswers)
 			? JSON.stringify(userAnswers)
 			: null;
+	const normalizedHintedIndexes =
+		hintedIndexes && typeof hintedIndexes === 'object' && !Array.isArray(hintedIndexes)
+			? JSON.stringify(hintedIndexes)
+			: null;
 
 	const result = await query(
 		`INSERT INTO ai_test_attempts
-		 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, hinted_indexes)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		 RETURNING id`,
 		[
 			testId,
@@ -514,6 +523,7 @@ export async function createTestAttempt({
 			score,
 			totalQuestions,
 			timeTaken,
+			normalizedHintedIndexes,
 		]
 	);
 
@@ -638,6 +648,19 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 			!Array.isArray(attempt.userAnswers)
 				? JSON.stringify(attempt.userAnswers)
 				: null;
+		let normalizedHints = null;
+		if (
+			attempt?.hintedIndexes &&
+			typeof attempt.hintedIndexes === 'object' &&
+			!Array.isArray(attempt.hintedIndexes)
+		) {
+			const record = await getTestRecordById(testId).catch(() => null);
+			const clean = sanitizeHintedIndexes(
+				attempt.hintedIndexes,
+				record?.test?.questions || []
+			);
+			normalizedHints = Object.keys(clean).length > 0 ? JSON.stringify(clean) : null;
+		}
 		const score = Number.isFinite(Number(attempt?.score))
 			? Math.max(0, Number(attempt.score))
 			: null;
@@ -669,8 +692,8 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 
 		const result = await query(
 			`INSERT INTO ai_test_attempts
-			 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, hinted_indexes, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 			[
 				testId,
 				userId,
@@ -679,6 +702,7 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 				score,
 				totalQuestions,
 				timeTaken,
+				normalizedHints,
 				submittedAt.toISOString(),
 			]
 		);

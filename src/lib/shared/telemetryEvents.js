@@ -57,6 +57,9 @@ export const TELEMETRY_EVENTS = new Set([
 	'test:submit-fail',
 	'test:share',
 	'test:swipe',
+	'test:hint-offer',
+	'test:hint-use',
+	'test:hint-fail',
 
 	// Results
 	'results:view',

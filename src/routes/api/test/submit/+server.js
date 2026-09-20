@@ -8,6 +8,7 @@ import {
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { parseRequestBody } from '$lib/server/quizValidation';
+import { sanitizeHintedIndexes } from '$lib/server/hint';
 import { MAX_ANSWER_TEXT_LENGTH } from '$lib/server/quizConfig';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
@@ -53,7 +54,7 @@ export async function POST({ request, cookies }) {
 			);
 		}
 
-		const { id, answers, timeTaken } = await parseRequestBody(request);
+		const { id, answers, timeTaken, hintedIndexes } = await parseRequestBody(request);
 
 		const testId = Number(id);
 		if (!Number.isInteger(testId) || testId <= 0) {
@@ -114,6 +115,9 @@ export async function POST({ request, cookies }) {
 		for (const [index, value] of gradedAnswers) {
 			answeredMap[index] = value;
 		}
+		// Hint usage is tracked only: verified against the stored key (a
+		// cheating payload is dropped, grading never fails because of it).
+		const cleanHints = sanitizeHintedIndexes(hintedIndexes, questions);
 
 		try {
 			await createTestAttempt({
@@ -124,6 +128,7 @@ export async function POST({ request, cookies }) {
 				userId: user?.id || null,
 				clientId,
 				userAnswers: answeredMap,
+				hintedIndexes: cleanHints,
 			});
 		} catch (attemptError) {
 			// Grading must succeed even if attempt persistence fails.
@@ -144,6 +149,7 @@ export async function POST({ request, cookies }) {
 				score,
 				totalQuestions: results.length,
 				answeredCount: gradedAnswers.size,
+				hintedCount: Object.keys(cleanHints).length,
 			},
 		});
 
