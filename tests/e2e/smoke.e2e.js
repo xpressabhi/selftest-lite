@@ -22,6 +22,21 @@ async function collectErrors(page) {
 	return errors;
 }
 
+// HoldButton ignores quick taps, so e2e submit drives a real press-and-hold.
+// hover() waits for the element to stop moving, which matters while the
+// review sheet is still animating in.
+// HoldButton ignores quick taps, so e2e submit drives a real press-and-hold.
+// The review sheet animates in: let it settle, re-aim the pointer, then hold.
+async function pressAndHold(page, locator, holdMs = 1100) {
+	await locator.waitFor({ state: 'visible' });
+	await locator.hover();
+	await page.waitForTimeout(300);
+	await locator.hover();
+	await page.mouse.down();
+	await page.waitForTimeout(holdMs);
+	await page.mouse.up();
+}
+
 test('home renders the planner composer', async ({ page }) => {
 	const errors = await collectErrors(page);
 	await page.goto('/');
@@ -85,9 +100,9 @@ test('seeded paper: skip-streak unlocks 50-50, submit lands on results', async (
 	await page.locator('.test-option').first().click();
 	await page.getByRole('button', { name: 'Back' }).click();
 	await page.locator('.test-option').first().click();
-	// Submit through the review sheet.
+	// Submit through the review sheet: the button commits on a full hold.
 	await page.locator('.test-progress-pill').click();
-	await page.getByRole('button', { name: 'Submit Test' }).click();
+	await pressAndHold(page, page.getByRole('button', { name: 'Submit Test' }));
 	await expect(page).toHaveURL(/\/results\?id=e2e-smoke/);
 	await expect(page.getByText('3 / 3').first()).toBeVisible();
 	expect(errors).toEqual([]);

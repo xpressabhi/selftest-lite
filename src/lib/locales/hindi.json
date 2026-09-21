@@ -20,6 +20,7 @@
 	"startNewQuiz": "नया क्विज़ शुरू करें",
 	"similarQuiz": "समान क्विज़",
 	"submitTest": "टेस्ट जमा करें",
+	"holdToSubmit": "जमा करने के लिए दबाए रखें",
 	"submittingAnswers": "विश्लेषण हो रहा है…",
 	"submitFailed": "जमा नहीं किया जा सका। कृपया अपना कनेक्शन जाँचें और फिर से प्रयास करें।",
 	"submitTestConfirm": "टेस्ट जमा करें?",

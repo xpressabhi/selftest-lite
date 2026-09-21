@@ -20,6 +20,7 @@
 	"startNewQuiz": "Start New Quiz",
 	"similarQuiz": "Similar Quiz",
 	"submitTest": "Submit Test",
+	"holdToSubmit": "Press and hold to submit",
 	"submittingAnswers": "Analyzing…",
 	"submitFailed": "Could not submit. Please check your connection and try again.",
 	"submitTestConfirm": "Submit Test?",

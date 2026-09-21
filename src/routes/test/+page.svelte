@@ -9,10 +9,11 @@
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import ReviewSheet from '$lib/client/ReviewSheet.svelte';
+	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
 	import { prewarmRichMarkdown } from '$lib/client/markdownRenderer';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
 	import { autoAdvance, setAutoAdvance } from '$lib/client/preferences';
-	import { triggerVibration } from '$lib/client/haptics';
+	import { HAPTIC_COMMIT, triggerVibration } from '$lib/client/haptics';
 	import { keepScreenAwake, stopKeepingScreenAwake } from '$lib/client/screenWake';
 	import {
 		clearDraftAnswers,
@@ -625,6 +626,7 @@
 				}
 				eliminated = { ...eliminated, [index]: data.eliminated };
 			}
+			triggerVibration(HAPTIC_COMMIT);
 		} catch (caughtError) {
 			track('test:hint-fail', { q: index });
 			showToast(caughtError?.message || $t('failedToGenerateExplanation'), 'warning');
@@ -778,19 +780,18 @@
 					</button>
 					{#if showOverflowMenu}
 						<div class="test-overflow-menu" bind:this={overflowMenuElement}>
-							<label class="overflow-switch">
-								<input
-									type="checkbox"
+							<div class="overflow-switch-row">
+								<SquishSwitch
 									checked={$autoAdvance}
-									onchange={(event) => {
+									label={$t('autoAdvance')}
+									onchange={(checked) => {
 										track('settings:auto-advance-toggle', {
-											enabled: event.currentTarget.checked,
+											enabled: checked,
 										});
-										setAutoAdvance(event.currentTarget.checked);
+										setAutoAdvance(checked);
 									}}
 								/>
-								<span>{$t('autoAdvance')}</span>
-							</label>
+							</div>
 						</div>
 					{/if}
 				{/if}
@@ -1169,27 +1170,12 @@
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
 	}
 
-	.overflow-switch {
+	.overflow-switch-row {
 		display: flex;
 		width: 100%;
 		min-height: 44px;
 		align-items: center;
-		gap: 10px;
-		padding: 10px 12px;
-		border: 0;
-		border-radius: 8px;
-		background: transparent;
-		color: inherit;
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.overflow-switch input {
-		width: 18px;
-		height: 18px;
-		accent-color: var(--brand-text);
+		padding: 6px 12px;
 	}
 
 	.test-progress-track {
@@ -1496,13 +1482,77 @@
 	}
 
 	.test-option.eliminated {
-		opacity: 0.45;
 		cursor: not-allowed;
+		opacity: 0.55;
+		transform: scale(0.985);
+		transition:
+			border-color 150ms ease,
+			background 150ms ease,
+			opacity var(--motion-base) var(--ease-out),
+			transform var(--motion-base) var(--ease-commit);
 	}
 
+	/* Spring strike: the line sweeps across the label as the hint lands. */
 	.test-option.eliminated .test-option-text {
-		text-decoration: line-through;
-		text-decoration-thickness: 1px;
+		position: relative;
+	}
+
+	.test-option.eliminated .test-option-text::after {
+		position: absolute;
+		top: 50%;
+		left: 0;
+		width: 100%;
+		height: 1.5px;
+		border-radius: 999px;
+		background: currentColor;
+		opacity: 0.75;
+		content: '';
+		transform: scaleX(0);
+		transform-origin: left center;
+		animation: eliminate-strike var(--motion-slow) var(--ease-commit) forwards;
+	}
+
+	@keyframes eliminate-strike {
+		to {
+			transform: scaleX(1);
+		}
+	}
+
+	.test-option.eliminated .test-option-letter {
+		position: relative;
+		color: transparent;
+	}
+
+	.test-option.eliminated .test-option-letter::before,
+	.test-option.eliminated .test-option-letter::after {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 14px;
+		height: 1.5px;
+		border-radius: 999px;
+		background: var(--text-muted);
+		content: '';
+		transform: translate(-50%, -50%) scaleX(0) rotate(45deg);
+		animation: eliminate-cross-a var(--motion-fast) var(--ease-commit) 90ms forwards;
+	}
+
+	.test-option.eliminated .test-option-letter::after {
+		transform: translate(-50%, -50%) scaleX(0) rotate(-45deg);
+		animation-name: eliminate-cross-b;
+		animation-delay: 130ms;
+	}
+
+	@keyframes eliminate-cross-a {
+		to {
+			transform: translate(-50%, -50%) scaleX(1) rotate(45deg);
+		}
+	}
+
+	@keyframes eliminate-cross-b {
+		to {
+			transform: translate(-50%, -50%) scaleX(1) rotate(-45deg);
+		}
 	}
 
 	.test-option-letter {

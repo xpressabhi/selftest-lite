@@ -1,6 +1,7 @@
 <script>
 	import { t } from '$lib/client/i18n';
 	import { focusTrap } from '$lib/client/focusTrap';
+	import HoldButton from '$lib/client/HoldButton.svelte';
 
 	let {
 		total = 0,
@@ -116,19 +117,13 @@
 						{$t('reviewUnanswered')}
 					</button>
 				{/if}
-				<button
-					class="btn btn-success"
-					type="button"
-					disabled={submitting}
-					onclick={onSubmit}
-				>
-					{#if submitting}
-						<span class="thinking-dots" style="margin-right:6px">
-							<span></span><span></span><span></span>
-						</span>
-					{/if}
-					{submitting ? $t('submittingAnswers') : $t('submitTest')}
-				</button>
+				<HoldButton
+					label={$t('submitTest')}
+					busyLabel={$t('submittingAnswers')}
+					hint={$t('holdToSubmit')}
+					busy={submitting}
+					onhold={onSubmit}
+				/>
 			</div>
 		</footer>
 	</div>
