@@ -195,6 +195,7 @@ Before submitting a change:
 8. [ ] Ensure Google Adsense (`ADSENSE.md`) or PWA features aren't broken.
 9. [ ] Validate quiz/explanation rendering for markdown + math/symbol-heavy content.
 10. [ ] Validate behavior on low-end Android profile + slow internet (no blocking jank).
+11. [ ] Touched SEO, prerender, routes or i18n? Run `npm run verify:vercel` (builds and validates the Vercel output: sitemap ↔ static/SSR coverage, canonical, hreflang, `<html lang>`, crawler files).
 
 ---
 

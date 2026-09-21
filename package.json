@@ -24,7 +24,8 @@
 		"cap:sync": "cap sync android",
 		"cap:open": "cap open android",
 		"apk:debug": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug",
-		"apk:release": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleRelease"
+		"apk:release": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleRelease",
+		"verify:vercel": "npm run build && node scripts/verify-vercel.mjs"
 	},
 	"dependencies": {
 		"@capacitor/app": "^8.1.1",
@@ -72,5 +73,8 @@
 		"vite": "^8.2.1",
 		"vite-plugin-pwa": "^1.3.0",
 		"vitest": "^4.1.10"
+	},
+	"engines": {
+		"node": "22.x"
 	}
 }

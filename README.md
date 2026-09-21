@@ -111,6 +111,10 @@ are generated from the registries: `/sitemap.xml` (both languages), `/rss.xml`,
 from `src/lib/shared/seo.js` + `SeoHead.svelte`; the runbook for Search Console and
 the measurement baseline lives in [docs/seo-baseline.md](docs/seo-baseline.md).
 
+Before deploying, `npm run verify:vercel` builds and validates the Vercel output:
+it resolves every sitemap URL to a prerendered file or the SSR function and checks
+canonical, hreflang, `<html lang>` and crawler files on each page.
+
 See [AGENTS.md](AGENTS.md) for the full technical guide and [docs/architecture.md](docs/architecture.md) for architecture notes.
 
 ## Contributing

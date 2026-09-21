@@ -52,6 +52,12 @@ Three shippable phases from `docs/superpowers/specs/2026-09-21-seo-foundation-de
 - [x] All acceptance criteria met; `npm run smoke` passes
 - [x] Manual check: `/hi` pages render Hindi, toggle navigates, app flow stays Hindi
 
+### Deployment verification (Vercel)
+- [x] Adapter output exercised locally through the built function bundle: all 192 sitemap URLs return 200, `/hi/` 308s to `/hi`, unknown paths 404
+- [x] `npm run verify:vercel` gate added (build + validate sitemap coverage, canonical, hreflang, `<html lang>`, crawler files); negative-tested
+- [x] `node: 22.x` pinned for the Vercel build; function `.vc-config.json` runs `nodejs22.x`
+- [ ] Owner: set `GOOGLE_SITE_VERIFICATION` in Vercel → Production env and redeploy (build-time value), then submit the sitemap
+
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 | Prerender + `$env/dynamic/private` bakes build-time value | Low | Document env requirement; verify meta after build |
