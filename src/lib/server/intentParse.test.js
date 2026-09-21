@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	MAX_QUESTIONS,
 	MIN_QUESTIONS,
+	MAX_TOPIC_CANDIDATES,
 	buildExamCriteria,
 	buildIntentQuestions,
 	buildTopicCandidates,
@@ -12,6 +13,7 @@ import {
 	extractQuestionCount,
 	hasDifficultyContradiction,
 	normalizePlan,
+	repairTopicSpan,
 	selectClarification,
 } from './intentParse.js';
 
@@ -153,6 +155,122 @@ describe('buildTopicCandidates', () => {
 		expect(buildTopicCandidates('10 questio')).toEqual([]);
 		expect(buildTopicCandidates('cla 10')).toEqual([]);
 		expect(buildTopicCandidates('har')).toEqual([]);
+	});
+});
+
+describe('topic span repair (failure modes F1-F8)', () => {
+	// F1: hyphenated compounds must survive tokenization as one token.
+	it('keeps hyphenated compounds whole', () => {
+		const candidates = buildTopicCandidates('python built-in data structures');
+		expect(candidates).toContain('built-in');
+		expect(candidates).toContain('python built-in data structures');
+	});
+
+	// F2: a fragment choice recovers the adjacent content tokens.
+	it('repairs a fragment by absorbing adjacent content tokens', () => {
+		expect(repairTopicSpan('python built-in data structures', 'data structures')).toBe(
+			'python built-in data structures'
+		);
+		expect(repairTopicSpan('python built in data structures', 'data structures')).toBe(
+			'python built in data structures'
+		);
+		expect(repairTopicSpan('photosynthesis and cellular respiration', 'photosynthesis')).toBe(
+			'photosynthesis and cellular respiration'
+		);
+	});
+
+	// F3: config words, numbers, and exam-name tokens stop expansion.
+	it('does not cross config words or numbers', () => {
+		expect(repairTopicSpan('make 10 physics questions on optics', 'optics')).toBe('optics');
+		expect(repairTopicSpan('10 hard physics questions', 'physics')).toBe('physics');
+		expect(repairTopicSpan('give me a quiz on data structures', 'data structures')).toBe(
+			'data structures'
+		);
+	});
+
+	it('does not absorb exam-name tokens', () => {
+		expect(repairTopicSpan('jee main physics', 'physics')).toBe('physics');
+		expect(repairTopicSpan('upsc prelims modern history', 'modern history')).toBe('modern history');
+	});
+
+	// F4: punctuation and newlines are hard boundaries.
+	it('does not cross punctuation or line breaks', () => {
+		expect(
+			repairTopicSpan('python, built in data structures', 'data structures')
+		).toBe('built in data structures');
+		expect(repairTopicSpan('python\nbuilt in data structures', 'data structures')).toBe(
+			'built in data structures'
+		);
+	});
+
+	// F5: Devanagari spans expand like Latin ones.
+	it('repairs Devanagari spans', () => {
+		expect(repairTopicSpan('प्रकाश और संश्लेषण', 'संश्लेषण')).toBe('प्रकाश और संश्लेषण');
+		expect(repairTopicSpan('हिंदी में प्रकाश संश्लेषण पर टेस्ट बनाओ', 'प्रकाश संश्लेषण')).toBe(
+			'प्रकाश संश्लेषण'
+		);
+	});
+
+	// F6: a span already covering the phrase is returned unchanged.
+	it('leaves a fully covering span unchanged', () => {
+		expect(
+			repairTopicSpan('python built in data structures', 'python built in data structures')
+		).toBe('python built in data structures');
+		expect(
+			repairTopicSpan(
+				'photosynthesis and cellular respiration for class 10',
+				'photosynthesis and cellular respiration'
+			)
+		).toBe('photosynthesis and cellular respiration');
+	});
+
+	// F7: over-long expansions fall back to the chosen span.
+	it('falls back when the expansion exceeds the cap', () => {
+		const long = 'alpha beta gamma delta epsilon zeta eta theta iota kappa';
+		expect(repairTopicSpan(long, 'epsilon')).toBe('epsilon');
+	});
+
+	// F8: the tokenizer change does not explode candidate counts.
+	it('keeps candidates within the existing limits', () => {
+		const candidates = buildTopicCandidates(
+			'python built-in data structures and algorithms for interviews'
+		);
+		expect(candidates.length).toBeLessThanOrEqual(MAX_TOPIC_CANDIDATES);
+		expect(candidates).toContain('data structures and algorithms');
+		expect(candidates.indexOf('data structures')).toBeLessThan(
+			candidates.indexOf('data structures and algorithms')
+		);
+	});
+
+	it('wires repair into an accepted topic span choice', () => {
+		const result = deriveIntentParams({
+			intent: 'python built-in data structures',
+			judgments: {
+				is_exam: noul(0.05),
+				exam_id: choice('none', { none: 0.95 }, 0.95),
+				topic_span: choice('data structures', { 'data structures': 0.72 }, 0.8),
+				test_type: choice('multiple-choice', { 'multiple-choice': 0.9 }),
+				difficulty: choice('intermediate', { intermediate: 0.9 }),
+				language: choice('english', { english: 0.9 }),
+			},
+		});
+		expect(result.plan.topic).toBe('python built-in data structures');
+		expect(result.topicSource).toBe('span');
+	});
+
+	it('appends the exam suffix after repair', () => {
+		const result = deriveIntentParams({
+			intent: 'jee main python built-in data structures',
+			judgments: {
+				is_exam: noul(0.9),
+				exam_id: choice('jee-main', EXAM_PROBABILITIES, 0.9),
+				topic_span: choice('data structures', { 'data structures': 0.85 }, 0.9),
+				test_type: choice('multiple-choice', { 'multiple-choice': 0.9 }),
+				difficulty: choice('advanced', { advanced: 0.8 }),
+				language: choice('english', { english: 0.9 }),
+			},
+		});
+		expect(result.plan.topic).toBe('python built-in data structures (JEE Main)');
 	});
 });
 

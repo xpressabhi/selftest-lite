@@ -12,6 +12,7 @@ export function generatePrompt({
 	objectiveOnly = false,
 	userContext = null,
 	warmUpDifficulty = null,
+	originalRequest = null,
 }) {
 	return `You are an expert quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
     
@@ -87,6 +88,14 @@ export function generatePrompt({
     - Every LaTeX expression must be valid KaTeX. Group multi-character superscripts and function arguments, for example use $x^{\\ln x}$ rather than $x^\\ln x$.
     - Do not output malformed or unclosed LaTeX delimiters; use plain Unicode symbols when a formula is not needed.
     - Use proper symbols: °C, km², π
+    
+    ${
+		originalRequest && String(originalRequest).trim()
+			? `ORIGINAL REQUEST (verbatim, may contain qualifiers the topic omits - honor them):
+    ${String(originalRequest).trim().slice(0, 1000)}
+    `
+			: ''
+	}
     
     TOPIC INFORMATION:
     ${topicContext}

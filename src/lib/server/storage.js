@@ -68,7 +68,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -122,6 +122,18 @@ export async function ensureStorageSchema() {
 				CREATE INDEX IF NOT EXISTS idx_ai_test_exam_lookup
 				ON ai_test (test_mode, exam_id, language, created_at DESC)
 			`);
+
+		// Planner input that produced a test. Server-only: never selected by
+		// the public test endpoints. Kept as long as the test row.
+		await query(`
+			CREATE TABLE IF NOT EXISTS ai_test_intent (
+				test_id BIGINT PRIMARY KEY REFERENCES ai_test(id) ON DELETE CASCADE,
+				thread JSONB NOT NULL DEFAULT '[]'::jsonb,
+				plan JSONB NOT NULL DEFAULT '{}'::jsonb,
+				provenance JSONB NOT NULL DEFAULT '{}'::jsonb,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
 
 		await query(`
 			CREATE TABLE IF NOT EXISTS ai_test_attempts (
@@ -458,6 +470,29 @@ export async function createTestRecord(test, requestParams = {}) {
 	);
 
 	return result.rows[0]?.id;
+}
+
+/**
+ * Stores the sanitized planner capture for a test. Best-effort by contract:
+ * callers log failures and keep the generated test.
+ */
+export async function saveTestIntentRecord({ testId, thread = [], plan = {}, provenance = {} }) {
+	const normalizedTestId = Number(testId);
+	if (!Number.isInteger(normalizedTestId) || normalizedTestId <= 0) {
+		return false;
+	}
+	await ensureStorageSchema();
+	await query(
+		`INSERT INTO ai_test_intent (test_id, thread, plan, provenance)
+		 VALUES ($1, $2, $3, $4)
+		 ON CONFLICT (test_id) DO NOTHING`,
+		[
+			JSON.stringify(Array.isArray(thread) ? thread : []),
+			JSON.stringify(plan && typeof plan === 'object' ? plan : {}),
+			JSON.stringify(provenance && typeof provenance === 'object' ? provenance : {}),
+		]
+	);
+	return true;
 }
 
 export async function getTestRecordById(id) {

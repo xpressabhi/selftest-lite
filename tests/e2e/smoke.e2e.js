@@ -237,6 +237,149 @@ test('typed search still reaches the server', async ({ page }, testInfo) => {
 	expect(errors).toEqual([]);
 });
 
+test('planner generation sends intent capture', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	let capturedBody = null;
+	const paper = {
+		id: 'e2e-capture',
+		topic: 'python built-in data structures',
+		testMode: 'quiz-practice',
+		language: 'english',
+		questions: [
+			{ question: 'Q1', options: ['A1', 'B1', 'C1', 'D1'], answer: 'A1' },
+			{ question: 'Q2', options: ['A2', 'B2', 'C2', 'D2'], answer: 'A2' },
+		],
+	};
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan: {
+						topic: 'python built-in data structures',
+						testType: 'multiple-choice',
+						difficulty: 'intermediate',
+						numQuestions: 10,
+						examId: null,
+						isFullExam: false,
+						language: 'english',
+					},
+					topicSource: 'span',
+					fieldConfidence: { topic: 0.9 },
+					confidence: 'high',
+				}),
+			})
+	);
+	await page.route(
+		(url) => url.pathname === '/api/user/history',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ attempts: [] }),
+			})
+	);
+	await page.route(
+		(url) => url.pathname === '/api/generate',
+		async (route) => {
+			capturedBody = JSON.parse(route.request().postData() || '{}');
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(paper),
+			});
+		}
+	);
+	await page.route(
+		(url) => url.pathname === '/api/test',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ ...paper, myAttempt: null }),
+			})
+	);
+
+	await page.goto('/');
+	await page.waitForLoadState('networkidle');
+	const previewLanded = page.waitForResponse(
+		(response) =>
+			response.url().includes('/api/parse-intent') && response.request().method() === 'POST'
+	);
+	await page.locator('.intent-input').click();
+	await page.locator('.intent-input').pressSequentially('python built in data structures', {
+		delay: 15,
+	});
+	await previewLanded;
+	await page.getByRole('button', { name: /Generate Test/ }).click();
+	await expect(page).toHaveURL(/\/test\?id=e2e-capture/);
+
+	const capture = capturedBody?.intentCapture;
+	expect(capture?.thread?.[0]).toBe('python built in data structures');
+	expect(capture?.plan?.topic).toBe('python built-in data structures');
+	expect(capture?.provenance?.topicSource).toBe('span');
+	expect(capture?.provenance?.parseMode).toBe('preview');
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ intentCapture: capture }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
+
+test('quick start omits intent capture', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	let capturedBody = null;
+	const paper = {
+		id: 'e2e-quick',
+		topic: 'Daily mix',
+		testMode: 'quiz-practice',
+		language: 'english',
+		questions: [{ question: 'Q1', options: ['A1', 'B1', 'C1', 'D1'], answer: 'A1' }],
+	};
+	await page.route(
+		(url) => url.pathname === '/api/user/history',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ attempts: [] }),
+			})
+	);
+	await page.route(
+		(url) => url.pathname === '/api/generate',
+		async (route) => {
+			capturedBody = JSON.parse(route.request().postData() || '{}');
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(paper),
+			});
+		}
+	);
+	await page.route(
+		(url) => url.pathname === '/api/test',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ ...paper, myAttempt: null }),
+			})
+	);
+
+	await page.goto('/');
+	await page.waitForLoadState('networkidle');
+	await page.getByRole('button', { name: /Daily 5/ }).click();
+	await expect(page).toHaveURL(/\/test\?id=e2e-quick/);
+	expect(capturedBody?.intentCapture).toBeUndefined();
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ hasIntentCapture: 'intentCapture' in (capturedBody || {}) }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
+
 test('seeded paper: skip-streak unlocks 50-50, submit lands on results', async ({
 	page,
 }) => {

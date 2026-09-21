@@ -27,6 +27,7 @@ import {
 	extractMentionedFields,
 	extractQuestionCount,
 	hasDifficultyContradiction,
+	repairTopicSpan,
 } from '$lib/shared/intentLexicon';
 
 export {
@@ -38,6 +39,7 @@ export {
 	extractMentionedFields,
 	extractQuestionCount,
 	hasDifficultyContradiction,
+	repairTopicSpan,
 };
 
 export const INTENT_MODEL = 'jev-latest';
@@ -540,7 +542,8 @@ export function deriveIntentParams({
 		topicSource = base.topic ? 'previous' : 'raw';
 	} else if (topicAccepted) {
 		const exam = examId ? getIndianExamById(examId) : null;
-		topic = exam ? `${topicChoice.choice} (${exam.name})` : topicChoice.choice;
+		const repaired = repairTopicSpan(intent, topicChoice.choice);
+		topic = exam ? `${repaired} (${exam.name})` : repaired;
 		topicSource = 'span';
 	} else if (examId) {
 		const exam = getIndianExamById(examId);

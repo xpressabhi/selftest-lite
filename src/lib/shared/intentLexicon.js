@@ -306,7 +306,22 @@ function isContentToken(token) {
 
 // Devanagari and other Indic scripts use combining marks (Unicode M category)
 // inside words, so tokens must accept \p{M} alongside \p{L} and \p{N}.
-const TOKEN_PATTERN = /[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}\p{N}]+)*/gu;
+// Hyphens and apostrophes stay inside a token so compounds such as
+// "built-in" survive as one word instead of splitting into "built" + "in".
+const TOKEN_PATTERN = /[\p{L}\p{M}\p{N}]+(?:['’-][\p{L}\p{M}\p{N}]+)*/gu;
+
+function tokenize(text) {
+	const tokens = [];
+	for (const match of text.matchAll(TOKEN_PATTERN)) {
+		tokens.push({
+			value: match[0],
+			start: match.index,
+			end: match.index + match[0].length,
+			content: isContentToken(match[0]),
+		});
+	}
+	return tokens;
+}
 
 /**
  * Builds candidate subject spans from the message (verbatim slices, so the
@@ -318,15 +333,7 @@ export function buildTopicCandidates(intent) {
 		return [];
 	}
 
-	const tokens = [];
-	for (const match of text.matchAll(TOKEN_PATTERN)) {
-		tokens.push({
-			value: match[0],
-			start: match.index,
-			end: match.index + match[0].length,
-			content: isContentToken(match[0]),
-		});
-	}
+	const tokens = tokenize(text);
 
 	const seen = new Set();
 	const candidates = [];
@@ -369,6 +376,134 @@ export function buildTopicCandidates(intent) {
 	});
 
 	return candidates.slice(0, MAX_TOPIC_CANDIDATES).map((candidate) => candidate.span);
+}
+
+// ---------------------------------------------------------------------------
+// Topic span repair
+// ---------------------------------------------------------------------------
+
+const REPAIR_MAX_TOKENS = 8;
+const REPAIR_MAX_CHARS = 120;
+
+// Exam names and ids double as topic boundaries: "jee main python data
+// structures" must not absorb "jee main" into the subject phrase.
+const EXAM_BOUNDARY_WORDS = new Set();
+for (const exam of OBJECTIVE_ONLY_EXAMS) {
+	const words = `${exam.name} ${exam.id.replace(/-/gu, ' ')}`.toLowerCase().split(/\s+/u);
+	for (const word of words) {
+		if (word.length >= 3) {
+			EXAM_BOUNDARY_WORDS.add(word);
+		}
+	}
+}
+
+function isExamBoundaryToken(token) {
+	return EXAM_BOUNDARY_WORDS.has(token.toLowerCase());
+}
+
+function isCrossableStopword(token) {
+	if (isExamBoundaryToken(token.value) || /^\d+$/u.test(token.value)) {
+		return false;
+	}
+	return TOPIC_STOPWORDS.has(token.value.toLowerCase());
+}
+
+/**
+ * Expands a model-chosen topic span so adjacent content tokens it dropped are
+ * recovered ("data structures" -> "python built-in data structures"). The
+ * expansion crosses a single stopword only when the token beyond it is
+ * content, stops at punctuation/newlines, config words, numbers, and exam
+ * names, and falls back to the chosen span when it would exceed the cap.
+ */
+export function repairTopicSpan(intent, span) {
+	const text = typeof intent === 'string' ? intent : '';
+	const chosen = typeof span === 'string' ? span.trim() : '';
+	if (!text.trim() || !chosen) {
+		return chosen;
+	}
+
+	const tokens = tokenize(text);
+	let start = -1;
+	let end = -1;
+	for (let index = 0; index < tokens.length && start === -1; index += 1) {
+		for (let last = index; last < tokens.length; last += 1) {
+			const slice = text
+				.slice(tokens[index].start, tokens[last].end)
+				.replace(/\s+/gu, ' ')
+				.trim();
+			if (slice === chosen) {
+				start = index;
+				end = last;
+				break;
+			}
+		}
+	}
+	if (start === -1) {
+		return chosen;
+	}
+
+	const gapBefore = (tokenIndex) => text.slice(tokens[tokenIndex].end, tokens[from].start);
+	const gapAfter = (tokenIndex) => text.slice(tokens[to].end, tokens[tokenIndex].start);
+	let from = start;
+	let to = end;
+
+	for (;;) {
+		const previous = from - 1;
+		if (previous < 0 || gapBefore(previous) !== ' ') {
+			break;
+		}
+		const token = tokens[previous];
+		if (token.content && !isExamBoundaryToken(token.value)) {
+			from = previous;
+			continue;
+		}
+		const beyond = previous - 1;
+		if (
+			beyond >= 0 &&
+			isCrossableStopword(token) &&
+			tokens[beyond].content &&
+			!isExamBoundaryToken(tokens[beyond].value) &&
+			text.slice(tokens[beyond].end, token.start) === ' '
+		) {
+			from = previous;
+			continue;
+		}
+		break;
+	}
+
+	for (;;) {
+		const next = to + 1;
+		if (next >= tokens.length || gapAfter(next) !== ' ') {
+			break;
+		}
+		const token = tokens[next];
+		if (token.content && !isExamBoundaryToken(token.value)) {
+			to = next;
+			continue;
+		}
+		const beyond = next + 1;
+		if (
+			beyond < tokens.length &&
+			isCrossableStopword(token) &&
+			tokens[beyond].content &&
+			!isExamBoundaryToken(tokens[beyond].value) &&
+			text.slice(token.end, tokens[beyond].start) === ' '
+		) {
+			to = next;
+			continue;
+		}
+		break;
+	}
+
+	const repaired = text.slice(tokens[from].start, tokens[to].end).replace(/\s+/gu, ' ').trim();
+	if (
+		to - from + 1 > REPAIR_MAX_TOKENS ||
+		repaired.length > REPAIR_MAX_CHARS ||
+		!repaired
+	) {
+		return chosen;
+	}
+	return repaired;
 }
 
 const HARD_DIFFICULTY_PATTERN =

@@ -12,6 +12,7 @@ import {
 	getStateForIdentity,
 	getTestRecordsByIds,
 	logApiEvent,
+	saveTestIntentRecord,
 } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { paperSchema } from '$lib/server/quizSchema';
@@ -35,6 +36,7 @@ import {
 	answerMatchesOption,
 } from '$lib/server/quizValidation';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
+import { buildOriginalRequest, sanitizeIntentCapture } from '$lib/server/intentCapture';
 import {
 	applyQualityFixes,
 	inspectQuestionBatch,
@@ -194,6 +196,7 @@ async function generateQuestionBatch({
 	objectiveOnly,
 	userContext,
 	warmUpDifficulty,
+	originalRequest = null,
 	deadlineMs,
 	runState,
 }) {
@@ -213,6 +216,7 @@ async function generateQuestionBatch({
 		objectiveOnly,
 		userContext,
 		warmUpDifficulty,
+		originalRequest,
 	});
 
 	const remainingTimeMs = getRemainingTimeMs(deadlineMs);
@@ -312,6 +316,7 @@ async function generatePaper({
 	objectiveOnly,
 	userContext,
 	warmUpDifficulty,
+	originalRequest = null,
 	deadlineMs,
 	runState,
 	onProgress,
@@ -401,6 +406,7 @@ async function generatePaper({
 						objectiveOnly,
 						userContext,
 						warmUpDifficulty,
+						originalRequest,
 						deadlineMs,
 						runState,
 					})
@@ -587,6 +593,8 @@ async function runGenerationAndStore(context, onProgress) {
 		warmUpDifficulty,
 		personalized,
 		tailoredSummary,
+		originalRequest,
+		intentCapture: capture,
 		deadlineMs,
 	} = context;
 	const generationRun = { model: null };
@@ -608,6 +616,7 @@ async function runGenerationAndStore(context, onProgress) {
 			objectiveOnly,
 			userContext,
 			warmUpDifficulty,
+			originalRequest,
 			deadlineMs,
 			runState: generationRun,
 			onProgress,
@@ -651,6 +660,21 @@ async function runGenerationAndStore(context, onProgress) {
 			createdByUserId: user?.id || null,
 		});
 
+		// Planner capture is best-effort: the generated test is already
+		// stored, so a failed intent write must not fail the request.
+		if (capture) {
+			try {
+				await saveTestIntentRecord({
+					testId,
+					thread: capture.thread,
+					plan: capture.plan,
+					provenance: capture.provenance,
+				});
+			} catch (intentError) {
+				console.error('Failed to store test intent:', intentError);
+			}
+		}
+
 		await logApiEvent({
 			route: '/api/generate',
 			action: 'generate_quiz',
@@ -672,6 +696,7 @@ async function runGenerationAndStore(context, onProgress) {
 				testId,
 				trimmed: questionPaper.trimmed === true,
 				salvage: questionPaper.salvage || null,
+				intentCaptured: capture !== null,
 			},
 		});
 
@@ -825,6 +850,7 @@ export async function POST({ request, cookies }) {
 			language = 'english',
 			objectiveOnly = false,
 			durationMinutes = null,
+			intentCapture = null,
 		} = await parseRequestBody(request);
 
 		const validationError = validateGenerateRequest({
@@ -847,6 +873,10 @@ export async function POST({ request, cookies }) {
 		}
 
 		const resolvedTopic = topic || (examName ? `${examName} mock paper` : '');
+		// Bounded, server-side sanitized: a hostile client cannot smuggle
+		// unbounded text into the prompt or the intent table.
+		const capture = sanitizeIntentCapture(intentCapture);
+		const originalRequest = capture ? buildOriginalRequest(capture.thread) : null;
 		const normalizedPreviousTestIds = sanitizePreviousTestIds(previousTestIds);
 		const normalizedAttemptedTestIds = new Set(sanitizePreviousTestIds(attemptedTestIds));
 
@@ -1088,6 +1118,8 @@ export async function POST({ request, cookies }) {
 			tailoredSummary,
 			examId,
 			durationMinutes,
+			originalRequest,
+			intentCapture: capture,
 			deadlineMs: startedAt + GENERATION_TIMEOUT_MS,
 		};
 

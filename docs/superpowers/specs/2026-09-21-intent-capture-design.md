@@ -28,8 +28,9 @@ generation context.
   (`MAX_INTENT_CHARS`), ≤ 4000 chars total, sanitized.
 - Final plan: topic, testType, difficulty, numQuestions, examId, isFullExam,
   language.
-- Provenance: `topicSource`, `fieldConfidence`, `explicit`, `answers`,
-  `askedFields`, `skippedFields`, `round`.
+- Provenance: `topicSource`, `parseMode` (`preview` | `turn`), `fieldConfidence`,
+  `explicit`, `answers`, `askedFields`, `skippedFields`, `round`. Local-tier
+  previews record `topicSource: 'local'` so fully local plans are attributable.
 - Quick starts (daily 5, presets, exam quick start) have no thread and skip
   capture.
 - Retention: raw input is kept as long as the test row. No TTL.
@@ -85,11 +86,15 @@ Failure modes to write down before any code (AGENTS.md rule):
 Fix in `src/lib/shared/intentLexicon.js`:
 
 - Tokenizer accepts internal hyphens/apostrophes:
-  `[\p{L}\p{M}\p{N}]+(?:['’-][\p{L}\p{M}\p{N}]+)*`.
+  `[\p{L}\p{M}\p{N}]+(?:['’-][\p{L}\p{M}\p{N}]+)*`. A hyphenated input
+  (`python built-in data structures`) is then resolved by the local preview
+  tier without a model call.
 - New pure `repairTopicSpan(intent, span)`: locate the span in the message and
   expand it left/right across a single stopword when the next token is content
   and the gap is whitespace only. Used by `deriveIntentParams` only when the
-  topic came from an accepted `topic_span` choice.
+  topic came from an accepted `topic_span` choice. Expansion also stops at
+  exam-name tokens (`jee`, `main`, `upsc`, `prelims`, ...) so an exam mention
+  is never absorbed into the subject phrase.
 
 ## 6. Generation context (approved)
 

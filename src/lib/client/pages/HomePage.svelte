@@ -102,6 +102,12 @@
 
 	let intentStatus = $state('idle');
 	let parsedFromIntent = $state(false);
+	// Last parse provenance, kept for the intent capture that travels with a
+	// generation request. Previews count: the plan card is often built from a
+	// preview without ever submitting a turn.
+	let lastTopicSource = null;
+	let lastFieldConfidence = null;
+	let lastParseMode = null;
 	let intentParseFailed = $state(false);
 
 	let status = $state('idle');
@@ -492,6 +498,11 @@
 			if (patch.language) paperLanguage = patch.language;
 			if (patch.testType) testType = patch.testType;
 			if (patch.numQuestions) numQuestions = patch.numQuestions;
+			// The local tier just shaped the plan: record it so the intent
+			// capture explains where the fields came from.
+			lastTopicSource = 'local';
+			lastFieldConfidence = null;
+			lastParseMode = 'preview';
 			if (isMeaningfulPreview(local)) parsedFromIntent = true;
 		}
 		if (!needsJevPreview(local)) {
@@ -582,6 +593,12 @@
 				plan && !meaningful ? { ...plan, topic: '' } : plan,
 				{ markParsed: meaningful }
 			);
+			lastTopicSource = typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
+			lastFieldConfidence =
+				data.fieldConfidence && typeof data.fieldConfidence === 'object'
+					? data.fieldConfidence
+					: lastFieldConfidence;
+			lastParseMode = 'preview';
 			previewStatus = 'ready';
 			track('intent:preview', {
 				source: 'jev',
@@ -659,6 +676,12 @@
 			plannerDraft = applyTurnResult(plannerDraft, data);
 			persistPlannerDraft();
 			intentStatus = 'done';
+			lastTopicSource = typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
+			lastFieldConfidence =
+				data.fieldConfidence && typeof data.fieldConfidence === 'object'
+					? data.fieldConfidence
+					: lastFieldConfidence;
+			lastParseMode = 'turn';
 			if (data.clarify) {
 				track('intent:clarification-asked', { field: data.clarify.id, round });
 			}
@@ -765,6 +788,9 @@
 		parsedFromIntent = false;
 		intentParseFailed = false;
 		intentStatus = 'idle';
+		lastTopicSource = null;
+		lastFieldConfidence = null;
+		lastParseMode = null;
 		numQuestions = 10;
 		difficulty = 'intermediate';
 		testType = 'multiple-choice';
@@ -884,7 +910,7 @@
 		};
 	}
 
-	async function postGenerate(requestParams) {
+	async function postGenerate(requestParams, captureEnabled = false) {
 		const controller = new AbortController();
 		const timeoutId = window.setTimeout(() => controller.abort(), GENERATION_TIMEOUT_MS);
 		try {
@@ -893,6 +919,40 @@
 				const id = Number(entry.id);
 				return Number.isInteger(id) && id > 0;
 			};
+			// Own planner input, bounded server-side. Submitted turns carry the
+			// full thread; a preview-only plan carries the typed text. Quick
+			// starts pass captureEnabled=false.
+			const draftUserTexts = plannerDraft.messages
+				.filter((message) => message.role === 'user')
+				.map((message) => message.text)
+				.filter(Boolean);
+			const typedText = intentValue.trim();
+			const thread = draftUserTexts.length > 0 ? draftUserTexts : typedText ? [typedText] : [];
+			const intentCapture =
+				captureEnabled && thread.length > 0
+					? {
+							thread,
+							plan: {
+								topic,
+								testType,
+								difficulty,
+								numQuestions: Number(numQuestions),
+								examId: examId || null,
+								isFullExam,
+								language: paperLanguage,
+							},
+							provenance: {
+								topicSource: lastTopicSource,
+								parseMode: lastParseMode,
+								fieldConfidence: lastFieldConfidence,
+								explicit: plannerDraft.explicit,
+								answers: plannerDraft.answers,
+								askedFields: plannerDraft.askedFields,
+								skippedFields: plannerDraft.skippedFields,
+								round: plannerDraft.round,
+							},
+						}
+					: null;
 			const response = await fetch('/api/generate', {
 				method: 'POST',
 				headers: {
@@ -901,6 +961,7 @@
 				},
 				body: JSON.stringify({
 					...requestParams,
+					...(intentCapture ? { intentCapture } : {}),
 					previousTestIds: historyEntries
 						.filter(isStoredTest)
 						.map((entry) => Number(entry.id)),
@@ -1000,7 +1061,7 @@
 		return 450;
 	}
 
-	async function runGeneration(requestParams) {
+	async function runGeneration(requestParams, captureEnabled = false) {
 		if (isOffline) {
 			error = $t('offlineAccessHistory');
 			return;
@@ -1036,7 +1097,7 @@
 					if (attempt > 1) {
 						retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
 					}
-					const data = await postGenerate(requestParams);
+					const data = await postGenerate(requestParams, captureEnabled);
 					// Let the trace settle on "Ready" before the hard
 					// navigation; shortened for data-saver/reduced-motion.
 					triggerVibration(HAPTIC_SUCCESS);
@@ -1059,6 +1120,9 @@
 					saveCurrentPaper(data);
 					plannerDraft = createPlannerDraft();
 					clearPlannerDraft();
+					lastTopicSource = null;
+					lastFieldConfidence = null;
+					lastParseMode = null;
 					await goto(`/test?id=${data.id}`);
 					return;
 				} catch (caughtError) {
@@ -1121,7 +1185,7 @@
 			isFullExam && selectedExam
 				? getExamRequestParams(selectedExam)
 				: getQuizRequestParams();
-		await runGeneration(params);
+		await runGeneration(params, true);
 	}
 
 	async function handleWizardClose() {
