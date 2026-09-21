@@ -67,7 +67,7 @@ test('results with an unknown id fails gracefully', async ({ page }) => {
 	expect(errors).toEqual([]);
 });
 
-test('home and empty search list own tests only', async ({ page }) => {
+test('home and empty search list own tests only', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	// Any global list request (empty q) is a regression: home must never ask
 	// for other people's tests.
@@ -100,34 +100,81 @@ test('home and empty search list own tests only', async ({ page }) => {
 				body: JSON.stringify({ attempts: [] }),
 			})
 	);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ plan: null, topicSource: 'local' }),
+			})
+	);
+	// 12 own tests (cap checks), one hidden id, one distinct topic for the
+	// short-query filter. Seeded newest-first, the order the app writes.
 	await page.addInitScript(() => {
-		window.localStorage.setItem(
-			'selftest_history',
-			JSON.stringify([
-				{
-					id: 777,
-					topic: 'My Own Practice',
-					totalQuestions: 7,
-					test_mode: 'quiz-practice',
-					timestamp: Date.now(),
-				},
-			])
-		);
+		const history = [
+			{
+				id: 301,
+				topic: 'Physics Waves',
+				totalQuestions: 5,
+				test_mode: 'quiz-practice',
+				timestamp: 2500,
+			},
+			{
+				id: 201,
+				topic: 'Hidden Test',
+				totalQuestions: 5,
+				test_mode: 'quiz-practice',
+				timestamp: 2000,
+			},
+		];
+		for (let i = 12; i >= 1; i -= 1) {
+			history.push({
+				id: 100 + i,
+				topic: `Own Test ${i}`,
+				totalQuestions: 5,
+				test_mode: 'quiz-practice',
+				timestamp: 1000 + i,
+			});
+		}
+		window.localStorage.setItem('selftest_history', JSON.stringify(history));
+		window.localStorage.setItem('selftest_hidden_history', JSON.stringify(['201']));
 	});
 
 	await page.goto('/');
-	await expect(page.locator('.recent-block').getByText('My Own Practice')).toBeVisible();
+	// Home block: own newest five only, hidden id filtered, no stranger rows.
+	await expect(page.locator('.recent-item')).toHaveCount(5);
+	await expect(page.locator('.recent-block').getByText('Own Test 12')).toBeVisible();
+	await expect(page.locator('.recent-block').getByText('Own Test 8')).toHaveCount(0);
+	await expect(page.locator('.recent-block').getByText('Hidden Test')).toHaveCount(0);
 	await expect(page.getByText('Stranger Test')).toHaveCount(0);
+	const homeRows = await page.locator('.recent-item').allInnerTexts();
 
+	// Empty dropdown: own tests only, newest-first, capped at 10.
 	await page.locator('.composer-search').click();
 	await expect(page.locator('.search-dropdown')).toBeVisible();
-	await expect(page.locator('.search-dropdown').getByText('My Own Practice')).toBeVisible();
+	await expect(page.locator('.search-dropdown .dropdown-result')).toHaveCount(10);
+	await expect(page.locator('.search-dropdown').getByText('Own Test 3')).toHaveCount(0);
+	await expect(page.locator('.search-dropdown').getByText('Hidden Test')).toHaveCount(0);
 	await expect(page.locator('.search-dropdown').getByText('Stranger Test')).toHaveCount(0);
+	const dropdownRows = await page.locator('.search-dropdown .dropdown-result').allInnerTexts();
+
+	// Short (non-searchable) query filters own tests locally, case-insensitively.
+	await page.locator('.intent-input').click();
+	await page.keyboard.type('phy');
+	await expect(page.locator('.search-dropdown .dropdown-result')).toHaveCount(1);
+	await expect(page.locator('.search-dropdown').getByText('Physics Waves')).toBeVisible();
+	const filteredRows = await page.locator('.search-dropdown .dropdown-result').allInnerTexts();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ homeRows, dropdownRows, filteredRows, globalListCalls }, null, 2),
+	});
 	expect(globalListCalls).toEqual([]);
 	expect(errors).toEqual([]);
 });
 
-test('typed search still reaches the server', async ({ page }) => {
+test('typed search still reaches the server', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	const searches = [];
 	await page.route(
@@ -175,6 +222,17 @@ test('typed search still reaches the server', async ({ page }) => {
 	await page.locator('.intent-input').click();
 	await page.locator('.intent-input').pressSequentially('topology', { delay: 25 });
 	await expect(page.locator('.search-strip').getByText('Topology Basics')).toBeVisible();
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				searchQueries: searches,
+				stripRows: await page.locator('.search-strip .strip-chip').allInnerTexts(),
+			},
+			null,
+			2
+		),
+	});
 	expect(searches).toContain('topology');
 	expect(errors).toEqual([]);
 });

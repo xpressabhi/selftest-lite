@@ -7,25 +7,28 @@ From `docs/superpowers/specs/2026-09-21-own-tests-only-home-design.md`: home's r
 - `src/lib/client/recentTests.js` stays the pure view-model layer: local-only `mergeRecentTests` for the home block plus `toOwnTestResults` for the dropdown's local mode.
 - Home paints synchronously from `getHistory()`; a best-effort `hydrateHistoryFromServer()` repaints once when server attempts change the list. The `recentListTouched` guard is preserved.
 - The dropdown needs no new state machine: non-searchable queries resolve locally to `status='done'`; searchable queries keep the existing debounced fetch and paging.
+- Testing is E2E-only (repo rule): `tests/e2e/smoke.e2e.js` covers every behavior below and the run emits `test-results/e2e-artifact.json` via `tests/e2e/artifactReporter.js` (per-test status plus attached evidence, tied to the git revision).
 - No locale, telemetry, or API changes.
 
 ## Task List
 
 ### Phase 1: Home block
 - [x] Task 1: Local-only helpers + home paint
-- [x] Task 2: Unit tests for the local-only merge
+- [x] Task 2: E2E coverage for the home block (cap 5, hidden ids, no global fetch)
 
 ### Checkpoint: Home
-- [x] `npm run test -- recentTests` passes
-- [x] Fresh profile shows no recent block; generation adds the first row
+- [x] `npm run test:e2e` passes
+- [x] Fresh profile shows no recent block; seeded history shows own rows only
 
 ### Phase 2: Search dropdown
-- [x] Task 3: `toOwnTestResults` helper + tests
+- [x] Task 3: `toOwnTestResults` helper
 - [x] Task 4: Dropdown local mode for empty/short queries
+- [x] Task 5: E2E coverage (cap 10, hidden ids, short-query filter, server search intact)
 
 ### Checkpoint: Complete
 - [x] `npm run lint`, `npm run test`, `npm run check` pass
-- [x] Manual check: empty dropdown lists own tests only; 4+ char search still returns server tests
+- [x] `test-results/e2e-artifact.json` produced and byte-identical across two runs
+- [ ] Manual mobile check: home idle, dropdown states, data-saver untouched
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |

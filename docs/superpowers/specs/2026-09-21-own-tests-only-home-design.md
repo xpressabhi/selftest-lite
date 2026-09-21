@@ -57,8 +57,12 @@ or a test ID) and share links.
   server results still emit `search:result-click`.
 - Baseline before/after with `npm run telemetry:report -- --days=30`:
   home `generate:start`, `search:result-click`, `history:open-test`.
-- Unit tests: local-only `mergeRecentTests`, `toOwnTestResults` (ordering,
-  cap, hidden ids, topic/id matching). Run lint, check, test.
+- E2E only (`tests/e2e/smoke.e2e.js`): own-tests-only home + dropdown, hidden
+  ids, caps (5 home / 10 dropdown), short-query filter, no global list
+  request, typed search still server-backed. The run emits
+  `test-results/e2e-artifact.json` (per-test status + attached evidence,
+  tied to the git revision) via `tests/e2e/artifactReporter.js`.
+- Run lint, check, test.
 
 ## Out of scope
 

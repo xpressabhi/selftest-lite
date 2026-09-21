@@ -8,7 +8,10 @@ export default defineConfig({
 	testMatch: '*.e2e.js',
 	timeout: 30000,
 	retries: 0,
-	reporter: 'line',
+	reporter: [
+		['line'],
+		['./tests/e2e/artifactReporter.js', { outputFile: 'test-results/e2e-artifact.json' }],
+	],
 	use: {
 		baseURL: 'http://localhost:5173',
 		channel: 'chrome',
