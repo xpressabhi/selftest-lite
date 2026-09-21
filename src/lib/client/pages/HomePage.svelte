@@ -20,16 +20,11 @@
 		getHiddenHistoryIds,
 		getHistory,
 		getUnsubmittedTest,
-		readJson,
 		saveBookmarkedExamIds,
 		saveCurrentPaper,
-		writeJson,
 	} from '$lib/client/storage';
-	import {
-		isCacheFresh,
-		mergeRecentTests,
-		readRecentCache,
-	} from '$lib/client/recentTests';
+	import { mergeRecentTests } from '$lib/client/recentTests';
+	import { hydrateHistoryFromServer } from '$lib/client/sync';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import { getStreak } from '$lib/client/learning';
@@ -198,40 +193,24 @@
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
 		const historyEntries = getHistory();
-		const hiddenIds = getHiddenHistoryIds();
-		// Merge, don't replace: the server list (when we have one) sets the
-		// order and local-only rows survive, so rows never vanish mid-read.
-		// A fresh server cache paints merged data immediately; a stale or
-		// missing cache triggers one refetch that merges on arrival.
-		const paintMerged = (serverRows) => {
+		// Own tests only: home never lists other people's papers. Local
+		// history is the single source; server attempts hydrate into it for
+		// signed-in (and identified anonymous) users, and one repaint picks
+		// up anything the merge added. The touched guard still protects rows
+		// the user is already reading.
+		const paintRecent = () => {
 			if (recentListTouched) return;
 			recentTests = mergeRecentTests({
-				local: historyEntries,
-				server: serverRows,
-				hidden: hiddenIds,
+				local: getHistory(),
+				hidden: getHiddenHistoryIds(),
 			});
 		};
-		const cached = readRecentCache(readJson(STORAGE_KEYS.SERVER_RECENT_TESTS, null));
-		const cachedRows = cached && isCacheFresh(cached.at) ? cached.tests : [];
-		paintMerged(cachedRows);
-		if (cachedRows.length === 0) {
-			void (async () => {
-				try {
-					const response = await fetch('/api/test?q=&limit=5&offset=0');
-					if (!response.ok) return;
-					const payload = await response.json().catch(() => null);
-					const latest = Array.isArray(payload?.tests) ? payload.tests : [];
-					if (latest.length === 0) return;
-					writeJson(STORAGE_KEYS.SERVER_RECENT_TESTS, {
-						at: Date.now(),
-						tests: latest,
-					});
-					paintMerged(latest);
-				} catch {
-					// Offline or request failed: keep the merged local paint.
-				}
-			})();
-		}
+		paintRecent();
+		void hydrateHistoryFromServer().then((changed) => {
+			if (changed) {
+				paintRecent();
+			}
+		});
 		streak = getStreak();
 		lastTestId = historyEntries[0]?.id ? String(historyEntries[0].id) : null;
 		// Central personalization (fail-open, once per load): Jev picks one

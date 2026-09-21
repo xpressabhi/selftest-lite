@@ -1,13 +1,14 @@
-// Pure recent-tests merge + server-cache TTL helpers for the home page.
+// Pure recent-tests view-model helpers for the home planner and the
+// composer's search dropdown.
 //
-// The home planner used to paint localStorage history and then wholesale
-// replace it when `/api/test` resolved, visibly swapping rows. Now both
-// sources merge (server order wins, local-only rows survive) and the server
-// payload is cached with a TTL so reloads inside the window render merged
-// data in a single paint without refetching.
+// Both surfaces are own-tests-only: the home block merges local history
+// (already hydrated from server attempts when an identity exists) and the
+// dropdown filters the same history locally until a real search begins.
+// Other people's tests stay reachable only through the debounced server
+// search in TestSearchDropdown.
 
-export const RECENT_CACHE_TTL_MS = 5 * 60 * 1000;
 export const RECENT_MERGE_LIMIT = 5;
+export const OWN_TEST_RESULTS_LIMIT = 10;
 
 function toEntry(id, topic, totalQuestions, isFullExam) {
 	if (id === undefined || id === null || String(id).length === 0) {
@@ -34,50 +35,66 @@ export function normalizeLocalEntry(entry) {
 	);
 }
 
-/** Normalizes one `/api/test` row to the same view model. */
-export function normalizeServerEntry(test) {
-	if (!test || typeof test !== 'object') {
-		return null;
+/**
+ * Filters local history to the home recent-tests view model: invalid and
+ * hidden rows dropped, newest-first order preserved, capped at `limit`.
+ */
+export function mergeRecentTests({ local = [], hidden = [], limit = RECENT_MERGE_LIMIT } = {}) {
+	const hiddenSet = new Set((Array.isArray(hidden) ? hidden : []).map(String));
+	const merged = [];
+	for (const entry of Array.isArray(local) ? local : []) {
+		const normalized = normalizeLocalEntry(entry);
+		if (!normalized || hiddenSet.has(normalized.id)) {
+			continue;
+		}
+		merged.push(normalized);
+		if (merged.length >= Math.max(1, Number(limit) || RECENT_MERGE_LIMIT)) {
+			break;
+		}
 	}
-	return toEntry(test.id, test.topic, test.num_questions, test.test_mode === 'full-exam');
+	return merged;
 }
 
 /**
- * Merges server rows (order wins) with local-only entries appended, minus
- * hidden ids, capped at `limit`. Server-empty means local-only (offline).
+ * Filters local history for the composer dropdown as `/api/test`-shaped rows
+ * so both sources feed the same template. Matches topic or id substrings
+ * case-insensitively; an empty query returns the newest rows.
  */
-export function mergeRecentTests({ local = [], server = [], hidden = [], limit = RECENT_MERGE_LIMIT } = {}) {
+export function toOwnTestResults(
+	history,
+	query = '',
+	{ hidden = [], limit = OWN_TEST_RESULTS_LIMIT } = {}
+) {
 	const hiddenSet = new Set((Array.isArray(hidden) ? hidden : []).map(String));
-	const seen = new Set();
-	const merged = [];
-	const push = (entry) => {
-		if (!entry || seen.has(entry.id) || hiddenSet.has(entry.id)) {
-			return;
+	const needle = String(query || '')
+		.trim()
+		.toLowerCase();
+	const cappedLimit = Math.max(1, Number(limit) || OWN_TEST_RESULTS_LIMIT);
+	const ordered = [...(Array.isArray(history) ? history : [])].sort(
+		(a, b) => Number(b?.timestamp || 0) - Number(a?.timestamp || 0)
+	);
+
+	const results = [];
+	for (const entry of ordered) {
+		const normalized = normalizeLocalEntry(entry);
+		if (!normalized || hiddenSet.has(normalized.id)) {
+			continue;
 		}
-		seen.add(entry.id);
-		merged.push(entry);
-	};
-	for (const test of Array.isArray(server) ? server : []) {
-		push(normalizeServerEntry(test));
+		if (needle) {
+			const matchesTopic = normalized.topic.toLowerCase().includes(needle);
+			const matchesId = normalized.id.toLowerCase().includes(needle);
+			if (!matchesTopic && !matchesId) {
+				continue;
+			}
+		}
+		results.push({
+			id: normalized.id,
+			topic: normalized.topic,
+			test_mode: normalized.isFullExam ? 'full-exam' : 'quiz-practice',
+		});
+		if (results.length >= cappedLimit) {
+			break;
+		}
 	}
-	for (const entry of Array.isArray(local) ? local : []) {
-		push(normalizeLocalEntry(entry));
-	}
-	return merged.slice(0, Math.max(1, Number(limit) || RECENT_MERGE_LIMIT));
-}
-
-/** True when a cached `at` timestamp is inside the TTL window. */
-export function isCacheFresh(cachedAt, now = Date.now(), ttl = RECENT_CACHE_TTL_MS) {
-	return Number.isFinite(Number(cachedAt)) && now - Number(cachedAt) < ttl;
-}
-
-/** Validates a cached `{ at, tests }` payload; null when unusable. */
-export function readRecentCache(value) {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		return null;
-	}
-	if (!Number.isFinite(Number(value.at)) || !Array.isArray(value.tests)) {
-		return null;
-	}
-	return { at: Number(value.at), tests: value.tests };
+	return results;
 }

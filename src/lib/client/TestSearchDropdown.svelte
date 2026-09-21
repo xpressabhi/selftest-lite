@@ -2,6 +2,8 @@
 	import { untrack } from 'svelte';
 	import { t } from '$lib/client/i18n';
 	import { track, trackDebounced } from '$lib/client/telemetry';
+	import { getHiddenHistoryIds, getHistory } from '$lib/client/storage';
+	import { toOwnTestResults } from '$lib/client/recentTests';
 
 	let {
 		query = '',
@@ -14,7 +16,6 @@
 	const SEARCH_DEBOUNCE_MS = 350;
 	const SEARCH_INITIAL_PAGE_SIZE = 10;
 	const SEARCH_INCREMENT = 5;
-	const RECENT_TTL_MS = 60_000;
 	const STRIP_MAX_RESULTS = 3;
 
 	let results = $state([]);
@@ -26,7 +27,6 @@
 	let resultsRef = $state(null);
 	let searchTimer;
 	let searchAbort = null;
-	let recentCache = null;
 
 	const trimmedQuery = $derived(query.trim());
 	const isTestId = $derived(/^\d+$/.test(trimmedQuery));
@@ -39,11 +39,6 @@
 			? results.filter((test) => String(test.id) !== String(exactTestIdMatch.id))
 			: results
 	);
-
-	function getFreshRecent() {
-		if (!recentCache) return null;
-		return Date.now() - recentCache.fetchedAt <= RECENT_TTL_MS ? recentCache : null;
-	}
 
 	async function fetchSearchList(q, offset, append) {
 		const controller = new AbortController();
@@ -70,10 +65,6 @@
 
 			if (!append) {
 				blocked = response.status === 429;
-			}
-
-			if (!append && !q) {
-				recentCache = { tests, hasMore: hasMoreResults, fetchedAt: Date.now() };
 			}
 
 			let next = append ? [...results, ...tests] : [...tests];
@@ -119,17 +110,20 @@
 		}
 
 		if (!isSearchable) {
-			const cached = getFreshRecent();
-			if (cached && normalized === '') {
-				results = cached.tests;
-				hasMore = cached.hasMore;
-				resultsOffset = cached.tests.length;
-				status = 'done';
-			} else if (status !== 'loading') {
-				status = 'loading';
-				results = [];
-				void fetchSearchList(normalized.length >= 4 ? normalized : '', 0, false);
-			}
+			// Own tests only until the query is worth a server search: the
+			// dropdown never lists other people's papers on an empty query.
+			// Local history already includes hydrated server attempts. Cancel
+			// anything in flight so a late response cannot overwrite them.
+			if (searchTimer) window.clearTimeout(searchTimer);
+			searchAbort?.abort();
+			searchAbort = null;
+			results = toOwnTestResults(getHistory(), normalized, {
+				hidden: getHiddenHistoryIds(),
+			});
+			hasMore = false;
+			resultsOffset = 0;
+			blocked = false;
+			status = 'done';
 			return;
 		}
 
@@ -159,10 +153,8 @@
 
 	function handleLoadMore() {
 		if (status !== 'done' || !hasMore || loadingMore) return;
-		const normalized = query.trim();
-		const isSearchable = normalized.length >= 4 || /^\d+$/.test(normalized);
 		track('search:scroll-more', { offset: resultsOffset });
-		void fetchSearchList(isSearchable ? normalized : '', resultsOffset, true);
+		void fetchSearchList(trimmedQuery, resultsOffset, true);
 	}
 
 	function handleResultClick(testId) {

@@ -67,6 +67,118 @@ test('results with an unknown id fails gracefully', async ({ page }) => {
 	expect(errors).toEqual([]);
 });
 
+test('home and empty search list own tests only', async ({ page }) => {
+	const errors = await collectErrors(page);
+	// Any global list request (empty q) is a regression: home must never ask
+	// for other people's tests.
+	const globalListCalls = [];
+	await page.route(
+		(url) => url.pathname === '/api/test',
+		async (route) => {
+			const url = new URL(route.request().url());
+			if (!url.searchParams.get('q')) {
+				globalListCalls.push(url.toString());
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					tests: [
+						{ id: 999999, topic: 'Stranger Test', num_questions: 3, test_mode: 'quiz-practice' },
+					],
+					hasMore: false,
+				}),
+			});
+		}
+	);
+	await page.route(
+		(url) => url.pathname === '/api/user/history',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ attempts: [] }),
+			})
+	);
+	await page.addInitScript(() => {
+		window.localStorage.setItem(
+			'selftest_history',
+			JSON.stringify([
+				{
+					id: 777,
+					topic: 'My Own Practice',
+					totalQuestions: 7,
+					test_mode: 'quiz-practice',
+					timestamp: Date.now(),
+				},
+			])
+		);
+	});
+
+	await page.goto('/');
+	await expect(page.locator('.recent-block').getByText('My Own Practice')).toBeVisible();
+	await expect(page.getByText('Stranger Test')).toHaveCount(0);
+
+	await page.locator('.composer-search').click();
+	await expect(page.locator('.search-dropdown')).toBeVisible();
+	await expect(page.locator('.search-dropdown').getByText('My Own Practice')).toBeVisible();
+	await expect(page.locator('.search-dropdown').getByText('Stranger Test')).toHaveCount(0);
+	expect(globalListCalls).toEqual([]);
+	expect(errors).toEqual([]);
+});
+
+test('typed search still reaches the server', async ({ page }) => {
+	const errors = await collectErrors(page);
+	const searches = [];
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ plan: null, topicSource: 'local' }),
+			})
+	);
+	await page.route(
+		(url) => url.pathname === '/api/user/history',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ attempts: [] }),
+			})
+	);
+	await page.route(
+		(url) => url.pathname === '/api/test',
+		async (route) => {
+			const url = new URL(route.request().url());
+			searches.push(url.searchParams.get('q') || '');
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					tests: [
+						{
+							id: 424242,
+							topic: 'Topology Basics',
+							num_questions: 5,
+							test_mode: 'quiz-practice',
+						},
+					],
+					hasMore: false,
+				}),
+			});
+		}
+	);
+
+	await page.goto('/');
+	await page.locator('.intent-input').click();
+	await page.locator('.intent-input').pressSequentially('topology', { delay: 25 });
+	await expect(page.locator('.search-strip').getByText('Topology Basics')).toBeVisible();
+	expect(searches).toContain('topology');
+	expect(errors).toEqual([]);
+});
+
 test('seeded paper: skip-streak unlocks 50-50, submit lands on results', async ({
 	page,
 }) => {

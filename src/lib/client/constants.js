@@ -16,7 +16,6 @@ export const STORAGE_KEYS = {
 	PENDING_ATTEMPTS: 'selftest_pending_attempts',
 	HIDDEN_HISTORY: 'selftest_hidden_history',
 	PLANNER_DRAFT: 'selftest_planner_draft',
-	SERVER_RECENT_TESTS: 'selftest_server_recent_tests',
 };
 
 export const LOCAL_STORAGE_CHANGE_EVENT = 'selftest-local-change';
