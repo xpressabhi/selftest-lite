@@ -9,11 +9,13 @@ import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-function gitSha() {
+function gitState() {
 	try {
-		return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+		const sha = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+		const dirty = execSync('git status --porcelain', { encoding: 'utf8' }).trim().length > 0;
+		return { sha, dirty };
 	} catch {
-		return 'unknown';
+		return { sha: 'unknown', dirty: false };
 	}
 }
 
@@ -51,9 +53,11 @@ export default class E2eArtifactReporter {
 
 	onEnd() {
 		const tests = [...this.tests].sort((a, b) => a.title.localeCompare(b.title));
+		const { sha, dirty } = gitState();
 		const artifact = {
 			suite: 'selftest-lite e2e',
-			gitSha: gitSha(),
+			gitSha: sha,
+			gitDirty: dirty,
 			total: tests.length,
 			passed: tests.filter((test) => test.status === 'passed').length,
 			failed: tests.filter((test) => test.status !== 'passed').length,
