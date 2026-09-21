@@ -3,6 +3,10 @@
 	// title/description; canonical, alternates, og:url and locales come from
 	// `buildSeo` so no page hardcodes the origin. OG/Twitter copy often differs
 	// from the meta description for CTR, so all four can be overridden.
+	//
+	// `title` is optional on purpose: Svelte 5 drops titles emitted by nested
+	// components during streamed SSR, so runtime-rendered pages (home) put the
+	// title in their route component instead. Prerendered pages are unaffected.
 	import { buildSeo } from '$lib/shared/seo';
 
 	let {
@@ -21,7 +25,9 @@
 </script>
 
 <svelte:head>
-	<title>{title}</title>
+	{#if title}
+		<title>{title}</title>
+	{/if}
 	<meta name="description" content={description} />
 	{#if seo.indexable}
 		<meta name="robots" content="index, follow, max-image-preview:large" />

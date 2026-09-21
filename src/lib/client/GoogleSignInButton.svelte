@@ -1,8 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
-	import { t } from '$lib/client/i18n';
-	import { language } from '$lib/client/preferences';
+	import { t, activeLanguage } from '$lib/client/i18n';
 	import { isNativeApp } from '$lib/client/auth';
 	import { resolveGoogleClientId } from '$lib/shared/googleAuth';
 
@@ -101,7 +100,7 @@
 			return;
 		}
 
-		const locale = $language === 'hindi' ? 'hi' : 'en';
+		const locale = $activeLanguage === 'hindi' ? 'hi' : 'en';
 		const container = buttonRef;
 		container.innerHTML = '';
 

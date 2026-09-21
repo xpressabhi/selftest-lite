@@ -35,4 +35,8 @@ describe('buildLlmsTxt', () => {
 	it('ends with a trailing newline', () => {
 		expect(text.endsWith('\n')).toBe(true);
 	});
+
+	it('documents the Hindi URL space', () => {
+		expect(text).toContain(`${SITE_ORIGIN}/hi/practice/ssc-cgl`);
+	});
 });

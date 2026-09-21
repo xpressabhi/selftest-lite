@@ -85,12 +85,26 @@ describe('languageHref', () => {
 });
 
 describe('buildSeo', () => {
-	it('builds an absolute canonical and x-default alternate', () => {
+	it('builds an absolute canonical and reciprocal hreflang pairs', () => {
 		const seo = buildSeo({ path: '/blog/study-tips', lang: 'english', type: 'article' });
 		expect(seo.canonical).toBe(`${SITE_ORIGIN}/blog/study-tips`);
 		expect(seo.ogUrl).toBe(seo.canonical);
-		expect(seo.alternates).toEqual([{ hreflang: 'x-default', href: seo.canonical }]);
+		expect(seo.alternates).toEqual([
+			{ hreflang: 'en-IN', href: `${SITE_ORIGIN}/blog/study-tips` },
+			{ hreflang: 'hi-IN', href: `${SITE_ORIGIN}/hi/blog/study-tips` },
+			{ hreflang: 'x-default', href: `${SITE_ORIGIN}/blog/study-tips` },
+		]);
 		expect(seo.ogType).toBe('article');
+	});
+
+	it('takes the twin URLs from the Hindi page the same way', () => {
+		const seo = buildSeo({ path: '/hi/practice/ssc-cgl', lang: 'hindi' });
+		expect(seo.canonical).toBe(`${SITE_ORIGIN}/hi/practice/ssc-cgl`);
+		expect(seo.alternates).toEqual([
+			{ hreflang: 'en-IN', href: `${SITE_ORIGIN}/practice/ssc-cgl` },
+			{ hreflang: 'hi-IN', href: `${SITE_ORIGIN}/hi/practice/ssc-cgl` },
+			{ hreflang: 'x-default', href: `${SITE_ORIGIN}/practice/ssc-cgl` },
+		]);
 	});
 
 	it('sets locale and alternate per language', () => {

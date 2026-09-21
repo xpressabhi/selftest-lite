@@ -54,6 +54,8 @@ export function buildLlmsTxt() {
 			'',
 			'- Exam landing pages are stable, indexable URLs; generated test papers are private',
 			'  application state and are not archived at public URLs.',
+			'- Every page also exists in Hindi at the same path under /hi, e.g.',
+			`  ${SITE_ORIGIN}/hi/practice/ssc-cgl.`,
 			'',
 		].join('\n')
 	);

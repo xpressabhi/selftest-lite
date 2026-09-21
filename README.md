@@ -102,6 +102,15 @@ All endpoints are rate-limited. See `src/lib/server/rateLimiter.js`.
 - `src/lib/locales/` — English/Hindi UI strings
 - `src/lib/styles/` — Tailwind entry point and theme tokens
 
+### Public URLs & SEO
+
+Indexable pages exist in English and Hindi: the Hindi tree is mirrored under `/hi`
+(same body components, URL-driven language, reciprocal `hreflang`). Crawler files
+are generated from the registries: `/sitemap.xml` (both languages), `/rss.xml`,
+`/llms.txt`, and `static/robots.txt`. Head metadata for every indexable page comes
+from `src/lib/shared/seo.js` + `SeoHead.svelte`; the runbook for Search Console and
+the measurement baseline lives in [docs/seo-baseline.md](docs/seo-baseline.md).
+
 See [AGENTS.md](AGENTS.md) for the full technical guide and [docs/architecture.md](docs/architecture.md) for architecture notes.
 
 ## Contributing

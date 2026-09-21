@@ -61,3 +61,63 @@ test('noindex app pages ship no canonical or og:url', async ({ page }) => {
 	await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
 	await expect(page.locator('meta[property="og:url"]')).toHaveCount(0);
 });
+
+async function expectHreflangPair(page, englishPath, hindiPath) {
+	await expect(page.locator('link[rel="alternate"][hreflang="en-IN"]')).toHaveAttribute(
+		'href',
+		`${ORIGIN}${englishPath}`
+	);
+	await expect(page.locator('link[rel="alternate"][hreflang="hi-IN"]')).toHaveAttribute(
+		'href',
+		`${ORIGIN}${hindiPath}`
+	);
+	await expect(page.locator('link[rel="alternate"][hreflang="x-default"]')).toHaveAttribute(
+		'href',
+		`${ORIGIN}${englishPath}`
+	);
+}
+
+test('English exam page links to its Hindi twin', async ({ page }) => {
+	await page.goto('/practice/ssc-cgl');
+	await expectHreflangPair(page, '/practice/ssc-cgl', '/hi/practice/ssc-cgl');
+});
+
+test('Hindi exam page renders Hindi with a Hindi canonical', async ({ page }) => {
+	await page.goto('/hi/practice/ssc-cgl');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
+	await expect(page).toHaveTitle(/मॉक टेस्ट/);
+	await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+		'href',
+		`${ORIGIN}/hi/practice/ssc-cgl`
+	);
+	await expectHreflangPair(page, '/practice/ssc-cgl', '/hi/practice/ssc-cgl');
+	await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'hi_IN');
+	await expect(page.locator('main, body').first()).toContainText('मात्रात्मक योग्यता');
+});
+
+test('Hindi blog index renders Hindi', async ({ page }) => {
+	await page.goto('/hi/blog');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
+	await expect(page).toHaveTitle(/ब्लॉग/);
+	await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+		'href',
+		`${ORIGIN}/hi/blog`
+	);
+});
+
+test('language toggle navigates between twins and back', async ({ page }) => {
+	await page.goto('/about');
+	// The first click can land before hydration in dev; retry until it takes.
+	await expect(async () => {
+		await page.getByRole('button', { name: 'Switch UI language' }).click();
+		await expect(page).toHaveURL(/\/hi\/about$/, { timeout: 1000 });
+	}).toPass({ timeout: 20000 });
+	await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
+	await expect(page).toHaveTitle(/के बारे में/);
+	await expect(async () => {
+		await page.getByRole('button', { name: 'यूआई भाषा बदलें' }).click();
+		await expect(page).toHaveURL(/\/about$/, { timeout: 1000 });
+	}).toPass({ timeout: 20000 });
+	await expect(page).not.toHaveURL(/\/hi\//);
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});

@@ -1,7 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { t } from '$lib/client/i18n';
+	import { activeLanguage, t } from '$lib/client/i18n';
 	import {
 		initializePreferences,
 		isDataSaverActive,
@@ -30,7 +32,7 @@
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import Toast from '$lib/client/Toast.svelte';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import { SITE_ORIGIN } from '$lib/shared/seo';
+	import { SITE_ORIGIN, languageHref, localizedPath } from '$lib/shared/seo';
 	import '$lib/styles/globals.css';
 
 	let { children, data } = $props();
@@ -229,6 +231,15 @@
 	let activePath = $derived(page.url.pathname);
 	let isImmersive = $derived(page.url.pathname === '/test');
 
+	// Indexable pages get their language from the URL in +layout.js. App-shell
+	// pages have no language in the URL, so follow the saved preference there.
+	$effect(() => {
+		const next = data?.lang ?? $language;
+		if (get(activeLanguage) !== next) {
+			activeLanguage.set(next);
+		}
+	});
+
 	// Site-wide structured data, identical on every page.
 	const siteJsonLd = jsonLdScript([
 		{
@@ -382,9 +393,18 @@
 	}
 
 	function toggleLanguage() {
-		const next = $language === 'english' ? 'hindi' : 'english';
+		// On indexable pages the URL is the language, so switching navigates to
+		// the twin URL. App pages exist once and just flip the store.
+		const current = data?.lang ?? $language;
+		const next = current === 'english' ? 'hindi' : 'english';
 		track('settings:language-toggle', { language: next });
+		// Keep the saved preference in sync so the app stays in the language
+		// the visitor just chose.
 		setLanguage(next);
+		const twin = languageHref(page.url.pathname, next);
+		if (twin) {
+			goto(twin);
+		}
 	}
 
 	function toggleTheme() {
@@ -450,18 +470,18 @@
 	{#if !isImmersive}
 		<header class="app-header border-bottom bg-body">
 			<nav class="header-inner" aria-label={$t('mainNavigation')}>
-				<a class="brand-link" href="/">
+				<a class="brand-link" href={localizedPath('/', $activeLanguage)}>
 					<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
 					<span>selftest.in</span>
 				</a>
 
 				<nav class="desktop-nav" aria-label={$t('mainNavigation')}>
-					<a href="/about">{$t('about')}</a>
-					<a href="/practice">{$t('practiceTitle')}</a>
-					<a href="/blog">{$t('blog')}</a>
-					<a href="/faq">{$t('faq')}</a>
-					<a href="/contact">{$t('contact')}</a>
-					<a class="create-link" href="/">{$t('createTab')}</a>
+					<a href={localizedPath('/about', $activeLanguage)}>{$t('about')}</a>
+					<a href={localizedPath('/practice', $activeLanguage)}>{$t('practiceTitle')}</a>
+					<a href={localizedPath('/blog', $activeLanguage)}>{$t('blog')}</a>
+					<a href={localizedPath('/faq', $activeLanguage)}>{$t('faq')}</a>
+					<a href={localizedPath('/contact', $activeLanguage)}>{$t('contact')}</a>
+					<a class="create-link" href={localizedPath('/', $activeLanguage)}>{$t('createTab')}</a>
 				</nav>
 
 				<div class="header-actions">
@@ -576,15 +596,15 @@
 						</div>
 					{/if}
 					<div class="menu-section-label">{$t('menuSectionExplore')}</div>
-					<a href="/about" onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
-					<a href="/practice" onclick={() => (isMenuOpen = false)}
+					<a href={localizedPath('/about', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
+					<a href={localizedPath('/practice', $activeLanguage)} onclick={() => (isMenuOpen = false)}
 						>{$t('practiceTitle')}</a
 					>
-					<a href="/blog" onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
-					<a href="/faq" onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
-					<a href="/contact" onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
-					<a href="/privacy" onclick={() => (isMenuOpen = false)}>{$t('privacy')}</a>
-					<a href="/terms" onclick={() => (isMenuOpen = false)}>{$t('terms')}</a>
+					<a href={localizedPath('/blog', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
+					<a href={localizedPath('/faq', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
+					<a href={localizedPath('/contact', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
+					<a href={localizedPath('/privacy', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('privacy')}</a>
+					<a href={localizedPath('/terms', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('terms')}</a>
 					<div class="menu-section-label">{$t('menuSectionActions')}</div>
 					{#if $user}
 						<a href="/profile" onclick={() => (isMenuOpen = false)}
@@ -702,7 +722,7 @@
 		<nav class="bottom-nav border-top bg-body" aria-label={$t('mobileNavigation')}>
 			<a
 				class:active={activePath === '/'}
-				href="/"
+				href={localizedPath('/', $activeLanguage)}
 				aria-current={activePath === '/' ? 'page' : undefined}
 				><span aria-hidden="true">⌂</span>{$t('homeTab')}</a
 			>
@@ -712,7 +732,7 @@
 				aria-current={activePath === '/bookmarks' ? 'page' : undefined}
 				><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a
 			>
-			<a class="create-tab" href="/"><span aria-hidden="true">＋</span>{$t('createTab')}</a>
+			<a class="create-tab" href={localizedPath('/', $activeLanguage)}><span aria-hidden="true">＋</span>{$t('createTab')}</a>
 			<a
 				class:active={activePath === '/history'}
 				href="/history"
@@ -725,19 +745,19 @@
 	{#if !isImmersive}
 		<footer class="site-footer border-top bg-body">
 			<div class="footer-inner">
-				<a class="brand-link" href="/">
+				<a class="brand-link" href={localizedPath('/', $activeLanguage)}>
 					<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
 					<span>selftest.in</span>
 				</a>
 				<p class="footer-tagline small text-muted">{$t('footerTagline')}</p>
 				<nav class="footer-links" aria-label={$t('footerNav')}>
-					<a href="/about">{$t('about')}</a>
-					<a href="/practice">{$t('practiceTitle')}</a>
-					<a href="/blog">{$t('blog')}</a>
-					<a href="/faq">{$t('faq')}</a>
-					<a href="/contact">{$t('contact')}</a>
-					<a href="/privacy">{$t('privacy')}</a>
-					<a href="/terms">{$t('terms')}</a>
+					<a href={localizedPath('/about', $activeLanguage)}>{$t('about')}</a>
+					<a href={localizedPath('/practice', $activeLanguage)}>{$t('practiceTitle')}</a>
+					<a href={localizedPath('/blog', $activeLanguage)}>{$t('blog')}</a>
+					<a href={localizedPath('/faq', $activeLanguage)}>{$t('faq')}</a>
+					<a href={localizedPath('/contact', $activeLanguage)}>{$t('contact')}</a>
+					<a href={localizedPath('/privacy', $activeLanguage)}>{$t('privacy')}</a>
+					<a href={localizedPath('/terms', $activeLanguage)}>{$t('terms')}</a>
 				</nav>
 				<p class="footer-copy small text-muted">
 					© {new Date().getFullYear()} selftest.in — {$t('allRightsReserved')}

@@ -1,5 +1,4 @@
-import { derived } from 'svelte/store';
-import { language } from './preferences';
+import { derived, writable } from 'svelte/store';
 import { getDictionary } from './locales';
 
 export function translate(key, currentLanguage = 'english', replacements = {}) {
@@ -14,8 +13,14 @@ export function translate(key, currentLanguage = 'english', replacements = {}) {
 	return value;
 }
 
-export const t = derived(language, ($language) => {
-	return (key, replacements) => translate(key, $language, replacements);
+// The language the UI is currently rendering in. Indexable pages set this from
+// their URL (via the root layout load) so SSR and prerender are deterministic;
+// app-shell pages follow the saved preference (see +layout.svelte). Kept
+// separate from `language` so a Hindi URL never depends on stored state.
+export const activeLanguage = writable('english');
+
+export const t = derived(activeLanguage, ($activeLanguage) => {
+	return (key, replacements) => translate(key, $activeLanguage, replacements);
 });
 
 const API_ERROR_MESSAGE_KEYS = {

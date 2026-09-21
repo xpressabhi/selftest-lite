@@ -987,3 +987,134 @@ export const OBJECTIVE_ONLY_EXAMS = INDIAN_EXAMS.filter(
 export function getIndianExamById(examId) {
 	return INDIAN_EXAMS.find((exam) => exam.id === examId) || null;
 }
+
+// --- Hindi overlay -------------------------------------------------------
+// Exam names stay Latin (SSC CGL, IBPS PO, …) the way Hindi-medium content
+// writes them. Streams and syllabus units get Hindi strings so the /hi exam
+// pages read as Hindi rather than half-English. Tests assert full coverage of
+// every stream and syllabus unit used by the registry.
+
+export const STREAM_HI = {
+	'Civil Services': 'सिविल सेवा',
+	'Forest Services': 'वन सेवा',
+	'Defence & Security': 'रक्षा और सुरक्षा',
+	'Defence Entrance': 'रक्षा प्रवेश परीक्षा',
+	'Medical Services': 'चिकित्सा सेवा',
+	'Government Jobs': 'सरकारी नौकरी',
+	Police: 'पुलिस',
+	Clerical: 'क्लर्क पद',
+	'Multi Tasking Staff': 'मल्टी टास्किंग स्टाफ',
+	Paramilitary: 'अर्धसैनिक बल',
+	Stenography: 'आशुलिपि',
+	'Selection Posts': 'चयन पद',
+	Railways: 'रेलवे',
+	'Railway Police': 'रेलवे पुलिस',
+	Banking: 'बैंकिंग',
+	Insurance: 'बीमा',
+	EPFO: 'ईपीएफओ',
+	ESIC: 'ईएसआईसी',
+	'Food Corporation': 'खाद्य निगम',
+	'State PSC': 'राज्य लोक सेवा आयोग',
+	'UP Group C/D': 'यूपी ग्रुप C/D',
+	Revenue: 'राजस्व',
+	'Village Development': 'ग्राम विकास',
+	Secretariat: 'सचिवालय',
+	'State Group C': 'राज्य ग्रुप C',
+	'State Group D': 'राज्य ग्रुप D',
+	'State Services': 'राज्य सेवाएँ',
+	'State Group C/D': 'राज्य ग्रुप C/D',
+	'Engineering Entrance': 'इंजीनियरिंग प्रवेश परीक्षा',
+	'Medical Entrance': 'मेडिकल प्रवेश परीक्षा',
+	'Postgraduate Engineering': 'स्नातकोत्तर इंजीनियरिंग',
+	'MBA Entrance': 'एमबीए प्रवेश परीक्षा',
+	'University Entrance': 'विश्वविद्यालय प्रवेश परीक्षा',
+	'Law Entrance': 'विधि प्रवेश परीक्षा',
+};
+
+export const SYLLABUS_HI = {
+	'Current Affairs': 'समसामयिकी',
+	'Indian Polity and Governance': 'भारतीय राजव्यवस्था और शासन',
+	'Economy and Social Development': 'अर्थव्यवस्था और सामाजिक विकास',
+	'History of India': 'भारत का इतिहास',
+	'Indian and World Geography': 'भारत और विश्व का भूगोल',
+	'Environment and Ecology': 'पर्यावरण और पारिस्थितिकी',
+	'General Science': 'सामान्य विज्ञान',
+	Mathematics: 'गणित',
+	English: 'अंग्रेज़ी',
+	'General Knowledge': 'सामान्य ज्ञान',
+	'Science and Current Affairs': 'विज्ञान और समसामयिकी',
+	'General Medicine': 'सामान्य चिकित्सा',
+	Pediatrics: 'बाल रोग',
+	Surgery: 'शल्य चिकित्सा',
+	Gynecology: 'स्त्री रोग',
+	'Preventive and Social Medicine': 'निवारक और सामाजिक चिकित्सा',
+	'General Intelligence and Reasoning': 'सामान्य बुद्धि और तर्कशक्ति',
+	'General Awareness': 'सामान्य जागरूकता',
+	'Quantitative Aptitude': 'मात्रात्मक योग्यता',
+	'English Comprehension': 'अंग्रेज़ी समझ',
+	Reasoning: 'तर्कशक्ति',
+	'Basic Mathematics': 'बुनियादी गणित',
+	'Language Comprehension (Hindi/English)': 'भाषा समझ (हिंदी/अंग्रेज़ी)',
+	'Numerical Ability': 'संख्यात्मक क्षमता',
+	'General Hindi': 'सामान्य हिंदी',
+	'Numerical Aptitude': 'संख्यात्मक योग्यता',
+	'Hindi/English Language': 'हिंदी/अंग्रेज़ी भाषा',
+	'Computer Basics': 'कंप्यूटर का बुनियादी ज्ञान',
+	'General Awareness and Current Affairs': 'सामान्य जागरूकता और समसामयिकी',
+	'Technical Subject': 'तकनीकी विषय',
+	'Reasoning and Mental Ability': 'तर्कशक्ति और मानसिक क्षमता',
+	'General Hindi/English': 'सामान्य हिंदी/अंग्रेज़ी',
+	'Law and Constitution Basics': 'विधि और संविधान की बुनियादी बातें',
+	'Reasoning Ability': 'तर्क क्षमता',
+	'English Language': 'अंग्रेज़ी भाषा',
+	'General/Economy/Banking Awareness': 'सामान्य/अर्थव्यवस्था/बैंकिंग जागरूकता',
+	'Computer Knowledge': 'कंप्यूटर ज्ञान',
+	'Data Interpretation': 'डेटा इंटरप्रेटेशन',
+	'History and Culture': 'इतिहास और संस्कृति',
+	'Polity and Governance': 'राजव्यवस्था और शासन',
+	Economy: 'अर्थव्यवस्था',
+	Geography: 'भूगोल',
+	'General Science and Environment': 'सामान्य विज्ञान और पर्यावरण',
+	Physics: 'भौतिक विज्ञान',
+	Chemistry: 'रसायन विज्ञान',
+	'Biology (Botany)': 'जीव विज्ञान (वनस्पति विज्ञान)',
+	'Biology (Zoology)': 'जीव विज्ञान (प्राणि विज्ञान)',
+	'Engineering Mathematics': 'इंजीनियरिंग गणित',
+	'Digital Logic': 'डिजिटल लॉजिक',
+	'Data Structures and Algorithms': 'डेटा स्ट्रक्चर और एल्गोरिदम',
+	'Computer Organization and Architecture': 'कंप्यूटर संगठन और आर्किटेक्चर',
+	'Operating Systems': 'ऑपरेटिंग सिस्टम',
+	DBMS: 'डीबीएमएस',
+	'Computer Networks': 'कंप्यूटर नेटवर्क',
+	'Theory of Computation and Compiler Design':
+		'कंप्यूटेशन का सिद्धांत और कंपाइलर डिज़ाइन',
+	'General Aptitude': 'सामान्य योग्यता',
+	'VARC (Verbal Ability and Reading Comprehension)': 'VARC (मौखिक योग्यता और पठन समझ)',
+	'DILR (Data Interpretation and Logical Reasoning)':
+		'DILR (डेटा इंटरप्रेटेशन और तार्किक तर्कशक्ति)',
+	'QA (Quantitative Aptitude)': 'QA (मात्रात्मक योग्यता)',
+	'Language Comprehension': 'भाषा समझ',
+	'Domain Subject Concepts': 'विषय-विशेष की अवधारणाएँ',
+	'General Test: Quantitative Ability': 'सामान्य परीक्षा: मात्रात्मक क्षमता',
+	'General Test: Reasoning': 'सामान्य परीक्षा: तर्कशक्ति',
+	'General Test: GK and Current Affairs': 'सामान्य परीक्षा: सामान्य ज्ञान और समसामयिकी',
+	'Current Affairs including GK': 'समसामयिकी सहित सामान्य ज्ञान',
+	'Legal Reasoning': 'विधिक तर्कशक्ति',
+	'Logical Reasoning': 'तार्किक तर्कशक्ति',
+	'Quantitative Techniques': 'मात्रात्मक तकनीकें',
+};
+
+export function localizedStream(stream, lang = 'english') {
+	if (lang !== 'hindi') {
+		return stream;
+	}
+	return STREAM_HI[stream] || stream;
+}
+
+export function localizedSyllabus(syllabus, lang = 'english') {
+	const units = Array.isArray(syllabus) ? syllabus : [];
+	if (lang !== 'hindi') {
+		return units;
+	}
+	return units.map((unit) => SYLLABUS_HI[unit] || unit);
+}

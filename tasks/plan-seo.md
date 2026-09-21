@@ -39,18 +39,18 @@ Three shippable phases from `docs/superpowers/specs/2026-09-21-seo-foundation-de
 - [x] Full test suite passes
 
 ### Phase 2: Hindi URL space
-- [ ] Task 14: Hindi data layer (`streamHi`, `syllabusHi`) + tests
-- [ ] Task 15: extract practice body components (hub, exam)
-- [ ] Task 16: extract blog + static body components
-- [ ] Task 17: extract home landing component
-- [ ] Task 18: lang plumbing (`+layout.server.js`, store sync, `hooks.server.js`, `app.html`)
-- [ ] Task 19: `/hi` route tree + hreflang pairs + lang-aware links + toggle navigation
-- [ ] Task 20: bilingual sitemap + llms entries + `/hi` prerender
-- [ ] Task 21: e2e parity + full verification
+- [x] Task 14: Hindi data layer (`streamHi`, `syllabusHi`) + tests
+- [x] Task 15: extract practice body components (hub, exam)
+- [x] Task 16: extract blog + static body components
+- [x] Task 17: extract home landing component
+- [x] Task 18: lang plumbing (`+layout.server.js`, store sync, `hooks.server.js`, `app.html`)
+- [x] Task 19: `/hi` route tree + hreflang pairs + lang-aware links + toggle navigation
+- [x] Task 20: bilingual sitemap + llms entries + `/hi` prerender
+- [x] Task 21: e2e parity + full verification
 
 ### Checkpoint: Complete
-- [ ] All acceptance criteria met; `npm run smoke` passes
-- [ ] Manual check: `/hi` pages render Hindi, toggle navigates, app flow stays Hindi
+- [x] All acceptance criteria met; `npm run smoke` passes
+- [x] Manual check: `/hi` pages render Hindi, toggle navigates, app flow stays Hindi
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |

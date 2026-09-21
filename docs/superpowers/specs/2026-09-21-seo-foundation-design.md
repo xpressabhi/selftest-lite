@@ -1,8 +1,23 @@
 # SEO Foundation — Design
 
 Date: 2026-09-21
-Status: awaiting spec review
+Status: implemented — see `tasks/plan-seo.md` for task status and verification
 Scope: crawling/indexing hygiene, Hindi URL space, measurement, AI search visibility, prerender + caching. No new page types (see Out of scope).
+
+## Implementation notes (deviations from the draft design)
+
+1. **URL-driven language lives in the root universal load**, not a layout store
+   sync: `+layout.js` derives `lang` from the URL, registers the Hindi
+   dictionary before render (it used to be client-lazy only, so SSR never saw
+   Hindi) and sets the `activeLanguage` store. A store derived from
+   `$app/stores` was tried first and leaked across SSR requests because
+   module-level store subscriptions are never torn down during SSR.
+2. **The home page title is rendered at route level.** Svelte 5 drops `<title>`
+   tags emitted by nested components during streamed SSR, and the home is the
+   only indexable page served that way (everything else prerenders).
+   `SeoHead`'s `title` prop is therefore optional.
+3. `+layout.server.js` is unchanged; the language travels through the universal
+   layout load instead.
 
 ## Context
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="%lang%">
 	<head>
 		<meta charset="utf-8" />
 		<meta
@@ -35,7 +35,12 @@
 						document.documentElement.classList.add('dark');
 						document.documentElement.setAttribute('data-bs-theme', 'dark');
 					}
-					if (stored.getItem('selftest_language') === 'hindi') {
+					// The server renders lang="hi" for /hi URLs; only flip from
+					// the stored preference when the URL does not already say.
+					if (
+						!window.location.pathname.startsWith('/hi') &&
+						stored.getItem('selftest_language') === 'hindi'
+					) {
 						document.documentElement.setAttribute('lang', 'hi');
 					}
 					if (stored.getItem('dataSaverMode') === 'true') {

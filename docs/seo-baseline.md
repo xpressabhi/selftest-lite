@@ -27,8 +27,9 @@ SEO decision. Nothing here changes code.
   `https://www.selftest.in/sitemap.xml`).
 - `robots.txt` already points to it, so GSC usually discovers it on its own —
   submitting just speeds things up.
-- Expected state: ~96 URLs in English today; the Hindi `/hi` set doubles this
-  once the Hindi URL work ships.
+- Expected state: 192 URLs — every indexable page in English **and** Hindi, with
+  reciprocal `hreflang` alternates (96 pages × 2 languages). Hindi pages live
+  under `/hi/...` and are real, server-rendered Hindi.
 
 ## 3. Request indexing (optional)
 
@@ -56,8 +57,8 @@ Re-record the table above and compare. Specifically check:
 
 - Did the previously SSV/CSR-only content (blog) start indexing?
 - Are exam pages indexed? Any coverage errors pointing at canonical mistakes?
-- Do impressions appear for Hindi queries? (Hindi URLs ship separately; if
-  Hindi queries show up before that, it confirms demand for the `/hi` work.)
+- Do impressions appear for Hindi queries? The `/hi` URLs are live now; check
+  both the English and Hindi page sets separately in the Pages report.
 - Which queries have impressions but poor CTR? Those pages need better titles
   or descriptions before new page types are built.
 
