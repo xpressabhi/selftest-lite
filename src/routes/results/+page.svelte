@@ -5,6 +5,8 @@
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
+	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '$lib/client/countUp.js';
+	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
 	import { track } from '$lib/client/telemetry';
 	import {
 		buildReviewQueue,
@@ -57,6 +59,12 @@
 	let topicMastery = $state([]);
 	let reviewQueue = $state({ today: [], upcoming: [] });
 	let bookmarkedQuestionKeys = $state([]);
+	let displayedPercentage = $state(0);
+	let scoreSettled = $state(false);
+	let bookmarkPulse = $state(null);
+	let bookmarkPulseTimer = null;
+	let countUpFrame = null;
+	let countUpStarted = false;
 	let filter = $state('all');
 	let resultsHide = $state([]);
 	let challenge = $state(null);
@@ -146,6 +154,45 @@
 
 	const RING_RADIUS = 42;
 	const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+	// Count the score up once the paper arrives, then settle the ring. Skipped
+	// for data-saver and reduced-motion users, who see the final value.
+	$effect(() => {
+		if (!questionPaper || countUpStarted || percentage <= 0) {
+			return;
+		}
+		countUpStarted = true;
+		const reduceMotion =
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+		if (!shouldCountUp({ dataSaver: $isDataSaverActive, reduceMotion })) {
+			displayedPercentage = percentage;
+			scoreSettled = true;
+			return;
+		}
+		const startedAt = performance.now();
+		const tick = (now) => {
+			const elapsed = now - startedAt;
+			displayedPercentage = countUpValue(percentage, elapsed, COUNT_UP_MS);
+			if (elapsed < COUNT_UP_MS) {
+				countUpFrame = requestAnimationFrame(tick);
+			} else {
+				countUpFrame = null;
+				scoreSettled = true;
+				triggerVibration(HAPTIC_SUCCESS);
+			}
+		};
+		countUpFrame = requestAnimationFrame(tick);
+	});
+
+	onDestroy(() => {
+		if (countUpFrame !== null) {
+			cancelAnimationFrame(countUpFrame);
+		}
+		if (bookmarkPulseTimer) {
+			clearTimeout(bookmarkPulseTimer);
+		}
+	});
 
 	$effect(() => {
 		if (!questionPaper || expansionInitialized) {
@@ -299,10 +346,20 @@
 	}
 
 	function toggleBookmark(question) {
+		const key = questionKey(question);
+		const wasBookmarked = bookmarkedQuestionKeys.includes(key);
 		toggleQuestionBookmark(question, {
 			testId: questionPaper.id,
 			topic: questionPaper.topic,
 		});
+		if (!wasBookmarked) {
+			triggerVibration(HAPTIC_COMMIT);
+			bookmarkPulse = key;
+			window.clearTimeout(bookmarkPulseTimer);
+			bookmarkPulseTimer = window.setTimeout(() => {
+				bookmarkPulse = null;
+			}, 450);
+		}
 		track('results:bookmark-question', { q: question.question?.slice(0, 40) });
 		refreshLearningPanels();
 	}
@@ -679,7 +736,7 @@
 				<MarkdownContent content={questionPaper.topic} tag="span" />
 			</h1>
 			<div class="d-flex flex-wrap align-items-center gap-3">
-				<div class="score-ring" role="img" aria-label={`${percentage}%`}>
+				<div class="score-ring" class:settled={scoreSettled} role="img" aria-label={`${percentage}%`}>
 					<svg viewBox="0 0 100 100" aria-hidden="true">
 						<circle class="ring-track" cx="50" cy="50" r={RING_RADIUS}></circle>
 						<circle
@@ -691,7 +748,7 @@
 							stroke-dashoffset={RING_CIRCUMFERENCE * (1 - percentage / 100)}
 						></circle>
 					</svg>
-					<span class="score-ring-label">{percentage}%</span>
+					<span class="score-ring-label">{displayedPercentage}%</span>
 				</div>
 				<div>
 					<div class="h4 mb-1">
@@ -723,6 +780,14 @@
 				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareCard}>
 					{$t('shareCard')}
 				</button>
+				{#if bookmarkedQuestionKeys.length > 0}
+					<span class="bookmark-count" aria-hidden="true">
+						<span class="bookmark-count-glyph">🔖</span>
+						{#key bookmarkedQuestionKeys.length}
+							<span class="bookmark-number">{bookmarkedQuestionKeys.length}</span>
+						{/key}
+					</span>
+				{/if}
 				{#if showRetakeConfirm}
 					<div
 						class="retake-confirm no-print"
@@ -1050,10 +1115,12 @@
 						{#if expanded[index] === true}
 							<div class="review-card-body">
 								<button
-									class="btn btn-sm btn-outline-secondary mb-2 no-print"
+									class="btn btn-sm btn-outline-secondary mb-2 no-print bookmark-btn"
+									class:is-pulsing={bookmarkPulse === questionKey(question)}
 									type="button"
 									onclick={() => toggleBookmark(question)}
 								>
+									<span class="bookmark-flip" aria-hidden="true">🔖</span>
 									{bookmarkedQuestionKeys.includes(questionKey(question))
 										? $t('removeQuestionBookmark')
 										: $t('bookmarkQuestion')}
@@ -1417,6 +1484,74 @@
 		position: relative;
 		width: 96px;
 		height: 96px;
+	}
+
+	.score-ring.settled {
+		animation: ring-settle 320ms var(--ease-commit);
+	}
+
+	@keyframes ring-settle {
+		0% {
+			transform: scale(1);
+		}
+		55% {
+			transform: scale(1.045);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+
+	.bookmark-flip {
+		display: inline-block;
+		margin-right: 4px;
+	}
+
+	.bookmark-btn.is-pulsing .bookmark-flip {
+		animation: bookmark-pop 420ms var(--ease-commit);
+	}
+
+	@keyframes bookmark-pop {
+		0% {
+			transform: scale(1) rotate(0);
+		}
+		45% {
+			transform: scale(1.35) rotate(-12deg);
+		}
+		100% {
+			transform: scale(1) rotate(0);
+		}
+	}
+
+	.bookmark-count {
+		display: inline-flex;
+		min-height: 31px;
+		align-items: center;
+		gap: 4px;
+		padding: 0 10px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface-muted);
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		font-weight: 700;
+	}
+
+	.bookmark-number {
+		display: inline-block;
+		font-variant-numeric: tabular-nums;
+		animation: bookmark-roll var(--motion-base) var(--ease-out);
+	}
+
+	@keyframes bookmark-roll {
+		from {
+			transform: translateY(80%);
+			opacity: 0;
+		}
+		to {
+			transform: translateY(0);
+			opacity: 1;
+		}
 	}
 
 	.score-ring svg {

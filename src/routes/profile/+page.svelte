@@ -2,6 +2,7 @@
 	import { t } from '$lib/client/i18n';
 	import { loginWithGoogleCredential, user } from '$lib/client/auth';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
@@ -580,17 +581,14 @@
 									{$t('profilePersonalizationHint')}
 								</p>
 							</div>
-							<label class="switch" aria-label={$t('profilePersonalizationLabel')}>
-								<input
-									type="checkbox"
-									checked={draft.preferences.personalized}
-									onchange={() => {
-										draft.preferences.personalized = event.target.checked;
-										void handlePersonalizedChange();
-									}}
-								/>
-								<span class="switch-slider"></span>
-							</label>
+							<SquishSwitch
+								checked={draft.preferences.personalized}
+								ariaLabel={$t('profilePersonalizationLabel')}
+								onchange={(checked) => {
+									draft.preferences.personalized = checked;
+									void handlePersonalizedChange();
+								}}
+							/>
 						</div>
 					</section>
 
@@ -723,47 +721,5 @@
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 10px;
-	}
-
-	.switch {
-		position: relative;
-		display: inline-block;
-		width: 52px;
-		height: 30px;
-		flex: 0 0 auto;
-	}
-
-	.switch input {
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	.switch-slider {
-		position: absolute;
-		inset: 0;
-		border-radius: 999px;
-		background: var(--line);
-		transition: background 0.2s;
-	}
-
-	.switch-slider::before {
-		content: '';
-		position: absolute;
-		top: 3px;
-		left: 3px;
-		width: 24px;
-		height: 24px;
-		border-radius: 50%;
-		background: #fff;
-		transition: transform 0.2s;
-	}
-
-	.switch input:checked + .switch-slider {
-		background: var(--color-brand-600);
-	}
-
-	.switch input:checked + .switch-slider::before {
-		transform: translateX(22px);
 	}
 </style>

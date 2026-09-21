@@ -28,6 +28,7 @@
 	import { flushPendingAttempts, startStateSync } from '$lib/client/sync';
 	import { showToast, toast } from '$lib/client/toast';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	import Toast from '$lib/client/Toast.svelte';
 	import '$lib/styles/globals.css';
 
 	let { children, data } = $props();
@@ -751,12 +752,9 @@
 	{/if}
 
 	{#if $toast}
-		<div
-			class={`toast-lite ${$toast.type}`}
-			role={$toast.type === 'error' ? 'alert' : 'status'}
-		>
-			{$toast.message}
-		</div>
+		{#key $toast.id}
+			<Toast entry={$toast} />
+		{/key}
 	{/if}
 
 	{#if showSignInModal}
@@ -1133,19 +1131,6 @@
 		border-radius: 8px;
 		background: var(--surface);
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
-	}
-
-	.toast-lite {
-		position: fixed;
-		right: 16px;
-		bottom: calc(92px + var(--sab, env(safe-area-inset-bottom, 0px)));
-		z-index: 1100;
-		max-width: min(360px, calc(100vw - 32px));
-		padding: 10px 12px;
-		border-radius: 8px;
-		background: #111827;
-		color: #fff;
-		box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
 	}
 
 	.user-menu-wrap {

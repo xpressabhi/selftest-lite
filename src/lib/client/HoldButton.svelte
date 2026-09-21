@@ -75,6 +75,9 @@
 	}
 
 	onDestroy(() => {
+		if (typeof window === 'undefined') {
+			return;
+		}
 		window.clearTimeout(holdTimer);
 		window.clearTimeout(nudgeTimer);
 	});

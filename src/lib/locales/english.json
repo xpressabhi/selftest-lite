@@ -395,6 +395,7 @@
 	"close": "Close",
 	"cancel": "Cancel",
 	"deleting": "Deleting…",
+	"undo": "Undo",
 	"deleteTest": "Remove from history",
 	"deleteTestConfirmTitle": "Remove this test from history?",
 	"deleteTestConfirmTopic": "Test",

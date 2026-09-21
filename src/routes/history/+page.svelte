@@ -4,7 +4,7 @@
 	import { t } from '$lib/client/i18n';
 	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 	import { language } from '$lib/client/preferences';
-	import { focusTrap } from '$lib/client/focusTrap';
+	import FuseButton from '$lib/client/FuseButton.svelte';
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
 	import { getHistory, removeFromHistory, saveHistory } from '$lib/client/storage';
@@ -22,7 +22,6 @@
 	let isHydrating = $state(false);
 	let pendingCount = $state(0);
 	let pendingDelete = $state(null);
-	let deleting = $state(false);
 	let historyReranked = false;
 
 	let filteredHistory = $derived(
@@ -70,32 +69,39 @@
 		refreshHistory();
 	}
 
-	function requestDelete(entry) {
+	// Deleting is a two-step affordance now: the first press arms the button
+	// (fuse + Undo), the second cancels, and the delete commits when the fuse
+	// burns out. Arming another row commits the previous one immediately.
+	function armDelete(entry) {
+		if (pendingDelete && pendingDelete.id !== entry.id) {
+			performDelete(pendingDelete);
+		}
 		pendingDelete = entry;
 	}
 
-	function performDelete() {
-		const entry = pendingDelete;
-		if (!entry || deleting) {
+	function performDelete(entry = pendingDelete) {
+		if (!entry) {
 			return;
 		}
-		deleting = true;
 		removeFromHistory(entry.id);
 		purgePendingAttemptsForTest(entry.id);
 		showToast($t('deleteTestSuccess'), 'success');
 		track('history:delete-test', { id: entry.id });
-		deleting = false;
-		pendingDelete = null;
-	}
-
-	function handleDeleteKeydown(event) {
-		if (event.key === 'Escape' && pendingDelete && !deleting) {
+		if (pendingDelete?.id === entry.id) {
 			pendingDelete = null;
 		}
 	}
 
-	function cancelDelete() {
-		if (!deleting) {
+	function undoDelete() {
+		if (!pendingDelete) {
+			return;
+		}
+		track('history:undo-delete', { id: pendingDelete.id });
+		pendingDelete = null;
+	}
+
+	function handleDeleteKeydown(event) {
+		if (event.key === 'Escape' && pendingDelete) {
 			pendingDelete = null;
 		}
 	}
@@ -230,7 +236,10 @@
 	{:else}
 		<div class="list-group">
 			{#each filteredHistory as entry (`${entry.id}-${entry.timestamp || ''}`)}
-				<div class="list-group-item list-group-item-action history-row">
+				<div
+					class="list-group-item list-group-item-action history-row"
+					class:is-pending={pendingDelete?.id === entry.id}
+				>
 					<a
 						class="history-link"
 						href={entry.userAnswers
@@ -264,14 +273,18 @@
 							<span class="badge bg-warning text-dark">{$t('unsubmittedTest')}</span>
 						{/if}
 					</a>
-					<button
-						class="history-delete"
-						type="button"
-						aria-label={`${$t('deleteTest')}: ${entry.topic || $t('untitledTest')}`}
-						onclick={() => requestDelete(entry)}
+					<FuseButton
+						armed={pendingDelete?.id === entry.id}
+						label={`${$t('deleteTest')}: ${entry.topic || $t('untitledTest')}`}
+						undoLabel={$t('undo')}
+						durationMs={4000}
+						class={pendingDelete?.id === entry.id ? 'history-undo' : 'history-delete'}
+						onarm={() => armDelete(entry)}
+						oncancel={undoDelete}
+						onfire={() => performDelete(entry)}
 					>
 						<span aria-hidden="true">🗑</span>
-					</button>
+					</FuseButton>
 				</div>
 			{/each}
 		</div>
@@ -279,52 +292,6 @@
 </section>
 
 <svelte:window onkeydown={handleDeleteKeydown} />
-
-{#if pendingDelete}
-	<div
-		class="delete-backdrop"
-		role="presentation"
-		onclick={(event) => {
-			if (event.target === event.currentTarget && !deleting) {
-				pendingDelete = null;
-			}
-		}}
-	>
-		<div
-			class="delete-modal"
-			role="dialog"
-			aria-modal="true"
-			tabindex="-1"
-			use:focusTrap={{ onEscape: cancelDelete }}
-			aria-label={$t('deleteTestConfirmTitle')}
-		>
-			<h2 class="h5 fw-bold mb-1">{$t('deleteTestConfirmTitle')}</h2>
-			<p class="text-muted small mb-2">
-				{$t('deleteTestConfirmTopic')}:
-				<strong class="text-break">{pendingDelete.topic || $t('untitledTest')}</strong>
-			</p>
-			<p class="text-muted small mb-3">{$t('deleteTestConfirmBody')}</p>
-			<div class="d-flex flex-wrap gap-2">
-				<button
-					class="btn btn-outline-secondary"
-					type="button"
-					disabled={deleting}
-					onclick={() => (pendingDelete = null)}
-				>
-					{$t('cancel')}
-				</button>
-				<button
-					class="btn btn-danger"
-					type="button"
-					disabled={deleting}
-					onclick={performDelete}
-				>
-					{deleting ? $t('deleting') : $t('deleteTest')}
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
 
 <style>
 	.stat-card {
@@ -370,47 +337,42 @@
 		background: var(--surface-muted);
 	}
 
-	.history-delete {
-		display: grid;
+	:global(.history-delete) {
 		width: 44px;
 		height: 44px;
 		flex: 0 0 auto;
 		margin-right: 8px;
-		place-items: center;
-		border: 0;
 		border-radius: 10px;
 		background: transparent;
 		color: var(--text-muted);
 		font-size: 1rem;
-		cursor: pointer;
 		transition:
 			background 0.12s ease,
 			color 0.12s ease;
 	}
 
-	.history-delete:hover,
-	.history-delete:focus-visible {
+	:global(.history-delete:hover),
+	:global(.history-delete:focus-visible) {
 		background: rgba(220, 53, 69, 0.1);
 		color: #dc2626;
 	}
 
-	.delete-backdrop {
-		position: fixed;
-		inset: 0;
-		z-index: 1200;
-		display: grid;
-		place-items: center;
-		padding: 20px;
-		background: rgba(15, 23, 42, 0.55);
+	:global(.history-undo) {
+		min-height: 44px;
+		flex: 0 0 auto;
+		margin-right: 8px;
+		border-radius: 10px;
+		background: rgba(220, 53, 69, 0.12);
+		color: #dc2626;
+		font-size: 0.85rem;
 	}
 
-	.delete-modal {
-		width: 100%;
-		max-width: 400px;
-		padding: 20px;
-		border: 1px solid var(--line);
-		border-radius: 14px;
-		background: var(--surface);
-		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+	:global(.history-undo:hover),
+	:global(.history-undo:focus-visible) {
+		background: rgba(220, 53, 69, 0.2);
+	}
+
+	.history-row.is-pending {
+		opacity: 0.6;
 	}
 </style>

@@ -395,6 +395,7 @@
 	"close": "बंद करें",
 	"cancel": "रद्द करें",
 	"deleting": "हटा रहे हैं…",
+	"undo": "पूर्ववत करें",
 	"deleteTest": "इतिहास से हटाएँ",
 	"deleteTestConfirmTitle": "इस टेस्ट को इतिहास से हटाएँ?",
 	"deleteTestConfirmTopic": "टेस्ट",

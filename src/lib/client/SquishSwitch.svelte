@@ -1,5 +1,5 @@
 <script>
-	let { checked = false, label = '', disabled = false, onchange } = $props();
+	let { checked = false, label = '', ariaLabel = '', disabled = false, onchange } = $props();
 </script>
 
 <label class="squish-switch" class:is-disabled={disabled}>
@@ -7,6 +7,7 @@
 		class="squish-input"
 		type="checkbox"
 		role="switch"
+		aria-label={ariaLabel || undefined}
 		{checked}
 		{disabled}
 		onchange={(event) => onchange?.(event.currentTarget.checked)}

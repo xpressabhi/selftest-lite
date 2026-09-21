@@ -89,6 +89,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'history:search',
 	'history:open-test',
 	'history:delete-test',
+	'history:undo-delete',
 
 	// Global settings
 	'settings:language-toggle',
