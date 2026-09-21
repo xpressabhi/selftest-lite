@@ -380,6 +380,86 @@ test('quick start omits intent capture', async ({ page }, testInfo) => {
 	expect(errors).toEqual([]);
 });
 
+test('generate stays disabled while intent parsing runs', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	const plan = {
+		topic: 'python built in data structures',
+		testType: 'multiple-choice',
+		difficulty: 'intermediate',
+		numQuestions: 10,
+		examId: null,
+		isFullExam: false,
+		language: 'english',
+	};
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		async (route) => {
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan,
+					topicSource: 'span',
+					fieldConfidence: { topic: 0.9 },
+					confidence: 'high',
+				}),
+			});
+		}
+	);
+	await page.route(
+		(url) => url.pathname === '/api/user/history',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ attempts: [] }),
+			})
+	);
+	await page.route(
+		(url) => url.pathname === '/api/test',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ tests: [], hasMore: false }),
+			})
+	);
+
+	await page.goto('/');
+	await page.waitForLoadState('networkidle');
+	const generate = page.locator('.generate-btn');
+
+	// Preview parse: the button must be disabled while the request is in flight.
+	const previewStarted = page.waitForRequest((request) =>
+		request.url().includes('/api/parse-intent')
+	);
+	await page.locator('.intent-input').click();
+	await page.locator('.intent-input').pressSequentially('python built in data structures', {
+		delay: 10,
+	});
+	await previewStarted;
+	await expect(generate).toBeDisabled();
+	await expect(generate).toBeEnabled({ timeout: 10000 });
+
+	// Turn parse: submitting the same message must disable it again.
+	const turnStarted = page.waitForRequest(
+		(request) =>
+			request.url().includes('/api/parse-intent') &&
+			!request.postData()?.includes('"mode":"preview"')
+	);
+	await page.locator('.intent-input').press('Enter');
+	await turnStarted;
+	await expect(generate).toBeDisabled();
+	await expect(generate).toBeEnabled({ timeout: 10000 });
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ disabledDuringPreview: true, disabledDuringTurn: true }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
+
 test('seeded paper: skip-streak unlocks 50-50, submit lands on results', async ({
 	page,
 }) => {

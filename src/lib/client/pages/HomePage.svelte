@@ -1298,7 +1298,7 @@
 				parsed={parsedFromIntent}
 				parsingFailed={intentParseFailed}
 				draft={plannerDraft.messages.length === 0}
-				checking={previewStatus === 'checking'}
+				checking={previewStatus === 'checking' || intentStatus === 'parsing'}
 				ongenerate={handleGenerate}
 				oneditchip={handlePlannerChipEdit}
 				disabled={status === 'loading'}

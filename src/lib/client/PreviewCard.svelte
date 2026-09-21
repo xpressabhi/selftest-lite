@@ -682,7 +682,7 @@
 			<button
 				class="generate-btn"
 				class:ai-shimmer={GENERATING}
-				disabled={GENERATING || !topic}
+				disabled={GENERATING || !topic || checking}
 				onclick={handleGenerate}
 				type="button"
 			>
