@@ -13,7 +13,7 @@ const CORE_PAGES = [
 	{ path: '/blog', label: 'Blog', note: 'study tips, exam guides and science explainers' },
 	{ path: '/faq', label: 'FAQ', note: 'how generation, scoring and privacy work' },
 	{ path: '/about', label: 'About selftest.in', note: 'why it exists and how it works' },
-	{ path: '/contact', label: 'Contact', note: 'hello@selftest.in' },
+	{ path: '/contact', label: 'Contact', note: 'akm.nitt@gmail.com or the portfolio link' },
 ];
 
 function link(path, label, note) {

@@ -12,6 +12,14 @@
 			name: $t('contactHeroTitle'),
 			description: $t('contactHeroBody'),
 			url: `${SITE_ORIGIN}/contact`,
+			mainEntity: {
+				'@type': 'Person',
+				name: 'Abhishek Maurya',
+				email: 'mailto:akm.nitt@gmail.com',
+				url: 'https://xpressabhi.github.io/',
+				jobTitle: 'AI Engineer',
+				sameAs: ['https://github.com/xpressabhi', 'https://www.linkedin.com/in/akm85/'],
+			},
 		})
 	);
 
@@ -41,8 +49,8 @@
 			<article class="contact-card">
 				<h2 class="contact-card-title">{$t('contactInfoTitle')}</h2>
 				<p class="contact-card-body">{$t('contactInfoBody')}</p>
-				<a class="btn btn-primary contact-action" href="mailto:hello@selftest.in">
-					hello@selftest.in
+				<a class="btn btn-primary contact-action" href="mailto:akm.nitt@gmail.com">
+					akm.nitt@gmail.com
 				</a>
 			</article>
 
@@ -57,6 +65,43 @@
 				>
 					{$t('connectOnX')}
 				</a>
+			</article>
+
+			<article class="contact-card contact-card-wide">
+				<h2 class="contact-card-title">{$t('contactBuilderTitle')}</h2>
+				<p class="contact-card-body">{$t('contactBuilderBody')}</p>
+				<ul class="contact-social">
+					<li>
+						<a
+							class="contact-link"
+							href="https://xpressabhi.github.io/"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{$t('contactBuilderPortfolio')}
+						</a>
+					</li>
+					<li>
+						<a
+							class="contact-link"
+							href="https://github.com/xpressabhi"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{$t('contactBuilderGithub')}
+						</a>
+					</li>
+					<li>
+						<a
+							class="contact-link"
+							href="https://www.linkedin.com/in/akm85/"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{$t('contactBuilderLinkedin')}
+						</a>
+					</li>
+				</ul>
 			</article>
 		</div>
 
@@ -89,7 +134,7 @@
 					<a class="contact-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
 				</li>
 				<li>
-					<a class="contact-link" href="/privacy">{$t('contactQuickHelpPrivacy')}</a>
+					<a class="contact-link" href={localizedPath('/privacy', $activeLanguage)}>{$t('contactQuickHelpPrivacy')}</a>
 				</li>
 				<li>
 					<a class="contact-link" href={`${localizedPath('/faq', $activeLanguage)}#q-wrong-answer`}>
@@ -161,6 +206,19 @@
 		margin: 0;
 		color: var(--text-muted);
 		line-height: 1.6;
+	}
+
+	.contact-card-wide {
+		grid-column: 1 / -1;
+	}
+
+	.contact-social {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1.25rem;
 	}
 
 	.contact-action {
