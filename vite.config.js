@@ -70,9 +70,12 @@ export default defineConfig(({ mode }) => {
 								!url.pathname.startsWith('/api/') &&
 								!url.pathname.startsWith('/_app/immutable/') &&
 								!url.pathname.startsWith('/_vercel/'),
-							handler: 'StaleWhileRevalidate',
+							// Network-first: landing pages must not be served stale
+							// after a deploy. Falls back to cache so offline still works.
+							handler: 'NetworkFirst',
 							options: {
 								cacheName: 'pages',
+								networkTimeoutSeconds: 3,
 								expiration: {
 									maxEntries: 32,
 									maxAgeSeconds: 60 * 60 * 24,

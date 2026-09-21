@@ -16,10 +16,9 @@ const STATIC_PATHS = [
 	'/practice',
 ];
 
-// Keep static lastmod fresh without a rebuild-time clock dependency:
-// pages are app-shell rendered, so a fixed recent date is honest enough
-// for crawlers and avoids `new Date()` churn on every request.
-const STATIC_LASTMOD = '2026-09-20';
+// No fabricated lastmod: static and exam pages have no meaningful
+// single-file modification date, and a stale constant is worse than none.
+// Blog entries carry the real post date so Google can trust it.
 
 function urlEntry(loc, lastmod) {
 	const lastmodTag = lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : '';
@@ -28,11 +27,9 @@ function urlEntry(loc, lastmod) {
 
 export function GET() {
 	const entries = [
-		...STATIC_PATHS.map((path) =>
-			urlEntry(`https://www.selftest.in${path}`, STATIC_LASTMOD)
-		),
+		...STATIC_PATHS.map((path) => urlEntry(`https://www.selftest.in${path}`)),
 		...OBJECTIVE_ONLY_EXAMS.map((exam) =>
-			urlEntry(`https://www.selftest.in/practice/${exam.id}`, STATIC_LASTMOD)
+			urlEntry(`https://www.selftest.in/practice/${exam.id}`)
 		),
 		...BLOG_POSTS_BY_DATE.map((post) =>
 			urlEntry(`https://www.selftest.in/blog/${post.slug}`, post.modified || post.date)

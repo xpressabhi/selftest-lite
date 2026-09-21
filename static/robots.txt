@@ -1,4 +1,24 @@
+# selftest.in — crawler policy
+# AI search crawlers are explicitly welcome: they cite the site and send
+# learners back, which is the point of these landing pages.
+
 User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /test
+Disallow: /results
+Disallow: /history
+Disallow: /bookmarks
+Disallow: /profile
+Disallow: /admin
+Disallow: /auth/
+
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: PerplexityBot
+User-agent: Google-Extended
 Allow: /
 Disallow: /api/
 Disallow: /test

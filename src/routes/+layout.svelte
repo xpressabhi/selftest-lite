@@ -29,6 +29,7 @@
 	import { showToast, toast } from '$lib/client/toast';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import Toast from '$lib/client/Toast.svelte';
+	import { isNoindexPath } from '$lib/shared/seo';
 	import '$lib/styles/globals.css';
 
 	let { children, data } = $props();
@@ -226,6 +227,9 @@
 
 	let activePath = $derived(page.url.pathname);
 	let isImmersive = $derived(page.url.pathname === '/test');
+	// Noindex app-shell pages and error responses must not point crawlers at
+	// themselves with a canonical or og:url.
+	let isIndexable = $derived(page.status === 200 && !isNoindexPath(page.url.pathname));
 
 	$effect(() => {
 		track('page:view', { route: page.url.pathname });
@@ -407,7 +411,9 @@
 	{/if}
 	<meta name="author" content="selftest.in" />
 	<meta property="og:site_name" content="selftest.in" />
-	<meta property="og:url" content={`https://www.selftest.in${page.url.pathname}`} />
+	{#if isIndexable}
+		<meta property="og:url" content={`https://www.selftest.in${page.url.pathname}`} />
+	{/if}
 	<meta property="og:image" content="https://www.selftest.in/og-cover.png" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
@@ -423,12 +429,15 @@
 		name="twitter:image:alt"
 		content="selftest.in — AI Quiz and Exam Paper Generator for India"
 	/>
-	<link rel="canonical" href={`https://www.selftest.in${page.url.pathname}`} />
-	<link
-		rel="alternate"
-		hreflang="x-default"
-		href={`https://www.selftest.in${page.url.pathname}`}
-	/>
+	<link rel="alternate" type="application/rss+xml" title="selftest.in blog" href="/rss.xml" />
+	{#if isIndexable}
+		<link rel="canonical" href={`https://www.selftest.in${page.url.pathname}`} />
+		<link
+			rel="alternate"
+			hreflang="x-default"
+			href={`https://www.selftest.in${page.url.pathname}`}
+		/>
+	{/if}
 	<script type="application/ld+json">
 		{
 			"@context": "https://schema.org",
