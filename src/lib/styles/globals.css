@@ -96,6 +96,13 @@ body {
 	--text: #111827;
 	--text-muted: #64748b;
 	--line: #e2e8f0;
+	/* Motion scale for micro-interactions. Durations stay short by design;
+	   `html.reduce-motion` and the OS setting zero them out globally. */
+	--motion-fast: 120ms;
+	--motion-base: 180ms;
+	--motion-slow: 240ms;
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-commit: cubic-bezier(0.34, 1.46, 0.64, 1);
 	--brand-rgb: 79, 70, 229;
 	/* Brand color for text/iconography on surfaces. Dark mode swaps to a
 	   lighter tint so contrast holds on dark backgrounds; fills keep using

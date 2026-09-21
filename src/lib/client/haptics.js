@@ -1,6 +1,12 @@
 import { get } from 'svelte/store';
 import { isDataSaverActive } from './preferences';
 
+// Shared patterns for micro-interaction moments. `triggerVibration` already
+// no-ops when data saver is on, so callers never need to guard.
+export const HAPTIC_COMMIT = 12;
+export const HAPTIC_SUCCESS = [10, 30, 18];
+export const HAPTIC_ERROR = [24, 50, 24];
+
 function isNativePlatform() {
 	return typeof window !== 'undefined' && Boolean(window.Capacitor?.isNativePlatform?.());
 }

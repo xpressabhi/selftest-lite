@@ -3,6 +3,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
+	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
 	import { track } from '$lib/client/telemetry';
 	import {
 		PREVIEW_DEBOUNCE_MS,
@@ -53,6 +54,7 @@
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
 	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
+	import GenerationTrace from '$lib/client/GenerationTrace.svelte';
 	import { user } from '$lib/client/auth';
 	import { requestPersonalize } from '$lib/client/personalize';
 	import {
@@ -130,6 +132,9 @@
 	let generationElapsed = $state(0);
 	let generationCanceled = false;
 	let generationProgress = $state(null);
+	let generationDone = $state(false);
+	let generationFailed = $state(false);
+	let generationFailedTimer = null;
 
 	const currentProfile = $derived($profileStore);
 	const insights = $derived($profileInsights);
@@ -979,8 +984,13 @@
 					generationProgress = {
 						approved: Number(data?.approved) || 0,
 						requested: Number(data?.requested) || 0,
+						stage: typeof data?.stage === 'string' ? data.stage : null,
+						round: Number(data?.round) || 0,
+						batchIndex: Number(data?.batchIndex) || 0,
+						batchTotal: Number(data?.batchTotal) || 0,
 					};
 				} else if (event === 'done') {
+					generationDone = true;
 					return data;
 				} else if (event === 'error') {
 					throw streamErrorToError(data);
@@ -992,6 +1002,21 @@
 			code: 'GENERATION_STREAM_ENDED',
 			status: 500,
 		});
+	}
+
+	// The success path navigates straight to /test. Hold the ready state for a
+	// beat so the trace can land; data-saver/reduced-motion users skip ahead.
+	function generationSettleDelayMs() {
+		if ($isDataSaverActive) {
+			return 120;
+		}
+		if (
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+		) {
+			return 120;
+		}
+		return 450;
 	}
 
 	async function runGeneration(requestParams) {
@@ -1006,6 +1031,10 @@
 		generationCanceled = false;
 		generationElapsed = 0;
 		generationProgress = null;
+		generationDone = false;
+		generationFailed = false;
+		window.clearTimeout(generationFailedTimer);
+		generationFailedTimer = null;
 		const generationStartedAt = Date.now();
 		window.clearInterval(generationTimer);
 		generationTimer = window.setInterval(() => {
@@ -1027,6 +1056,12 @@
 						retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
 					}
 					const data = await postGenerate(requestParams);
+					// Let the trace settle on "Ready" before the hard
+					// navigation; shortened for data-saver/reduced-motion.
+					triggerVibration(HAPTIC_SUCCESS);
+					await new Promise((resolve) =>
+						window.setTimeout(resolve, generationSettleDelayMs())
+					);
 					track('generate:success', {
 						mode:
 							requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
@@ -1051,6 +1086,14 @@
 						break;
 					}
 					const canRetry = caughtError.retryable !== false;
+					if (attempt < MAX_RETRIES && canRetry) {
+						generationFailed = true;
+						triggerVibration(HAPTIC_ERROR);
+						window.clearTimeout(generationFailedTimer);
+						generationFailedTimer = window.setTimeout(() => {
+							generationFailed = false;
+						}, 900);
+					}
 					if (attempt === MAX_RETRIES || !canRetry) {
 						track('generate:fail', {
 							attempt,
@@ -1067,9 +1110,13 @@
 			}
 		} finally {
 			window.clearInterval(generationTimer);
+			window.clearTimeout(generationFailedTimer);
 			generationTimer = null;
+			generationFailedTimer = null;
 			generationCanceled = false;
 			generationProgress = null;
+			generationDone = false;
+			generationFailed = false;
 			status = 'idle';
 			retryLabel = '';
 		}
@@ -1353,26 +1400,13 @@
 		</div>
 
 		{#if status === 'loading'}
-			<div class="generation-status" role="status" aria-live="polite">
-				<span class="generation-timer">
-					{#if generationProgress && generationProgress.requested > 0}
-						{$t('generatingProgress', {
-							done: Math.min(generationProgress.approved, generationProgress.requested),
-							total: generationProgress.requested,
-						})}
-					{:else}
-						{$t('generatingQuestionCount', { count: numQuestions })}
-					{/if}
-					· {generationElapsed}s
-				</span>
-				<button
-					class="btn btn-outline-secondary btn-sm"
-					type="button"
-					onclick={cancelGeneration}
-				>
-					{$t('cancel')}
-				</button>
-			</div>
+			<GenerationTrace
+				progress={generationProgress}
+				elapsedSeconds={generationElapsed}
+				done={generationDone}
+				failed={generationFailed}
+				onCancel={cancelGeneration}
+			/>
 		{/if}
 		{#if isOffline}
 			<div class="alert alert-warning mt-3 mb-0" role="status">
@@ -1528,24 +1562,6 @@
 	.popular-exams-more {
 		text-decoration: underline !important;
 		text-underline-offset: 3px;
-	}
-
-	.generation-status {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-		margin-top: 12px;
-		padding: 10px 12px;
-		border: 1px solid var(--line);
-		border-radius: 12px;
-		background: var(--surface-muted);
-		font-size: 0.85rem;
-		color: var(--text-muted);
-	}
-
-	.generation-timer {
-		font-variant-numeric: tabular-nums;
 	}
 
 	.android-link-row {

@@ -333,6 +333,17 @@ async function generatePaper({
 			break;
 		}
 
+		// Announce the batch before its rounds run so the client can show
+		// "batch i/n" while it is being drafted, not only after it lands.
+		onProgress?.({
+			stage: 'generating',
+			approved: generatedQuestions.length,
+			requested: numQuestions,
+			round: 0,
+			batchIndex: index + 1,
+			batchTotal: totalBatches,
+		});
+
 		const approvedInBatch = [];
 		let rejected = [];
 		let lastError = null;
@@ -470,6 +481,8 @@ async function generatePaper({
 					approved: generatedQuestions.length + approvedInBatch.length,
 					requested: numQuestions,
 					round: round + 1,
+					batchIndex: index + 1,
+					batchTotal: totalBatches,
 				});
 			} catch (roundError) {
 				if (
