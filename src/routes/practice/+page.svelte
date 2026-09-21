@@ -4,6 +4,8 @@
 	import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
 	import { requestPersonalize } from '$lib/client/personalize';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import SeoHead from '$lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 
 	let promotedExamId = $state(null);
 	let orderedExams = $derived(
@@ -34,20 +36,17 @@
 			'@type': 'CollectionPage',
 			name: $t('practiceTitle'),
 			description: $t('practiceHeroBody'),
-			url: 'https://www.selftest.in/practice',
+			url: `${SITE_ORIGIN}/practice`,
 		})
 	);
 </script>
 
+<SeoHead
+	path="/practice"
+	title={`${$t('practiceTitle')} | selftest.in`}
+	description={$t('practiceHeroBody')}
+/>
 <svelte:head>
-	<title>{$t('practiceTitle')} | selftest.in</title>
-	<meta name="description" content={$t('practiceHeroBody')} />
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={`${$t('practiceTitle')} | selftest.in`} />
-	<meta property="og:description" content={$t('practiceHeroBody')} />
-	<meta name="twitter:title" content={`${$t('practiceTitle')} | selftest.in`} />
-	<meta name="twitter:description" content={$t('practiceHeroBody')} />
 	{@html hubJsonLd}
 </svelte:head>
 

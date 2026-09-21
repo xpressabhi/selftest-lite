@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import SeoHead from '$lib/client/SeoHead.svelte';
 
 	const sections = [
 		['privacySection1Title', 'privacySection1Body'],
@@ -12,25 +13,13 @@
 	];
 </script>
 
-<svelte:head>
-	<title>{$t('privacyHeroTitle')} | selftest.in</title>
-	<meta
-		name="description"
-		content="Privacy policy for selftest.in learning data, local storage, analytics, and contact information."
-	/>
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={`${$t('privacyHeroTitle')} | selftest.in`} />
-	<meta
-		property="og:description"
-		content="How selftest.in handles learning data, local storage, analytics and contact information."
-	/>
-	<meta name="twitter:title" content={`${$t('privacyHeroTitle')} | selftest.in`} />
-	<meta
-		name="twitter:description"
-		content="How selftest.in handles learning data, local storage and analytics."
-	/>
-</svelte:head>
+<SeoHead
+	path="/privacy"
+	title={`${$t('privacyHeroTitle')} | selftest.in`}
+	description="Privacy policy for selftest.in learning data, local storage, analytics, and contact information."
+	ogDescription="How selftest.in handles learning data, local storage, analytics and contact information."
+	twitterDescription="How selftest.in handles learning data, local storage and analytics."
+/>
 
 <section class="container py-4 py-md-5">
 	<div class="mx-auto" style="max-width: 860px;">

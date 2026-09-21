@@ -1,6 +1,8 @@
 <script>
 	import { t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
+	import SeoHead from '$lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 
 	let { data } = $props();
@@ -20,11 +22,11 @@
 			'@type': 'LearningResource',
 			name: `${exam.name} Mock Tests & Practice Papers`,
 			description: pageDescription,
-			url: `https://www.selftest.in/practice/${exam.id}`,
+			url: `${SITE_ORIGIN}/practice/${exam.id}`,
 			inLanguage: ['en-IN', 'hi-IN'],
 			teaches: exam.syllabus || [],
 			educationalLevel: exam.group || exam.stream,
-			provider: { '@type': 'Organization', name: 'selftest.in', url: 'https://www.selftest.in' },
+			provider: { '@type': 'Organization', name: 'selftest.in', url: SITE_ORIGIN },
 		})
 	);
 
@@ -33,33 +35,26 @@
 			'@context': 'https://schema.org',
 			'@type': 'BreadcrumbList',
 			itemListElement: [
-				{ '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.selftest.in/' },
+				{ '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_ORIGIN}/` },
 				{
 					'@type': 'ListItem',
 					position: 2,
 					name: $t('practiceTitle'),
-					item: 'https://www.selftest.in/practice',
+					item: `${SITE_ORIGIN}/practice`,
 				},
 				{
 					'@type': 'ListItem',
 					position: 3,
 					name: exam.name,
-					item: `https://www.selftest.in/practice/${exam.id}`,
+					item: `${SITE_ORIGIN}/practice/${exam.id}`,
 				},
 			],
 		})
 	);
 </script>
 
+<SeoHead path={`/practice/${exam.id}`} title={pageTitle} description={pageDescription} />
 <svelte:head>
-	<title>{pageTitle}</title>
-	<meta name="description" content={pageDescription} />
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={pageTitle} />
-	<meta property="og:description" content={pageDescription} />
-	<meta name="twitter:title" content={pageTitle} />
-	<meta name="twitter:description" content={pageDescription} />
 	{@html practiceJsonLd}
 	{@html breadcrumbJsonLd}
 </svelte:head>

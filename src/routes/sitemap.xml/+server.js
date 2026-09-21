@@ -1,5 +1,6 @@
 import { BLOG_POSTS_BY_DATE } from '$lib/data/blogPosts';
 import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+import { SITE_ORIGIN } from '$lib/shared/seo';
 
 // Generated from the blog registry so new posts cannot fall out of the
 // sitemap the way they did when it was a hand-maintained static file.
@@ -27,12 +28,12 @@ function urlEntry(loc, lastmod) {
 
 export function GET() {
 	const entries = [
-		...STATIC_PATHS.map((path) => urlEntry(`https://www.selftest.in${path}`)),
+		...STATIC_PATHS.map((path) => urlEntry(`${SITE_ORIGIN}${path}`)),
 		...OBJECTIVE_ONLY_EXAMS.map((exam) =>
-			urlEntry(`https://www.selftest.in/practice/${exam.id}`)
+			urlEntry(`${SITE_ORIGIN}/practice/${exam.id}`)
 		),
 		...BLOG_POSTS_BY_DATE.map((post) =>
-			urlEntry(`https://www.selftest.in/blog/${post.slug}`, post.modified || post.date)
+			urlEntry(`${SITE_ORIGIN}/blog/${post.slug}`, post.modified || post.date)
 		),
 	];
 	const xml = [

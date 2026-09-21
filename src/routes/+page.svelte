@@ -35,6 +35,7 @@
 	import { getStreak } from '$lib/client/learning';
 	import ChatThread from '$lib/client/ChatThread.svelte';
 	import PlannerComposer from '$lib/client/PlannerComposer.svelte';
+	import SeoHead from '$lib/client/SeoHead.svelte';
 	import {
 		applyTurnFailure,
 		applyTurnResult,
@@ -1208,24 +1209,15 @@
 	}
 </script>
 
-<svelte:head>
-	<meta
-		name="description"
-		content="Create AI-powered quizzes and full-length objective exam papers for UPSC, SSC, Banking, Railways, NEET, JEE and board exams in Hindi and English."
-	/>
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content="AI Quiz & Exam Paper Generator for India" />
-	<meta
-		property="og:description"
-		content="Generate objective quiz practice and full-length exam papers for UPSC, SSC, Banking, Railways, NEET, JEE and board exams with AI. Supports Hindi and English."
-	/>
-	<meta name="twitter:title" content="AI Quiz & Exam Paper Generator for India" />
-	<meta
-		name="twitter:description"
-		content="Generate objective quiz practice and full-length exam papers for Indian exams with AI. UPSC, SSC, Banking, Railways, NEET, JEE. Hindi and English."
-	/>
-</svelte:head>
+<SeoHead
+	path="/"
+	title="AI Quiz & Exam Paper Generator for India | selftest.in"
+	description="Create AI-powered quizzes and full-length objective exam papers for UPSC, SSC, Banking, Railways, NEET, JEE and board exams in Hindi and English."
+	ogTitle="AI Quiz & Exam Paper Generator for India"
+	ogDescription="Generate objective quiz practice and full-length exam papers for UPSC, SSC, Banking, Railways, NEET, JEE and board exams with AI. Supports Hindi and English."
+	twitterTitle="AI Quiz & Exam Paper Generator for India"
+	twitterDescription="Generate objective quiz practice and full-length exam papers for Indian exams with AI. UPSC, SSC, Banking, Railways, NEET, JEE. Hindi and English."
+/>
 
 <section
 	class="container py-4 py-md-5"

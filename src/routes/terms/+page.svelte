@@ -1,23 +1,14 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import SeoHead from '$lib/client/SeoHead.svelte';
 </script>
 
-<svelte:head>
-	<title>{$t('termsHeroTitle')} | selftest.in</title>
-	<meta name="description" content="Terms of service for using selftest.in." />
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={`${$t('termsHeroTitle')} | selftest.in`} />
-	<meta
-		property="og:description"
-		content="Terms of service for using selftest.in AI quizzes and exam papers."
-	/>
-	<meta name="twitter:title" content={`${$t('termsHeroTitle')} | selftest.in`} />
-	<meta
-		name="twitter:description"
-		content="Terms of service for using selftest.in AI quizzes and exam papers."
-	/>
-</svelte:head>
+<SeoHead
+	path="/terms"
+	title={`${$t('termsHeroTitle')} | selftest.in`}
+	description="Terms of service for using selftest.in."
+	ogDescription="Terms of service for using selftest.in AI quizzes and exam papers."
+/>
 
 <section class="container py-4 py-md-5">
 	<div class="mx-auto" style="max-width: 820px;">

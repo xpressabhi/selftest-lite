@@ -4,6 +4,7 @@
 	import FaqAccordion from '$lib/client/FaqAccordion.svelte';
 	import { FAQ_ITEMS, FAQ_SECTIONS } from '$lib/data/faqs';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import SeoHead from '$lib/client/SeoHead.svelte';
 
 	const faqJsonLd = $derived(
 		jsonLdScript({
@@ -21,24 +22,14 @@
 	);
 </script>
 
+<SeoHead
+	path="/faq"
+	title={`${$t('faqHeroTitle')} | selftest.in`}
+	description="Frequently asked questions about selftest.in AI quizzes, UPSC/SSC/Banking/Railway exam papers, privacy, sync, and generation in Hindi and English."
+	ogDescription="How selftest.in AI quiz generation, exam papers, pricing, privacy and offline mode work."
+	twitterDescription="FAQ about AI quizzes, exam papers, privacy, sync and generation."
+/>
 <svelte:head>
-	<title>{$t('faqHeroTitle')} | selftest.in</title>
-	<meta
-		name="description"
-		content="Frequently asked questions about selftest.in AI quizzes, UPSC/SSC/Banking/Railway exam papers, privacy, sync, and generation in Hindi and English."
-	/>
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={`${$t('faqHeroTitle')} | selftest.in`} />
-	<meta
-		property="og:description"
-		content="How selftest.in AI quiz generation, exam papers, pricing, privacy and offline mode work."
-	/>
-	<meta name="twitter:title" content={`${$t('faqHeroTitle')} | selftest.in`} />
-	<meta
-		name="twitter:description"
-		content="FAQ about AI quizzes, exam papers, privacy, sync and generation."
-	/>
 	{@html faqJsonLd}
 </svelte:head>
 

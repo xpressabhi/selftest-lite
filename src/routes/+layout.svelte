@@ -29,7 +29,8 @@
 	import { showToast, toast } from '$lib/client/toast';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import Toast from '$lib/client/Toast.svelte';
-	import { isNoindexPath } from '$lib/shared/seo';
+	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 	import '$lib/styles/globals.css';
 
 	let { children, data } = $props();
@@ -227,9 +228,25 @@
 
 	let activePath = $derived(page.url.pathname);
 	let isImmersive = $derived(page.url.pathname === '/test');
-	// Noindex app-shell pages and error responses must not point crawlers at
-	// themselves with a canonical or og:url.
-	let isIndexable = $derived(page.status === 200 && !isNoindexPath(page.url.pathname));
+
+	// Site-wide structured data, identical on every page.
+	const siteJsonLd = jsonLdScript([
+		{
+			'@context': 'https://schema.org',
+			'@type': 'Organization',
+			name: 'selftest.in',
+			url: SITE_ORIGIN,
+			logo: `${SITE_ORIGIN}/icons/512.png`,
+			sameAs: ['https://x.com/selftest_in'],
+		},
+		{
+			'@context': 'https://schema.org',
+			'@type': 'WebSite',
+			name: 'selftest.in',
+			url: SITE_ORIGIN,
+			inLanguage: ['en-IN', 'hi-IN'],
+		},
+	]);
 
 	$effect(() => {
 		track('page:view', { route: page.url.pathname });
@@ -411,52 +428,21 @@
 	{/if}
 	<meta name="author" content="selftest.in" />
 	<meta property="og:site_name" content="selftest.in" />
-	{#if isIndexable}
-		<meta property="og:url" content={`https://www.selftest.in${page.url.pathname}`} />
-	{/if}
-	<meta property="og:image" content="https://www.selftest.in/og-cover.png" />
+	<meta property="og:image" content={`${SITE_ORIGIN}/og-cover.png`} />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta
 		property="og:image:alt"
 		content="selftest.in — AI Quiz and Exam Paper Generator for India"
 	/>
-	<meta property="og:locale" content="en_IN" />
-	<meta property="og:locale:alternate" content="hi_IN" />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:image" content="https://www.selftest.in/og-cover.png" />
+	<meta name="twitter:image" content={`${SITE_ORIGIN}/og-cover.png`} />
 	<meta
 		name="twitter:image:alt"
 		content="selftest.in — AI Quiz and Exam Paper Generator for India"
 	/>
 	<link rel="alternate" type="application/rss+xml" title="selftest.in blog" href="/rss.xml" />
-	{#if isIndexable}
-		<link rel="canonical" href={`https://www.selftest.in${page.url.pathname}`} />
-		<link
-			rel="alternate"
-			hreflang="x-default"
-			href={`https://www.selftest.in${page.url.pathname}`}
-		/>
-	{/if}
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "Organization",
-			"name": "selftest.in",
-			"url": "https://www.selftest.in",
-			"logo": "https://www.selftest.in/icons/512.png",
-			"sameAs": ["https://x.com/selftest_in"]
-		}
-	</script>
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "WebSite",
-			"name": "selftest.in",
-			"url": "https://www.selftest.in",
-			"inLanguage": ["en-IN", "hi-IN"]
-		}
-	</script>
+	{@html siteJsonLd}
 </svelte:head>
 
 <div class="app-shell" class:immersive-mode={isImmersive}>

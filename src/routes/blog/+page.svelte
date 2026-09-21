@@ -9,6 +9,8 @@
 		getBlogCategory,
 	} from '$lib/data/blogPosts';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import SeoHead from '$lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 
 	let activeCategory = $state('all');
 
@@ -26,11 +28,11 @@
 			'@type': 'Blog',
 			name: $t('blogHeroTitle'),
 			description: $t('blogHeroBody'),
-			url: 'https://www.selftest.in/blog',
+			url: `${SITE_ORIGIN}/blog`,
 			blogPost: BLOG_POSTS_BY_DATE.map((post) => ({
 				'@type': 'BlogPosting',
 				headline: $t(post.titleKey),
-				url: `https://www.selftest.in/blog/${post.slug}`,
+				url: `${SITE_ORIGIN}/blog/${post.slug}`,
 				datePublished: post.date,
 			})),
 		})
@@ -46,24 +48,14 @@
 	}
 </script>
 
+<SeoHead
+	path="/blog"
+	title={`${$t('blog')} | selftest.in`}
+	description="Study tips, active recall guides, spaced repetition, board exam plans and SSC/Banking/Railway mock-test strategy from selftest.in."
+	ogDescription="Study tips, active recall, spaced repetition and AI quiz strategy for Indian exams."
+	twitterDescription="Study tips and AI quiz strategy for Indian competitive and board exams."
+/>
 <svelte:head>
-	<title>{$t('blog')} | selftest.in</title>
-	<meta
-		name="description"
-		content="Study tips, active recall guides, spaced repetition, board exam plans and SSC/Banking/Railway mock-test strategy from selftest.in."
-	/>
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={`${$t('blog')} | selftest.in`} />
-	<meta
-		property="og:description"
-		content="Study tips, active recall, spaced repetition and AI quiz strategy for Indian exams."
-	/>
-	<meta name="twitter:title" content={`${$t('blog')} | selftest.in`} />
-	<meta
-		name="twitter:description"
-		content="Study tips and AI quiz strategy for Indian competitive and board exams."
-	/>
 	{@html blogJsonLd}
 </svelte:head>
 

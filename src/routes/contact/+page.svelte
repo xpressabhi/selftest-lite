@@ -2,6 +2,8 @@
 	import { t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import SeoHead from '$lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 
 	const contactJsonLd = $derived(
 		jsonLdScript({
@@ -9,28 +11,19 @@
 			'@type': 'ContactPage',
 			name: $t('contactHeroTitle'),
 			description: $t('contactHeroBody'),
-			url: 'https://www.selftest.in/contact',
+			url: `${SITE_ORIGIN}/contact`,
 		})
 	);
 
 	const tips = ['contactTip1', 'contactTip2', 'contactTip3'];
 </script>
 
+<SeoHead
+	path="/contact"
+	title={`${$t('contactHeroTitle')} | selftest.in`}
+	description="Contact selftest.in for feedback, questions, and support."
+/>
 <svelte:head>
-	<title>{$t('contactHeroTitle')} | selftest.in</title>
-	<meta name="description" content="Contact selftest.in for feedback, questions, and support." />
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta property="og:title" content={`${$t('contactHeroTitle')} | selftest.in`} />
-	<meta
-		property="og:description"
-		content="Contact selftest.in for feedback, questions, and support."
-	/>
-	<meta name="twitter:title" content={`${$t('contactHeroTitle')} | selftest.in`} />
-	<meta
-		name="twitter:description"
-		content="Contact selftest.in for feedback, questions, and support."
-	/>
 	{@html contactJsonLd}
 </svelte:head>
 

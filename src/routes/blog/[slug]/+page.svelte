@@ -4,6 +4,8 @@
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
 	import { formatBlogDate, getBlogCategory } from '$lib/data/blogPosts';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import SeoHead from '$lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 
 	let { data } = $props();
 
@@ -16,16 +18,16 @@
 			headline: $t(data.post.titleKey),
 			description: $t(data.post.excerptKey),
 			articleBody: (data.post.bodyKeys || []).map((key) => $t(key)).join('\n\n'),
-			image: 'https://www.selftest.in/og-cover.png',
+			image: `${SITE_ORIGIN}/og-cover.png`,
 			datePublished: data.post.date,
 			dateModified: data.post.modified || data.post.date,
 			inLanguage: $language === 'hindi' ? 'hi-IN' : 'en-IN',
-			mainEntityOfPage: `https://www.selftest.in/blog/${data.slug}`,
-			author: { '@type': 'Organization', name: 'selftest.in', url: 'https://www.selftest.in' },
+			mainEntityOfPage: `${SITE_ORIGIN}/blog/${data.slug}`,
+			author: { '@type': 'Organization', name: 'selftest.in', url: SITE_ORIGIN },
 			publisher: {
 				'@type': 'Organization',
 				name: 'selftest.in',
-				logo: { '@type': 'ImageObject', url: 'https://www.selftest.in/icons/512.png' },
+				logo: { '@type': 'ImageObject', url: `${SITE_ORIGIN}/icons/512.png` },
 			},
 		})
 	);
@@ -33,15 +35,13 @@
 	const formattedDate = $derived(formatBlogDate(data.post.date, $language));
 </script>
 
+<SeoHead
+	path={`/blog/${data.post.slug}`}
+	type="article"
+	title={`${$t(data.post.titleKey)} | selftest.in`}
+	description={$t(data.post.excerptKey)}
+/>
 <svelte:head>
-	<title>{$t(data.post.titleKey)} | selftest.in</title>
-	<meta name="description" content={$t(data.post.excerptKey)} />
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="article" />
-	<meta property="og:title" content={`${$t(data.post.titleKey)} | selftest.in`} />
-	<meta property="og:description" content={$t(data.post.excerptKey)} />
-	<meta name="twitter:title" content={`${$t(data.post.titleKey)} | selftest.in`} />
-	<meta name="twitter:description" content={$t(data.post.excerptKey)} />
 	{@html postJsonLd}
 </svelte:head>
 

@@ -4,6 +4,8 @@
 	import FaqAccordion from '$lib/client/FaqAccordion.svelte';
 	import { getFaqItems } from '$lib/data/faqs';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
+	import SeoHead from '$lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN } from '$lib/shared/seo';
 
 	const aboutJsonLd = $derived(
 		jsonLdScript({
@@ -11,11 +13,11 @@
 			'@type': 'AboutPage',
 			name: $t('aboutHeroTitle'),
 			description: $t('aboutHeroBody'),
-			url: 'https://www.selftest.in/about',
+			url: `${SITE_ORIGIN}/about`,
 			mainEntity: {
 				'@type': 'Organization',
 				name: 'selftest.in',
-				url: 'https://www.selftest.in',
+				url: SITE_ORIGIN,
 			},
 		})
 	);
@@ -71,27 +73,14 @@
 	const teaserItems = getFaqItems(['what-is', 'is-free', 'sign-in', 'offline']);
 </script>
 
+<SeoHead
+	path="/about"
+	title={`${$t('aboutHeroTitle')} | selftest.in`}
+	description="Learn how selftest.in helps UPSC, SSC, Banking, Railway, NEET, JEE and board aspirants practice with AI-generated quizzes and exam papers in Hindi and English."
+	ogDescription="AI-generated quizzes and full-length objective exam papers for Indian competitive exams in Hindi and English."
+	twitterDescription="AI-generated quizzes and full-length objective exam papers for Indian competitive exams."
+/>
 <svelte:head>
-	<title>{$t('aboutHeroTitle')} | selftest.in</title>
-	<meta
-		name="description"
-		content="Learn how selftest.in helps UPSC, SSC, Banking, Railway, NEET, JEE and board aspirants practice with AI-generated quizzes and exam papers in Hindi and English."
-	/>
-	<meta name="robots" content="index, follow, max-image-preview:large" />
-	<meta property="og:type" content="website" />
-	<meta
-		property="og:title"
-		content={`${$t('aboutHeroTitle')} | selftest.in`}
-	/>
-	<meta
-		property="og:description"
-		content="AI-generated quizzes and full-length objective exam papers for Indian competitive exams in Hindi and English."
-	/>
-	<meta name="twitter:title" content={`${$t('aboutHeroTitle')} | selftest.in`} />
-	<meta
-		name="twitter:description"
-		content="AI-generated quizzes and full-length objective exam papers for Indian competitive exams."
-	/>
 	{@html aboutJsonLd}
 </svelte:head>
 

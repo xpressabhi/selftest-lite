@@ -27,16 +27,16 @@ Three shippable phases from `docs/superpowers/specs/2026-09-21-seo-foundation-de
 - [x] Preview build serves `/llms.txt`, robots, sitemap
 
 ### Phase 1: Prerender + head layer
-- [ ] Task 8: `seo.js` full — `buildSeo`, `languageHref` + tests
-- [ ] Task 9: refactor heads group A (home, practice hub, exam)
-- [ ] Task 10: refactor heads group B (blog index, blog post)
-- [ ] Task 11: refactor heads group C (about, faq, contact, privacy, terms)
-- [ ] Task 12: prerender English content pages (blog, static, hub)
-- [ ] Task 13: e2e head assertions (title/canonical/hreflang/JSON-LD per page type)
+- [x] Task 8: `seo.js` full — `buildSeo`, `languageHref` + tests
+- [x] Task 9: refactor heads group A (home, practice hub, exam)
+- [x] Task 10: refactor heads group B (blog index, blog post)
+- [x] Task 11: refactor heads group C (about, faq, contact, privacy, terms)
+- [x] Task 12: prerender English content pages (blog, static, hub)
+- [x] Task 13: e2e head assertions (title/canonical/hreflang/JSON-LD per page type)
 
 ### Checkpoint: Phase 1
-- [ ] `npm run check` + build output has prerendered HTML with correct heads
-- [ ] Full test suite passes
+- [x] `npm run check` + build output has prerendered HTML with correct heads
+- [x] Full test suite passes
 
 ### Phase 2: Hindi URL space
 - [ ] Task 14: Hindi data layer (`streamHi`, `syllabusHi`) + tests

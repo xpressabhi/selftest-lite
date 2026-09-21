@@ -1,5 +1,6 @@
 import { BLOG_POSTS_BY_DATE } from '$lib/data/blogPosts';
 import english from '$lib/locales/english.json';
+import { SITE_ORIGIN } from '$lib/shared/seo';
 
 export const prerender = true;
 
@@ -19,8 +20,8 @@ export function GET() {
 		return [
 			'    <item>',
 			`      <title>${escapeXml(title)}</title>`,
-			`      <link>https://www.selftest.in/blog/${post.slug}</link>`,
-			`      <guid>https://www.selftest.in/blog/${post.slug}</guid>`,
+			`      <link>${SITE_ORIGIN}/blog/${post.slug}</link>`,
+			`      <guid>${SITE_ORIGIN}/blog/${post.slug}</guid>`,
 			`      <pubDate>${pubDate}</pubDate>`,
 			`      <description>${escapeXml(description)}</description>`,
 			'    </item>',
@@ -31,7 +32,7 @@ export function GET() {
 		'<rss version="2.0">',
 		'  <channel>',
 		'    <title>selftest.in Blog</title>',
-		'    <link>https://www.selftest.in/blog</link>',
+		'    <link>' + SITE_ORIGIN + '/blog</link>',
 		'    <description>Study tips, active recall guides and AI quiz strategy for Indian exams.</description>',
 		'    <language>en-IN</language>',
 		items,
