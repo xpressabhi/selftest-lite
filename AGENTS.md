@@ -1,5 +1,12 @@
 # AGENTS.md - Agent Onboarding & Technical Guide
 
+## 🚨 Testing Rules (read first)
+
+- NEVER write unit tests after you write code.
+- Highly prefer E2E tests as the sole testing mechanism. Use them to verify complex features work. At the end of E2E tests, produce a verifiable and repeatable artifact.
+- If you must test a system in isolation, FIRST write all the ways it could fail, THEN write the code.
+- E2E artifact: `npm run test:e2e` writes `test-results/e2e-artifact.json` via `tests/e2e/artifactReporter.js` — per-test status plus attached evidence, stamped with the git SHA and dirty flag; byte-identical across runs on a clean tree.
+
 Welcome, Agent! This guide is designed to help you quickly understand the **Selftest-lite** codebase and contribute effectively.
 
 ## 🚀 Project Overview
@@ -161,10 +168,11 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 2. Use native SVG or a local Svelte component for icons.
 3. Use Svelte runes or stores for state.
 
-### Adding Unit Tests:
+### Adding Tests:
 
-1. Put tests next to the source as `*.test.js` (vitest is configured; `npm run test`).
-2. Prefer testing pure server logic (`src/lib/server/*`, `src/lib/shared/*`) — parse/validation/redaction code has no network or DB dependencies in the tested functions.
+1. Default to E2E (`tests/e2e/*.e2e.js`, `npm run test:e2e`) per the testing rules at the top.
+2. Only when a system must be tested in isolation: write all the ways it could fail first, then the code. Keep such tests next to the source as `*.test.js` (vitest; `npm run test`).
+3. Prefer testing pure server logic (`src/lib/server/*`, `src/lib/shared/*`) — parse/validation/redaction code has no network or DB dependencies in the tested functions.
 
 ---
 
