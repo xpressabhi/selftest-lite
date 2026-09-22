@@ -49,6 +49,30 @@ function reminderToggle(page) {
 		.locator('input[type="checkbox"]');
 }
 
+function moreActionsButton(page) {
+	return page.getByRole('button', { name: /more actions & settings/i });
+}
+
+function seedCompletedTest(page) {
+	return page
+		.goto('/')
+		.then(() =>
+			page.evaluate((history) => {
+				localStorage.setItem('selftest_history', JSON.stringify(history));
+			}, seedHistory)
+		);
+}
+
+// The reminder controls live in the collapsed card section.
+async function openCardSettings(page) {
+	await expect(page.locator('.result-summary')).toBeVisible();
+	const toggle = reminderToggle(page);
+	if (!(await toggle.isVisible())) {
+		await moreActionsButton(page).click();
+		await expect(toggle).toBeVisible();
+	}
+}
+
 async function readSubscription(page) {
 	return page.evaluate(async () => {
 		const registration = await navigator.serviceWorker.ready;
@@ -173,16 +197,19 @@ test.describe('daily reminder web push', () => {
 		return stdout.trim().split('\n').at(-1);
 	}
 
-	test('one test is enough for the reminder row, and a failed save rolls back', async () => {
+	test('one test is enough for the reminder teaser, and a failed save rolls back', async () => {
 		const testInfo = test.info();
-		await page.goto('/');
-		await page.evaluate((history) => {
-			localStorage.setItem('selftest_history', JSON.stringify(history));
-		}, seedHistory);
+		await seedCompletedTest(page);
 		await page.goto('/results?id=e2e-1');
+		const teaser = page.getByRole('button', { name: 'Daily practice reminder' });
+		await expect(teaser).toBeVisible();
+		// The card is collapsed: the controls only exist after opening it.
+		expect(await reminderToggle(page).isVisible()).toBe(false);
+		await teaser.click();
 		const toggle = reminderToggle(page);
 		await expect(toggle).toBeVisible();
 		await expect(page.getByLabel('Reminder time')).toBeVisible();
+		expect(await toggle.evaluate((element) => element === document.activeElement)).toBe(true);
 
 		await page.route(`**${REMINDER_API}`, async (route) => {
 			if (route.request().method() === 'POST') {
@@ -205,7 +232,8 @@ test.describe('daily reminder web push', () => {
 
 		await testInfo.attach('evidence', {
 			body: JSON.stringify({
-				visibleAfterFirstTest: true,
+				teaserVisibleAfterFirstTest: true,
+				cardCollapsedByDefault: true,
 				toggleStayedOff: true,
 				subscriptionRolledBack: true,
 			}),
@@ -215,7 +243,9 @@ test.describe('daily reminder web push', () => {
 
 	test('selecting a time while off is local, and enabling saves it', async () => {
 		const testInfo = test.info();
+		await seedCompletedTest(page);
 		await page.goto('/results?id=e2e-1');
+		await openCardSettings(page);
 		const toggle = reminderToggle(page);
 		const select = page.getByLabel('Reminder time');
 		await expect(select).toBeVisible();
@@ -388,6 +418,7 @@ test.describe('daily reminder web push', () => {
 		const testInfo = test.info();
 		const subscription = await readSubscription(page);
 		expect(subscription).toBeTruthy();
+		await openCardSettings(page);
 		const [before] = await sql.query(
 			'SELECT reminder_hour FROM push_subscription WHERE endpoint = $1',
 			[subscription.endpoint]
@@ -456,6 +487,7 @@ test.describe('daily reminder web push', () => {
 			[endpoint]
 		);
 
+		await openCardSettings(page);
 		const toggle = reminderToggle(page);
 		await expect(toggle).toBeChecked();
 		const responsePromise = page.waitForResponse(

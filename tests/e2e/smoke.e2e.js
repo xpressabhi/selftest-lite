@@ -497,6 +497,6 @@ test('seeded paper: skip-streak unlocks 50-50, submit lands on results', async (
 	await page.locator('.test-progress-pill').click();
 	await pressAndHold(page, page.getByRole('button', { name: 'Submit Test' }));
 	await expect(page).toHaveURL(/\/results\?id=e2e-smoke/);
-	await expect(page.getByText('3 / 3').first()).toBeVisible();
+	await expect(page.locator('.result-score')).toContainText('3/3');
 	expect(errors).toEqual([]);
 });

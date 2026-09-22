@@ -85,6 +85,8 @@
 	let reminderBusy = $state(false);
 	let reminderHour = $state(null);
 	const reminderHours = Array.from({ length: 24 }, (_, hour) => hour);
+	let cardMoreOpen = $state(false);
+	let reminderToggleEl = $state();
 	let showRetakeConfirm = $state(false);
 	let retakeTrigger = $state();
 	let retakeConfirmButton = $state();
@@ -513,6 +515,13 @@
 		reminderBusy = false;
 	}
 
+	async function revealReminderSettings() {
+		cardMoreOpen = true;
+		await tick();
+		reminderToggleEl?.focus({ preventScroll: true });
+		reminderToggleEl?.scrollIntoView({ block: 'nearest' });
+	}
+
 	const HOUR_LOCALES = { hindi: 'hi-IN', english: 'en-IN' };
 
 	function formatHour(hour) {
@@ -773,15 +782,12 @@
 			<a class="btn btn-outline-primary" href="/history">{$t('history')}</a>
 		</div>
 	{:else if questionPaper}
-		<div class="result-summary bg-body border rounded-3 p-4 shadow-sm mb-4">
-			<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-				<p class="text-muted small mb-0">{$t('score')}</p>
-				<span class="badge text-bg-primary">{$t('testId')}: {questionPaper.id}</span>
-			</div>
-			<h1 class="display-6 fw-bold mb-2">
+		<div class="result-summary bg-body border rounded-3 shadow-sm mb-4">
+			<h1 class="result-topic">
 				<MarkdownContent content={questionPaper.topic} tag="span" />
 			</h1>
-			<div class="d-flex flex-wrap align-items-center gap-3">
+
+			<div class="result-hero">
 				<div class="score-ring" class:settled={scoreSettled} role="img" aria-label={`${percentage}%`}>
 					<svg viewBox="0 0 100 100" aria-hidden="true">
 						<circle class="ring-track" cx="50" cy="50" r={RING_RADIUS}></circle>
@@ -796,11 +802,13 @@
 					</svg>
 					<span class="score-ring-label">{displayedPercentage}%</span>
 				</div>
-				<div>
-					<div class="h4 mb-1">
-						{questionPaper.score} / {questionPaper.totalQuestions}
-					</div>
-					<p class="text-muted mb-0">
+				<div class="result-figures">
+					<p class="result-score">
+						{questionPaper.score}<span class="result-score-total"
+							>/{questionPaper.totalQuestions}</span
+						>
+					</p>
+					<p class="result-meta">
 						{$t('timeSpent')}: {formatDuration(
 							questionPaper.timeTaken || 0,
 							$t('minuteShort'),
@@ -809,149 +817,195 @@
 					</p>
 				</div>
 			</div>
-			<div class="d-flex flex-wrap gap-2 mt-3 no-print">
-				<button
-					class="btn btn-sm btn-outline-secondary"
-					type="button"
-					onclick={() => {
-						window.print();
-						track('results:print');
-					}}
-				>
-					{$t('print')}
-				</button>
-				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
-					{$t('share')}
-				</button>
-				<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareCard}>
-					{$t('shareCard')}
-				</button>
-				{#if bookmarkedQuestionKeys.length > 0}
-					<span class="bookmark-count" aria-hidden="true">
-						<span class="bookmark-count-glyph">🔖</span>
-						{#key bookmarkedQuestionKeys.length}
-							<span class="bookmark-number">{bookmarkedQuestionKeys.length}</span>
-						{/key}
-					</span>
+
+			<div class="result-primary no-print">
+				{#if wrongIndices.length > 0}
+					<button class="btn btn-primary result-cta" type="button" onclick={practiceWeakQuestions}>
+						{$t('practiceWrongAnswers', { count: wrongIndices.length })}
+					</button>
+				{:else}
+					<a class="btn btn-primary result-cta" href={practiceMoreHref()}>
+						{$t('practiceMore')}
+					</a>
 				{/if}
-				{#if showRetakeConfirm}
-					<div
-						class="retake-confirm no-print"
-						role="group"
-						aria-label={$t('retakeConfirmTitle')}
-					>
-						<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
-						<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
-						<div class="d-flex flex-wrap gap-2">
-							<button
-								bind:this={retakeConfirmButton}
-								class="btn btn-sm btn-danger"
-								type="button"
-								onclick={retakeTest}
-							>
-								{$t('retakeTest')}
-							</button>
+				<div class="result-links">
+					<button class="result-link" type="button" onclick={requestRetake}>
+						{$t('retakeTest')}
+					</button>
+					<a class="result-link" href="/">{$t('newQuizShort')}</a>
+				</div>
+			</div>
+
+			{#if remindersSupported() && historyCount >= 1 && !reminderEnabled}
+				<button class="reminder-teaser no-print" type="button" onclick={revealReminderSettings}>
+					<span class="reminder-teaser-icon" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+							<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+							<path d="M13.7 21a2 2 0 0 1-3.4 0" />
+						</svg>
+					</span>
+					<span class="reminder-teaser-label">{$t('dailyReminder')}</span>
+					<span class="review-chevron" aria-hidden="true">▾</span>
+				</button>
+			{/if}
+
+			<button
+				class="card-more-toggle no-print"
+				type="button"
+				aria-expanded={cardMoreOpen}
+				aria-controls="result-card-more"
+				onclick={() => (cardMoreOpen = !cardMoreOpen)}
+			>
+				{$t('cardActionsSettings')}
+				<span class="review-chevron" class:open={cardMoreOpen} aria-hidden="true">▾</span>
+			</button>
+			<AnimatedHeight>
+				{#if cardMoreOpen}
+					<div id="result-card-more" class="card-more-body no-print">
+						<div class="card-more-actions">
+							{#if showRetakeConfirm}
+								<div
+									class="retake-confirm"
+									role="group"
+									aria-label={$t('retakeConfirmTitle')}
+								>
+									<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
+									<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
+									<div class="d-flex flex-wrap gap-2">
+										<button
+											bind:this={retakeConfirmButton}
+											class="btn btn-sm btn-danger"
+											type="button"
+											onclick={retakeTest}
+										>
+											{$t('retakeTest')}
+										</button>
+										<button
+											class="btn btn-sm btn-outline-secondary"
+											type="button"
+											onclick={cancelRetake}
+										>
+											{$t('cancel')}
+										</button>
+									</div>
+								</div>
+							{:else}
+								<button
+									bind:this={retakeTrigger}
+									class="btn btn-sm btn-outline-secondary"
+									type="button"
+									onclick={requestRetake}
+								>
+									{$t('retakeTest')}
+								</button>
+							{/if}
+							{#if wrongIndices.length > 0}
+								<button
+									class="btn btn-sm btn-outline-warning"
+									type="button"
+									onclick={reviewWrongAnswers}
+								>
+									{$t('reviewWrongAnswers')}
+								</button>
+								<a class="btn btn-sm btn-outline-primary" href={practiceMoreHref()}>
+									{$t('practiceMore')}
+								</a>
+							{/if}
+						</div>
+						<div class="card-more-actions">
 							<button
 								class="btn btn-sm btn-outline-secondary"
 								type="button"
-								onclick={cancelRetake}
+								onclick={() => {
+									window.print();
+									track('results:print');
+								}}
 							>
-								{$t('cancel')}
+								{$t('print')}
 							</button>
+							<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
+								{$t('share')}
+							</button>
+							<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareCard}>
+								{$t('shareCard')}
+							</button>
+							{#if bookmarkedQuestionKeys.length > 0}
+								<span class="bookmark-count" aria-hidden="true">
+									<span class="bookmark-count-glyph">🔖</span>
+									{#key bookmarkedQuestionKeys.length}
+										<span class="bookmark-number">{bookmarkedQuestionKeys.length}</span>
+									{/key}
+								</span>
+							{/if}
+						</div>
+						<div class="card-more-settings">
+							<label class="auto-explain-switch d-inline-flex align-items-center gap-2">
+								<input
+									type="checkbox"
+									checked={autoExplainEnabled}
+									disabled={$isDataSaverActive}
+									onchange={toggleAutoExplain}
+								/>
+								<span class="small text-muted">
+									{$t('autoExplainWrong')}
+									{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
+								</span>
+							</label>
+							{#if $isDataSaverActive}
+								<p class="small text-muted mb-0">{$t('autoExplainDataSaver')}</p>
+							{/if}
+							<div class="card-rating">
+								<span class="small text-muted">{$t('rateTest')}</span>
+								<button
+									class="btn btn-sm btn-outline-success"
+									type="button"
+									aria-label={$t('rateTestUp')}
+									onclick={() => rateTest('up')}
+								>
+									👍
+								</button>
+								<button
+									class="btn btn-sm btn-outline-danger"
+									type="button"
+									aria-label={$t('rateTestDown')}
+									onclick={() => rateTest('down')}
+								>
+									👎
+								</button>
+							</div>
+							{#if remindersSupported() && historyCount >= 1}
+								<div class="d-flex flex-wrap align-items-center gap-3">
+									<label class="d-inline-flex align-items-center gap-2">
+										<input
+											bind:this={reminderToggleEl}
+											type="checkbox"
+											checked={reminderEnabled}
+											disabled={reminderBusy}
+											onchange={toggleReminders}
+										/>
+										<span class="small text-muted">{$t('dailyReminder')}</span>
+									</label>
+									<label class="d-inline-flex align-items-center gap-2">
+										<span class="small text-muted">{$t('reminderTimeLabel')}</span>
+										<select
+											class="form-select form-select-sm w-auto"
+											value={reminderHour === null ? '' : String(reminderHour)}
+											disabled={reminderBusy}
+											onchange={changeReminderTime}
+										>
+											<option value="">{$t('reminderTimeSmart')}</option>
+											{#each reminderHours as hour (hour)}
+												<option value={String(hour)}>{formatHour(hour)}</option>
+											{/each}
+										</select>
+									</label>
+								</div>
+							{/if}
+							<p class="small text-muted mb-0">{$t('testId')}: {questionPaper.id}</p>
 						</div>
 					</div>
-				{:else}
-					<button
-						bind:this={retakeTrigger}
-						class="btn btn-sm btn-outline-secondary"
-						type="button"
-						onclick={requestRetake}
-					>
-						{$t('retakeTest')}
-					</button>
 				{/if}
-				{#if wrongIndices.length > 0}
-					<button
-						class="btn btn-sm btn-outline-warning"
-						type="button"
-						onclick={reviewWrongAnswers}
-					>
-						{$t('reviewWrongAnswers')}
-					</button>
-					<button
-						class="btn btn-sm btn-warning"
-						type="button"
-						onclick={practiceWeakQuestions}
-					>
-						{$t('practiceWeak', { count: wrongIndices.length })}
-					</button>
-				{/if}
-				<a class="btn btn-sm btn-outline-primary" href={practiceMoreHref()}>
-					{$t('practiceMore')}
-				</a>
-				<a class="btn btn-sm btn-primary" href="/">{$t('startNewQuiz')}</a>
-			</div>
-			<label class="auto-explain-switch d-inline-flex align-items-center gap-2 mt-3 no-print">
-				<input
-					type="checkbox"
-					checked={autoExplainEnabled}
-					disabled={$isDataSaverActive}
-					onchange={toggleAutoExplain}
-				/>
-				<span class="small text-muted">
-					{$t('autoExplainWrong')}
-					{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
-				</span>
-			</label>
-			{#if $isDataSaverActive}
-				<p class="small text-muted mt-1 mb-0 no-print">{$t('autoExplainDataSaver')}</p>
-			{/if}
-			<div class="d-flex flex-wrap align-items-center gap-2 mt-2 no-print">
-				<span class="small text-muted">{$t('rateTest')}</span>
-				<button
-					class="btn btn-sm btn-outline-success"
-					type="button"
-					aria-label={$t('rateTestUp')}
-					onclick={() => rateTest('up')}
-				>
-					👍
-				</button>
-				<button
-					class="btn btn-sm btn-outline-danger"
-					type="button"
-					aria-label={$t('rateTestDown')}
-					onclick={() => rateTest('down')}
-				>
-					👎
-				</button>
-			</div>
-			{#if remindersSupported() && historyCount >= 1}
-				<div class="d-flex flex-wrap align-items-center gap-3 mt-2 no-print">
-					<label class="d-inline-flex align-items-center gap-2">
-						<input
-							type="checkbox"
-							checked={reminderEnabled}
-							disabled={reminderBusy}
-							onchange={toggleReminders}
-						/>
-						<span class="small text-muted">{$t('dailyReminder')}</span>
-					</label>
-					<label class="d-inline-flex align-items-center gap-2">
-						<span class="small text-muted">{$t('reminderTimeLabel')}</span>
-						<select
-							class="form-select form-select-sm w-auto"
-							value={reminderHour === null ? '' : String(reminderHour)}
-							disabled={reminderBusy}
-							onchange={changeReminderTime}
-						>
-							<option value="">{$t('reminderTimeSmart')}</option>
-							{#each reminderHours as hour (hour)}
-								<option value={String(hour)}>{formatHour(hour)}</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-			{/if}
+			</AnimatedHeight>
 		</div>
 
 		{#if challengeOutcome}
@@ -1328,10 +1382,183 @@
 <style>
 	.result-summary {
 		max-width: 860px;
+		padding: 16px;
 	}
 
-	.result-summary h1 {
-		font-size: clamp(1.75rem, 7vw, 2.25rem);
+	@media (min-width: 768px) {
+		.result-summary {
+			padding: 24px;
+		}
+	}
+
+	.result-topic {
+		margin: 0 0 12px;
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		font-weight: 600;
+		line-height: 1.35;
+	}
+
+	.result-hero {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+
+	.result-figures {
+		min-width: 0;
+	}
+
+	.result-score {
+		margin: 0;
+		font-size: 1.6rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		line-height: 1.05;
+	}
+
+	.result-score-total {
+		color: var(--text-muted);
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
+	.result-meta {
+		margin: 2px 0 0;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.result-primary {
+		display: grid;
+		gap: 2px;
+		margin-top: 14px;
+	}
+
+	.result-cta {
+		width: 100%;
+		min-height: 48px;
+		border-radius: 12px;
+		font-weight: 700;
+	}
+
+	.result-links {
+		display: flex;
+		justify-content: center;
+		gap: 4px;
+	}
+
+	.result-link {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 0 14px;
+		border: 0;
+		background: none;
+		color: var(--color-brand-600);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.reminder-teaser {
+		display: flex;
+		width: 100%;
+		min-height: 48px;
+		align-items: center;
+		gap: 10px;
+		margin-top: 10px;
+		padding: 10px 12px;
+		border: 1px dashed var(--line);
+		border-radius: 12px;
+		background: var(--surface-muted);
+		color: var(--text);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-align: left;
+	}
+
+	.reminder-teaser-icon {
+		display: inline-flex;
+		color: var(--color-brand-600);
+	}
+
+	.reminder-teaser-label {
+		flex: 1;
+	}
+
+	.card-more-toggle {
+		display: flex;
+		width: 100%;
+		min-height: 44px;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		margin-top: 6px;
+		border: 0;
+		background: none;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.card-more-body {
+		display: grid;
+		gap: 14px;
+		margin-top: 6px;
+		padding-top: 14px;
+		border-top: 1px solid var(--line);
+	}
+
+	.card-more-actions {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px;
+	}
+
+	.card-more-actions :global(.btn) {
+		min-height: 44px;
+	}
+
+	.card-more-actions .retake-confirm {
+		grid-column: 1 / -1;
+	}
+
+	.card-more-settings {
+		display: grid;
+		gap: 12px;
+		border-top: 1px solid var(--line);
+		padding-top: 14px;
+	}
+
+	.card-more-settings :global(select) {
+		width: 100%;
+		max-width: 320px;
+	}
+
+	.card-rating {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.card-rating :global(.btn) {
+		min-width: 44px;
+		min-height: 44px;
+	}
+
+	@media (min-width: 768px) {
+		.card-more-actions {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+
+		.result-cta {
+			max-width: 420px;
+		}
+
+		.result-links {
+			justify-content: flex-start;
+		}
 	}
 
 	.result-panel {
@@ -1544,8 +1771,15 @@
 
 	.score-ring {
 		position: relative;
-		width: 96px;
-		height: 96px;
+		width: 72px;
+		height: 72px;
+	}
+
+	@media (min-width: 768px) {
+		.score-ring {
+			width: 88px;
+			height: 88px;
+		}
 	}
 
 	.score-ring.settled {
@@ -1641,7 +1875,7 @@
 		inset: 0;
 		display: grid;
 		place-items: center;
-		font-size: 1.35rem;
+		font-size: 1.1rem;
 		font-weight: 700;
 	}
 
