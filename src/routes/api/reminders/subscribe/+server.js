@@ -5,8 +5,10 @@ import {
 	getClientKey,
 	logApiEvent,
 	savePushSubscription,
+	updatePushSubscriptionHour,
 } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { parseReminderHour } from '$lib/shared/reminders';
 
 const SUBSCRIBE_RATE_LIMIT = 20;
 
@@ -46,6 +48,11 @@ export async function POST({ request, cookies }) {
 			);
 		}
 
+		const hour = parseReminderHour(body?.hour);
+		if (hour === undefined) {
+			return json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
+		}
+
 		await savePushSubscription({
 			clientId,
 			userId: user?.id || null,
@@ -53,6 +60,7 @@ export async function POST({ request, cookies }) {
 			p256dh,
 			auth,
 			timezone: body?.timezone,
+			reminderHour: hour,
 		});
 
 		await logApiEvent({
@@ -81,6 +89,73 @@ export async function POST({ request, cookies }) {
 		});
 		return json(
 			{ error: 'Failed to save subscription', code: 'SUBSCRIPTION_SAVE_ERROR' },
+			{ status: 500 }
+		);
+	}
+}
+
+export async function PATCH({ request }) {
+	const startedAt = Date.now();
+	const clientKey = getClientKey(request);
+	const clientId = getClientIdFromRequest(request);
+
+	try {
+		const rateLimit = await rateLimiter(request, {
+			bucket: '/api/reminders:subscribe',
+			limit: SUBSCRIBE_RATE_LIMIT,
+		});
+		if (rateLimit.limited) {
+			return json(
+				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
+				{ status: 429 }
+			);
+		}
+
+		const body = await request.json().catch(() => ({}));
+		const endpoint = body?.endpoint;
+		const hour = parseReminderHour(body?.hour);
+
+		if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) {
+			return json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });
+		}
+		if (hour === undefined) {
+			return json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
+		}
+
+		const updated = await updatePushSubscriptionHour(endpoint, hour);
+		if (!updated) {
+			return json(
+				{ error: 'Subscription not found', code: 'SUBSCRIPTION_NOT_FOUND' },
+				{ status: 404 }
+			);
+		}
+
+		await logApiEvent({
+			route: '/api/reminders/subscribe',
+			action: 'update',
+			clientKey,
+			clientId,
+			request,
+			statusCode: 200,
+			durationMs: Date.now() - startedAt,
+			metadata: { hour },
+		});
+
+		return json({ success: true });
+	} catch (error) {
+		console.error('Failed to update reminder hour:', error);
+		await logApiEvent({
+			route: '/api/reminders/subscribe',
+			action: 'update',
+			clientKey,
+			clientId,
+			request,
+			statusCode: 500,
+			durationMs: Date.now() - startedAt,
+			errorMessage: error.message,
+		});
+		return json(
+			{ error: 'Failed to update reminder hour', code: 'SUBSCRIPTION_UPDATE_ERROR' },
 			{ status: 500 }
 		);
 	}

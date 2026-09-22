@@ -112,6 +112,7 @@ export const TELEMETRY_EVENTS = new Set([
 
 	// Reminders
 	'reminder:opt-in',
+	'reminder:time-set',
 
 	// Native shell / interaction quality
 	'app:open',

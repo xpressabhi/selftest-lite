@@ -3,9 +3,9 @@ import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
 import {
-	DEFAULT_REMINDER_TIMEZONE,
-	REMINDER_HOURS,
-	REMINDER_MIN_GAP_HOURS,
+	DUE_SUBSCRIPTION_PARAMS,
+	DUE_SUBSCRIPTIONS_SQL,
+	parseReminderHour,
 } from '$lib/shared/reminders';
 import { sanitizeHintedIndexes } from './hint.js';
 
@@ -73,7 +73,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -229,8 +229,14 @@ export async function ensureStorageSchema() {
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 				last_sent_at TIMESTAMPTZ,
-				last_error TEXT
+				last_error TEXT,
+				reminder_hour SMALLINT CHECK (reminder_hour BETWEEN 0 AND 23)
 			)
+		`);
+
+		await query(`
+			ALTER TABLE push_subscription
+			ADD COLUMN IF NOT EXISTS reminder_hour SMALLINT CHECK (reminder_hour BETWEEN 0 AND 23)
 		`);
 
 		await query(`
@@ -1181,6 +1187,7 @@ export async function savePushSubscription({
 	p256dh,
 	auth,
 	timezone = null,
+	reminderHour = null,
 }) {
 	await ensureStorageSchema();
 
@@ -1200,21 +1207,63 @@ export async function savePushSubscription({
 		typeof clientId === 'string' && clientId.length <= 64 ? clientId : null;
 	const normalizedTimezone =
 		typeof timezone === 'string' && timezone.length <= 64 ? timezone : null;
+	const normalizedHour = parseReminderHour(reminderHour);
+	if (normalizedHour === undefined) {
+		return false;
+	}
 
 	await query(
-		`INSERT INTO push_subscription (client_id, user_id, endpoint, p256dh, auth, timezone, enabled, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
+		`INSERT INTO push_subscription
+			(client_id, user_id, endpoint, p256dh, auth, timezone, enabled, updated_at, reminder_hour)
+		 VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW(), $7)
 		 ON CONFLICT (endpoint) DO UPDATE SET
 			client_id = EXCLUDED.client_id,
 			user_id = COALESCE(EXCLUDED.user_id, push_subscription.user_id),
 			p256dh = EXCLUDED.p256dh,
 			auth = EXCLUDED.auth,
 			timezone = EXCLUDED.timezone,
+			reminder_hour = EXCLUDED.reminder_hour,
+			-- A changed time starts its own schedule: the old last-send must
+			-- not suppress the first reminder at the new hour.
+			last_sent_at = CASE
+				WHEN push_subscription.reminder_hour IS DISTINCT FROM EXCLUDED.reminder_hour
+				THEN NULL
+				ELSE push_subscription.last_sent_at
+			END,
 			enabled = TRUE,
 			updated_at = NOW()`,
-		[normalizedClientId, normalizedUserId, endpoint, p256dh, auth, normalizedTimezone]
+		[normalizedClientId, normalizedUserId, endpoint, p256dh, auth, normalizedTimezone, normalizedHour]
 	);
 	return true;
+}
+
+/**
+ * Changes the reminder hour for one subscription. A changed hour clears the
+ * last-send so the new slot can fire the same day, and re-enables the row (a
+ * 404/410 send may have disabled it).
+ */
+export async function updatePushSubscriptionHour(endpoint, hour) {
+	await ensureStorageSchema();
+	if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) {
+		return false;
+	}
+	const normalizedHour = parseReminderHour(hour);
+	if (normalizedHour === undefined) {
+		return false;
+	}
+	const result = await query(
+		`UPDATE push_subscription
+		 SET reminder_hour = $2::smallint,
+			last_sent_at = CASE
+				WHEN reminder_hour IS DISTINCT FROM $2::smallint THEN NULL
+				ELSE last_sent_at
+			END,
+			enabled = TRUE,
+			updated_at = NOW()
+		 WHERE endpoint = $1`,
+		[endpoint, normalizedHour]
+	);
+	return (result.rowCount || 0) > 0;
 }
 
 export async function archivePushSubscription(endpoint) {
@@ -1222,35 +1271,32 @@ export async function archivePushSubscription(endpoint) {
 	if (typeof endpoint !== 'string' || !endpoint) {
 		return false;
 	}
+	// Explicit column lists: `SELECT *, NOW()` only lines up while the archive
+	// column order still matches the source, and a new source column lands
+	// after the archive's archived_at.
 	const result = await query(
 		`WITH moved AS (
 			DELETE FROM push_subscription WHERE endpoint = $1 RETURNING *
 		)
 		INSERT INTO push_subscription_archive
-		SELECT *, NOW() FROM moved`,
+			(id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
+			 created_at, updated_at, last_sent_at, last_error, reminder_hour, archived_at)
+		SELECT id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
+			created_at, updated_at, last_sent_at, last_error, reminder_hour, NOW()
+		FROM moved`,
 		[endpoint]
 	);
 	return (result.rowCount || 0) > 0;
 }
 
 /**
- * Subscriptions due for a reminder right now: enabled, not sent in the last
- * `REMINDER_MIN_GAP_HOURS`, and at a reminder hour in the subscriber's own
- * timezone. The window is shared with the hourly sender via
- * `$lib/shared/reminders`.
+ * Subscriptions due for a reminder right now. The rule (chosen hour or smart
+ * windows, minimum gap, subscriber timezone) lives once in
+ * `$lib/shared/reminders` and is shared with the hourly sender.
  */
 export async function listDuePushSubscriptions() {
 	await ensureStorageSchema();
-	const result = await query(
-		`SELECT id, endpoint, p256dh, auth, timezone
-		 FROM push_subscription
-		 WHERE enabled = TRUE
-			AND (last_sent_at IS NULL OR last_sent_at < NOW() - make_interval(hours => $2::int))
-			AND EXTRACT(
-				HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), $3))
-			)::int = ANY($1::int[])`,
-		[REMINDER_HOURS, REMINDER_MIN_GAP_HOURS, DEFAULT_REMINDER_TIMEZONE]
-	);
+	const result = await query(DUE_SUBSCRIPTIONS_SQL, DUE_SUBSCRIPTION_PARAMS);
 	return result.rows;
 }
 

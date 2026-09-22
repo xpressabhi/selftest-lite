@@ -2,20 +2,17 @@
 // Sends due daily practice reminders via Web Push.
 //
 // Run hourly (the reminders GitHub Action does). A subscription is due when it
-// is enabled, has not been sent in REMINDER_MIN_GAP_HOURS, and the subscriber's
-// local hour is one of REMINDER_HOURS (src/lib/shared/reminders.js, shared with
-// the in-app due query in src/lib/server/storage.js).
+// is enabled, has not been sent in the last REMINDER_MIN_GAP_HOURS, and the
+// subscriber's local hour matches their chosen hour — or one of REMINDER_HOURS
+// when they have not chosen one (src/lib/shared/reminders.js, shared with the
+// in-app due query in src/lib/server/storage.js).
 //
 // Requires DATABASE_URL and VAPID keys. When VAPID keys are absent the script
 // exits 0 with a message so the scheduled workflow is not noisy before setup.
 
 import { neon } from '@neondatabase/serverless';
 import { sendPushNotification } from '../src/lib/server/push.js';
-import {
-	DEFAULT_REMINDER_TIMEZONE,
-	REMINDER_HOURS,
-	REMINDER_MIN_GAP_HOURS,
-} from '../src/lib/shared/reminders.js';
+import { DUE_SUBSCRIPTION_PARAMS, DUE_SUBSCRIPTIONS_SQL } from '../src/lib/shared/reminders.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -33,16 +30,9 @@ if (!publicKey || !privateKey) {
 
 const sql = neon(databaseUrl);
 
-const dueSubscriptions = await sql.query(
-	`SELECT id, endpoint, p256dh, auth, timezone
-	 FROM push_subscription
-	 WHERE enabled = TRUE
-		AND (last_sent_at IS NULL OR last_sent_at < NOW() - make_interval(hours => $2::int))
-		AND EXTRACT(
-			HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), $3))
-		)::int = ANY($1::int[])`,
-	[REMINDER_HOURS, REMINDER_MIN_GAP_HOURS, DEFAULT_REMINDER_TIMEZONE]
-);
+// The due rule (chosen hour or smart windows, minimum gap, timezone) lives in
+// src/lib/shared/reminders.js and is shared with the in-app due query.
+const dueSubscriptions = await sql.query(DUE_SUBSCRIPTIONS_SQL, DUE_SUBSCRIPTION_PARAMS);
 
 let sent = 0;
 let failed = 0;

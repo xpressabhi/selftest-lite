@@ -21,8 +21,10 @@
 	import {
 		disableReminders,
 		enableReminders,
+		getReminderHour,
 		isReminderEnabled,
 		remindersSupported,
+		setReminderHour,
 	} from '$lib/client/reminders';
 	import { showToast } from '$lib/client/toast';
 	import { user } from '$lib/client/auth';
@@ -81,6 +83,8 @@
 	let historyCount = $state(0);
 	let reminderEnabled = $state(false);
 	let reminderBusy = $state(false);
+	let reminderHour = $state(null);
+	const reminderHours = Array.from({ length: 24 }, (_, hour) => hour);
 	let showRetakeConfirm = $state(false);
 	let retakeTrigger = $state();
 	let retakeConfirmButton = $state();
@@ -215,6 +219,7 @@
 			autoExplainEnabled = false;
 		}
 		historyCount = getHistory().length;
+		reminderHour = getReminderHour();
 		if (remindersSupported()) {
 			void isReminderEnabled().then((enabled) => {
 				reminderEnabled = enabled;
@@ -504,6 +509,36 @@
 						? $t('reminderUnconfigured')
 						: $t('reminderFailed');
 			showToast(message, 'warning');
+		}
+		reminderBusy = false;
+	}
+
+	const HOUR_LOCALES = { hindi: 'hi-IN', english: 'en-IN' };
+
+	function formatHour(hour) {
+		const locale = HOUR_LOCALES[$language] || 'en-IN';
+		return new Intl.DateTimeFormat(locale, { hour: 'numeric', hour12: true }).format(
+			new Date(2000, 0, 1, hour, 0, 0)
+		);
+	}
+
+	async function changeReminderTime(event) {
+		// currentTarget is only valid during dispatch, so capture it first.
+		const select = event.currentTarget;
+		const hour = select.value === '' ? null : Number(select.value);
+		reminderBusy = true;
+		const result = await setReminderHour(hour);
+		if (result.ok) {
+			reminderHour = hour;
+			showToast(
+				hour === null
+					? $t('reminderTimeSmart')
+					: $t('reminderTimeSet', { time: formatHour(hour) }),
+				'success'
+			);
+		} else {
+			select.value = reminderHour === null ? '' : String(reminderHour);
+			showToast($t('reminderFailed'), 'warning');
 		}
 		reminderBusy = false;
 	}
@@ -890,16 +925,32 @@
 					👎
 				</button>
 			</div>
-			{#if remindersSupported() && historyCount >= 2}
-				<label class="d-inline-flex align-items-center gap-2 mt-2 no-print">
-					<input
-						type="checkbox"
-						checked={reminderEnabled}
-						disabled={reminderBusy}
-						onchange={toggleReminders}
-					/>
-					<span class="small text-muted">{$t('dailyReminder')}</span>
-				</label>
+			{#if remindersSupported() && historyCount >= 1}
+				<div class="d-flex flex-wrap align-items-center gap-3 mt-2 no-print">
+					<label class="d-inline-flex align-items-center gap-2">
+						<input
+							type="checkbox"
+							checked={reminderEnabled}
+							disabled={reminderBusy}
+							onchange={toggleReminders}
+						/>
+						<span class="small text-muted">{$t('dailyReminder')}</span>
+					</label>
+					<label class="d-inline-flex align-items-center gap-2">
+						<span class="small text-muted">{$t('reminderTimeLabel')}</span>
+						<select
+							class="form-select form-select-sm w-auto"
+							value={reminderHour === null ? '' : String(reminderHour)}
+							disabled={reminderBusy}
+							onchange={changeReminderTime}
+						>
+							<option value="">{$t('reminderTimeSmart')}</option>
+							{#each reminderHours as hour (hour)}
+								<option value={String(hour)}>{formatHour(hour)}</option>
+							{/each}
+						</select>
+					</label>
+				</div>
 			{/if}
 		</div>
 
