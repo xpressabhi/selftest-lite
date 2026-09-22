@@ -904,6 +904,8 @@
 	"reportThanks": "Report received, thank you",
 	"dailyReminder": "Daily practice reminder",
 	"reminderDenied": "Notifications are blocked in your browser settings",
+	"reminderFailed": "Couldn't update reminders. Please try again.",
+	"reminderUnconfigured": "Reminders aren't available right now",
 	"plannerChatLabel": "Test planner conversation",
 	"plannerChatTitle": "Plan your test",
 	"plannerStartOver": "Start over",

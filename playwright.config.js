@@ -6,6 +6,9 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
 	testDir: 'tests/e2e',
 	testMatch: '*.e2e.js',
+	// Web push needs a production build, a headed Chrome and FCM access; it
+	// runs from its own opt-in config (npm run test:e2e:push).
+	testIgnore: 'reminders.e2e.js',
 	timeout: 30000,
 	retries: 0,
 	reporter: [

@@ -60,7 +60,7 @@ export async function enableReminders() {
 		});
 		const json = subscription.toJSON();
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		await fetch('/api/reminders/subscribe', {
+		const saved = await fetch('/api/reminders/subscribe', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -70,7 +70,13 @@ export async function enableReminders() {
 				},
 				timezone,
 			}),
-		});
+		}).catch(() => null);
+		if (!saved?.ok) {
+			// Without a server row the hourly sender can never reach this
+			// subscription, so roll it back instead of pretending it is on.
+			await subscription.unsubscribe().catch(() => {});
+			return { ok: false, reason: 'server' };
+		}
 		track('reminder:opt-in', { enabled: true, timezone });
 		return { ok: true };
 	} catch (error) {
@@ -87,11 +93,16 @@ export async function disableReminders() {
 		const registration = await getRegistration();
 		const subscription = await registration.pushManager.getSubscription();
 		if (subscription) {
-			await fetch('/api/reminders/subscribe', {
+			const removed = await fetch('/api/reminders/subscribe', {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ endpoint: subscription.endpoint }),
-			});
+			}).catch(() => null);
+			if (!removed?.ok) {
+				// Keep the browser subscription so the toggle and the server
+				// row stay in agreement and the user can retry.
+				return { ok: false, reason: 'server' };
+			}
 			await subscription.unsubscribe();
 		}
 		track('reminder:opt-in', { enabled: false });

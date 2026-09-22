@@ -11,6 +11,7 @@
 		"lint": "eslint .",
 		"smoke": "npm run lint && npm run test && npm run test:e2e",
 		"test:e2e": "playwright test",
+		"test:e2e:push": "playwright test --config=playwright.push.config.js",
 		"hooks:install": "git config core.hooksPath .githooks && echo hooks installed",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",

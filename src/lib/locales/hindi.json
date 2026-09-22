@@ -904,6 +904,8 @@
 	"reportThanks": "रिपोर्ट मिल गई, धन्यवाद",
 	"dailyReminder": "रोज़ाना अभ्यास रिमाइंडर",
 	"reminderDenied": "आपके ब्राउज़र सेटिंग्स में नोटिफिकेशन ब्लॉक हैं",
+	"reminderFailed": "रिमाइंडर अपडेट नहीं हो सका। कृपया फिर कोशिश करें।",
+	"reminderUnconfigured": "रिमाइंडर अभी उपलब्ध नहीं हैं",
 	"plannerChatLabel": "टेस्ट प्लानर बातचीत",
 	"plannerChatTitle": "अपना टेस्ट प्लान करें",
 	"plannerStartOver": "नई शुरुआत",

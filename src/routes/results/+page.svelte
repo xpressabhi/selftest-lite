@@ -486,13 +486,24 @@
 		showToast($t('ratingThanks'), 'success');
 	}
 
-	async function toggleReminders() {
+	async function toggleReminders(event) {
+		// currentTarget is only valid during dispatch, so capture it first.
+		const input = event.currentTarget;
 		reminderBusy = true;
 		const result = reminderEnabled ? await disableReminders() : await enableReminders();
 		if (result.ok) {
 			reminderEnabled = !reminderEnabled;
-		} else if (result.reason === 'denied') {
-			showToast($t('reminderDenied'), 'warning');
+		} else {
+			// The checkbox toggles visually on click; put it back when the
+			// change did not stick.
+			input.checked = reminderEnabled;
+			const message =
+				result.reason === 'denied'
+					? $t('reminderDenied')
+					: result.reason === 'unconfigured'
+						? $t('reminderUnconfigured')
+						: $t('reminderFailed');
+			showToast(message, 'warning');
 		}
 		reminderBusy = false;
 	}
