@@ -2,14 +2,20 @@
 // Sends due daily practice reminders via Web Push.
 //
 // Run hourly (the reminders GitHub Action does). A subscription is due when it
-// is enabled, has not been sent in 20 hours, and the subscriber's local hour
-// is one of the reminder hours (7-8am / 8-9pm by default).
+// is enabled, has not been sent in REMINDER_MIN_GAP_HOURS, and the subscriber's
+// local hour is one of REMINDER_HOURS (src/lib/shared/reminders.js, shared with
+// the in-app due query in src/lib/server/storage.js).
 //
 // Requires DATABASE_URL and VAPID keys. When VAPID keys are absent the script
 // exits 0 with a message so the scheduled workflow is not noisy before setup.
 
 import { neon } from '@neondatabase/serverless';
-import webpush from 'web-push';
+import { sendPushNotification } from '../src/lib/server/push.js';
+import {
+	DEFAULT_REMINDER_TIMEZONE,
+	REMINDER_HOURS,
+	REMINDER_MIN_GAP_HOURS,
+} from '../src/lib/shared/reminders.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -25,18 +31,18 @@ if (!publicKey || !privateKey) {
 	process.exit(0);
 }
 
-webpush.setVapidDetails(subject, publicKey, privateKey);
 const sql = neon(databaseUrl);
 
-const dueSubscriptions = await sql`
-	SELECT id, endpoint, p256dh, auth, timezone
-	FROM push_subscription
-	WHERE enabled = TRUE
-		AND (last_sent_at IS NULL OR last_sent_at < NOW() - INTERVAL '20 hours')
+const dueSubscriptions = await sql.query(
+	`SELECT id, endpoint, p256dh, auth, timezone
+	 FROM push_subscription
+	 WHERE enabled = TRUE
+		AND (last_sent_at IS NULL OR last_sent_at < NOW() - make_interval(hours => $2::int))
 		AND EXTRACT(
-			HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), 'Asia/Kolkata'))
-		)::int IN (7, 8, 20, 21)
-`;
+			HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), $3))
+		)::int = ANY($1::int[])`,
+	[REMINDER_HOURS, REMINDER_MIN_GAP_HOURS, DEFAULT_REMINDER_TIMEZONE]
+);
 
 let sent = 0;
 let failed = 0;
@@ -44,17 +50,14 @@ let disabled = 0;
 
 for (const subscription of dueSubscriptions) {
 	try {
-		await webpush.sendNotification(
+		await sendPushNotification(
+			subscription,
 			{
-				endpoint: subscription.endpoint,
-				keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-			},
-			JSON.stringify({
 				title: 'Daily 5 is ready',
 				body: 'Keep your streak going — 5 quick questions.',
 				url: '/?daily=1',
-			}),
-			{ TTL: 12 * 60 * 60 }
+			},
+			{ publicKey, privateKey, subject }
 		);
 		await sql`
 			UPDATE push_subscription

@@ -12,10 +12,11 @@ page only after the user has completed at least two tests.
 2. Rows live in `push_subscription`; unsubscribing moves the row to
    `push_subscription_archive` (archive-first, never deleted).
 3. `.github/workflows/reminders.yml` runs hourly and calls
-   `npm run reminders:send`, which selects due subscriptions
-   (`src/lib/server/storage.js: listDuePushSubscriptions`) and sends via
-   `web-push`. 404/410 endpoints are disabled (kept in the table), other
-   failures record `last_error`.
+   `npm run reminders:send`, which selects due subscriptions and sends through
+   `src/lib/server/push.js`. The 20-hour gap and the 7-8am / 8-9pm window live
+   in `src/lib/shared/reminders.js`, shared with the in-app due query
+   (`src/lib/server/storage.js: listDuePushSubscriptions`). 404/410 endpoints
+   are disabled (kept in the table), other failures record `last_error`.
 4. The service worker handler (`static/push-handler.js`) is injected into the
    Workbox worker via `workbox.importScripts` and opens `/?daily=1`, which
    auto-starts the Daily 5 (`src/routes/+page.svelte`).
@@ -42,6 +43,23 @@ page only after the user has completed at least two tests.
    deployment), then test locally with a production build
    (`npm run build && npm run preview`); `serviceWorker.ready` does not resolve
    reliably in `npm run dev`.
+
+## Verifying end-to-end
+
+`npm run test:e2e:push` builds the production app, previews it and drives real
+Chrome through the whole pipeline: the opt-in toggle, a real push delivered via
+FCM, the hourly sender, and archive-on-unsubscribe. It also injects a failing
+subscribe response to prove the toggle stays off and the browser subscription
+is rolled back.
+
+Requirements: Chrome installed, network access to FCM, `DATABASE_URL` (env or
+`.env.local`) and a headed session. Headless Chrome denies notification
+permission and incognito disables the Push API, so the suite is excluded from
+the default `npm run test:e2e`. It signs with throwaway test keys from
+`tests/e2e/pushTestKeys.js`; the preview server gets the matching public key.
+Each run creates one subscription row and archives it at the end (archive-first,
+so `push_subscription_archive` grows by one row per run). Evidence lands in
+`test-results/push-e2e-artifact.json`.
 
 ## Notes
 

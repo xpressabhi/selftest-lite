@@ -2,6 +2,11 @@ import { Pool } from '@neondatabase/serverless';
 import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
+import {
+	DEFAULT_REMINDER_TIMEZONE,
+	REMINDER_HOURS,
+	REMINDER_MIN_GAP_HOURS,
+} from '$lib/shared/reminders';
 import { sanitizeHintedIndexes } from './hint.js';
 
 let poolInstance = null;
@@ -1230,7 +1235,9 @@ export async function archivePushSubscription(endpoint) {
 
 /**
  * Subscriptions due for a reminder right now: enabled, not sent in the last
- * 20 hours, and at a reminder hour in the subscriber's own timezone.
+ * `REMINDER_MIN_GAP_HOURS`, and at a reminder hour in the subscriber's own
+ * timezone. The window is shared with the hourly sender via
+ * `$lib/shared/reminders`.
  */
 export async function listDuePushSubscriptions() {
 	await ensureStorageSchema();
@@ -1238,10 +1245,11 @@ export async function listDuePushSubscriptions() {
 		`SELECT id, endpoint, p256dh, auth, timezone
 		 FROM push_subscription
 		 WHERE enabled = TRUE
-			AND (last_sent_at IS NULL OR last_sent_at < NOW() - INTERVAL '20 hours')
+			AND (last_sent_at IS NULL OR last_sent_at < NOW() - make_interval(hours => $2::int))
 			AND EXTRACT(
-				HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), 'Asia/Kolkata'))
-			)::int IN (7, 8, 20, 21)`
+				HOUR FROM (NOW() AT TIME ZONE COALESCE(NULLIF(timezone, ''), $3))
+			)::int = ANY($1::int[])`,
+		[REMINDER_HOURS, REMINDER_MIN_GAP_HOURS, DEFAULT_REMINDER_TIMEZONE]
 	);
 	return result.rows;
 }
