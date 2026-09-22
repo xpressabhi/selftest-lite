@@ -49,10 +49,6 @@ function reminderToggle(page) {
 		.locator('input[type="checkbox"]');
 }
 
-function moreActionsButton(page) {
-	return page.getByRole('button', { name: /more actions & settings/i });
-}
-
 function seedCompletedTest(page) {
 	return page
 		.goto('/')
@@ -63,14 +59,12 @@ function seedCompletedTest(page) {
 		);
 }
 
-// The reminder controls live in the collapsed card section.
+// The reminder controls live in the page footer, after the answer list.
 async function openCardSettings(page) {
-	await expect(page.locator('.result-summary')).toBeVisible();
+	await expect(page.locator('.result-hero-card')).toBeVisible();
 	const toggle = reminderToggle(page);
-	if (!(await toggle.isVisible())) {
-		await moreActionsButton(page).click();
-		await expect(toggle).toBeVisible();
-	}
+	await toggle.scrollIntoViewIfNeeded();
+	await expect(toggle).toBeVisible();
 }
 
 async function readSubscription(page) {

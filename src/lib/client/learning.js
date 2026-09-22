@@ -34,6 +34,36 @@ function accuracy(entry) {
 	return Math.round((score / total) * 100);
 }
 
+/**
+ * Compares an attempt against the learner's previous completed attempts.
+ * `currentId` is excluded so the current result never compares against itself.
+ * Returns `{ state, delta }` with state 'baseline' | 'best' | 'same' | 'ahead'
+ * | 'behind'; `delta` is the percentage-point gap to the previous average and
+ * stays 0 for 'baseline', 'best', and 'same'.
+ */
+export function buildScoreComparison(history, currentId, percentage) {
+	const previous = completedTests(history)
+		.filter((entry) => String(entry?.id) !== String(currentId))
+		.map(accuracy)
+		.filter((value) => value !== null);
+	if (previous.length === 0) {
+		return { state: 'baseline', delta: 0 };
+	}
+	const best = Math.max(...previous);
+	const average = Math.round(previous.reduce((sum, value) => sum + value, 0) / previous.length);
+	const current = Math.round(Number(percentage) || 0);
+	if (current > best) {
+		return { state: 'best', delta: 0 };
+	}
+	if (current === average) {
+		return { state: 'same', delta: 0 };
+	}
+	if (current > average) {
+		return { state: 'ahead', delta: current - average };
+	}
+	return { state: 'behind', delta: average - current };
+}
+
 function normalizeQuizTestType(testType) {
 	return testType === 'mixed' ? 'multiple-choice' : testType || 'multiple-choice';
 }

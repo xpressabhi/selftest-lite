@@ -143,11 +143,10 @@ Tapping the hero share button reveals an inline sheet under it (inside the hero 
 
 - `Share result link` → existing `shareResult()`.
 - `Share score card` → existing `shareCard()`.
-- A `Cancel` row closes it.
 
-Behaviour: first item takes focus on open; `Escape` and outside tap close it and return focus to the
-share button; tracking stays exactly `results:share` and `results:share-card`. Fallbacks
-(clipboard, file download, toasts) are untouched.
+Behaviour: first item takes focus on open; selecting an item, `Escape`, or an outside tap closes it and
+returns focus to the share button; tracking stays exactly `results:share` and `results:share-card`.
+Fallbacks (clipboard, file download, toasts) are untouched.
 
 ### 5. States and edge cases
 

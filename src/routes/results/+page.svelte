@@ -10,6 +10,7 @@
 	import { track } from '$lib/client/telemetry';
 	import {
 		buildReviewQueue,
+		buildScoreComparison,
 		buildTopicMasteryItems,
 		formatDuration,
 		getAchievements,
@@ -74,6 +75,13 @@
 	let expanded = $state({});
 	let expansionInitialized = false;
 	const AUTO_EXPLAIN_KEY = 'selftest_auto_explain';
+	const COMPARISON_KEYS = {
+		best: 'resultsCompareBest',
+		ahead: 'resultsCompareAhead',
+		behind: 'resultsCompareBehind',
+		same: 'resultsCompareSame',
+		baseline: 'resultsCompareFirst',
+	};
 	let autoExplainEnabled = $state(false);
 	let autoExplainRunning = $state(false);
 	let autoExplainCanceled = false;
@@ -85,7 +93,11 @@
 	let reminderBusy = $state(false);
 	let reminderHour = $state(null);
 	const reminderHours = Array.from({ length: 24 }, (_, hour) => hour);
-	let cardMoreOpen = $state(false);
+	let comparison = $state(null);
+	let shareSheetOpen = $state(false);
+	let shareButton = $state();
+	let shareSheetWrap = $state();
+	let shareSheetFirstItem = $state();
 	let reminderToggleEl = $state();
 	let showRetakeConfirm = $state(false);
 	let retakeTrigger = $state();
@@ -323,6 +335,9 @@
 		achievements = getAchievements();
 		topicMastery = buildTopicMasteryItems(history);
 		reviewQueue = buildReviewQueue(history);
+		comparison = questionPaper
+			? buildScoreComparison(history, questionPaper.id, percentage)
+			: null;
 		const bookmarkKeys = new Set(
 			getQuestionBookmarks().map((item) => `${item.question}::${item.answer}`)
 		);
@@ -516,10 +531,14 @@
 	}
 
 	async function revealReminderSettings() {
-		cardMoreOpen = true;
 		await tick();
 		reminderToggleEl?.focus({ preventScroll: true });
-		reminderToggleEl?.scrollIntoView({ block: 'nearest' });
+		reminderToggleEl?.scrollIntoView({
+			behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+				? 'auto'
+				: 'smooth',
+			block: 'center',
+		});
 	}
 
 	const HOUR_LOCALES = { hindi: 'hi-IN', english: 'en-IN' };
@@ -710,6 +729,55 @@
 		}
 	}
 
+	async function toggleShareSheet() {
+		shareSheetOpen = !shareSheetOpen;
+		if (shareSheetOpen) {
+			await tick();
+			shareSheetFirstItem?.focus({ preventScroll: true });
+		}
+	}
+
+	function closeShareSheet(restoreFocus = true) {
+		if (!shareSheetOpen) {
+			return;
+		}
+		shareSheetOpen = false;
+		if (restoreFocus) {
+			shareButton?.focus({ preventScroll: true });
+		}
+	}
+
+	function handleShareSheetKeydown(event) {
+		if (event.key === 'Escape') {
+			closeShareSheet();
+		}
+	}
+
+	function handleDocumentClick(event) {
+		if (!shareSheetOpen) {
+			return;
+		}
+		const target = event.target;
+		if (target instanceof Node && shareSheetWrap?.contains(target)) {
+			return;
+		}
+		closeShareSheet(false);
+	}
+
+	async function runShareAction(action) {
+		closeShareSheet();
+		if (action === 'link') {
+			await shareResult();
+			return;
+		}
+		await shareCard();
+	}
+
+	function printResult() {
+		window.print();
+		track('results:print');
+	}
+
 	function practiceMoreHref() {
 		const requestParams = questionPaper?.requestParams || {};
 		const params = new URLSearchParams({
@@ -760,6 +828,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
+<svelte:window onkeydown={handleShareSheetKeydown} onclick={handleDocumentClick} />
+
 <section class="container py-4">
 	{#if loading}
 		<div class="py-5 text-center">
@@ -782,231 +852,209 @@
 			<a class="btn btn-outline-primary" href="/history">{$t('history')}</a>
 		</div>
 	{:else if questionPaper}
-		<div class="result-summary bg-body border rounded-3 shadow-sm mb-4">
-			<h1 class="result-topic">
-				<MarkdownContent content={questionPaper.topic} tag="span" />
-			</h1>
+		<div class="result-hero-card mb-4">
+			<span class="hero-spark hero-spark-1" aria-hidden="true">✦</span>
+			<span class="hero-spark hero-spark-2" aria-hidden="true">✦</span>
+			<span class="hero-spark hero-spark-3" aria-hidden="true">✦</span>
 
-			<div class="result-hero">
-				<div class="score-ring" class:settled={scoreSettled} role="img" aria-label={`${percentage}%`}>
-					<svg viewBox="0 0 100 100" aria-hidden="true">
-						<circle class="ring-track" cx="50" cy="50" r={RING_RADIUS}></circle>
-						<circle
-							class="ring-progress"
-							cx="50"
-							cy="50"
-							r={RING_RADIUS}
-							stroke-dasharray={RING_CIRCUMFERENCE}
-							stroke-dashoffset={RING_CIRCUMFERENCE * (1 - percentage / 100)}
-						></circle>
-					</svg>
-					<span class="score-ring-label">{displayedPercentage}%</span>
-				</div>
-				<div class="result-figures">
-					<p class="result-score">
-						{questionPaper.score}<span class="result-score-total"
-							>/{questionPaper.totalQuestions}</span
+			<div class="hero-top">
+				<span class="hero-eyebrow">{$t('resultsHeroEyebrow')}</span>
+				<div class="hero-share-wrap" bind:this={shareSheetWrap}>
+					<button
+						bind:this={shareButton}
+						class="hero-share"
+						type="button"
+						aria-expanded={shareSheetOpen}
+						aria-controls="result-share-sheet"
+						onclick={toggleShareSheet}
+					>
+						<span class="visually-hidden">{$t('share')}</span>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							width="16"
+							height="16"
+							aria-hidden="true"
 						>
-					</p>
-					<p class="result-meta">
-						{$t('timeSpent')}: {formatDuration(
-							questionPaper.timeTaken || 0,
-							$t('minuteShort'),
-							$t('hourShort')
-						)}
-					</p>
+							<path d="M12 16V4" />
+							<path d="m7 9 5-5 5 5" />
+							<path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />
+						</svg>
+					</button>
+					{#if shareSheetOpen}
+						<div
+							id="result-share-sheet"
+							class="hero-share-sheet"
+							role="menu"
+							aria-label={$t('share')}
+						>
+							<button
+								bind:this={shareSheetFirstItem}
+								class="share-sheet-item"
+								type="button"
+								role="menuitem"
+								onclick={() => runShareAction('link')}
+							>
+								{$t('resultsShareLink')}
+							</button>
+							<button
+								class="share-sheet-item"
+								type="button"
+								role="menuitem"
+								onclick={() => runShareAction('card')}
+							>
+								{$t('resultsShareCard')}
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
 
-			<div class="result-primary no-print">
+			<div class="hero-body">
+				<h1 class="hero-topic">
+					<MarkdownContent content={questionPaper.topic} tag="span" />
+				</h1>
+
+				<div class="hero-score">
+					<div class="hero-ring-wrap">
+						<div
+							class="score-ring"
+							class:settled={scoreSettled}
+							role="img"
+							aria-label={`${percentage}%`}
+						>
+							<svg viewBox="0 0 100 100" aria-hidden="true">
+								<defs>
+									<linearGradient id="hero-ring-gradient" x1="0" y1="0" x2="1" y2="1">
+										<stop offset="0%" stop-color="#a5b4fc" />
+										<stop offset="100%" stop-color="#22d3ee" />
+									</linearGradient>
+								</defs>
+								<circle class="ring-track" cx="50" cy="50" r={RING_RADIUS}></circle>
+								<circle
+									class="ring-progress"
+									cx="50"
+									cy="50"
+									r={RING_RADIUS}
+									stroke-dasharray={RING_CIRCUMFERENCE}
+									stroke-dashoffset={RING_CIRCUMFERENCE * (1 - percentage / 100)}
+								></circle>
+							</svg>
+							<span class="score-ring-label">
+								<span class="score-ring-pct">{displayedPercentage}%</span>
+								<span class="score-ring-sub">
+									{$t('resultsCorrectOf', {
+										correct: correctCount,
+										total: questionPaper.totalQuestions ?? totalQuestions,
+									})}
+								</span>
+							</span>
+						</div>
+					</div>
+					<p class="hero-meta">
+						{formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}
+						&middot;
+						{$t('questionsCountFormat', {
+							count: questionPaper.totalQuestions ?? totalQuestions,
+						})}
+					</p>
+					{#if comparison}
+						<span class="hero-compare is-{comparison.state}">
+							{$t(COMPARISON_KEYS[comparison.state], { delta: comparison.delta })}
+						</span>
+					{/if}
+				</div>
+
 				{#if wrongIndices.length > 0}
-					<button class="btn btn-primary result-cta" type="button" onclick={practiceWeakQuestions}>
-						{$t('practiceWrongAnswers', { count: wrongIndices.length })}
+					<button class="hero-cta no-print" type="button" onclick={practiceWeakQuestions}>
+						<span aria-hidden="true">⚡</span>
+						{$t('practiceWeak', { count: wrongIndices.length })}
+						<span aria-hidden="true">→</span>
 					</button>
 				{:else}
-					<a class="btn btn-primary result-cta" href={practiceMoreHref()}>
-						{$t('practiceMore')}
+					<a class="hero-cta no-print" href={practiceMoreHref()}>
+						{$t('resultsPracticeMoreCta')}
+						<span aria-hidden="true">→</span>
 					</a>
 				{/if}
-				<div class="result-links">
-					<button class="result-link" type="button" onclick={requestRetake}>
-						{$t('retakeTest')}
-					</button>
-					<a class="result-link" href="/">{$t('newQuizShort')}</a>
-				</div>
 			</div>
+		</div>
 
+		<div class="hero-links no-print">
+			{#if wrongIndices.length > 0}
+				<button class="result-link" type="button" onclick={reviewWrongAnswers}>
+					{$t('reviewWrongAnswers')}
+				</button>
+			{/if}
+			<a class="result-link" href={practiceMoreHref()}>{$t('practiceMore')}</a>
+			<a class="result-link" href="/">{$t('newQuizShort')}</a>
+		</div>
+
+		<div class="hero-utility no-print">
+			<button class="utility-link" type="button" onclick={printResult}>{$t('print')}</button>
+			<button bind:this={retakeTrigger} class="utility-link" type="button" onclick={requestRetake}>
+				{$t('retakeTest')}
+			</button>
+			<span class="utility-id">{$t('testId')}: {questionPaper.id}</span>
+			{#if bookmarkedQuestionKeys.length > 0}
+				<span class="bookmark-count" aria-hidden="true">
+					<span class="bookmark-count-glyph">🔖</span>
+					{#key bookmarkedQuestionKeys.length}
+						<span class="bookmark-number">{bookmarkedQuestionKeys.length}</span>
+					{/key}
+				</span>
+			{/if}
 			{#if remindersSupported() && historyCount >= 1 && !reminderEnabled}
-				<button class="reminder-teaser no-print" type="button" onclick={revealReminderSettings}>
-					<span class="reminder-teaser-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+				<button class="utility-link reminder-link" type="button" onclick={revealReminderSettings}>
+					<span class="reminder-link-icon" aria-hidden="true">
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							width="14"
+							height="14"
+						>
 							<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
 							<path d="M13.7 21a2 2 0 0 1-3.4 0" />
 						</svg>
 					</span>
-					<span class="reminder-teaser-label">{$t('dailyReminder')}</span>
+					{$t('dailyReminder')}
 					<span class="review-chevron" aria-hidden="true">▾</span>
 				</button>
 			{/if}
-
-			<button
-				class="card-more-toggle no-print"
-				type="button"
-				aria-expanded={cardMoreOpen}
-				aria-controls="result-card-more"
-				onclick={() => (cardMoreOpen = !cardMoreOpen)}
-			>
-				{$t('cardActionsSettings')}
-				<span class="review-chevron" class:open={cardMoreOpen} aria-hidden="true">▾</span>
-			</button>
-			<AnimatedHeight>
-				{#if cardMoreOpen}
-					<div id="result-card-more" class="card-more-body no-print">
-						<div class="card-more-actions">
-							{#if showRetakeConfirm}
-								<div
-									class="retake-confirm"
-									role="group"
-									aria-label={$t('retakeConfirmTitle')}
-								>
-									<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
-									<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
-									<div class="d-flex flex-wrap gap-2">
-										<button
-											bind:this={retakeConfirmButton}
-											class="btn btn-sm btn-danger"
-											type="button"
-											onclick={retakeTest}
-										>
-											{$t('retakeTest')}
-										</button>
-										<button
-											class="btn btn-sm btn-outline-secondary"
-											type="button"
-											onclick={cancelRetake}
-										>
-											{$t('cancel')}
-										</button>
-									</div>
-								</div>
-							{:else}
-								<button
-									bind:this={retakeTrigger}
-									class="btn btn-sm btn-outline-secondary"
-									type="button"
-									onclick={requestRetake}
-								>
-									{$t('retakeTest')}
-								</button>
-							{/if}
-							{#if wrongIndices.length > 0}
-								<button
-									class="btn btn-sm btn-outline-warning"
-									type="button"
-									onclick={reviewWrongAnswers}
-								>
-									{$t('reviewWrongAnswers')}
-								</button>
-								<a class="btn btn-sm btn-outline-primary" href={practiceMoreHref()}>
-									{$t('practiceMore')}
-								</a>
-							{/if}
-						</div>
-						<div class="card-more-actions">
-							<button
-								class="btn btn-sm btn-outline-secondary"
-								type="button"
-								onclick={() => {
-									window.print();
-									track('results:print');
-								}}
-							>
-								{$t('print')}
-							</button>
-							<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareResult}>
-								{$t('share')}
-							</button>
-							<button class="btn btn-sm btn-outline-primary" type="button" onclick={shareCard}>
-								{$t('shareCard')}
-							</button>
-							{#if bookmarkedQuestionKeys.length > 0}
-								<span class="bookmark-count" aria-hidden="true">
-									<span class="bookmark-count-glyph">🔖</span>
-									{#key bookmarkedQuestionKeys.length}
-										<span class="bookmark-number">{bookmarkedQuestionKeys.length}</span>
-									{/key}
-								</span>
-							{/if}
-						</div>
-						<div class="card-more-settings">
-							<label class="auto-explain-switch d-inline-flex align-items-center gap-2">
-								<input
-									type="checkbox"
-									checked={autoExplainEnabled}
-									disabled={$isDataSaverActive}
-									onchange={toggleAutoExplain}
-								/>
-								<span class="small text-muted">
-									{$t('autoExplainWrong')}
-									{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
-								</span>
-							</label>
-							{#if $isDataSaverActive}
-								<p class="small text-muted mb-0">{$t('autoExplainDataSaver')}</p>
-							{/if}
-							<div class="card-rating">
-								<span class="small text-muted">{$t('rateTest')}</span>
-								<button
-									class="btn btn-sm btn-outline-success"
-									type="button"
-									aria-label={$t('rateTestUp')}
-									onclick={() => rateTest('up')}
-								>
-									👍
-								</button>
-								<button
-									class="btn btn-sm btn-outline-danger"
-									type="button"
-									aria-label={$t('rateTestDown')}
-									onclick={() => rateTest('down')}
-								>
-									👎
-								</button>
-							</div>
-							{#if remindersSupported() && historyCount >= 1}
-								<div class="d-flex flex-wrap align-items-center gap-3">
-									<label class="d-inline-flex align-items-center gap-2">
-										<input
-											bind:this={reminderToggleEl}
-											type="checkbox"
-											checked={reminderEnabled}
-											disabled={reminderBusy}
-											onchange={toggleReminders}
-										/>
-										<span class="small text-muted">{$t('dailyReminder')}</span>
-									</label>
-									<label class="d-inline-flex align-items-center gap-2">
-										<span class="small text-muted">{$t('reminderTimeLabel')}</span>
-										<select
-											class="form-select form-select-sm w-auto"
-											value={reminderHour === null ? '' : String(reminderHour)}
-											disabled={reminderBusy}
-											onchange={changeReminderTime}
-										>
-											<option value="">{$t('reminderTimeSmart')}</option>
-											{#each reminderHours as hour (hour)}
-												<option value={String(hour)}>{formatHour(hour)}</option>
-											{/each}
-										</select>
-									</label>
-								</div>
-							{/if}
-							<p class="small text-muted mb-0">{$t('testId')}: {questionPaper.id}</p>
-						</div>
-					</div>
-				{/if}
-			</AnimatedHeight>
 		</div>
+
+		{#if showRetakeConfirm}
+			<div
+				class="retake-confirm result-retake no-print"
+				role="group"
+				aria-label={$t('retakeConfirmTitle')}
+			>
+				<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
+				<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
+				<div class="d-flex flex-wrap gap-2">
+					<button
+						bind:this={retakeConfirmButton}
+						class="btn btn-sm btn-danger"
+						type="button"
+						onclick={retakeTest}
+					>
+						{$t('retakeTest')}
+					</button>
+					<button
+						class="btn btn-sm btn-outline-secondary"
+						type="button"
+						onclick={cancelRetake}
+					>
+						{$t('cancel')}
+					</button>
+				</div>
+			</div>
+		{/if}
+
 
 		{#if challengeOutcome}
 			<section class="challenge-card bg-body border rounded-3 p-3 mb-4" aria-live="polite">
@@ -1077,6 +1125,22 @@
 				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
 			</button>
 		</div>
+
+		<label class="auto-explain-row no-print">
+			<input
+				type="checkbox"
+				checked={autoExplainEnabled}
+				disabled={$isDataSaverActive}
+				onchange={toggleAutoExplain}
+			/>
+			<span class="small text-muted">
+				{$t('autoExplainWrong')}
+				{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
+			</span>
+		</label>
+		{#if $isDataSaverActive}
+			<p class="auto-explain-note small text-muted no-print">{$t('autoExplainDataSaver')}</p>
+		{/if}
 
 		<div class="row g-3 mb-4">
 			<div class="col-md-6">
@@ -1376,76 +1440,293 @@
 				</article>
 			{/each}
 		</div>
+
+		<footer class="result-footer no-print">
+			<div class="result-footer-card">
+				<span class="result-footer-label">{$t('rateTest')}</span>
+				<div class="result-footer-rating">
+					<button
+						class="btn btn-sm btn-outline-success"
+						type="button"
+						aria-label={$t('rateTestUp')}
+						onclick={() => rateTest('up')}
+					>
+						👍
+					</button>
+					<button
+						class="btn btn-sm btn-outline-danger"
+						type="button"
+						aria-label={$t('rateTestDown')}
+						onclick={() => rateTest('down')}
+					>
+						👎
+					</button>
+				</div>
+				{#if remindersSupported() && historyCount >= 1}
+					<div class="result-footer-reminder">
+						<label class="d-inline-flex align-items-center gap-2">
+							<input
+								bind:this={reminderToggleEl}
+								type="checkbox"
+								checked={reminderEnabled}
+								disabled={reminderBusy}
+								onchange={toggleReminders}
+							/>
+							<span class="small text-muted">{$t('dailyReminder')}</span>
+						</label>
+						<label class="d-inline-flex align-items-center gap-2">
+							<span class="small text-muted">{$t('reminderTimeLabel')}</span>
+							<select
+								class="form-select form-select-sm w-auto"
+								value={reminderHour === null ? '' : String(reminderHour)}
+								disabled={reminderBusy}
+								onchange={changeReminderTime}
+							>
+								<option value="">{$t('reminderTimeSmart')}</option>
+								{#each reminderHours as hour (hour)}
+									<option value={String(hour)}>{formatHour(hour)}</option>
+								{/each}
+							</select>
+						</label>
+					</div>
+				{/if}
+			</div>
+		</footer>
 	{/if}
 </section>
 
 <style>
-	.result-summary {
+	.result-hero-card {
+		--hero-text: #ffffff;
+		--hero-muted: #cbd5e1;
+		--hero-border: rgba(255, 255, 255, 0.1);
+		--hero-share-border: rgba(255, 255, 255, 0.14);
+		--hero-share-bg: rgba(255, 255, 255, 0.08);
+		position: relative;
+		overflow: hidden;
 		max-width: 860px;
-		padding: 16px;
+		padding: 18px;
+		border: 1px solid var(--hero-border);
+		border-radius: 22px;
+		background:
+			radial-gradient(120% 90% at 15% -10%, rgba(124, 58, 237, 0.55), rgba(15, 23, 42, 0) 55%),
+			radial-gradient(90% 70% at 110% 110%, rgba(13, 148, 136, 0.4), rgba(15, 23, 42, 0) 60%),
+			linear-gradient(160deg, #0b1120, #141b33);
+		box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.7);
+		color: var(--hero-text);
+	}
+
+	:global(html.dark) .result-hero-card {
+		--hero-border: rgba(255, 255, 255, 0.16);
+	}
+
+	/* The default brand focus ring is too dark against the hero surface. */
+	.result-hero-card :focus-visible {
+		outline-color: #a5b4fc;
 	}
 
 	@media (min-width: 768px) {
-		.result-summary {
+		.result-hero-card {
 			padding: 24px;
 		}
 	}
 
-	.result-topic {
-		margin: 0 0 12px;
-		color: var(--text-muted);
-		font-size: 0.95rem;
+	.hero-spark {
+		position: absolute;
+		color: rgba(255, 255, 255, 0.35);
+		font-size: 0.7rem;
+		line-height: 1;
+	}
+
+	.hero-spark-1 {
+		top: 14px;
+		left: 46%;
+	}
+
+	.hero-spark-2 {
+		top: 56px;
+		right: 22px;
+	}
+
+	.hero-spark-3 {
+		bottom: 26px;
+		left: 20px;
+		font-size: 0.55rem;
+	}
+
+	.hero-top {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+	}
+
+	.hero-eyebrow {
+		font-size: 0.625rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: #a5b4fc;
+	}
+
+	.hero-share-wrap {
+		position: relative;
+	}
+
+	.hero-share {
+		position: relative;
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		border: 1px solid var(--hero-share-border);
+		border-radius: 999px;
+		background: var(--hero-share-bg);
+		color: #e0e7ff;
+	}
+
+	/* Expand the 34px control to a 44px touch target. */
+	.hero-share::after {
+		position: absolute;
+		inset: -5px;
+		content: '';
+	}
+
+	.hero-share-sheet {
+		position: absolute;
+		z-index: 30;
+		top: calc(100% + 8px);
+		right: 0;
+		display: grid;
+		min-width: 210px;
+		gap: 2px;
+		padding: 6px;
+		border: 1px solid rgba(255, 255, 255, 0.16);
+		border-radius: 14px;
+		background: #0f172a;
+		box-shadow: 0 18px 36px -16px rgba(0, 0, 0, 0.8);
+	}
+
+	.share-sheet-item {
+		display: flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 10px;
+		background: none;
+		color: #e2e8f0;
+		font-size: 0.9rem;
 		font-weight: 600;
+		text-align: left;
+	}
+
+	.share-sheet-item:hover,
+	.share-sheet-item:focus-visible {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.hero-body {
+		max-width: 440px;
+		margin: 0 auto;
+	}
+
+	.hero-topic {
+		margin: 12px 0 16px;
+		color: var(--hero-text);
+		font-size: 1rem;
+		font-weight: 650;
 		line-height: 1.35;
 	}
 
-	.result-hero {
-		display: flex;
-		align-items: center;
-		gap: 14px;
-	}
-
-	.result-figures {
-		min-width: 0;
-	}
-
-	.result-score {
-		margin: 0;
-		font-size: 1.6rem;
-		font-weight: 800;
-		font-variant-numeric: tabular-nums;
-		line-height: 1.05;
-	}
-
-	.result-score-total {
-		color: var(--text-muted);
-		font-size: 1rem;
-		font-weight: 700;
-	}
-
-	.result-meta {
-		margin: 2px 0 0;
-		color: var(--text-muted);
-		font-size: 0.85rem;
-	}
-
-	.result-primary {
+	.hero-score {
 		display: grid;
-		gap: 2px;
-		margin-top: 14px;
+		justify-items: center;
 	}
 
-	.result-cta {
+	.hero-ring-wrap {
+		position: relative;
+	}
+
+	.hero-ring-wrap::before {
+		position: absolute;
+		inset: 8px;
+		border-radius: 50%;
+		background: radial-gradient(circle, rgba(99, 102, 241, 0.4), rgba(99, 102, 241, 0) 70%);
+		content: '';
+	}
+
+	.hero-meta {
+		margin: 14px 0 0;
+		color: var(--hero-muted);
+		font-size: 0.82rem;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.hero-compare {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 12px;
+		padding: 5px 11px;
+		border: 1px solid transparent;
+		border-radius: 999px;
+		font-size: 0.78rem;
+		font-weight: 650;
+	}
+
+	.hero-compare.is-best {
+		border-color: rgba(245, 158, 11, 0.45);
+		background: rgba(245, 158, 11, 0.16);
+		color: #fcd34d;
+	}
+
+	.hero-compare.is-ahead {
+		border-color: rgba(16, 185, 129, 0.25);
+		background: rgba(16, 185, 129, 0.12);
+		color: #6ee7b7;
+	}
+
+	.hero-compare.is-behind,
+	.hero-compare.is-same {
+		border-color: rgba(148, 163, 184, 0.3);
+		background: rgba(148, 163, 184, 0.12);
+		color: var(--hero-muted);
+	}
+
+	.hero-compare.is-baseline {
+		border-style: dashed;
+		border-color: rgba(148, 163, 184, 0.5);
+		color: #94a3b8;
+		font-weight: 500;
+	}
+
+	.hero-cta {
+		display: inline-flex;
 		width: 100%;
 		min-height: 48px;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		margin-top: 16px;
+		border: 0;
 		border-radius: 12px;
-		font-weight: 700;
+		background: linear-gradient(120deg, #6366f1, #22d3ee);
+		box-shadow: 0 12px 26px -12px rgba(99, 102, 241, 0.9);
+		color: #06121f;
+		font-size: 0.95rem;
+		font-weight: 750;
+		text-decoration: none;
 	}
 
-	.result-links {
+	.hero-links {
 		display: flex;
+		max-width: 860px;
+		flex-wrap: wrap;
 		justify-content: center;
-		gap: 4px;
+		gap: 2px;
+		margin-top: 6px;
 	}
 
 	.result-link {
@@ -1455,110 +1736,114 @@
 		padding: 0 14px;
 		border: 0;
 		background: none;
-		color: var(--color-brand-600);
+		color: var(--brand-text);
 		font-size: 0.9rem;
 		font-weight: 600;
 		text-decoration: none;
 	}
 
-	.reminder-teaser {
+	.hero-utility {
 		display: flex;
-		width: 100%;
-		min-height: 48px;
-		align-items: center;
-		gap: 10px;
-		margin-top: 10px;
-		padding: 10px 12px;
-		border: 1px dashed var(--line);
-		border-radius: 12px;
-		background: var(--surface-muted);
-		color: var(--text);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-align: left;
-	}
-
-	.reminder-teaser-icon {
-		display: inline-flex;
-		color: var(--color-brand-600);
-	}
-
-	.reminder-teaser-label {
-		flex: 1;
-	}
-
-	.card-more-toggle {
-		display: flex;
-		width: 100%;
-		min-height: 44px;
+		max-width: 860px;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
-		gap: 6px;
-		margin-top: 6px;
+		gap: 0 12px;
+		margin-top: 2px;
+		color: var(--text-muted);
+		font-size: 0.75rem;
+	}
+
+	.hero-utility > * + *::before {
+		margin-right: 10px;
+		color: var(--line);
+		content: '·';
+	}
+
+	.utility-link {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 0;
 		border: 0;
 		background: none;
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-weight: 600;
+		font: inherit;
+		text-decoration: underline;
+		text-decoration-color: var(--line);
+		text-underline-offset: 3px;
 	}
 
-	.card-more-body {
-		display: grid;
-		gap: 14px;
-		margin-top: 6px;
-		padding-top: 14px;
-		border-top: 1px solid var(--line);
-	}
-
-	.card-more-actions {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 8px;
-	}
-
-	.card-more-actions :global(.btn) {
+	.utility-id {
+		display: inline-flex;
 		min-height: 44px;
-	}
-
-	.card-more-actions .retake-confirm {
-		grid-column: 1 / -1;
-	}
-
-	.card-more-settings {
-		display: grid;
-		gap: 12px;
-		border-top: 1px solid var(--line);
-		padding-top: 14px;
-	}
-
-	.card-more-settings :global(select) {
-		width: 100%;
-		max-width: 320px;
-	}
-
-	.card-rating {
-		display: flex;
 		align-items: center;
+	}
+
+	.reminder-link {
+		gap: 6px;
+	}
+
+	.reminder-link-icon {
+		display: inline-flex;
+		color: var(--brand-text);
+	}
+
+	.result-retake {
+		max-width: 860px;
+		margin-top: 10px;
+	}
+
+	.auto-explain-row {
+		display: flex;
+		min-height: 44px;
+		align-items: center;
+		gap: 10px;
+		margin: -6px 0 16px;
+		padding: 0 4px;
+	}
+
+	.auto-explain-note {
+		margin: -12px 0 16px;
+		padding: 0 4px;
+	}
+
+	.result-footer {
+		max-width: 860px;
+		margin-top: 18px;
+	}
+
+	.result-footer-card {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 12px 18px;
+		padding: 12px 14px;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--surface-muted);
+	}
+
+	.result-footer-label {
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.result-footer-rating {
+		display: flex;
 		gap: 8px;
 	}
 
-	.card-rating :global(.btn) {
+	.result-footer-rating :global(.btn) {
 		min-width: 44px;
 		min-height: 44px;
 	}
 
-	@media (min-width: 768px) {
-		.card-more-actions {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-
-		.result-cta {
-			max-width: 420px;
-		}
-
-		.result-links {
-			justify-content: flex-start;
-		}
+	.result-footer-reminder {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px 18px;
 	}
 
 	.result-panel {
@@ -1771,14 +2056,14 @@
 
 	.score-ring {
 		position: relative;
-		width: 72px;
-		height: 72px;
+		width: 140px;
+		height: 140px;
 	}
 
-	@media (min-width: 768px) {
+	@media (min-width: 480px) {
 		.score-ring {
-			width: 88px;
-			height: 88px;
+			width: 168px;
+			height: 168px;
 		}
 	}
 
@@ -1858,13 +2143,13 @@
 
 	.ring-track {
 		fill: none;
-		stroke: var(--surface-muted);
+		stroke: rgba(255, 255, 255, 0.12);
 		stroke-width: 8;
 	}
 
 	.ring-progress {
 		fill: none;
-		stroke: var(--color-brand-600);
+		stroke: url(#hero-ring-gradient);
 		stroke-width: 8;
 		stroke-linecap: round;
 		transition: stroke-dashoffset 500ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -1873,10 +2158,32 @@
 	.score-ring-label {
 		position: absolute;
 		inset: 0;
-		display: grid;
-		place-items: center;
-		font-size: 1.1rem;
-		font-weight: 700;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+	}
+
+	.score-ring-pct {
+		font-size: 2.1rem;
+		font-weight: 750;
+		letter-spacing: -0.03em;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	}
+
+	@media (min-width: 480px) {
+		.score-ring-pct {
+			font-size: 2.5rem;
+		}
+	}
+
+	.score-ring-sub {
+		margin-top: 5px;
+		color: #94a3b8;
+		font-size: 0.68rem;
+		font-weight: 600;
 	}
 
 	.review-card-head {
@@ -1930,6 +2237,51 @@
 	@media print {
 		.no-print {
 			display: none !important;
+		}
+
+		.result-hero-card {
+			--hero-text: #0f172a;
+			--hero-muted: #475569;
+			--hero-border: #cbd5e1;
+			overflow: visible;
+			background: #fff;
+			box-shadow: none;
+			color: var(--hero-text);
+		}
+
+		.hero-eyebrow {
+			color: #475569;
+		}
+
+		.hero-spark,
+		.hero-ring-wrap::before {
+			display: none;
+		}
+
+		.ring-track {
+			stroke: #e2e8f0;
+		}
+
+		.ring-progress {
+			stroke: #4f46e5;
+		}
+
+		.score-ring-label {
+			color: #0f172a;
+		}
+
+		.score-ring-sub {
+			color: #475569;
+		}
+
+		.hero-compare {
+			border-color: #cbd5e1 !important;
+			background: transparent !important;
+			color: #0f172a !important;
+		}
+
+		.hero-topic {
+			color: #0f172a;
 		}
 	}
 
