@@ -53,3 +53,6 @@ npm_output.log
 # capacitor local web assets
 /dist
 /www
+
+# brainstorming visual companion mockups
+/.superpowers
