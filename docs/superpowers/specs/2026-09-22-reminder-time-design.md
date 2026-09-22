@@ -45,6 +45,9 @@ times (not asked for; complicates the dedupe/gap rules and the UI).
 - `push_subscription.reminder_hour SMALLINT NULL`, `CHECK (reminder_hour BETWEEN 0 AND 23)`;
   added both to the `CREATE TABLE` (fresh databases) and via the existing
   `ALTER TABLE … ADD COLUMN IF NOT EXISTS` pattern in `ensureStorageSchema`.
+  `SCHEMA_VERSION` is bumped (4 → 5): the schema replay is version-gated, so
+  without the bump existing databases would skip the ALTER and the queries
+  would fail on the missing column.
 - `push_subscription_archive` gets the same column (the archive table is created
   as `LIKE push_subscription`, so existing archives must be altered explicitly).
 - `archivePushSubscription` and the e2e cleanup insert switch from
