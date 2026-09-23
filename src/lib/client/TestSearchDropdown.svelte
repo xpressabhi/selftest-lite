@@ -11,6 +11,10 @@
 		onnavigate = () => {},
 		ongenerate = () => {},
 		onlistcount = () => {},
+		planTopic = '',
+		planCount = 0,
+		planState = '',
+		compact = false,
 	} = $props();
 
 	const SEARCH_DEBOUNCE_MS = 350;
@@ -39,6 +43,8 @@
 			? results.filter((test) => String(test.id) !== String(exactTestIdMatch.id))
 			: results
 	);
+	const hasMatches = $derived(Boolean(exactTestIdMatch) || otherResults.length > 0);
+	const stripResults = $derived(results.slice(0, compact ? 2 : STRIP_MAX_RESULTS));
 
 	async function fetchSearchList(q, offset, append) {
 		const controller = new AbortController();
@@ -178,8 +184,8 @@
 				{$t('plannerPastTestsCount', { count: results.length })}
 			</span>
 			<span class="strip-label" id="planner-past-tests-label">{$t('plannerPastTests')}</span>
-			<div class="strip-items">
-				{#each results.slice(0, STRIP_MAX_RESULTS) as test (test.id)}
+			<div class="strip-items" class:compact>
+				{#each stripResults as test (test.id)}
 					<button
 						class="strip-chip"
 						type="button"
@@ -265,10 +271,32 @@
 		{:else if status === 'done' && otherResults.length === 0 && !exactTestIdMatch && isSearchable}
 			<div class="dropdown-section">
 				<span class="dropdown-section-title">{$t('noTestsFound')}</span>
+			</div>
+		{:else if !isSearchable && otherResults.length === 0 && status === 'done'}
+			<div class="dropdown-section">
+				<span class="dropdown-empty">{$t('startTypingToGenerate')}</span>
+			</div>
+		{/if}
+
+		{#if trimmedQuery}
+			<div class="dropdown-footer">
+				{#if planTopic}
+					<div class="dropdown-plan">
+						<span class="dropdown-plan-label">{$t('plannerYourPlan')}</span>
+						<span class="dropdown-plan-value">
+							{planTopic}{planCount ? ` · ${planCount} ${$t('questionShort')}` : ''}
+						</span>
+						{#if planState}
+							<span class="dropdown-plan-state" class:is-ready={planState === 'ready'}>
+								{planState === 'ready' ? $t('previewStatusReady') : $t('plannerPreviewDraft')}
+							</span>
+						{/if}
+					</div>
+				{/if}
 				<button
 					class="dropdown-generate"
 					type="button"
-					onclick={() => ongenerate(trimmedQuery)}
+					onclick={() => ongenerate(trimmedQuery, hasMatches ? 'overlay-footer' : 'no-matches')}
 				>
 					<span class="generate-icon" aria-hidden="true">⚡</span>
 					<span class="generate-text">
@@ -276,10 +304,6 @@
 						<span class="generate-query">{trimmedQuery}</span>
 					</span>
 				</button>
-			</div>
-		{:else if !isSearchable && otherResults.length === 0 && status === 'done'}
-			<div class="dropdown-section">
-				<span class="dropdown-empty">{$t('startTypingToGenerate')}</span>
 			</div>
 		{/if}
 	</div>
@@ -377,6 +401,22 @@
 		flex-shrink: 0;
 		font-size: 0.7rem;
 		color: var(--text-muted);
+	}
+
+	/* Keyboard tiers keep the strip to a single scrollable row. */
+	.strip-items.compact {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.strip-items.compact::-webkit-scrollbar {
+		display: none;
+	}
+
+	.strip-items.compact .strip-chip {
+		flex: 0 0 auto;
+		max-width: 200px;
 	}
 
 	@keyframes dropdown-in {
@@ -482,6 +522,63 @@
 		text-align: left;
 		min-height: 56px;
 		transition: background 0.12s ease;
+	}
+
+	.dropdown-footer {
+		position: sticky;
+		bottom: 0;
+		z-index: 1;
+		background: var(--surface);
+		border-top: 1px solid var(--line);
+	}
+
+	.dropdown-plan {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 16px;
+		background: var(--surface-muted);
+	}
+
+	.dropdown-plan-label {
+		flex-shrink: 0;
+		font-size: 0.58rem;
+		font-weight: 800;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+
+	.dropdown-plan-value {
+		flex: 1;
+		min-width: 0;
+		font-size: 0.74rem;
+		font-weight: 700;
+		color: var(--text);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.dropdown-plan-state {
+		flex-shrink: 0;
+		padding: 3px 9px;
+		border-radius: 999px;
+		border: 1px solid var(--line);
+		background: var(--surface);
+		font-size: 0.58rem;
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+
+	.dropdown-plan-state.is-ready {
+		border-color: transparent;
+		background: rgba(16, 185, 129, 0.12);
+		color: #047857;
+	}
+
+	:global(.dark) .dropdown-plan-state.is-ready {
+		color: #6ee7b7;
 	}
 
 	.dropdown-generate:hover {

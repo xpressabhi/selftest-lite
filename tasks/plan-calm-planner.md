@@ -24,46 +24,46 @@ changes beyond new UI strings. E2E-first; artifact updated.
 
 ### Phase 1: Tests first (repo rule: failure modes, then code)
 
-- [ ] Task 1: `tests/e2e/planner-calm.e2e.js` — failing specs: no-fragment topic log, two-win commit,
-  strip+card coexistence, numeric-query isolation (zero preview requests), overlay footer + plan
-  status, density tiers (390×844 / 390×420 / 390×300), reduce-motion
-- [ ] Task 2: `src/lib/client/previewSettler.test.js` — the ten failure modes from the spec, written
+- [x] Task 1: `tests/e2e/planner-calm.e2e.js` — specs first: no-fragment topic log, settle hold +
+  strong-evidence commit, strip+card coexistence, numeric-query isolation (zero preview requests),
+  overlay footer + plan status, density tiers (390×844 / 390×420 / 390×300)
+- [x] Task 2: `src/lib/client/previewSettler.test.js` — the ten failure modes from the spec, written
   before the module
 
 ### Checkpoint: Tests
 
-- [ ] New specs fail for the right reason; existing suite still green
+- [x] New specs fail for the right reason; existing suite still green
 
 ### Phase 2: Pure logic
 
-- [ ] Task 3: `src/lib/client/previewSettler.js` (state, rules, adapters, constants)
-- [ ] Task 4: `src/lib/client/viewportTier.js` (`tierForHeight`, guarded height reader) + tests
+- [x] Task 3: `src/lib/client/previewSettler.js` (state, rules, adapters, constants)
+- [x] Task 4: `src/lib/client/viewportTier.js` (`tierForHeight`, guarded height reader) + tests
 
 ### Checkpoint: Logic
 
-- [ ] `npm run test` green (settler + tier + allowlist + locale parity)
+- [x] `npm run test` green (settler + tier + allowlist + locale parity)
 
 ### Phase 3: Wiring
 
-- [ ] Task 5: HomePage — settler in both preview paths, settle tick, reset points, provenance from
+- [x] Task 5: HomePage — settler in both preview paths, settle tick, reset points, provenance from
   committed values, density prop, `handleTestNavigate` cancels + resets
-- [ ] Task 6: PreviewCard — `settling` / `changedFields` props, pulse, dense/micro tier styles
-- [ ] Task 7: PlannerComposer + TestSearchDropdown — one-row strip in dense/micro, always-visible
+- [x] Task 6: PreviewCard — `settling` / `changedFields` props, pulse, dense/micro tier styles
+- [x] Task 7: PlannerComposer + TestSearchDropdown — one-row strip in dense/micro, always-visible
   overlay footer (plan status + plan action), arrow-key focus
-- [ ] Task 8: Locale keys EN + HI
+- [x] Task 8: Locale keys EN + HI
 
 ### Checkpoint: Wiring
 
-- [ ] `npm run lint` + `npm run test` green; manual pass on 390×844 / 390×420 / 390×300
+- [x] `npm run lint` + `npm run test` green; manual pass on 390×844 / 390×420 / 390×300
 
 ### Phase 4: Verification
 
-- [ ] Task 9: Full `npm run test:e2e` green, artifact written
-- [ ] Task 10: `npm run check` (build) + spec self-review + docs touch-up if drift
+- [x] Task 9: Full `npm run test:e2e` green, artifact written
+- [x] Task 10: `npm run check` (build) + spec self-review + docs touch-up if drift
 
 ### Checkpoint: Complete
 
-- [ ] All acceptance criteria met; committed in small conventional commits
+- [x] All acceptance criteria met; committed in small conventional commits
 
 ## Risks and Mitigations
 

@@ -20,6 +20,9 @@
 		parsingFailed = false,
 		draft = false,
 		checking = false,
+		settling = false,
+		density = 'full',
+		changedFields = [],
 		ongenerate = () => {},
 		oneditchip = () => {},
 		status = 'idle',
@@ -235,6 +238,10 @@
 	class="preview-card"
 	class:empty={EMPTY}
 	class:parsing-failed={parsingFailed}
+	class:settling
+	class:tier-full={density === 'full'}
+	class:tier-dense={density === 'dense'}
+	class:tier-micro={density === 'micro'}
 	bind:this={cardRef}
 >
 	<div class="preview-top">
@@ -394,10 +401,12 @@
 							{examSubline}
 						</div>
 					{/if}
-					{#if showNote}
-						<p class="preview-note">{$t('smartIntentParsed')}</p>
-					{:else if parsingFailed}
+					{#if parsingFailed}
 						<p class="preview-note is-warning">{$t('intentParseFailed')}</p>
+					{:else if settling}
+						<p class="preview-note is-refining">{$t('plannerSettlingNote')}</p>
+					{:else if showNote}
+						<p class="preview-note">{$t('smartIntentParsed')}</p>
 					{/if}
 				</div>
 			</div>
@@ -406,6 +415,7 @@
 				<button
 					class="spec-tile"
 					class:active={showQuestionsPicker}
+					class:changed={changedFields.includes('numQuestions')}
 					type="button"
 					aria-expanded={showQuestionsPicker}
 					aria-controls="preview-picker-panel"
@@ -430,6 +440,7 @@
 				<button
 					class="spec-tile"
 					class:active={showFormatPicker}
+					class:changed={changedFields.includes('testType')}
 					type="button"
 					aria-expanded={showFormatPicker}
 					aria-controls="preview-picker-panel"
@@ -454,6 +465,7 @@
 				<button
 					class="spec-tile"
 					class:active={showDifficultyPicker}
+					class:changed={changedFields.includes('difficulty')}
 					type="button"
 					aria-expanded={showDifficultyPicker}
 					aria-controls="preview-picker-panel"
@@ -478,6 +490,7 @@
 				<button
 					class="spec-tile"
 					class:active={showLanguagePicker}
+					class:changed={changedFields.includes('language')}
 					type="button"
 					aria-expanded={showLanguagePicker}
 					aria-controls="preview-picker-panel"
@@ -507,6 +520,7 @@
 					<button
 						class="spec-tile spec-tile-exam"
 						class:active={showExamPicker}
+						class:changed={changedFields.includes('examId')}
 						type="button"
 						aria-expanded={showExamPicker}
 						aria-controls="preview-picker-panel"
@@ -1353,5 +1367,135 @@
 			opacity: 1;
 			transform: translateY(-3px);
 		}
+	}
+
+	/* --- Settling (calm preview) --- */
+	.preview-card.settling {
+		border-style: dashed;
+	}
+
+	.preview-card.settling::before {
+		opacity: 0.45;
+	}
+
+	.preview-note.is-refining {
+		color: rgb(var(--brand-text-rgb));
+	}
+
+	.spec-tile.changed {
+		animation: tile-commit 600ms ease;
+	}
+
+	@keyframes tile-commit {
+		0% {
+			background: rgba(var(--brand-rgb), 0.16);
+			border-color: rgb(var(--brand-rgb));
+		}
+		100% {
+			background: var(--surface-muted);
+			border-color: var(--line);
+		}
+	}
+
+	:global(html.data-saver) .spec-tile.changed,
+	:global(html.reduce-motion) .spec-tile.changed {
+		animation: none;
+	}
+
+	/* --- Keyboard tiers: all four tiles stay, only the density changes. --- */
+	.preview-card.tier-dense {
+		padding: 10px 11px 9px;
+		border-radius: 17px;
+	}
+
+	.preview-card.tier-dense .preview-top {
+		margin-bottom: 7px;
+	}
+
+	.preview-card.tier-dense .preview-topic-icon {
+		width: 32px;
+		height: 32px;
+		border-radius: 11px;
+	}
+
+	.preview-card.tier-dense .preview-topic-icon svg {
+		width: 17px;
+		height: 17px;
+	}
+
+	.preview-card.tier-dense .preview-topic-main {
+		font-size: 0.96rem;
+	}
+
+	.preview-card.tier-dense .preview-note {
+		font-size: 0.68rem;
+	}
+
+	.preview-card.tier-dense .preview-specs {
+		gap: 6px;
+		margin-top: 9px;
+	}
+
+	.preview-card.tier-dense .spec-tile {
+		min-height: 44px;
+		padding: 6px 9px;
+		border-radius: 11px;
+	}
+
+	.preview-card.tier-dense .spec-value {
+		font-size: 0.78rem;
+	}
+
+	.preview-card.tier-dense .spec-label {
+		font-size: 0.55rem;
+	}
+
+	.preview-card.tier-dense .preview-footer {
+		margin-top: 9px;
+	}
+
+	.preview-card.tier-dense .preview-reassurance,
+	.preview-card.tier-micro .preview-reassurance {
+		display: none;
+	}
+
+	.preview-card.tier-micro {
+		padding: 8px 9px 8px;
+		border-radius: 15px;
+	}
+
+	.preview-card.tier-micro .preview-topic-icon {
+		display: none;
+	}
+
+	.preview-card.tier-micro .preview-topic-main {
+		font-size: 0.92rem;
+	}
+
+	.preview-card.tier-micro .preview-specs {
+		gap: 5px;
+		margin-top: 8px;
+	}
+
+	.preview-card.tier-micro .spec-tile {
+		min-height: 44px;
+		padding: 5px 8px;
+		border-radius: 10px;
+	}
+
+	.preview-card.tier-micro .spec-value {
+		font-size: 0.74rem;
+	}
+
+	.preview-card.tier-micro .spec-label {
+		display: none;
+	}
+
+	.preview-card.tier-micro .preview-footer {
+		margin-top: 8px;
+	}
+
+	.preview-card.tier-micro .generate-time {
+		display: none;
 	}
 </style>

@@ -7,12 +7,21 @@
 	import { track } from '$lib/client/telemetry';
 	import {
 		PREVIEW_DEBOUNCE_MS,
-		buildLocalPlanPatch,
 		buildLocalPreview,
 		isMeaningfulPreview,
 		needsJevPreview,
 		shouldRunPreview,
 	} from '$lib/client/livePreview';
+	import {
+		SETTLE_TICK_MS,
+		candidatesFromLocal,
+		candidatesFromPlan,
+		createSettleState,
+		hasPendingChallenger,
+		resetSettleState,
+		settlePreview,
+	} from '$lib/client/previewSettler';
+	import { observeViewportTier } from '$lib/client/viewportTier';
 	import { parseSseBuffer, streamErrorToError } from '$lib/client/sse';
 	import {
 		getBookmarkedExamIds,
@@ -77,6 +86,12 @@
 	let lastPreviewAt = 0;
 	let previewPausedUntil = 0;
 	let lastLocalPreviewText = '';
+	// Calm-preview state: which candidates may reach the card (see previewSettler).
+	let settleState = $state(createSettleState());
+	let settleTickTimer = null;
+	let committedPulseFields = $state([]);
+	let committedPulseTimer = null;
+	let planDensity = $state('full');
 
 	const plannerExamples = [
 		{ key: 'plannerExample1' },
@@ -176,6 +191,9 @@
 	const showPlanCard = $derived(
 		Boolean(topic.trim() || examId || parsedFromIntent || intentParseFailed)
 	);
+	// A pending preview challenger keeps the card in its settling (draft) state.
+	const settling = $derived(hasPendingChallenger(settleState));
+	const planCardState = $derived(settling ? 'draft' : parsedFromIntent ? 'ready' : '');
 
 	// Derived so the meta strings re-render when the UI language changes,
 	// instead of being frozen at mount time. Displayed oldest-first (newest
@@ -475,35 +493,72 @@
 		previewAbort?.abort();
 		previewAbort = null;
 		window.clearTimeout(previewTimer);
+		window.clearTimeout(settleTickTimer);
 		previewStatus = 'idle';
 	}
 
-	function applyLocalPreviewFor(text) {
+	/** Applies the settled (committed) preview fields; previews never clear values. */
+	function applyCommittedPlan(committed) {
+		if (!committed) return;
+		if (committed.topic) topic = committed.topic;
+		if (committed.testType) testType = committed.testType;
+		if (committed.difficulty) difficulty = committed.difficulty;
+		if (committed.numQuestions) numQuestions = committed.numQuestions;
+		if (committed.language) paperLanguage = committed.language;
+		if (committed.examId) {
+			isFullExam = true;
+			examId = committed.examId;
+			// The preview must match what generation will produce: full exams
+			// use the exam's default question count.
+			const exam = getIndianExamById(committed.examId);
+			if (exam?.defaultNumQuestions) {
+				numQuestions = Number(exam.defaultNumQuestions);
+			}
+		}
+	}
+
+	/** One-shot highlight for the tiles a commit changed. */
+	function pulseCommittedFields(changedFields) {
+		if (!changedFields || changedFields.length === 0) return;
+		committedPulseFields = [...changedFields];
+		window.clearTimeout(committedPulseTimer);
+		committedPulseTimer = window.setTimeout(() => {
+			committedPulseFields = [];
+		}, 700);
+	}
+
+	/**
+	 * Folds one local preview into the settle state and applies only the
+	 * committed fields. `allowTick` schedules the quiet local re-run that gives
+	 * a pending challenger its second win; the tick itself never re-schedules.
+	 */
+	function settleLocalText(text, { allowTick = true } = {}) {
 		const local = buildLocalPreview(text);
 		if (!local) return null;
-		const patch = buildLocalPlanPatch(local, plannerDraft.explicit);
-		if (patch) {
-			if (patch.topic) topic = patch.topic;
-			if (patch.examId) {
-				examId = patch.examId;
-				isFullExam = true;
-				// The preview must match what generation will produce: full
-				// exams use the exam's default question count.
-				const exam = getIndianExamById(patch.examId);
-				if (exam?.defaultNumQuestions) {
-					numQuestions = Number(exam.defaultNumQuestions);
-				}
-			}
-			if (patch.difficulty) difficulty = patch.difficulty;
-			if (patch.language) paperLanguage = patch.language;
-			if (patch.testType) testType = patch.testType;
-			if (patch.numQuestions) numQuestions = patch.numQuestions;
-			// The local tier just shaped the plan: record it so the intent
-			// capture explains where the fields came from.
+		const result = settlePreview(settleState, {
+			source: 'local',
+			text: local.text,
+			candidates: candidatesFromLocal(local),
+			explicit: plannerDraft.explicit,
+		});
+		settleState = result.state;
+		applyCommittedPlan(result.committed);
+		pulseCommittedFields(result.changedFields);
+		if (result.changedFields.length > 0) {
+			lastParseMode = 'preview';
+		}
+		if (result.committed.topic) {
 			lastTopicSource = 'local';
 			lastFieldConfidence = null;
-			lastParseMode = 'preview';
-			if (isMeaningfulPreview(local)) parsedFromIntent = true;
+		}
+		if (isMeaningfulPreview(local) && result.committed.topic) {
+			parsedFromIntent = true;
+		}
+		if (result.status === 'settling' && allowTick) {
+			window.clearTimeout(settleTickTimer);
+			settleTickTimer = window.setTimeout(() => {
+				settleLocalText(local.text, { allowTick: false });
+			}, SETTLE_TICK_MS);
 		}
 		if (!needsJevPreview(local)) {
 			previewStatus = 'ready';
@@ -513,10 +568,16 @@
 					source: 'local',
 					ok: true,
 					hasTopic: Boolean(local.topic),
+					settled: result.changedFields.length > 0,
+					heldFields: Object.keys(result.held).length,
 				});
 			}
 		}
 		return local;
+	}
+
+	function applyLocalPreviewFor(text) {
+		return settleLocalText(text, { allowTick: true });
 	}
 
 	function maybeRunJevPreview(text) {
@@ -589,22 +650,41 @@
 			});
 			// A preview whose topic is only the raw in-progress text must not
 			// surface the card as if a subject had been resolved.
-			applyPlannerPlan(
-				plan && !meaningful ? { ...plan, topic: '' } : plan,
-				{ markParsed: meaningful }
-			);
-			lastTopicSource = typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
-			lastFieldConfidence =
-				data.fieldConfidence && typeof data.fieldConfidence === 'object'
-					? data.fieldConfidence
-					: lastFieldConfidence;
-			lastParseMode = 'preview';
+			const candidates = candidatesFromPlan(plan, data.fieldConfidence);
+			if (!meaningful) {
+				delete candidates.topic;
+			}
+			const result = settlePreview(settleState, {
+				source: 'jev',
+				text,
+				candidates,
+				explicit: plannerDraft.explicit,
+			});
+			settleState = result.state;
+			applyCommittedPlan(result.committed);
+			pulseCommittedFields(result.changedFields);
+			if (result.changedFields.length > 0) {
+				lastParseMode = 'preview';
+			}
+			if (result.committed.topic) {
+				lastTopicSource =
+					typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
+				lastFieldConfidence =
+					data.fieldConfidence && typeof data.fieldConfidence === 'object'
+						? data.fieldConfidence
+						: lastFieldConfidence;
+			}
+			if (meaningful && result.committed.topic) {
+				parsedFromIntent = true;
+			}
 			previewStatus = 'ready';
 			track('intent:preview', {
 				source: 'jev',
 				ok: true,
 				latencyMs: latency(),
-				hasTopic: Boolean(data.plan?.topic),
+				hasTopic: Boolean(result.committed.topic),
+				settled: result.changedFields.length > 0,
+				heldFields: Object.keys(result.held).length,
 				inputTokens: Number(data.usage?.input_tokens) || 0,
 			});
 		} catch (err) {
@@ -624,8 +704,9 @@
 	$effect(() => {
 		const text = intentValue;
 		if (typeof window === 'undefined') return;
-		const local = untrack(() => applyLocalPreviewFor(text));
 		window.clearTimeout(previewTimer);
+		window.clearTimeout(settleTickTimer);
+		const local = untrack(() => applyLocalPreviewFor(text));
 		const trimmed = String(text || '').trim();
 		if (!trimmed) return;
 		// Nothing to ask the model when the local tier already resolved every
@@ -635,6 +716,14 @@
 			void maybeRunJevPreview(trimmed);
 		}, PREVIEW_DEBOUNCE_MS);
 		return () => window.clearTimeout(previewTimer);
+	});
+
+	// Density tier follows the visual viewport, so the plan card and the search
+	// strip stay usable while the mobile keyboard halves the screen.
+	$effect(() => {
+		return observeViewportTier((tier) => {
+			planDensity = tier;
+		});
 	});
 
 	async function runPlannerTurn(intentText) {
@@ -673,6 +762,11 @@
 			} else {
 				applyPlannerPlan(plan);
 			}
+			// A submitted turn is authoritative: drop preview challengers and the
+			// quiet re-check so the card reflects the negotiated plan only.
+			settleState = resetSettleState();
+			committedPulseFields = [];
+			window.clearTimeout(settleTickTimer);
 			plannerDraft = applyTurnResult(plannerDraft, data);
 			persistPlannerDraft();
 			intentStatus = 'done';
@@ -779,6 +873,8 @@
 
 	function resetPlanner() {
 		cancelPlannerPreview();
+		settleState = resetSettleState();
+		committedPulseFields = [];
 		lastPreviewText = '';
 		lastLocalPreviewText = '';
 		plannerDraft = createPlannerDraft();
@@ -804,6 +900,14 @@
 		if (PLANNER_PLAN_FIELDS.includes(field)) {
 			plannerDraft = markPlanEdited(plannerDraft, snapshotPlan(), field);
 			persistPlannerDraft();
+			// The edit locks the field: drop any preview challenger for it so the
+			// card stops advertising a value the user just overrode.
+			settleState = settlePreview(settleState, {
+				source: 'local',
+				text: intentValue,
+				candidates: {},
+				explicit: { [field]: true },
+			}).state;
 		}
 	}
 
@@ -1201,6 +1305,11 @@
 	}
 
 	function handleTestNavigate(testId) {
+		// Tapping a past test leaves the planner: stop in-flight previews and
+		// forget half-settled values so coming back never shows a stale plan.
+		cancelPlannerPreview();
+		settleState = resetSettleState();
+		committedPulseFields = [];
 		track('history:open-test', { id: testId, source: 'planner' });
 		void goto(`/test?id=${testId}`);
 	}
@@ -1299,6 +1408,9 @@
 				parsingFailed={intentParseFailed}
 				draft={plannerDraft.messages.length === 0}
 				checking={previewStatus === 'checking' || intentStatus === 'parsing'}
+				settling={settling}
+				density={planDensity}
+				changedFields={committedPulseFields}
 				ongenerate={handleGenerate}
 				oneditchip={handlePlannerChipEdit}
 				disabled={status === 'loading'}
@@ -1329,6 +1441,10 @@
 				onnavigate={handleTestNavigate}
 				disabled={status === 'loading' || isOffline}
 				status={intentStatus}
+				planTopic={topic}
+				planCount={numQuestions}
+				planState={planCardState}
+				{planDensity}
 			/>
 		</div>
 		<div class="daily-five-row mb-4">

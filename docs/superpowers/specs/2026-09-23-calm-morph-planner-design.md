@@ -50,10 +50,10 @@ API:
 
 - `createSettleState()` — empty state.
 - `settlePreview(state, { source, text, candidates, explicit })` → `{ state, committed, held,
-  changedFields, contested, status }` where `candidates` is `{ field: { value, strong } }`.
+  changedFields, status }` where `candidates` is `{ field: { value, strong } }`.
 - `candidatesFromLocal(local)` / `candidatesFromPlan(plan, fieldConfidence)` — adapters.
-- `resetSettleState(state)`.
-- `settleTickMs` constant (400ms) used by HomePage's quiet re-check.
+- `resetSettleState()`.
+- `SETTLE_TICK_MS` constant (400ms) used by HomePage's quiet re-check.
 
 Resolution order per field:
 
@@ -111,8 +111,8 @@ overlay on search tap (fits the remaining visual viewport, sticky footer). Rules
 4. Enter = plan, tap = open. ArrowDown focuses results; Enter opens the focused result; Escape
    returns focus to the input.
 5. Navigation cancels previews and resets settle state.
-6. Announcement discipline: plan commits announce once via the status pill; the strip's count
-   announcement stays (already debounced). No double narration.
+6. Announcement discipline: commits are rare now, so the thread's `role="log"` live region no
+   longer narrates every keystroke; the strip's debounced count announcement stays.
 7. Data saver: strip hidden (existing), overlay available, no pulses/transitions.
 
 ## 6. Keyboard viewport tiers
@@ -121,22 +121,26 @@ Measured from `window.visualViewport?.height ?? window.innerHeight` via
 `src/lib/client/viewportTier.js` (`tierForHeight(h)` pure: `<360px` → `micro`, `<480px` → `dense`,
 else `full`). HomePage passes the tier to `PreviewCard`; `PlannerComposer` uses it for the strip.
 
-- **full** — current card (52px tiles, labels, reassurance line).
-- **dense** — tiles 34px, tighter radius/gaps, one type step down; everything stays visible
-  (topic, status, all four tiles, Generate).
-- **micro** — tiles 28px; the Generate label may shorten; strip shows one chip; same localized
-  labels at smaller sizes (no invented abbreviations).
+- **full** — current card (58px tiles, labels, reassurance line).
+- **dense** — tighter padding, radius and gaps, one type step down, reassurance line dropped;
+  tiles keep a **44px** minimum height (tap-target rule), so everything stays visible (topic,
+  status, all four tiles, Generate).
+- **micro** — padding/fonts step down again, tile labels hidden (each tile keeps its localized
+  `aria-label`), the Generate subtitle drops, strip shows one chip; tiles still keep the 44px
+  tap target.
 - Tiles never disappear; the tier change is a single CSS transition, instant under
   `.reduce-motion` / `.data-saver`.
 - E2E emulates keyboard-open by setting viewport sizes (390×844 full, 390×420 dense, 390×300 micro).
 
 ## 7. UI choreography
 
-CSS-only (no motion dependency): the card's readiness accent/elevation uses the app's existing
-cubic-bezier vocabulary; state crossfades (checking → settling → ready) are opacity/border
-transitions; committed fields get a 600ms tile pulse. All transitions are skipped under
-`.reduce-motion` / `.data-saver`. Spring physics can be layered later via `svelte/motion` (part of
-Svelte, not a new dependency) if the CSS feel is not enough.
+CSS-only (no motion dependency): the settling state is a dashed edge, a 45%-opacity accent bar and
+a "Refining — keeping your last values" note; a committed field gets a 600ms tile pulse; the tier
+change transitions padding/type scale with the app's cubic-bezier easing. All transitions are
+skipped under `.reduce-motion` / `.data-saver`. The sticky overlay footer keeps the plan status and
+the plan action visible while results scroll. Readiness-weighted elevation and spring physics can be
+layered later via `svelte/motion` (part of Svelte, not a new dependency) if the CSS feel is not
+enough.
 
 ## 8. Telemetry
 
@@ -148,9 +152,10 @@ unchanged.
 ## 9. Testing
 
 - E2E first (`tests/e2e/planner-calm.e2e.js`): no-fragment typing (MutationObserver topic log),
-  settle hold + two-win commit, search strip and plan card visible simultaneously, numeric query
-  with zero preview requests and an untouched card, overlay footer + plan status, density tiers at
-  the three viewport sizes, reduce-motion. Evidence attaches to `test-results/e2e-artifact.json`.
+  settle hold + strong-evidence commit, search strip and plan card visible simultaneously, numeric
+  query with zero preview requests and an untouched card, overlay footer + plan status, density
+  tiers at the three viewport sizes. Evidence attaches to `test-results/e2e-artifact.json`.
+  Reduce-motion and data-saver behaviour stays CSS-only, covered by the existing class toggles.
 - Isolated unit tests for the settle module only, failure modes listed above, written before the
   module. No after-the-fact unit tests.
 

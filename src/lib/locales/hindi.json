@@ -952,6 +952,8 @@
 	"characterCount": "{count} में से {max} अक्षर",
 	"plannerPreviewDraft": "प्रीव्यू",
 	"plannerPreviewChecking": "जाँच हो रही है…",
+	"plannerSettlingNote": "सुधार हो रहा है — पिछले मान सुरक्षित हैं",
+	"plannerYourPlan": "आपका प्लान",
 	"plannerEnterToPlan": "नया टेस्ट प्लान करने के लिए Enter दबाएं",
 	"plannerExample1": "कक्षा 10 भौतिकी: प्रकाशिकी पर कठिन क्विज़",
 	"plannerExample2": "इंटरव्यू की तैयारी के लिए JavaScript array के 20 सवाल",

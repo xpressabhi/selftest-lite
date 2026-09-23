@@ -952,6 +952,8 @@
 	"characterCount": "{count} of {max} characters",
 	"plannerPreviewDraft": "Preview",
 	"plannerPreviewChecking": "Checking…",
+	"plannerSettlingNote": "Refining — keeping your last values",
+	"plannerYourPlan": "Your plan",
 	"plannerEnterToPlan": "Press Enter to plan a new test instead",
 	"plannerExample1": "A hard class 10 physics quiz on optics",
 	"plannerExample2": "20 JavaScript array questions for interview prep",

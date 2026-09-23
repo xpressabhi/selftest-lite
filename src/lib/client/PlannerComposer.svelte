@@ -13,6 +13,10 @@
 		value = $bindable(''),
 		disabled = false,
 		status = 'idle',
+		planTopic = '',
+		planCount = 0,
+		planState = '',
+		planDensity = 'full',
 		onsubmit = () => {},
 		onnavigate = () => {},
 	} = $props();
@@ -188,11 +192,11 @@
 		onsubmit(trimmedValue);
 	}
 
-	function handleGenerateNew(query) {
+	function handleGenerateNew(query, source = 'no-matches') {
 		const next = String(query || '').trim();
 		if (!next) return;
 		closeSearch();
-		track('search:submit', { mode: 'generate', source: 'no-matches' });
+		track('search:submit', { mode: 'generate', source });
 		onsubmit(next);
 	}
 
@@ -247,6 +251,24 @@
 		if (event.key === 'Escape' && searchOpen) {
 			event.preventDefault();
 			closeSearch();
+			// Rows can hold focus when the overlay closes; hand it back to the input.
+			inputRef?.focus();
+			return;
+		}
+		// ArrowDown drops into the results (strip chips or overlay rows) so the
+		// keyboard can open a past test without touching the pointer. Only when
+		// the focus is already inside the composer.
+		if (event.key === 'ArrowDown' && !event.altKey && !event.metaKey && !event.ctrlKey) {
+			if (typeof document === 'undefined') return;
+			const active = document.activeElement;
+			if (!wrapperRef || !active || !wrapperRef.contains(active)) return;
+			const firstResult = wrapperRef.querySelector(
+				'.search-dropdown .dropdown-result, .search-dropdown .dropdown-generate, .search-strip .strip-chip'
+			);
+			if (firstResult) {
+				event.preventDefault();
+				firstResult.focus();
+			}
 		}
 	}
 
@@ -366,6 +388,10 @@
 				onnavigate={handleResultNavigate}
 				ongenerate={handleGenerateNew}
 				onlistcount={(n) => (listCount = n)}
+				{planTopic}
+				{planCount}
+				{planState}
+				compact={planDensity !== 'full'}
 			/>
 		{/if}
 	</div>
