@@ -31,6 +31,7 @@
 	import { flushPendingAttempts, startStateSync } from '$lib/client/sync';
 	import { showToast, toast } from '$lib/client/toast';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import Toast from '$lib/client/Toast.svelte';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 	import { SITE_ORIGIN, languageHref, localizedPath } from '$lib/shared/seo';
@@ -278,15 +279,25 @@
 		const timer = window.setTimeout(() => {
 			showInstallHint = false;
 		}, 10000);
-		const hideOnScroll = () => {
-			if (window.scrollY > 150) {
-				showInstallHint = false;
-			}
-		};
-		window.addEventListener('scroll', hideOnScroll, { passive: true });
+		// Hide once the user scrolls past the top: the sentinel sits at the
+		// document top, and the expanded top root margin means it stops
+		// intersecting after ~150px of scroll. No scroll listener.
+		let observer;
+		const sentinel = document.querySelector('.scroll-sentinel');
+		if (sentinel && typeof IntersectionObserver !== 'undefined') {
+			observer = new IntersectionObserver(
+				([entry]) => {
+					if (!entry.isIntersecting) {
+						showInstallHint = false;
+					}
+				},
+				{ rootMargin: '150px 0px 0px 0px' }
+			);
+			observer.observe(sentinel);
+		}
 		return () => {
 			window.clearTimeout(timer);
-			window.removeEventListener('scroll', hideOnScroll);
+			observer?.disconnect();
 		};
 	});
 
@@ -496,7 +507,7 @@
 						title={$t('dataSaver')}
 						onclick={toggleDataSaver}
 					>
-						<span aria-hidden="true">⌁</span>
+						<Icon name="gauge" />
 					</button>
 					<button
 						class="header-icon"
@@ -504,7 +515,7 @@
 						aria-label={$t('switchLanguageAria')}
 						onclick={toggleLanguage}
 					>
-						<span aria-hidden="true">◎</span>
+						<Icon name="globe" />
 					</button>
 					<button
 						class="header-icon"
@@ -512,10 +523,10 @@
 						aria-label={$t('toggleThemeAria')}
 						onclick={toggleTheme}
 					>
-						<span aria-hidden="true">{$themePreference === 'dark' ? '☀' : '☾'}</span>
+						<Icon name={$themePreference === 'dark' ? 'sun' : 'moon'} />
 					</button>
 					<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
-						<span aria-hidden="true">◷</span>
+						<Icon name="clock" />
 					</a>
 					{#if $user}
 						<div class="user-menu-wrap">
@@ -556,10 +567,10 @@
 										<div class="small text-muted">{$t('signedInAs')}</div>
 									</div>
 									<a href="/history" onclick={() => (showUserMenu = false)}
-										>◷ {$t('history')}</a
+										><Icon name="clock" size={18} /> {$t('history')}</a
 									>
 									<button type="button" onclick={handleSignOut}
-										>⏻ {$t('signOut')}</button
+										><Icon name="logout" size={18} /> {$t('signOut')}</button
 									>
 								</div>
 							{/if}
@@ -571,7 +582,7 @@
 							aria-label={$t('signIn')}
 							onclick={() => (showSignInModal = true)}
 						>
-							<span aria-hidden="true">▣</span>
+							<Icon name="login" />
 						</button>
 					{/if}
 					<button
@@ -582,7 +593,7 @@
 						aria-controls="mobile-nav-menu"
 						onclick={() => (isMenuOpen = !isMenuOpen)}
 					>
-						<span aria-hidden="true">☰</span>
+						<Icon name="menu" size={22} />
 					</button>
 				</div>
 			</nav>
@@ -610,15 +621,17 @@
 					<div class="menu-section-label">{$t('menuSectionActions')}</div>
 					{#if $user}
 						<a href="/profile" onclick={() => (isMenuOpen = false)}
-							>☺ {$t('profileMenuLabel')}</a
+							><Icon name="user" size={18} /> {$t('profileMenuLabel')}</a
 						>
 					{/if}
-					<a href="/history" onclick={() => (isMenuOpen = false)}>◷ {$t('history')}</a>
+					<a href="/history" onclick={() => (isMenuOpen = false)}
+						><Icon name="clock" size={18} /> {$t('history')}</a
+					>
 					<button
 						type="button"
 						class:active={$isDataSaverActive}
 						aria-pressed={$isDataSaverActive}
-						onclick={toggleDataSaver}>⌁ {$t('dataSaver')}</button
+						onclick={toggleDataSaver}><Icon name="gauge" size={18} /> {$t('dataSaver')}</button
 					>
 					{#if $user}
 						<button
@@ -627,7 +640,7 @@
 							onclick={() => {
 								isMenuOpen = false;
 								void handleSignOut();
-							}}>⏻ {$t('signOut')}</button
+							}}><Icon name="logout" size={18} /> {$t('signOut')}</button
 						>
 					{:else if !$isAuthLoading}
 						<button
@@ -635,7 +648,7 @@
 							onclick={() => {
 								isMenuOpen = false;
 								showSignInModal = true;
-							}}>▣ {$t('signIn')}</button
+							}}><Icon name="login" size={18} /> {$t('signIn')}</button
 						>
 					{/if}
 				</nav>
@@ -717,6 +730,7 @@
 		ontouchmove={handleTouchMove}
 		ontouchend={handleTouchEnd}
 	>
+		<div class="scroll-sentinel" aria-hidden="true"></div>
 		{@render children()}
 	</main>
 
@@ -726,20 +740,20 @@
 				class:active={activePath === '/'}
 				href={localizedPath('/', $activeLanguage)}
 				aria-current={activePath === '/' ? 'page' : undefined}
-				><span aria-hidden="true">⌂</span>{$t('homeTab')}</a
+				><Icon name="home" size={18} />{$t('homeTab')}</a
 			>
 			<a
 				class:active={activePath === '/bookmarks'}
 				href="/bookmarks"
 				aria-current={activePath === '/bookmarks' ? 'page' : undefined}
-				><span aria-hidden="true">☆</span>{$t('bookmarksTab')}</a
+				><Icon name="bookmark" size={18} />{$t('bookmarksTab')}</a
 			>
-			<a class="create-tab" href={localizedPath('/', $activeLanguage)}><span aria-hidden="true">＋</span>{$t('createTab')}</a>
+			<a class="create-tab" href={localizedPath('/', $activeLanguage)}><Icon name="plus" size={20} />{$t('createTab')}</a>
 			<a
 				class:active={activePath === '/history'}
 				href="/history"
 				aria-current={activePath === '/history' ? 'page' : undefined}
-				><span aria-hidden="true">◷</span>{$t('historyTab')}</a
+				><Icon name="clock" size={18} />{$t('historyTab')}</a
 			>
 		</nav>
 	{/if}
@@ -762,7 +776,7 @@
 					<a href={localizedPath('/terms', $activeLanguage)}>{$t('terms')}</a>
 				</nav>
 				<p class="footer-copy small text-muted">
-					© {new Date().getFullYear()} selftest.in — {$t('allRightsReserved')}
+					© {new Date().getFullYear()} selftest.in · {$t('allRightsReserved')}
 				</p>
 			</div>
 		</footer>
@@ -796,7 +810,7 @@
 				aria-label={$t('close')}
 				onclick={() => (showSignInModal = false)}
 			>
-				×
+				<Icon name="close" size={22} />
 			</button>
 			<div class="h5 fw-bold mb-1">{$t('signInTitle')}</div>
 			<p class="text-muted small">{$t('signInBody')}</p>
@@ -815,19 +829,25 @@
 <style>
 	.app-shell {
 		min-height: 100vh;
+		min-height: 100dvh;
 		background: var(--surface-muted);
 		color: var(--text);
+	}
+
+	.scroll-sentinel {
+		height: 1px;
+		margin-bottom: -1px;
 	}
 
 	.skip-link {
 		position: fixed;
 		top: -48px;
 		left: 12px;
-		z-index: 1200;
+		z-index: var(--z-skip);
 		padding: 8px 12px;
-		border-radius: 0 0 8px 8px;
+		border-radius: 0 0 var(--radius-control) var(--radius-control);
 		background: var(--color-brand-600);
-		color: #fff;
+		color: var(--on-brand);
 		font-weight: 700;
 		text-decoration: none;
 	}
@@ -839,7 +859,7 @@
 	.app-header {
 		position: sticky;
 		top: 0;
-		z-index: 1040;
+		z-index: var(--z-header);
 	}
 
 	.header-inner {
@@ -1067,7 +1087,7 @@
 		right: 0;
 		bottom: 0;
 		left: 0;
-		z-index: 1030;
+		z-index: var(--z-bottom-nav);
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		padding: 0 8px calc(6px + var(--sab, env(safe-area-inset-bottom, 0px)));
@@ -1097,11 +1117,6 @@
 		font-weight: 700;
 	}
 
-	.bottom-nav span {
-		font-size: 1rem;
-		line-height: 1;
-	}
-
 	.create-tab {
 		color: var(--brand-text) !important;
 		font-weight: 700;
@@ -1116,21 +1131,21 @@
 	.connection-banner {
 		position: sticky;
 		top: 56px;
-		z-index: 1025;
+		z-index: var(--z-banner);
 		display: flex;
 		min-height: 44px;
 		align-items: center;
 		justify-content: center;
 		gap: 12px;
 		padding: 8px 16px;
-		color: #fff;
+		color: var(--on-brand);
 		font-size: 0.9rem;
 		font-weight: 600;
 		text-align: center;
 	}
 
 	.offline-banner {
-		background: #b45309;
+		background: var(--warn-fill);
 	}
 
 	.pwa-install-hint {
@@ -1138,14 +1153,14 @@
 		right: 12px;
 		bottom: calc(76px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		left: 12px;
-		z-index: 1040;
+		z-index: var(--z-header);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
 		padding: 12px;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
 	}
@@ -1188,11 +1203,11 @@
 		position: absolute;
 		top: calc(100% + 8px);
 		right: 0;
-		z-index: 1080;
+		z-index: var(--z-dropdown);
 		min-width: 220px;
 		padding: 8px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
 	}
@@ -1212,7 +1227,7 @@
 		gap: 8px;
 		padding: 10px;
 		border: 0;
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 		background: transparent;
 		color: inherit;
 		font-size: 0.9rem;
@@ -1233,7 +1248,7 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 1120;
+		z-index: var(--z-modal-backdrop);
 		display: block;
 		width: 100%;
 		height: 100%;
@@ -1246,13 +1261,13 @@
 		position: fixed;
 		top: 50%;
 		left: 50%;
-		z-index: 1121;
+		z-index: var(--z-modal);
 		translate: -50% -50%;
 		width: calc(100% - 40px);
 		max-width: 400px;
 		padding: 22px 20px 18px;
 		border: 1px solid var(--line);
-		border-radius: 12px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
 		text-align: center;
@@ -1277,12 +1292,12 @@
 		position: fixed;
 		top: calc(58px + var(--sat, env(safe-area-inset-top, 0px)));
 		left: 50%;
-		z-index: 1060;
+		z-index: var(--z-overlay);
 		min-height: 34px;
 		padding: 7px 14px;
 		border-radius: 999px;
 		background: var(--color-brand-600);
-		color: #fff;
+		color: var(--on-brand);
 		font-size: 0.8rem;
 		font-weight: 700;
 		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);

@@ -27,6 +27,14 @@ body {
 	}
 }
 
+/* Shape scale. One documented system for the whole app:
+   - control  (buttons, inputs, chips)  10px
+   - surface  (cards, panels, alerts)   12px
+   - overlay  (menus, sheets, modals)   16px
+   - pill     (badges, filters, tabs)   full
+   Components use the generated `rounded-control` / `rounded-surface` /
+   `rounded-overlay` utilities or the matching CSS variables. Do not invent
+   page-local radii. */
 @theme {
 	--color-brand-50: #eef2ff;
 	--color-brand-100: #e0e7ff;
@@ -34,10 +42,11 @@ body {
 	--color-brand-500: #6366f1;
 	--color-brand-600: #4f46e5;
 	--color-brand-700: #4338ca;
-	--color-ai-glow: #818cf8;
+	--radius-control: 10px;
+	--radius-surface: 12px;
+	--radius-overlay: 16px;
 	--animate-thinking-dot: thinking-dot 1.4s ease-in-out infinite;
 	--animate-shimmer: shimmer 2.5s ease-in-out infinite;
-	--animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
 	--animate-scale-press: scale-press 0.15s ease-out;
 }
 
@@ -63,20 +72,6 @@ body {
 	}
 }
 
-@keyframes glow-pulse {
-	0%,
-	100% {
-		box-shadow:
-			0 0 8px rgba(99, 102, 241, 0.15),
-			0 0 24px rgba(99, 102, 241, 0.05);
-	}
-	50% {
-		box-shadow:
-			0 0 16px rgba(99, 102, 241, 0.25),
-			0 0 40px rgba(99, 102, 241, 0.12);
-	}
-}
-
 @keyframes scale-press {
 	0% {
 		transform: scale(1);
@@ -96,6 +91,30 @@ body {
 	--text: #111827;
 	--text-muted: #64748b;
 	--line: #e2e8f0;
+	/* Text/icon color on top of a brand-600 fill. Near-white, never pure #fff. */
+	--on-brand: #f8fafc;
+	/* Semantic state ink. Text/icon only; backgrounds stay Tailwind utilities. */
+	--ok: #15803d;
+	--warn: #b45309;
+	--danger: #b91c1c;
+	/* Fixed fills for banners and solid state chips (same in both themes). */
+	--ok-fill: #15803d;
+	--warn-fill: #b45309;
+	--danger-fill: #b91c1c;
+	--on-warn: #fffbeb;
+	/* Layering scale (documented once, used everywhere; page-local layers stay
+	   below 1000 so the app shell always wins):
+	   banner 1025 < bottom-nav 1030 < header 1040 < overlay 1060 <
+	   dropdown 1080 < modal backdrop 1120 < modal 1121 < toast 1180 < skip 1200 */
+	--z-banner: 1025;
+	--z-bottom-nav: 1030;
+	--z-header: 1040;
+	--z-overlay: 1060;
+	--z-dropdown: 1080;
+	--z-modal-backdrop: 1120;
+	--z-modal: 1121;
+	--z-toast: 1180;
+	--z-skip: 1200;
 	/* Motion scale for micro-interactions. Durations stay short by design;
 	   `html.reduce-motion` and the OS setting zero them out globally. */
 	--motion-fast: 120ms;
@@ -118,6 +137,9 @@ body {
 	--text: #f8fafc;
 	--text-muted: #94a3b8;
 	--line: #334155;
+	--ok: #6ee7b7;
+	--warn: #fcd34d;
+	--danger: #fca5a5;
 	--brand-text-rgb: 165, 180, 252;
 	--brand-text: #a5b4fc;
 }
@@ -192,13 +214,13 @@ select {
 		@apply border-b;
 	}
 	.rounded-3 {
-		@apply rounded-xl;
+		@apply rounded-surface;
 	}
 	.shadow-sm {
 		@apply shadow-sm;
 	}
 	.btn {
-		@apply inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:pointer-events-none disabled:opacity-50;
+		@apply inline-flex min-h-11 items-center justify-center rounded-control px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:pointer-events-none disabled:opacity-50;
 	}
 	.btn-sm {
 		@apply min-h-11 px-3 py-1.5 text-sm;
@@ -229,7 +251,7 @@ select {
 	}
 	.form-control,
 	.form-select {
-		@apply block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-xs outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50;
+		@apply block min-h-11 w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-xs outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50;
 	}
 	.input-group {
 		@apply flex;
@@ -241,7 +263,7 @@ select {
 		@apply rounded-l-none;
 	}
 	.alert {
-		@apply rounded-xl border p-3 text-sm;
+		@apply rounded-surface border p-3 text-sm;
 	}
 	.alert-info {
 		@apply border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100;
@@ -296,21 +318,17 @@ select {
 		animation-delay: 0.32s;
 	}
 
-	/* AI Shimmer sweep — gradient moves across the element */
+	/* AI Shimmer sweep — a neutral loading skeleton. Uses surface tokens only;
+	   never a colored glow. Reduced-motion rules stop the sweep globally. */
 	.ai-shimmer {
 		background: linear-gradient(
 			110deg,
-			var(--surface) 30%,
-			rgba(99, 102, 241, 0.08) 50%,
-			var(--surface) 70%
+			var(--surface-muted) 30%,
+			var(--line) 50%,
+			var(--surface-muted) 70%
 		);
 		background-size: 200% 100%;
 		animation: shimmer 2.5s ease-in-out infinite;
-	}
-
-	/* AI Glow ring — subtle pulsing glow for AI-powered elements */
-	.ai-glow {
-		animation: glow-pulse 2s ease-in-out infinite;
 	}
 
 	/* Button press micro-interaction */
