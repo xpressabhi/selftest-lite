@@ -11,6 +11,7 @@
 	let error = $state('');
 	let stats = $state(null);
 	let featureUsage = $state(null);
+	let deviceNetwork = $state(null);
 	let health = $state(null);
 	let healthWindow = $state(60);
 	let healthLoading = $state(false);
@@ -23,6 +24,7 @@
 		{ id: 'geo', label: 'Geo & Agents' },
 		{ id: 'recent', label: 'Recent Events' },
 		{ id: 'features', label: 'Feature Usage' },
+		{ id: 'device', label: 'Device & Network' },
 		{ id: 'health', label: 'Health' },
 	];
 
@@ -72,7 +74,27 @@
 	}
 
 	async function loadAll() {
-		await Promise.all([loadStats(), loadFeatureUsage()]);
+		await Promise.all([loadStats(), loadFeatureUsage(), loadDeviceNetwork()]);
+	}
+
+	async function loadDeviceNetwork() {
+		if (activeTab !== 'device' && deviceNetwork) return;
+		try {
+			const durationDays = days > 0 ? days : 90;
+			const response = await fetch(`/api/admin/device-network?days=${durationDays}`, {
+				cache: 'no-store',
+			});
+			if (response.status === 401) {
+				authed = false;
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error || 'Failed');
+			deviceNetwork = data;
+		} catch (caughtError) {
+			console.error(caughtError);
+			deviceNetwork = null;
+		}
 	}
 
 	async function loadFeatureUsage() {
@@ -118,6 +140,7 @@
 	function switchTab(tabId) {
 		activeTab = tabId;
 		if (tabId === 'features' && !featureUsage) void loadFeatureUsage();
+		if (tabId === 'device' && !deviceNetwork) void loadDeviceNetwork();
 		if (tabId === 'health') void loadHealth();
 	}
 
@@ -147,6 +170,7 @@
 		authed = false;
 		stats = null;
 		featureUsage = null;
+		deviceNetwork = null;
 		health = null;
 	}
 
@@ -817,6 +841,178 @@
 								</div>
 							</section>
 						</div>
+					{:else}
+						<div class="py-4 text-center">
+							<div class="thinking-dots" role="status">
+								<span></span><span></span><span></span>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- DEVICE & NETWORK TAB -->
+			{#if activeTab === 'device'}
+				<div class="bg-body border rounded-3 p-3 mb-4">
+					<div
+						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
+					>
+						<h2 class="h6 fw-bold mb-0">Device &amp; network</h2>
+						<button
+							class="btn btn-sm btn-outline-secondary"
+							type="button"
+							onclick={() => void loadDeviceNetwork()}>Refresh</button
+						>
+					</div>
+					{#if deviceNetwork}
+						<div class="stat-cards mb-4">
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{formatNumber(deviceNetwork.identities)}</strong><span
+									>profiled identities</span
+								>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{deviceNetwork.coverage?.sharePct ?? '-'}%</strong><span
+									>profile coverage</span
+								>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{deviceNetwork.floor?.bucket ?? '-'}</strong><span
+									>supported floor (Mbps)</span
+								>
+							</div>
+							<div class="bg-body border rounded-3 p-3">
+								<strong>{deviceNetwork.floor?.failPct ?? '-'}%</strong><span
+									>generate failure at floor</span
+								>
+							</div>
+						</div>
+						<div class="row g-3">
+							<section class="col-lg-6">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Device tier (per identity)</h3>
+									<div class="table-responsive">
+										<table class="admin-table">
+											<thead
+												><tr
+													><th>Tier</th><th>Identities</th><th
+														>Share</th
+													></tr
+												></thead
+											>
+											<tbody>
+												{#each deviceNetwork.tiers || [] as row (row.tier)}
+													<tr
+														><td class="mono">{row.tier}</td><td
+															>{formatNumber(row.identities)}</td
+														><td>{row.pct}%</td></tr
+													>
+												{/each}
+											</tbody>
+										</table>
+									</div>
+									{#if !deviceNetwork.tiers?.length}<p
+											class="text-muted small mb-0"
+										>
+											{$t('adminEmpty')}
+										</p>{/if}
+								</div>
+							</section>
+							<section class="col-lg-6">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Top low-tier models</h3>
+									<div class="table-responsive">
+										<table class="admin-table">
+											<thead
+												><tr
+													><th>Model</th><th>Android</th><th
+														>Identities</th
+													></tr
+												></thead
+											>
+											<tbody>
+												{#each deviceNetwork.topLowModels || [] as row (`${row.model}-${row.android}`)}
+													<tr
+														><td class="mono">{row.model}</td><td
+															class="mono">{row.android}</td
+														><td>{formatNumber(row.identities)}</td></tr
+													>
+												{/each}
+											</tbody>
+										</table>
+									</div>
+									{#if !deviceNetwork.topLowModels?.length}<p
+											class="text-muted small mb-0"
+										>
+											{$t('adminEmpty')}
+										</p>{/if}
+								</div>
+							</section>
+							<section class="col-lg-6">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Network mix (worst per session)</h3>
+									{#each [['type', 'Effective type'], ['downlink', 'Downlink (Mbps)'], ['rtt', 'RTT (ms)']] as [key, label] (key)}
+										<h4 class="small fw-semibold mt-3 mb-1">{label}</h4>
+										<div class="table-responsive">
+											<table class="admin-table">
+												<thead
+													><tr
+														><th>Bucket</th><th>Sessions</th><th
+															>%</th
+														></tr
+													></thead
+												>
+												<tbody>
+													{#each deviceNetwork.network?.[key] || [] as row (row.bucket)}
+														<tr
+															><td class="mono">{row.bucket}</td
+															><td>{formatNumber(row.sessions)}</td
+															><td>{row.pct}%</td></tr
+														>
+													{/each}
+												</tbody>
+											</table>
+										</div>
+									{/each}
+								</div>
+							</section>
+							<section class="col-lg-6">
+								<div class="bg-body border rounded-3 p-3 h-100">
+									<h3 class="h6 fw-bold mb-2">Generate outcomes by downlink</h3>
+									<div class="table-responsive">
+										<table class="admin-table">
+											<thead
+												><tr
+													><th>Downlink</th><th>Started</th><th
+														>Failed</th
+													><th>Fail %</th><th>Avg fail s</th></tr
+												></thead
+											>
+											<tbody>
+												{#each deviceNetwork.generateByDownlink || [] as row (row.bucket)}
+													<tr
+														><td class="mono">{row.bucket}</td
+														><td>{formatNumber(row.started)}</td
+														><td>{formatNumber(row.failed)}</td
+														><td>{row.failRate ?? '-'}</td
+														><td>{row.avgFailSeconds ?? '-'}</td></tr
+													>
+												{/each}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							</section>
+						</div>
+						{#if deviceNetwork.floor}
+							<p class="text-muted small mt-3 mb-0">
+								Supported floor: downlink {deviceNetwork.floor.bucket} Mbps (p10,
+								covers {deviceNetwork.floor.coveragePct}% of sessions with a known
+								downlink) · RTT p90 {deviceNetwork.floor.rttBucket ?? 'unknown'} ms ·
+								generate failure at or below: {deviceNetwork.floor.failPct ?? '-'}%
+								({deviceNetwork.floor.failedBelow}/{deviceNetwork.floor.startedBelow})
+							</p>
+						{/if}
 					{:else}
 						<div class="py-4 text-center">
 							<div class="thinking-dots" role="status">

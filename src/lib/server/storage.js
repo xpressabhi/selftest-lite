@@ -418,6 +418,10 @@ export async function ensureStorageSchema() {
 			CREATE INDEX IF NOT EXISTS idx_feature_events_created
 			ON feature_events (created_at)
 		`);
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_feature_events_session
+			ON feature_events (session_id, created_at DESC)
+		`);
 
 		// Archive tables preserve anything that leaves a hot table; nothing
 		// is ever dropped (see src/lib/shared/dataArchive.js).
@@ -1531,6 +1535,238 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 		byPage: byPageResult.rows,
 		trend: trendResult.rows,
 		generateBreakdown: generateBreakdownResult.rows,
+	};
+}
+
+const DEVICE_BUCKET_ORDER = {
+	type: ['slow-2g', '2g', '3g', '4g', 'unknown'],
+	downlink: ['lt025', '025-05', '05-1', '1-2', '2-5', '5-10', '10p', 'unknown'],
+	rtt: ['lt100', '100-200', '200-400', '400-800', '800-1500', '1500p', 'unknown'],
+};
+
+export async function getDeviceNetworkStats({ days = 30 } = {}) {
+	await ensureStorageSchema();
+
+	const cappedDays = Math.min(Math.max(Number(days) || 30, 1), 90);
+
+	const [tiersResult, modelsResult, networkResult, generateResult, coverageResult] =
+		await Promise.all([
+			query(
+				`WITH latest AS (
+					SELECT DISTINCT ON (COALESCE(user_id::text, client_id))
+						COALESCE(user_id::text, client_id) AS identity,
+						props
+					FROM feature_events
+					WHERE event = 'device:profile'
+						AND created_at >= NOW() - ($1::text || ' days')::interval
+						AND COALESCE(user_id::text, client_id) IS NOT NULL
+					ORDER BY COALESCE(user_id::text, client_id), created_at DESC
+				)
+				SELECT
+					COALESCE(NULLIF(props->>'tier', ''), 'unknown') AS tier,
+					COUNT(*)::INTEGER AS identities
+				FROM latest
+				GROUP BY 1
+				ORDER BY identities DESC`,
+				[cappedDays]
+			),
+			query(
+				`WITH latest AS (
+					SELECT DISTINCT ON (COALESCE(user_id::text, client_id))
+						COALESCE(user_id::text, client_id) AS identity,
+						props
+					FROM feature_events
+					WHERE event = 'device:profile'
+						AND created_at >= NOW() - ($1::text || ' days')::interval
+						AND COALESCE(user_id::text, client_id) IS NOT NULL
+					ORDER BY COALESCE(user_id::text, client_id), created_at DESC
+				)
+				SELECT
+					COALESCE(NULLIF(props->>'model', ''), 'unknown') AS model,
+					COALESCE(NULLIF(props->>'android', ''), 'unknown') AS android,
+					COUNT(*)::INTEGER AS identities
+				FROM latest
+				WHERE props->>'tier' = 'low'
+				GROUP BY 1, 2
+				ORDER BY identities DESC
+				LIMIT 10`,
+				[cappedDays]
+			),
+			query(
+				`WITH session_net AS (
+					SELECT session_id,
+						MIN(CASE props->>'type' WHEN 'slow-2g' THEN 0 WHEN '2g' THEN 1 WHEN '3g' THEN 2 WHEN '4g' THEN 3 END)
+							FILTER (WHERE props->>'type' IN ('slow-2g', '2g', '3g', '4g')) AS type_rank,
+						MIN(CASE props->>'down' WHEN 'lt025' THEN 0 WHEN '025-05' THEN 1 WHEN '05-1' THEN 2 WHEN '1-2' THEN 3 WHEN '2-5' THEN 4 WHEN '5-10' THEN 5 WHEN '10p' THEN 6 END)
+							FILTER (WHERE props->>'down' IN ('lt025', '025-05', '05-1', '1-2', '2-5', '5-10', '10p')) AS down_rank,
+						MAX(CASE props->>'rtt' WHEN 'lt100' THEN 0 WHEN '100-200' THEN 1 WHEN '200-400' THEN 2 WHEN '400-800' THEN 3 WHEN '800-1500' THEN 4 WHEN '1500p' THEN 5 END)
+							FILTER (WHERE props->>'rtt' IN ('lt100', '100-200', '200-400', '400-800', '800-1500', '1500p')) AS rtt_rank
+					FROM feature_events
+					WHERE event IN ('device:profile', 'net:change')
+						AND session_id IS NOT NULL
+						AND created_at >= NOW() - ($1::text || ' days')::interval
+					GROUP BY session_id
+				)
+				SELECT 'type' AS dimension,
+					CASE type_rank WHEN 0 THEN 'slow-2g' WHEN 1 THEN '2g' WHEN 2 THEN '3g' WHEN 3 THEN '4g' ELSE 'unknown' END AS bucket,
+					COUNT(*)::INTEGER AS sessions
+				FROM session_net
+				GROUP BY 1, 2
+				UNION ALL
+				SELECT 'downlink',
+					CASE down_rank WHEN 0 THEN 'lt025' WHEN 1 THEN '025-05' WHEN 2 THEN '05-1' WHEN 3 THEN '1-2' WHEN 4 THEN '2-5' WHEN 5 THEN '5-10' WHEN 6 THEN '10p' ELSE 'unknown' END,
+					COUNT(*)::INTEGER
+				FROM session_net
+				GROUP BY 1, 2
+				UNION ALL
+				SELECT 'rtt',
+					CASE rtt_rank WHEN 0 THEN 'lt100' WHEN 1 THEN '100-200' WHEN 2 THEN '200-400' WHEN 3 THEN '400-800' WHEN 4 THEN '800-1500' WHEN 5 THEN '1500p' ELSE 'unknown' END,
+					COUNT(*)::INTEGER
+				FROM session_net
+				GROUP BY 1, 2`,
+				[cappedDays]
+			),
+			query(
+				`SELECT
+					COALESCE(net.bucket, 'unknown') AS bucket,
+					COUNT(*) FILTER (WHERE fe.event = 'generate:success')::INTEGER AS succeeded,
+					COUNT(*) FILTER (WHERE fe.event = 'generate:fail')::INTEGER AS failed,
+					ROUND(
+						AVG(
+							CASE
+								WHEN fe.event = 'generate:fail' AND fe.props->>'elapsedSeconds' ~ '^[0-9]{1,6}$'
+								THEN (fe.props->>'elapsedSeconds')::numeric
+							END
+						),
+						1
+					) AS avg_fail_seconds
+				FROM feature_events fe
+				LEFT JOIN LATERAL (
+					SELECT props->>'down' AS bucket
+					FROM feature_events n
+					WHERE n.session_id = fe.session_id
+						AND n.event IN ('device:profile', 'net:change')
+						AND n.created_at <= fe.created_at
+					ORDER BY n.created_at DESC
+					LIMIT 1
+				) net ON TRUE
+				WHERE fe.event IN ('generate:success', 'generate:fail')
+					AND fe.created_at >= NOW() - ($1::text || ' days')::interval
+				GROUP BY 1`,
+				[cappedDays]
+			),
+			query(
+				`SELECT
+					COUNT(DISTINCT session_id) FILTER (WHERE event = 'page:view')::INTEGER AS page_sessions,
+					COUNT(DISTINCT session_id) FILTER (WHERE event = 'device:profile')::INTEGER AS profile_sessions
+				FROM feature_events
+				WHERE event IN ('page:view', 'device:profile')
+					AND session_id IS NOT NULL
+					AND created_at >= NOW() - ($1::text || ' days')::interval`,
+				[cappedDays]
+			),
+		]);
+
+	const tiers = tiersResult.rows;
+	const identityTotal = tiers.reduce((sum, row) => sum + row.identities, 0);
+	for (const row of tiers) {
+		row.pct = identityTotal > 0 ? Number(((row.identities / identityTotal) * 100).toFixed(1)) : 0;
+	}
+
+	const networkRows = networkResult.rows;
+	const network = {};
+	for (const dimension of ['type', 'downlink', 'rtt']) {
+		const rows = networkRows.filter((row) => row.dimension === dimension);
+		const total = rows.reduce((sum, row) => sum + row.sessions, 0);
+		network[dimension] = DEVICE_BUCKET_ORDER[dimension].map((bucket) => {
+			const match = rows.find((row) => row.bucket === bucket);
+			const sessions = match?.sessions ?? 0;
+			return {
+				bucket,
+				sessions,
+				pct: total > 0 ? Number(((sessions / total) * 100).toFixed(1)) : 0,
+			};
+		});
+	}
+
+	const generateByDownlink = DEVICE_BUCKET_ORDER.downlink.map((bucket) => {
+		const row = generateResult.rows.find((entry) => entry.bucket === bucket) || {};
+		const succeeded = row.succeeded ?? 0;
+		const failed = row.failed ?? 0;
+		const started = succeeded + failed;
+		return {
+			bucket,
+			started,
+			failed,
+			failRate: started > 0 ? Number(((failed / started) * 100).toFixed(1)) : null,
+			avgFailSeconds: row.avg_fail_seconds ?? null,
+		};
+	});
+
+	const downlinkBuckets = DEVICE_BUCKET_ORDER.downlink.filter((bucket) => bucket !== 'unknown');
+	const downlinkCounts = downlinkBuckets.map((bucket) => ({
+		bucket,
+		sessions: network.downlink.find((row) => row.bucket === bucket)?.sessions ?? 0,
+	}));
+	const downlinkTotal = downlinkCounts.reduce((sum, row) => sum + row.sessions, 0);
+	let floor = null;
+	if (downlinkTotal > 0) {
+		let cumulative = 0;
+		for (const row of downlinkCounts) {
+			if (cumulative + row.sessions >= downlinkTotal * 0.1) {
+				const floorRank = downlinkBuckets.indexOf(row.bucket);
+				const atOrBelow = generateByDownlink.filter((entry) => {
+					const rank = downlinkBuckets.indexOf(entry.bucket);
+					return rank !== -1 && rank <= floorRank;
+				});
+				const startedBelow = atOrBelow.reduce((sum, entry) => sum + entry.started, 0);
+				const failedBelow = atOrBelow.reduce((sum, entry) => sum + entry.failed, 0);
+				floor = {
+					bucket: row.bucket,
+					rttBucket: null,
+					coveragePct: Number((((downlinkTotal - cumulative) / downlinkTotal) * 100).toFixed(1)),
+					failPct: startedBelow > 0 ? Number(((failedBelow / startedBelow) * 100).toFixed(1)) : null,
+					startedBelow,
+					failedBelow,
+				};
+				break;
+			}
+			cumulative += row.sessions;
+		}
+	}
+	const rttBuckets = DEVICE_BUCKET_ORDER.rtt.filter((bucket) => bucket !== 'unknown');
+	const rttTotal = network.rtt
+		.filter((row) => row.bucket !== 'unknown')
+		.reduce((sum, row) => sum + row.sessions, 0);
+	if (floor && rttTotal > 0) {
+		let cumulative = 0;
+		for (const bucket of rttBuckets) {
+			cumulative += network.rtt.find((row) => row.bucket === bucket)?.sessions ?? 0;
+			if (cumulative >= rttTotal * 0.9) {
+				floor.rttBucket = bucket;
+				break;
+			}
+		}
+	}
+
+	const coverageRow = coverageResult.rows[0] || {};
+	const coverage = {
+		pageSessions: coverageRow.page_sessions || 0,
+		profileSessions: coverageRow.profile_sessions || 0,
+		sharePct:
+			coverageRow.page_sessions > 0
+				? Number(((coverageRow.profile_sessions / coverageRow.page_sessions) * 100).toFixed(1))
+				: null,
+	};
+
+	return {
+		identities: identityTotal,
+		tiers,
+		topLowModels: modelsResult.rows,
+		network,
+		generateByDownlink,
+		floor,
+		coverage,
 	};
 }
 
