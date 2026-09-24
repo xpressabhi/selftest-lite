@@ -16,6 +16,7 @@
 	} from '$lib/client/preferences';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { initDeepLinks } from '$lib/client/deepLink';
+	import { startDeviceProfileTracking } from '$lib/client/deviceProfile';
 	import { focusTrap } from '$lib/client/focusTrap';
 	import { initNativeShell } from '$lib/client/nativeShell';
 	import { startTelemetry, track } from '$lib/client/telemetry';
@@ -121,6 +122,7 @@
 	onMount(() => {
 		initializePreferences();
 		startTelemetry();
+		startDeviceProfileTracking();
 		void initDeepLinks();
 		void initNativeShell();
 		void handleAuthRedirect();

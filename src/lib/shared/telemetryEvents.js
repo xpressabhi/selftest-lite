@@ -120,6 +120,10 @@ export const TELEMETRY_EVENTS = new Set([
 	'app:deep-link',
 	'ui:rage-tap',
 
+	// Device & network profile
+	'device:profile',
+	'net:change',
+
 	// Personalization router (fail-open; fallback keeps current UI)
 	'personalize:request',
 	'personalize:applied',
