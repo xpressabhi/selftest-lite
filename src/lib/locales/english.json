@@ -496,6 +496,8 @@
 	"examPaperCtaTitle": "Full Exam Paper",
 	"examPaperCtaBody": "Board and named papers in the real exam pattern (early access)",
 	"examPaperPatternMetaShort": "pattern {year}",
+	"resultsMarksOf": "{marks}/{total} marks",
+	"sectionMinutesLabel": "~{minutes} min",
 	"testProgressLabel": "Test progress",
 	"enableSoundEffects": "Enable sound effects",
 	"disableSoundEffects": "Disable sound effects",

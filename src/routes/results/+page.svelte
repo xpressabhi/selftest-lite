@@ -969,6 +969,14 @@
 							count: questionPaper.totalQuestions ?? totalQuestions,
 						})}
 					</p>
+					{#if questionPaper.marks !== undefined && questionPaper.marks !== null && questionPaper.totalMarks}
+						<span class="hero-compare is-best">
+							{$t('resultsMarksOf', {
+								marks: questionPaper.marks,
+								total: questionPaper.totalMarks,
+							})}
+						</span>
+					{/if}
 					{#if comparison}
 						<span class="hero-compare is-{comparison.state}">
 							{$t(COMPARISON_KEYS[comparison.state], { delta: comparison.delta })}

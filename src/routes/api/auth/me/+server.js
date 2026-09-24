@@ -3,7 +3,7 @@ import { clearSessionCookie, getSessionFromRequest, setSessionCookie } from '$li
 import { getClientKey, logApiEvent } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
 
-const ME_RATE_LIMIT = 120;
+const ME_RATE_LIMIT = 900;
 
 export async function GET({ request, cookies }) {
 	const startedAt = Date.now();

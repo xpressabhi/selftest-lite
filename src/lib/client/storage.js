@@ -376,11 +376,17 @@ export function clearAttemptResult(testId) {
 	removeKey(getAttemptResultKey(testId));
 }
 
-export async function submitTestAnswers({ id, answers = {}, timeTaken = 0, hintedIndexes = {} }) {
+export async function submitTestAnswers({
+	id,
+	answers = {},
+	timeTaken = 0,
+	hintedIndexes = {},
+	name = '',
+}) {
 	const response = await fetch('/api/test/submit', {
 		method: 'POST',
 		headers: getClientHeaders(),
-		body: JSON.stringify({ id, answers, timeTaken, hintedIndexes }),
+		body: JSON.stringify({ id, answers, timeTaken, hintedIndexes, name }),
 	});
 	const data = await response.json().catch(() => ({}));
 	if (!response.ok) {

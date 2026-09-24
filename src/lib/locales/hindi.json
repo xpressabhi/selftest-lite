@@ -496,6 +496,8 @@
 	"examPaperCtaTitle": "पूरा प्रश्नपत्र",
 	"examPaperCtaBody": "असली परीक्षा प्रारूप में बोर्ड और नामित प्रश्नपत्र (अर्ली एक्सेस)",
 	"examPaperPatternMetaShort": "प्रारूप {year}",
+	"resultsMarksOf": "{marks}/{total} अंक",
+	"sectionMinutesLabel": "~{minutes} मिनट",
 	"testProgressLabel": "टेस्ट प्रगति",
 	"enableSoundEffects": "ध्वनि प्रभाव चालू करें",
 	"disableSoundEffects": "ध्वनि प्रभाव बंद करें",

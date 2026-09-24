@@ -10,6 +10,7 @@ import { rateLimiter } from '$lib/server/rateLimiter';
 import { parseRequestBody } from '$lib/server/quizValidation';
 import { sanitizeHintedIndexes } from '$lib/server/hint';
 import { markTestsSubmitted } from '$lib/server/testStats';
+import { computeAttemptMarks } from '$lib/shared/marks';
 import { MAX_ANSWER_TEXT_LENGTH } from '$lib/server/quizConfig';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
@@ -55,7 +56,7 @@ export async function POST({ request, cookies }) {
 			);
 		}
 
-		const { id, answers, timeTaken, hintedIndexes } = await parseRequestBody(request);
+		const { id, answers, timeTaken, hintedIndexes, name } = await parseRequestBody(request);
 
 		const testId = Number(id);
 		if (!Number.isInteger(testId) || testId <= 0) {
@@ -120,6 +121,12 @@ export async function POST({ request, cookies }) {
 		// cheating payload is dropped, grading never fails because of it).
 		const cleanHints = sanitizeHintedIndexes(hintedIndexes, questions);
 
+		const marksResult = computeAttemptMarks({
+			questions,
+			answers: answeredMap,
+			sections: testRecord.test?.sections || [],
+		});
+
 		try {
 			await createTestAttempt({
 				testId,
@@ -130,6 +137,8 @@ export async function POST({ request, cookies }) {
 				clientId,
 				userAnswers: answeredMap,
 				hintedIndexes: cleanHints,
+				marks: marksResult?.marks ?? null,
+				totalMarks: marksResult?.totalMarks ?? null,
 			});
 		} catch (attemptError) {
 			// Grading must succeed even if attempt persistence fails.
@@ -137,7 +146,12 @@ export async function POST({ request, cookies }) {
 		}
 
 		try {
-			await markTestsSubmitted({ testIds: [testId], userId: user?.id || null, clientId });
+			await markTestsSubmitted({
+				testIds: [testId],
+				userId: user?.id || null,
+				clientId,
+				displayName: name,
+			});
 		} catch (markError) {
 			console.error('Failed to mark test submitted:', markError);
 		}
@@ -166,6 +180,8 @@ export async function POST({ request, cookies }) {
 			totalQuestions: results.length,
 			timeTaken: normalizedTimeTaken,
 			results,
+			marks: marksResult?.marks ?? null,
+			totalMarks: marksResult?.totalMarks ?? null,
 		});
 	} catch (error) {
 		console.error(error);

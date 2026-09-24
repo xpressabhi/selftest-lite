@@ -679,27 +679,97 @@ async function runGenerationAndStore(context, onProgress) {
 	const generationRun = { model: null };
 
 	try {
-		const generatedPaper = await generatePaper({
-			ai,
-			resolvedTopic,
-			numQuestions,
-			difficulty: resolvedDifficulty,
-			testType,
-			topicContext,
-			examName,
-			syllabusFocus,
-			previousQuestions,
-			recentQuestions,
-			language,
-			testMode,
-			objectiveOnly,
-			userContext,
-			warmUpDifficulty,
-			originalRequest,
-			deadlineMs,
-			runState: generationRun,
-			onProgress,
-		});
+		const sectionPlan =
+			context.examPattern?.sections?.length > 1 && !context.focusSection
+				? context.examPattern.sections
+				: null;
+		let generatedPaper;
+		if (sectionPlan) {
+			// Generate each section independently (in parallel) so the section
+			// index ranges are guaranteed to match the real paper format.
+			const totalRequested = sectionPlan.reduce(
+				(sum, section) => sum + (Number(section.questionCount) || 0),
+				0
+			);
+			onProgress?.({
+				stage: 'sections',
+				approved: 0,
+				requested: totalRequested,
+				round: 0,
+			});
+			const sectionPapers = await Promise.all(
+				sectionPlan.map((section) =>
+					generatePaper({
+						ai,
+						resolvedTopic,
+						numQuestions: section.questionCount,
+						difficulty: resolvedDifficulty,
+						testType: section.questionTypes?.[0] || testType,
+						topicContext: `${topicContext}\n${buildPatternConstraint(
+							context.examPattern,
+							section
+						)}`,
+						examName,
+						syllabusFocus,
+						previousQuestions,
+						recentQuestions,
+						language,
+						testMode,
+						objectiveOnly,
+						userContext,
+						warmUpDifficulty,
+						originalRequest,
+						deadlineMs,
+						runState: generationRun,
+					})
+				)
+			);
+			let approvedTotal = 0;
+			sectionPapers.forEach((paper, index) => {
+				approvedTotal += paper.questions.length;
+				onProgress?.({
+					stage: 'sections',
+					approved: approvedTotal,
+					requested: totalRequested,
+					round: index + 1,
+				});
+			});
+			generatedPaper = {
+				topic: sectionPapers[0]?.topic || resolvedTopic,
+				questions: sectionPapers.flatMap((paper) => paper.questions),
+			};
+			// Actual per-section output sizes drive the ranges, so a trimmed
+			// section never mislabels the next one.
+			context.examPattern = {
+				...context.examPattern,
+				sections: sectionPlan.map((section, index) => ({
+					...section,
+					questionCount: sectionPapers[index].questions.length,
+				})),
+			};
+		} else {
+			generatedPaper = await generatePaper({
+				ai,
+				resolvedTopic,
+				numQuestions,
+				difficulty: resolvedDifficulty,
+				testType,
+				topicContext,
+				examName,
+				syllabusFocus,
+				previousQuestions,
+				recentQuestions,
+				language,
+				testMode,
+				objectiveOnly,
+				userContext,
+				warmUpDifficulty,
+				originalRequest,
+				deadlineMs,
+				runState: generationRun,
+				onProgress,
+			});
+		}
 
 		// The model produces a flat paper; section ranges are assigned
 		// server-side from the pattern so a hallucinated range can never ship.

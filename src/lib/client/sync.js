@@ -100,6 +100,8 @@ function serializeAttempt(attempt) {
 			? Number(attempt.totalQuestions)
 			: null,
 		timeTaken: Number.isFinite(Number(attempt.timeTaken)) ? Number(attempt.timeTaken) : null,
+		marks: Number.isFinite(Number(attempt.marks)) ? Number(attempt.marks) : null,
+		totalMarks: Number.isFinite(Number(attempt.totalMarks)) ? Number(attempt.totalMarks) : null,
 		hintedIndexes:
 			attempt.hintedIndexes && typeof attempt.hintedIndexes === 'object'
 				? attempt.hintedIndexes

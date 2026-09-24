@@ -155,7 +155,12 @@ export async function markTestStarted({ testId, userId = null, clientId = null }
  * Marks submissions for one identity in a single statement. Called from the
  * server-side submit and history paths, so clients never send this event.
  */
-export async function markTestsSubmitted({ testIds = [], userId = null, clientId = null } = {}) {
+export async function markTestsSubmitted({
+	testIds = [],
+	userId = null,
+	clientId = null,
+	displayName = null,
+} = {}) {
 	const identityKey = buildVisitIdentityKey({ userId, clientId });
 	const ids = [
 		...new Set(
@@ -169,14 +174,21 @@ export async function markTestsSubmitted({ testIds = [], userId = null, clientId
 	}
 	await ensureStorageSchema();
 	const result = await query(
-		`INSERT INTO ai_test_visits (test_id, identity_key, user_id, client_id, submitted_at)
-		 SELECT t.id, $2, $3, $4, NOW()
+		`INSERT INTO ai_test_visits (test_id, identity_key, user_id, client_id, submitted_at, display_name)
+		 SELECT t.id, $2, $3, $4, NOW(), $5
 		 FROM ai_test t
 		 WHERE t.id = ANY($1::bigint[])
 		 ON CONFLICT (test_id, identity_key) DO UPDATE
 		   SET submitted_at = COALESCE(ai_test_visits.submitted_at, NOW()),
-		       last_seen_at = NOW()`,
-		[ids, identityKey, normalizeUserIdValue(userId), normalizeClientId(clientId)]
+		       last_seen_at = NOW(),
+		       display_name = COALESCE(ai_test_visits.display_name, EXCLUDED.display_name)`,
+		[
+			ids,
+			identityKey,
+			normalizeUserIdValue(userId),
+			normalizeClientId(clientId),
+			sanitizeDisplayName(displayName),
+		]
 	);
 	return result.rowCount || 0;
 }
@@ -269,6 +281,9 @@ export async function getTestStats(testId, viewer = {}) {
 			? {
 					score: viewerAttempt.score,
 					total: viewerAttempt.total_questions,
+					marks: viewerAttempt.marks === null ? null : Number(viewerAttempt.marks),
+					totalMarks:
+						viewerAttempt.total_marks === null ? null : Number(viewerAttempt.total_marks),
 					createdAt: toIso(viewerAttempt.submitted_at),
 				}
 			: null,

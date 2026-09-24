@@ -5,7 +5,7 @@ import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
-const STATS_RATE_LIMIT = 60;
+const STATS_RATE_LIMIT = 120;
 
 /**
  * Public test stats: visitor / in-progress / submission counters, the public

@@ -41,6 +41,7 @@
 	import { showToast } from '$lib/client/toast';
 	import { requestPersonalize } from '$lib/client/personalize';
 	import { parseChallengeParams } from '$lib/client/challenge';
+	import { computeAttemptMarks } from '$lib/shared/marks';
 	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
 
 	let questionPaper = $state(null);
@@ -100,6 +101,13 @@
 	let sectionFirstQuestion = $derived(
 		Boolean(currentSection && (currentSection.questionIndexes || [])[0] === currentQuestionIndex)
 	);
+	let suggestedSectionMinutes = $derived.by(() => {
+		const duration = Number(questionPaper?.examMeta?.durationMinutes);
+		if (!duration || !currentSection || !totalQuestions) {
+			return null;
+		}
+		return Math.max(1, Math.round((duration * currentSection.questionCount) / totalQuestions));
+	});
 	let hintsUsedCount = $derived(Object.keys(eliminated).length);
 	let canUseHint = $derived(
 		testStarted &&
@@ -427,11 +435,19 @@
 				correctAnswer,
 			};
 		});
+		const marksResult = computeAttemptMarks({
+			questions: paper.questions,
+			answers: userAnswers,
+			sections: paper.sections || [],
+		});
 		return {
 			score: results.filter((result) => result.correct).length,
 			totalQuestions: results.length,
 			timeTaken,
 			results,
+			...(marksResult
+				? { marks: marksResult.marks, totalMarks: marksResult.totalMarks }
+				: {}),
 		};
 	}
 
@@ -456,6 +472,7 @@
 							answers: finalAnswers,
 							timeTaken,
 							hintedIndexes: eliminated,
+							name: challenge?.by || '',
 						});
 				saveAttemptResult(questionPaper.id, gradedResult);
 				const submittedPaper = {
@@ -482,6 +499,8 @@
 						totalQuestions: gradedResult.totalQuestions,
 						timeTaken,
 						hintedIndexes: eliminated,
+						marks: gradedResult.marks ?? null,
+						totalMarks: gradedResult.totalMarks ?? null,
 						submittedAt: new Date().toISOString(),
 					});
 				}
@@ -999,7 +1018,11 @@
 											<span class="test-section-marks">
 												{$t('marksEachLabel', {
 													count: currentSection.marksPerQuestion,
-												})}
+												})}{#if suggestedSectionMinutes}
+													&middot;
+													{$t('sectionMinutesLabel', {
+														minutes: suggestedSectionMinutes,
+													})}{/if}
 											</span>
 										{/if}
 									</div>

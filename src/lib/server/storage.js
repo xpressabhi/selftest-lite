@@ -636,6 +636,8 @@ export async function createTestAttempt({
 	clientId = null,
 	userAnswers = null,
 	hintedIndexes = null,
+	marks = null,
+	totalMarks = null,
 }) {
 	await ensureStorageSchema();
 
@@ -650,11 +652,13 @@ export async function createTestAttempt({
 		hintedIndexes && typeof hintedIndexes === 'object' && !Array.isArray(hintedIndexes)
 			? JSON.stringify(hintedIndexes)
 			: null;
+	const normalizedMarks = Number.isFinite(Number(marks)) ? Number(marks) : null;
+	const normalizedTotalMarks = Number.isFinite(Number(totalMarks)) ? Number(totalMarks) : null;
 
 	const result = await query(
 		`INSERT INTO ai_test_attempts
-		 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, hinted_indexes)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, hinted_indexes, marks, total_marks)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		 RETURNING id`,
 		[
 			testId,
@@ -665,6 +669,8 @@ export async function createTestAttempt({
 			totalQuestions,
 			timeTaken,
 			normalizedHintedIndexes,
+			normalizedMarks,
+			normalizedTotalMarks,
 		]
 	);
 
@@ -698,6 +704,8 @@ export async function getMyAttemptForIdentity(testId, identity = {}) {
 			a.total_questions,
 			a.time_taken,
 			a.user_answers,
+			a.marks,
+			a.total_marks,
 			a.created_at AS submitted_at
 		 FROM ai_test_attempts a
 		 WHERE a.test_id = $1
@@ -811,6 +819,10 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 		const timeTaken = Number.isFinite(Number(attempt?.timeTaken))
 			? Math.max(0, Number(attempt.timeTaken))
 			: null;
+		const marks = Number.isFinite(Number(attempt?.marks)) ? Number(attempt.marks) : null;
+		const totalMarks = Number.isFinite(Number(attempt?.totalMarks))
+			? Number(attempt.totalMarks)
+			: null;
 
 		if (score === null || totalQuestions === null) {
 			continue;
@@ -833,8 +845,8 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 
 		const result = await query(
 			`INSERT INTO ai_test_attempts
-			 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, hinted_indexes, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			 (test_id, user_id, client_id, user_answers, score, total_questions, time_taken, hinted_indexes, created_at, marks, total_marks)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 			[
 				testId,
 				userId,
@@ -845,6 +857,8 @@ export async function upsertUserTestAttempts(identity, attempts = []) {
 				timeTaken,
 				normalizedHints,
 				submittedAt.toISOString(),
+				marks,
+				totalMarks,
 			]
 		);
 		insertedCount += result.rowCount || 0;

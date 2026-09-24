@@ -11,7 +11,7 @@ import { rateLimiter } from '$lib/server/rateLimiter';
 import { parseRequestBody } from '$lib/server/quizValidation';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
-const ACTIVITY_RATE_LIMIT = 30;
+const ACTIVITY_RATE_LIMIT = 60;
 const VALID_EVENTS = new Set(['view', 'start']);
 
 /**

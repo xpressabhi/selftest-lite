@@ -14,8 +14,8 @@ import {
 } from '$lib/shared/userState';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
-const STATE_GET_RATE_LIMIT = 120;
-const STATE_POST_RATE_LIMIT = 60;
+const STATE_GET_RATE_LIMIT = 900;
+const STATE_POST_RATE_LIMIT = 300;
 
 function rateLimitedResponse(rateLimit) {
 	return json(
