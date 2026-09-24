@@ -86,7 +86,7 @@
 				<a class="btn btn-primary" href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&numQuestions=${fullCount}`}>
 					{$t('practiceFullMock', { count: fullCount })}
 				</a>
-				<a class="practice-sectional-link" href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}`}>
+				<a class="practice-sectional-link" href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&sections=1`}>
 					{$t('practiceSectionalLink')}
 				</a>
 			</div>

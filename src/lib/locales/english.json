@@ -498,6 +498,8 @@
 	"examPaperPatternMetaShort": "pattern {year}",
 	"resultsMarksOf": "{marks}/{total} marks",
 	"sectionMinutesLabel": "~{minutes} min",
+	"examSectionsLoading": "Loading sections",
+	"examSectionsFind": "Find sections",
 	"testProgressLabel": "Test progress",
 	"enableSoundEffects": "Enable sound effects",
 	"disableSoundEffects": "Disable sound effects",

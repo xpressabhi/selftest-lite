@@ -182,6 +182,49 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   covered. Admin grant and signed-in generation need a Google session and are manually verifiable.
 - `lint`, `check`, `test` (574, +8), `test:e2e` (80, +3), `verify:vercel` all green.
 
+### Follow-up pass (2026-09-24)
+
+- 9 new e2e coverage points across the batch: `exam-engine` now runs 5 specs (cached sections + request
+  payload, gate, admin grant/revoke, cached pattern, section/marks/school rendering); `test-stats` kept.
+- Three flake classes were root-caused and fixed rather than retried: aborted activity pings (challenge
+  name is now captured server-side at submit), Google GSI console noise (filtered as environmental), and
+  background auth/state sync exhausting its 120/min limits under a full suite (limits raised to 900/300).
+  Three consecutive full e2e runs pass after the fix.
+- Unit suites: `marks`, `userState` (streak merge) added; `examPattern` extended — totals 590 unit tests.
+
+## Follow-up work (2026-09-24, second pass)
+
+Shipped after the four phases, addressing the "remaining things" list:
+
+- **Pattern refresh gating** — `refresh=1` is admin-only and a 6 h cooldown applies even to admins;
+  `discover=0` lets clients read the cache without triggering discovery. `shouldHonorRefresh` is unit-tested.
+- **Paper header name** — the school/college name flows from `/exam-paper` into `examMeta.schoolName`
+  and renders on the test summary and results; `examMeta` also renders on results.
+- **Admin Exam Patterns panel** — lists cached patterns (key, exam, year, sections, fetched/expires) and
+  refreshes any pattern from its stored `target` (schema v9 adds `exam_patterns.target`).
+- **Streak cross-device** — `selftest_streak` rides the existing state sync with a two-writer merge
+  (`mergeStreak`: newer activity wins, longest/total/history only grow, history deduped by day).
+- **Visit-history backfill** — `npm run telemetry:backfill-visits [-- --apply]` rebuilds visits from
+  `test:start`/`results:view` (archive-aware, upsert-only). Applied: 364 rows upserted.
+- **Section-aware generation** — pattern papers with multiple sections generate each section in parallel
+  with its own count/format, then ranges are assigned from actual output sizes (no mislabelled sections).
+- **Marks-aware scoring** — `computeAttemptMarks` (shared by server grading and local grading) stores
+  `marks`/`total_marks` on attempts; results show a marks pill; negative marking applies per section.
+- **Section time budget** — each section banner shows marks per question and a proportional minutes hint.
+- **Free-flow section picker (F6)** — cached sections appear as chips after selecting an exam; a "Find
+  sections" action discovers on demand; the request carries `sectionFocus`.
+- **Admin grant e2e** — seeds a user + session, logs in as admin, grants, verifies `/api/premium/access`,
+  revokes.
+- **Grounded research seam** — `buildPatternResearchPrompt`/`discoverExamPattern` accept verified research
+  notes; wiring a search provider only requires fetching notes before discovery (no provider key is
+  configured yet).
+- **Rate-limit headroom** — `/api/auth/me` and `/api/user/state` raised for background sync; stats/activity
+  limits raised; consecutive full e2e runs are now stable.
+
+Still open, by decision: payment-provider integration (seam ready), activating grounded research (needs a
+search API key + budget), per-section timing enforcement (budget is displayed only), fuzzy explanation
+matching, and exact section ordering under model drift.
+
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |

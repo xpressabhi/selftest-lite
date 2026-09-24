@@ -498,6 +498,8 @@
 	"examPaperPatternMetaShort": "प्रारूप {year}",
 	"resultsMarksOf": "{marks}/{total} अंक",
 	"sectionMinutesLabel": "~{minutes} मिनट",
+	"examSectionsLoading": "खंड लोड हो रहे हैं",
+	"examSectionsFind": "खंड खोजें",
 	"testProgressLabel": "टेस्ट प्रगति",
 	"enableSoundEffects": "ध्वनि प्रभाव चालू करें",
 	"disableSoundEffects": "ध्वनि प्रभाव बंद करें",

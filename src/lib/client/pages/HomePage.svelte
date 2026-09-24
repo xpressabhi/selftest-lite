@@ -128,6 +128,10 @@
 	let testType = $state('multiple-choice');
 	let isFullExam = $state(false);
 	let examId = $state('');
+	let examSections = $state([]);
+	let examSectionsStatus = $state('idle');
+	let selectedExamSection = $state('');
+	let examSectionsRequest = 0;
 	let selectedCategory = $state('');
 	let selectedTopics = $state([]);
 	let selectedSyllabusFocus = $state([]);
@@ -960,12 +964,63 @@
 		showManualConfig = !showManualConfig;
 	}
 
+	async function loadExamSections(id, { discover = false } = {}) {
+		if (!id) {
+			return;
+		}
+		const requestId = ++examSectionsRequest;
+		examSectionsStatus = 'loading';
+		try {
+			const params = new URLSearchParams({ examId: id });
+			if (!discover) {
+				params.set('discover', '0');
+			}
+			const response = await fetch(`/api/exam/pattern?${params.toString()}`, {
+				cache: 'no-store',
+			});
+			if (requestId !== examSectionsRequest) {
+				return;
+			}
+			if (!response.ok) {
+				examSections = [];
+				examSectionsStatus = 'missing';
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (requestId !== examSectionsRequest) {
+				return;
+			}
+			examSections = Array.isArray(data.pattern?.sections) ? data.pattern.sections : [];
+			selectedExamSection = '';
+			examSectionsStatus = examSections.length > 0 ? 'ready' : 'missing';
+		} catch {
+			if (requestId === examSectionsRequest) {
+				examSections = [];
+				examSectionsStatus = 'missing';
+			}
+		}
+	}
+
+	// Cached sections follow the selected exam; the explicit "find" action
+	// discovers (and caches) a pattern when nothing is known yet.
+	$effect(() => {
+		const id = examId;
+		examSectionsRequest += 1;
+		examSections = [];
+		selectedExamSection = '';
+		examSectionsStatus = id ? 'loading' : 'idle';
+		if (id) {
+			void loadExamSections(id, { discover: false });
+		}
+	});
+
 	function getExamRequestParams(
 		exam,
 		syllabusFocus = selectedSyllabusFocus,
 		customTopic = topic
 	) {
 		const focus = syllabusFocus.length > 0 ? syllabusFocus : exam.syllabus || [];
+		const section = examSections.find((entry) => entry.id === selectedExamSection) || null;
 		return {
 			testMode: 'full-exam',
 			topic: customTopic.trim() || `${exam.name} objective exam paper`,
@@ -975,14 +1030,21 @@
 			examName: exam.name,
 			examStream: exam.stream,
 			syllabusFocus: focus,
-			testType: !testType || testType === 'mixed' ? 'multiple-choice' : testType,
-			numQuestions: $isDataSaverActive
-				? Math.min(Number(exam.defaultNumQuestions || 20), 10)
-				: Number(exam.defaultNumQuestions || 20),
+			testType: section
+				? section.questionTypes?.[0] || 'multiple-choice'
+				: !testType || testType === 'mixed'
+					? 'multiple-choice'
+					: testType,
+			numQuestions: section
+				? section.questionCount
+				: $isDataSaverActive
+					? Math.min(Number(exam.defaultNumQuestions || 20), 10)
+					: Number(exam.defaultNumQuestions || 20),
 			difficulty: exam.defaultDifficulty || 'intermediate',
 			language: paperLanguage,
 			objectiveOnly: true,
 			durationMinutes: exam.durationMinutes || null,
+			...(section ? { sectionFocus: section.id } : {}),
 		};
 	}
 
@@ -1442,6 +1504,41 @@
 				{planDensity}
 			/>
 		</div>
+
+		{#if selectedExam && examSectionsStatus !== 'idle'}
+			<div class="exam-sections-row mb-4">
+				{#if examSectionsStatus === 'loading'}
+					<span class="small text-muted">{$t('examSectionsLoading')}</span>
+				{:else if examSections.length > 0}
+					<button
+						class="section-chip"
+						class:active={!selectedExamSection}
+						type="button"
+						onclick={() => (selectedExamSection = '')}
+					>
+						{$t('examPaperFullPaper')}
+					</button>
+					{#each examSections as section (section.id)}
+						<button
+							class="section-chip"
+							class:active={selectedExamSection === section.id}
+							type="button"
+							onclick={() => (selectedExamSection = section.id)}
+						>
+							{section.name}
+						</button>
+					{/each}
+				{:else}
+					<button
+						class="btn btn-sm btn-outline-secondary"
+						type="button"
+						onclick={() => loadExamSections(examId, { discover: true })}
+					>
+						{$t('examSectionsFind')}
+					</button>
+				{/if}
+			</div>
+		{/if}
 		<div class="daily-five-row mb-4">
 			<button
 				class="daily-five-btn"
@@ -1738,6 +1835,28 @@
 		background: var(--surface);
 		text-decoration: none;
 		color: inherit;
+	}
+
+	.exam-sections-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.section-chip {
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		padding: 6px 12px;
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+
+	.section-chip.active {
+		border-color: var(--color-brand-600);
+		background: var(--color-brand-100);
+		color: var(--color-brand-700);
 	}
 
 	.manual-section {
