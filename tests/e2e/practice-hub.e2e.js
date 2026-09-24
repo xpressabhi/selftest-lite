@@ -96,3 +96,21 @@ test('hindi hub renders hindi category labels', async ({ page }) => {
 		page.getByRole('heading', { name: 'एसएससी और केंद्रीय सरकारी नौकरियाँ' })
 	).toBeVisible();
 });
+
+test('search finds the new teaching exams', async ({ page }) => {
+	await page.goto('/practice');
+	await page.locator('#practice-search').fill('super tet');
+	await expect(page.locator('.practice-card', { hasText: 'UP Super TET' })).toBeVisible();
+	await page.locator('#practice-search').fill('kvs');
+	await expect(page.locator('.practice-card', { hasText: 'KVS PRT/TGT/PGT' })).toBeVisible();
+});
+
+test('teaching exam pages render the pattern and syllabus in both languages', async ({ page }) => {
+	await page.goto('/practice/up-super-tet');
+	await expect(page.getByRole('heading', { name: /UP Super TET/ })).toBeVisible();
+	await expect(page.getByText('Teaching Methodology')).toBeVisible();
+
+	await page.goto('/hi/practice/up-super-tet');
+	await expect(page.getByText('शिक्षण विधि')).toBeVisible();
+	await expect(page.locator('.practice-lead')).toContainText('शिक्षण', { exact: false });
+});

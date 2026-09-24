@@ -159,3 +159,52 @@ describe('searchExams', () => {
 		expect(haystack).toBe(haystack.toLowerCase());
 	});
 });
+
+describe('teaching exams', () => {
+	const TEACHING_IDS = [
+		'ctet',
+		'uptet',
+		'up-super-tet',
+		'up-tgt-pgt',
+		'reet',
+		'mptet',
+		'bihar-stet',
+		'htet',
+		'pstet',
+		'utet',
+		'cgtet',
+		'jtet',
+		'wbtet',
+		'otet',
+		'ktet',
+		'tntet',
+		'kvs-prt-tgt-pgt',
+		'nvs-tgt-pgt',
+		'dsssb-tgt-pgt',
+		'emrs-tgt-pgt',
+		'awes-prt-tgt-pgt'
+	];
+
+	it('registers the teacher cluster under the Teaching stream', () => {
+		const teaching = OBJECTIVE_ONLY_EXAMS.filter((exam) => exam.stream === 'Teaching');
+		expect(teaching.map((exam) => exam.id).sort()).toEqual([...TEACHING_IDS].sort());
+		for (const exam of teaching) {
+			expect(exam.syllabus?.length, exam.id).toBeGreaterThan(0);
+			expect(exam.fullLengthQuestions, exam.id).toBeGreaterThan(0);
+			expect(exam.durationMinutes, exam.id).toBeGreaterThan(0);
+		}
+	});
+
+	it('lands the teacher cluster in the first hub category', () => {
+		const grouped = groupExamsByCategory();
+		expect(grouped[0].id).toBe('teaching');
+		expect(grouped[0].exams).toHaveLength(TEACHING_IDS.length);
+	});
+
+	it('finds teacher exams by name, subject and Hindi script', () => {
+		expect(searchExams('super tet').map((exam) => exam.id)).toEqual(['up-super-tet']);
+		expect(searchExams('kvs').map((exam) => exam.id)).toEqual(['kvs-prt-tgt-pgt']);
+		expect(searchExams('बाल विकास').length).toBeGreaterThanOrEqual(10);
+		expect(searchExams('शिक्षक').length).toBe(TEACHING_IDS.length);
+	});
+});
