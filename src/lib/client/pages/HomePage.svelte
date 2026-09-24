@@ -77,6 +77,9 @@
 	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
 	let plannerTyped = $state(false);
+	// True while the composer holds a sentence that came from a gallery tap —
+	// a teaching fill, not the user typing (see handleExampleTap).
+	let galleryFill = $state(false);
 	let plannerDraft = $state(createPlannerDraft());
 	let recentTests = $state([]);
 	let previewStatus = $state('idle');
@@ -736,10 +739,10 @@
 		if (typeof window === 'undefined') return;
 		window.clearTimeout(previewTimer);
 		window.clearTimeout(settleTickTimer);
-		// Programmatic fills (welcome-gallery example taps) are not typing: no
-		// preview may run until the user actually edits the text, otherwise the
-		// tap would commit a topic, pop the plan card and wipe the gallery.
-		if (!plannerTyped) return;
+		// Programmatic gallery fills are not typing: no preview may run until the
+		// user actually edits the text, otherwise the tap would commit a topic,
+		// pop the plan card and wipe the gallery.
+		if (galleryFill) return;
 		const local = untrack(() => applyLocalPreviewFor(text));
 		const trimmed = String(text || '').trim();
 		if (!trimmed) return;
@@ -752,11 +755,16 @@
 		return () => window.clearTimeout(previewTimer);
 	});
 
-	// Clearing the field (or Start over) restores the welcome gallery — the
-	// user stopped typing, so the teaching state applies again.
+	// "Typed" is derived from the value, not from input events: text that was
+	// already in the field when the page hydrated still counts, while a gallery
+	// fill keeps the gallery visible until the user actually edits it. Clearing
+	// the field restores the gallery.
 	$effect(() => {
 		if (intentValue === '') {
 			plannerTyped = false;
+			galleryFill = false;
+		} else if (!galleryFill) {
+			plannerTyped = true;
 		}
 	});
 
@@ -923,6 +931,7 @@
 		clearPlannerDraft();
 		intentValue = '';
 		plannerTyped = false;
+		galleryFill = false;
 		topic = '';
 		parsedFromIntent = false;
 		intentParseFailed = false;
@@ -1351,6 +1360,7 @@
 		track('planner:example-tap', { group: example.group, slot: example.slot });
 		// Teach, don't act: fill the composer so the user can read and edit the
 		// kind of sentence the planner understands. No submit, no preview.
+		galleryFill = true;
 		intentValue = $t(example.key);
 	}
 
@@ -1490,9 +1500,6 @@
 				bind:value={intentValue}
 				onsubmit={sendPlannerIntent}
 				onnavigate={handleTestNavigate}
-				ontyping={(nextValue) => {
-					plannerTyped = nextValue !== '';
-				}}
 				disabled={status === 'loading' || isOffline}
 				status={intentStatus}
 				planTopic={topic}

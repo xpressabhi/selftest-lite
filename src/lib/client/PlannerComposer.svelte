@@ -19,7 +19,6 @@
 		planDensity = 'full',
 		onsubmit = () => {},
 		onnavigate = () => {},
-		ontyping = () => {},
 	} = $props();
 
 	let searchOpen = $state(false);
@@ -246,11 +245,6 @@
 
 	function handleIntentInput(event) {
 		value = sanitizeInputText(event.currentTarget.value, MAX_INTENT_CHARS);
-		// Real keystrokes only: programmatic fills (example taps) must not count
-		// as typing, or the welcome gallery would vanish on tap. The sanitized
-		// value travels with the signal so clearing the last character can
-		// restore the gallery in the same event.
-		ontyping(value);
 	}
 
 	function handleKeydown(event) {
