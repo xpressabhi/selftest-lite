@@ -72,7 +72,6 @@
 
 	const MAX_RETRIES = 3;
 	const GENERATION_TIMEOUT_MS = 180000;
-	const HERO_SCROLL_THRESHOLD = 100;
 	const PROFILE_WIZARD_DISMISS_KEY = 'selftest_profile_wizard_dismissed_at';
 	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
@@ -163,7 +162,6 @@
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
 
-	let heroCollapsed = $state(false);
 	let isAndroidDevice = $state(false);
 	let isInCapacitorApp = $state(false);
 	let showManualConfig = $state(false);
@@ -411,64 +409,6 @@
 		if ($isDataSaverActive && !isFullExam && numQuestions > 5) {
 			numQuestions = 5;
 		}
-	});
-
-	$effect(() => {
-		if (
-			status === 'loading' ||
-			topic.trim().length > 0 ||
-			selectedTopics.length > 0 ||
-			examId !== '' ||
-			error
-		) {
-			heroCollapsed = true;
-			return;
-		}
-		if (typeof window !== 'undefined' && window.scrollY <= HERO_SCROLL_THRESHOLD) {
-			heroCollapsed = false;
-		}
-	});
-
-	$effect(() => {
-		if (typeof window === 'undefined' || typeof document === 'undefined') return;
-		const handleHeroScroll = () => {
-			if (window.scrollY > HERO_SCROLL_THRESHOLD) {
-				heroCollapsed = true;
-				return;
-			}
-			if (
-				status !== 'loading' &&
-				topic.trim().length === 0 &&
-				selectedTopics.length === 0 &&
-				examId === '' &&
-				!error
-			) {
-				heroCollapsed = false;
-			}
-		};
-		const handleHeroInteraction = (event) => {
-			const target = event.target;
-			if (!(target instanceof Element)) return;
-			// Taps inside the planner (recent tests, examples, composer) must
-			// not collapse the hero: the layout shift between pointerdown and
-			// click swallows the tap, forcing a second click. Collapse only
-			// for content below the planner.
-			if (
-				target.closest('.home-wrap') &&
-				!target.closest('.planner-panel') &&
-				!target.closest('.hero-block')
-			) {
-				heroCollapsed = true;
-			}
-		};
-		window.addEventListener('scroll', handleHeroScroll, { passive: true });
-		window.addEventListener('focusin', handleHeroInteraction);
-		window.addEventListener('pointerdown', handleHeroInteraction);
-		return () => {
-			window.removeEventListener('scroll', handleHeroScroll);
-			window.removeEventListener('focusin', handleHeroInteraction);
-			window.removeEventListener('pointerdown', handleHeroInteraction);
-		};
 	});
 
 	const PLANNER_PLAN_FIELDS = [
@@ -1447,13 +1387,7 @@
 	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px))); padding-left: calc(1rem + var(--sal, env(safe-area-inset-left, 0px))); padding-right: calc(1rem + var(--sar, env(safe-area-inset-right, 0px)));"
 >
 	<div class="mx-auto home-wrap">
-		<div
-			class="text-center mb-4 hero-block"
-			class:hero-collapsed={heroCollapsed}
-		>
-			<h1 class="hero-heading">{$t('homeH1')}</h1>
-			<p class="hero-sub">{$t('homeSeoIntro')}</p>
-		</div>
+		<h1 class="home-kicker">{$t('homeH1')}</h1>
 
 		{#snippet planCard()}
 			<PreviewCard
@@ -1580,6 +1514,8 @@
 			<a class="popular-exams-more" href={localizedPath('/practice', $activeLanguage)}>{$t('practiceAllExams')}</a>
 		</nav>
 
+		<p class="home-pitch">{$t('homeSeoIntro')}</p>
+
 		{#if tailoredSummary}
 			<div class="tailored-chip">
 				<span class="tailored-badge" aria-hidden="true">🎯</span>
@@ -1670,35 +1606,21 @@
 		max-width: 720px;
 	}
 
-	.hero-block {
-		max-height: 260px;
-		overflow: hidden;
-		opacity: 1;
-		transition:
-			max-height 0.35s ease,
-			opacity 0.25s ease,
-			margin-bottom 0.35s ease;
-	}
-
-	.hero-block.hero-collapsed {
-		max-height: 0;
-		margin-bottom: 0;
-		opacity: 0;
-		pointer-events: none;
-	}
-
-	.hero-heading {
-		font-size: 1.5rem;
+	.home-kicker {
+		font-size: 1.05rem;
 		font-weight: 700;
 		color: var(--text);
-		margin: 0;
+		text-align: center;
+		margin: 0 0 12px;
+		text-wrap: balance;
 	}
 
-	.hero-sub {
-		margin: 0.5rem auto 0;
+	.home-pitch {
+		margin: 12px auto 0;
 		max-width: 36rem;
+		text-align: center;
 		color: var(--text-muted);
-		font-size: 0.95rem;
+		font-size: 0.82rem;
 		line-height: 1.6;
 	}
 
@@ -1861,8 +1783,8 @@
 	}
 
 	@media (max-width: 480px) {
-		.hero-heading {
-			font-size: 1.25rem;
+		.home-kicker {
+			font-size: 0.95rem;
 		}
 	}
 </style>
