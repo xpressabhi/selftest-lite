@@ -30,6 +30,16 @@ const getArg = (name, fallback) => {
 
 const strict = hasFlag('strict');
 const judge = hasFlag('judge');
+// Uniform option shuffling gives every key a 50% chance of landing in slot A
+// or B, whatever the model's raw bias was. Judge the served share against that
+// null with a one-sided binomial z-test instead of a fixed percentage: at 30
+// questions a fixed 60% gate false-alarms roughly one run in five, while a
+// real shuffle failure (share near the model's raw bias) still trips 2σ.
+const SHUFFLE_SIGMA_LIMIT = 2;
+function servedBiasLimit(questionCount) {
+	const n = Math.max(1, questionCount);
+	return 0.5 + SHUFFLE_SIGMA_LIMIT * Math.sqrt(0.25 / n);
+}
 const questionsPerPaper = Math.min(Math.max(Number(getArg('questions', 10)) || 10, 1), 25);
 const difficulty = getArg('difficulty', 'intermediate');
 const language = getArg('language', 'english');
@@ -224,8 +234,9 @@ console.log('\n=== Aggregate ===');
 console.log(`  papers:             ${aggregate.papers}/${topics.length}`);
 console.log(`  questions:          ${aggregate.questions}`);
 console.log(`  answer at A/B (model):   ${(aggregate.earlyShare * 100).toFixed(1)}%`);
+const biasLimit = servedBiasLimit(aggregate.questions);
 console.log(
-	`  answer at A/B (served):  ${(aggregate.shuffledEarlyShare * 100).toFixed(1)}% (target < 60%)`
+	`  answer at A/B (served):  ${(aggregate.shuffledEarlyShare * 100).toFixed(1)}% (uniform-shuffle limit ${(biasLimit * 100).toFixed(1)}% at ${SHUFFLE_SIGMA_LIMIT}σ)`
 );
 console.log(`  longest-option key: ${aggregate.longestTell} (${totalQuestions ? ((aggregate.longestTell / totalQuestions) * 100).toFixed(1) : '0'}%, target < 35%)`);
 console.log(`  near-duplicates:    ${aggregate.nearDuplicates}`);
@@ -233,7 +244,9 @@ console.log(`  structural issues:  ${aggregate.structuralIssues}`);
 
 const failures = [];
 if (aggregate.papers < topics.length) failures.push('one or more papers failed to generate');
-if (aggregate.shuffledEarlyShare >= 0.6) failures.push('answer-position bias too high (served)');
+if (totalQuestions > 0 && aggregate.shuffledEarlyShare > biasLimit) {
+	failures.push('answer-position bias too high (served)');
+}
 if (totalQuestions > 0 && aggregate.longestTell / totalQuestions >= 0.35) {
 	failures.push('longest-option tell too high');
 }

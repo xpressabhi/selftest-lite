@@ -85,7 +85,10 @@ Generates papers with the production prompt/schema and reports:
 - near-duplicate and structural defect counts
 - optional `--judge` model review (correctness / single answer / distractors)
 
-`--strict` exits non-zero when a threshold fails, so it can run in CI.
+`--strict` exits non-zero when a threshold fails, so it can run in CI. The
+served answer-position gate is a one-sided binomial test (50% + 2σ), not a
+fixed percentage: with only ~30 questions a fixed 60% gate false-alarms about
+one run in five, while a real shuffle failure still trips the σ limit.
 
 ## Item analytics and feedback
 
