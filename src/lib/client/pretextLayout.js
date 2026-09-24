@@ -1,3 +1,5 @@
+import { questionTextFor } from '$lib/shared/questionText';
+
 const preparedTextCache = new Map();
 
 let pretextApiPromise;
@@ -83,14 +85,34 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 	}
 
 	const contentWidth = Math.max(160, cardWidth - 32);
-	const questionResult = await measureText(question.question, '18px Inter', contentWidth, 27);
+	// Structured questions compose their stem from dedicated fields (an
+	// assertion-reasoning stem is empty), so measure the composed text.
+	const questionResult = await measureText(
+		questionTextFor(question),
+		'18px Inter',
+		contentWidth,
+		27
+	);
 	const optionResults = await Promise.all(
 		(question.options || []).map((option) =>
 			measureText(option, '14px Inter', contentWidth, 20)
 		)
 	);
+	const columnItems =
+		question.format === 'matching'
+			? [...(question.columnA || []), ...(question.columnB || [])]
+			: [];
+	const columnResults = await Promise.all(
+		columnItems.map((item) =>
+			measureText(item, '13px Inter', Math.max(60, Math.floor(contentWidth / 2) - 24), 18)
+		)
+	);
 
-	if (!questionResult || optionResults.some((result) => !result)) {
+	if (
+		!questionResult ||
+		optionResults.some((result) => !result) ||
+		columnResults.some((result) => !result)
+	) {
 		return null;
 	}
 
@@ -100,8 +122,24 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 		0
 	);
 	const optionGaps = Math.max(0, optionResults.length - 1) * 8;
+	const columnsHeight =
+		columnResults.length > 0
+			? getMatchingColumnsHeight(columnResults)
+			: 0;
 
-	return Math.ceil(32 + questionHeight + 12 + optionsHeight + optionGaps);
+	return Math.ceil(32 + questionHeight + 12 + columnsHeight + optionsHeight + optionGaps);
+}
+
+/** Height of the two-column grid: four aligned rows plus labels and gaps. */
+function getMatchingColumnsHeight(columnResults) {
+	const half = Math.ceil(columnResults.length / 2);
+	let rowsHeight = 0;
+	for (let row = 0; row < half; row += 1) {
+		const left = columnResults[row]?.height || 18;
+		const right = columnResults[row + half]?.height || 18;
+		rowsHeight += Math.max(24, left + 12, right + 12);
+	}
+	return 6 + 20 + rowsHeight + 6 + 12;
 }
 
 export function clearTextMeasurementCache() {

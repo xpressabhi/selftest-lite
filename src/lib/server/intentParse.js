@@ -60,7 +60,14 @@ export const TOPIC_MIN_PROBABILITY = 0.3;
 export const CONFIDENCE_HIGH = 0.8;
 export const CONFIDENCE_MEDIUM = 0.5;
 
-export const VALID_TEST_TYPES = ['multiple-choice', 'true-false', 'coding', 'speed-challenge'];
+export const VALID_TEST_TYPES = [
+	'multiple-choice',
+	'true-false',
+	'coding',
+	'speed-challenge',
+	'matching',
+	'assertion-reasoning',
+];
 export const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 export const VALID_LANGUAGES = ['english', 'hindi'];
 
@@ -172,6 +179,8 @@ export function buildIntentQuestions({
 				'true-false': 'True or false / binary yes-no statements',
 				coding: 'Programming problems with code answers',
 				'speed-challenge': 'A rapid-fire quick test against the clock',
+				matching: 'Match the columns / match the following questions',
+				'assertion-reasoning': 'Assertion and reason statement questions',
 			},
 		};
 	}

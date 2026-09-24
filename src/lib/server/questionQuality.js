@@ -6,6 +6,8 @@
 // (answer-position bias, longest-answer tells, repeated questions, language
 // drift). Failures are returned so the caller can regenerate the batch.
 
+import { questionTextFor } from '../shared/questionText.js';
+
 const LAZY_OPTION_PATTERN = /^(all|none)\s+of\s+the\s+above\.?$/iu;
 const DEVANAGARI_PATTERN = /[\u0900-\u097F]/gu;
 const LATIN_PATTERN = /[a-z]/giu;
@@ -16,6 +18,17 @@ export const NEAR_DUPLICATE_THRESHOLD = 0.8;
 export const CROSS_PAPER_DUPLICATE_THRESHOLD = 0.85;
 export const LENGTH_RATIO_LIMIT = 1.25;
 export const HINDI_SCRIPT_RATIO_MIN = 0.25;
+// Matching items must stay scannable in a two-column phone grid.
+export const MATCHING_ITEM_LONG_CHARS = 60;
+
+/**
+ * Matching and assertion-reasoning options are built server-side: their order
+ * and length profile are deliberate, so shuffling and length-tell heuristics
+ * do not apply to them.
+ */
+function isServerBuiltFormat(question) {
+	return question?.format === 'matching' || question?.format === 'assertion-reasoning';
+}
 
 /** Lowercases, strips markdown/LaTeX/punctuation and collapses whitespace. */
 export function normalizeQuestionText(text) {
@@ -106,6 +119,9 @@ export function summarizeQuestionLengths(questions) {
 	let maxRatio = 0;
 	let ratioSum = 0;
 	for (const question of questions || []) {
+		if (isServerBuiltFormat(question)) {
+			continue;
+		}
 		const options = Array.isArray(question?.options) ? question.options : [];
 		const answerText = String(question?.answer || '');
 		const answerIndex = options.findIndex((option) => String(option) === answerText);
@@ -158,7 +174,8 @@ export function inspectQuestion(question, { previousQuestionTexts = [], currentP
 	const issues = [];
 	const options = Array.isArray(question?.options) ? question.options : [];
 	const answer = typeof question?.answer === 'string' ? question.answer : '';
-	const questionText = String(question?.question || '');
+	const questionText = questionTextFor(question);
+	const structured = isServerBuiltFormat(question);
 
 	if (options.length !== 2 && options.length !== 4) {
 		issues.push('option-count');
@@ -176,8 +193,22 @@ export function inspectQuestion(question, { previousQuestionTexts = [], currentP
 	if (options.some((option) => LAZY_OPTION_PATTERN.test(String(option).trim()))) {
 		issues.push('lazy-option');
 	}
-	if (answer && options.includes(answer) && options.length > 2 && isUniquelyLongest(answer, options)) {
+	if (
+		!structured &&
+		answer &&
+		options.includes(answer) &&
+		options.length > 2 &&
+		isUniquelyLongest(answer, options)
+	) {
 		issues.push('longest-answer-tell');
+	}
+	if (question?.format === 'matching' && Array.isArray(question.columnA) && Array.isArray(question.columnB)) {
+		const longItem = [...question.columnA, ...question.columnB].some(
+			(item) => String(item || '').trim().length > MATCHING_ITEM_LONG_CHARS
+		);
+		if (longItem) {
+			issues.push('matching-item-long');
+		}
 	}
 	if (hasUnbalancedLatex(`${questionText} ${options.join(' ')}`)) {
 		issues.push('latex-unbalanced');
@@ -208,13 +239,16 @@ export function inspectQuestion(question, { previousQuestionTexts = [], currentP
 
 /**
  * Shuffles a question's options (fixing answer-position bias) and returns the
- * shuffled question plus any remaining issues.
+ * shuffled question plus any remaining issues. Server-built option orders
+ * (matching, assertion-reasoning) are left exactly as built.
  */
 export function improveQuestion(question, options = {}) {
-	const shuffled = shuffleOptions(question, options.random);
+	const prepared = isServerBuiltFormat(question)
+		? question
+		: shuffleOptions(question, options.random);
 	return {
-		question: shuffled,
-		issues: inspectQuestion(shuffled, options),
+		question: prepared,
+		issues: inspectQuestion(prepared, options),
 	};
 }
 
@@ -227,7 +261,7 @@ export function inspectQuestionBatch(questions, options = {}) {
 		for (const issue of found) {
 			issues.push({ index, issue });
 		}
-		paperTexts.push(String(question?.question || ''));
+		paperTexts.push(questionTextFor(question));
 	});
 	return issues;
 }
@@ -249,7 +283,7 @@ export function applyQualityFixes(questions, options = {}) {
 		for (const issue of found) {
 			issues.push({ index, issue });
 		}
-		paperTexts.push(String(improved?.question || ''));
+		paperTexts.push(questionTextFor(improved));
 	});
 	return { questions: fixed, issues };
 }

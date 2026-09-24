@@ -9,7 +9,12 @@ export const VALID_TEST_TYPES = [
 	'coding',
 	'mixed',
 	'speed-challenge',
+	'matching',
+	'assertion-reasoning',
 ];
+
+/** Objective formats allowed in full-exam mode (plus the legacy MCQ default). */
+export const FULL_EXAM_TEST_TYPES = ['multiple-choice', 'matching', 'assertion-reasoning'];
 
 export const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 

@@ -41,3 +41,47 @@ describe('generatePrompt originalRequest failure modes', () => {
 		expect(blockIndex).toBeLessThan(prompt.indexOf('TOPIC INFORMATION'));
 	});
 });
+
+describe('generatePrompt format contracts', () => {
+	it('matching asks for pairs and never for options', () => {
+		const prompt = generatePrompt({ ...BASE, testType: 'matching' });
+		expect(prompt).toContain('"columnA"');
+		expect(prompt).toContain('"columnB"');
+		expect(prompt).toContain('same order as columnA');
+		expect(prompt).not.toContain('"options": ["Option A"');
+		expect(prompt).not.toContain('OPTION LENGTH BALANCE');
+	});
+
+	it('assertion-reasoning asks for a-d codes and never for options', () => {
+		const prompt = generatePrompt({ ...BASE, testType: 'assertion-reasoning' });
+		expect(prompt).toContain('"assertion"');
+		expect(prompt).toContain('"reason"');
+		expect(prompt).toContain('"a or b or c or d"');
+		expect(prompt).toContain('Distribute the codes');
+		expect(prompt).not.toContain('"options": ["Option A"');
+	});
+
+	it('legacy formats keep the option contract and length checks', () => {
+		const prompt = generatePrompt(BASE);
+		expect(prompt).toContain('"options": ["Option A", "Option B", "Option C", "Option D"]');
+		expect(prompt).toContain('OPTION LENGTH BALANCE');
+		expect(prompt).toContain('FINAL LENGTH CHECK');
+	});
+
+	it('renders structured previous questions through the composer', () => {
+		const prompt = generatePrompt({
+			...BASE,
+			testType: 'assertion-reasoning',
+			previousQuestions: [
+				{
+					format: 'assertion-reasoning',
+					assertion: 'Iron rusts in moist air.',
+					reason: 'Oxygen and water react with iron.',
+					answer: 'Both A and R are true, and R is the correct explanation of A',
+				},
+			],
+		});
+		expect(prompt).toContain('Q: Assertion (A): Iron rusts in moist air.');
+		expect(prompt).toContain('Reason (R): Oxygen and water react with iron.');
+	});
+});

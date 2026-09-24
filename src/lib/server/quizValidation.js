@@ -1,4 +1,5 @@
 import {
+	FULL_EXAM_TEST_TYPES,
 	MAX_ANSWER_TEXT_LENGTH,
 	MAX_OPTION_TEXT_LENGTH,
 	MAX_PREVIOUS_TESTS,
@@ -17,6 +18,9 @@ import {
 } from './quizConfig';
 import katex from 'katex';
 import { normalizeMathText } from '$lib/shared/latex';
+import { questionTextFor } from '$lib/shared/questionText';
+import { MATCHING_PAIR_COUNT, parseCombination } from './matchingBuilder';
+import { AR_OPTIONS, optionsForLanguage } from './assertionReasoning';
 
 const MATH_SEGMENT_PATTERN = /(\$\$?)([\s\S]*?)\1/g;
 
@@ -129,11 +133,24 @@ export function repairGeneratedPaper({ questionPaper, fallbackTopic = '' }) {
 		const answer = normalizeMathText(question.answer).trim();
 		const matchingOption = Array.isArray(options) ? findMatchingOption(options, answer) : null;
 
+		// Structured formats carry content in dedicated fields; normalize their
+		// text too so math handling is identical everywhere.
+		const structured = {};
+		if (Array.isArray(question.columnA) && Array.isArray(question.columnB)) {
+			structured.columnA = question.columnA.map((item) => normalizeMathText(item).trim());
+			structured.columnB = question.columnB.map((item) => normalizeMathText(item).trim());
+		}
+		if (typeof question.assertion === 'string' || typeof question.reason === 'string') {
+			structured.assertion = normalizeMathText(question.assertion).trim();
+			structured.reason = normalizeMathText(question.reason).trim();
+		}
+
 		return {
 			...question,
 			question: normalizeMathText(question.question).trim(),
 			options,
 			answer: matchingOption || answer,
+			...structured,
 		};
 	});
 
@@ -231,10 +248,10 @@ export function validateGenerateRequest({
 		return createValidationError('INVALID_LANGUAGE', 'Invalid language selection');
 	}
 
-	if (testMode === 'full-exam' && testType !== 'multiple-choice') {
+	if (testMode === 'full-exam' && !FULL_EXAM_TEST_TYPES.includes(testType)) {
 		return createValidationError(
 			'MCQ_ONLY_FULL_EXAM',
-			'Full exam mode supports multiple-choice objective format'
+			'Full exam mode supports objective formats: multiple-choice, matching, and assertion-reasoning'
 		);
 	}
 
@@ -286,6 +303,24 @@ export function validateTestRecordPayload(test) {
 		if (String(question.question || '').length > MAX_QUESTION_TEXT_LENGTH) {
 			return createValidationError('INVALID_TEST_DATA', 'Question text is too long');
 		}
+		if (
+			String(question.assertion || '').length > MAX_QUESTION_TEXT_LENGTH ||
+			String(question.reason || '').length > MAX_QUESTION_TEXT_LENGTH
+		) {
+			return createValidationError('INVALID_TEST_DATA', 'Assertion or reason text is too long');
+		}
+		if (
+			(Array.isArray(question.columnA) &&
+				question.columnA.some(
+					(item) => String(item || '').length > MAX_OPTION_TEXT_LENGTH
+				)) ||
+			(Array.isArray(question.columnB) &&
+				question.columnB.some(
+					(item) => String(item || '').length > MAX_OPTION_TEXT_LENGTH
+				))
+		) {
+			return createValidationError('INVALID_TEST_DATA', 'Column item text is too long');
+		}
 		if (String(question.answer || '').length > MAX_ANSWER_TEXT_LENGTH) {
 			return createValidationError('INVALID_TEST_DATA', 'Answer text is too long');
 		}
@@ -305,8 +340,12 @@ export function validateTestRecordPayload(test) {
  * (empty means valid); `index` is -1 for paper-level problems. The salvage
  * path keeps the good questions with this; `validateGeneratedPaper` below
  * preserves the original throwing contract.
+ *
+ * Format-aware: matching and assertion-reasoning questions are validated
+ * against the server-built option contracts, and their duplicate/length checks
+ * run on the composed question text (their stems can be empty).
  */
-export function inspectGeneratedPaper({ questionPaper, testType, numQuestions }) {
+export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, language }) {
 	if (!questionPaper?.topic || !Array.isArray(questionPaper.questions)) {
 		return [{ index: -1, issue: 'invalid-structure', message: 'Invalid response structure' }];
 	}
@@ -315,17 +354,87 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions })
 	const questionTexts = new Set();
 	questionPaper.questions.forEach((q, index) => {
 		const add = (issue, message) => issues.push({ index, issue, message });
-		if (!q?.question || !Array.isArray(q.options) || !q?.answer) {
+		const questionText = questionTextFor(q);
+
+		if (!questionText || !Array.isArray(q?.options) || !q?.answer) {
 			add('invalid-structure', `Invalid question structure at index ${index}`);
 			return;
 		}
 
-		const normalizedQuestion = comparableText(q.question).toLocaleLowerCase();
+		const normalizedQuestion = comparableText(questionText).toLocaleLowerCase();
 		if (questionTexts.has(normalizedQuestion)) {
 			add('duplicate-question', `Question ${index + 1} duplicates another question`);
 			return;
 		}
 		questionTexts.add(normalizedQuestion);
+
+		if (q.format === 'matching') {
+			if (
+				!Array.isArray(q.columnA) ||
+				!Array.isArray(q.columnB) ||
+				q.columnA.length !== MATCHING_PAIR_COUNT ||
+				q.columnB.length !== MATCHING_PAIR_COUNT
+			) {
+				add('matching-columns', `Question ${index + 1} must have four items in each column`);
+				return;
+			}
+			const parsedOptions = q.options.map((option) => parseCombination(option));
+			if (q.options.length !== 4 || parsedOptions.some((letters) => !letters)) {
+				add(
+					'matching-option-malformed',
+					`Question ${index + 1} has a malformed combination option`
+				);
+				return;
+			}
+			if (
+				q.options.filter((option) => comparableText(option) === comparableText(q.answer))
+					.length !== 1
+			) {
+				add('answer-mismatch', `Question ${index + 1} answer must match exactly one combination`);
+				return;
+			}
+			try {
+				validateMathSyntax(questionText, `Question ${index + 1}`);
+			} catch (error) {
+				add('invalid-latex', error.message);
+			}
+			return;
+		}
+
+		if (q.format === 'assertion-reasoning') {
+			const expected = language ? optionsForLanguage(String(language).toLowerCase()) : null;
+			const matchesSet = (set) =>
+				q.options.length === set.length && q.options.every((option, i) => option === set[i]);
+			const canonicalOk = expected
+				? matchesSet(expected)
+				: Object.values(AR_OPTIONS).some((set) => matchesSet(set));
+			if (!canonicalOk) {
+				add(
+					'ar-options-mismatch',
+					`Question ${index + 1} options must be the standard assertion-reasoning statements`
+				);
+				return;
+			}
+			if (!q.options.includes(q.answer)) {
+				add('answer-mismatch', `Question ${index + 1} answer must match one of the options`);
+				return;
+			}
+			const assertion = typeof q.assertion === 'string' ? q.assertion.trim() : '';
+			const reason = typeof q.reason === 'string' ? q.reason.trim() : '';
+			if (!assertion || !reason || assertion === reason) {
+				add(
+					'ar-statements-invalid',
+					`Question ${index + 1} must have distinct assertion and reason statements`
+				);
+				return;
+			}
+			try {
+				validateMathSyntax(questionText, `Question ${index + 1}`);
+			} catch (error) {
+				add('invalid-latex', error.message);
+			}
+			return;
+		}
 
 		if (
 			(testType === 'multiple-choice' || testType === 'speed-challenge') &&

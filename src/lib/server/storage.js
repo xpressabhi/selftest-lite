@@ -1101,7 +1101,7 @@ export async function getRecentQuestionsForTopic({ topic, language, limit = 30 }
 
 	const result = await query(
 		`SELECT
-			q.value->>'question' AS question,
+			q.value AS question,
 			q.value->>'answer' AS answer
 		 FROM ai_test t
 		 CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q(value)
@@ -1113,6 +1113,8 @@ export async function getRecentQuestionsForTopic({ topic, language, limit = 30 }
 		[trimmedTopic, normalizedLanguage, cappedLimit]
 	);
 
+	// `question` is the full stored question object (JSONB), so structured
+	// formats keep their columns/assertion fields for dedupe and prompts.
 	return result.rows;
 }
 

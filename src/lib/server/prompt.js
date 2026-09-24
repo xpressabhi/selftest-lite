@@ -1,3 +1,5 @@
+import { questionTextFor } from '../shared/questionText.js';
+
 export function generatePrompt({
 	topic,
 	numQuestions,
@@ -14,6 +16,99 @@ export function generatePrompt({
 	warmUpDifficulty = null,
 	originalRequest = null,
 }) {
+	// Matching and assertion-reasoning papers leave options and the answer to
+	// the server (see matchingBuilder / assertionReasoning), so the model only
+	// supplies content fields. Their prompt must not ask for options.
+	const usesOptions = !['matching', 'assertion-reasoning'].includes(testType);
+
+	const outputContract =
+		testType === 'matching'
+			? `{
+      "topic": "A clear topic description",
+      "questions": [
+        {
+          "question": "Matching instruction, e.g. Match the vitamin in Column I with the deficiency disease in Column II",
+          "rationale": "Private reasoning: why each pair is the correct match",
+          "columnA": ["First Column I item", "Second item", "Third item", "Fourth item"],
+          "columnB": ["Correct match for columnA[1]", "Correct match for columnA[2]", "Correct match for columnA[3]", "Correct match for columnA[4]"]
+        }
+      ]
+    }
+
+    For every question, decide the correct pairings first, then write the rationale, then list columnB in the same order as columnA.`
+			: testType === 'assertion-reasoning'
+				? `{
+      "topic": "A clear topic description",
+      "questions": [
+        {
+          "assertion": "Assertion (A): one factual statement",
+          "reason": "Reason (R): one factual statement",
+          "rationale": "Private reasoning: why the keyed relationship is the correct one",
+          "answer": "a or b or c or d"
+        }
+      ]
+    }
+
+    For every question, decide which of the four relationships holds first, then write the rationale, then confirm the code.`
+				: `{
+      "topic": "A clear topic description",
+      "questions": [
+        {
+          "question": "Question text with formatting",
+          "rationale": "Private reasoning: why the key is right and the closest distractor is wrong",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "answer": "Must match exactly one of the options"
+        }
+      ]
+    }
+
+    For every question, decide the correct answer first, then write the rationale, then build the options around it.`;
+
+	const formatRules = [
+		'Response must be ONLY the JSON object - no other text',
+		'Use double quotes for all strings',
+		...(usesOptions
+			? [
+					'Multiple choice questions must have exactly 4 options',
+					'True/False questions must have exactly 2 options using localized equivalents of true/false',
+					'Copy each answer exactly from one complete option string, character-for-character. Never output a label (A/B), a combination (both A and B), or any prefix in the answer field',
+				]
+			: testType === 'assertion-reasoning'
+				? [
+						'The "answer" field must be exactly one code: "a", "b", "c", or "d". Never output the option text itself and never output options',
+					]
+				: [
+						'Do not output "options" or an "answer" field: the platform scrambles Column II and builds the four combination options from your pairs',
+						'Write columnB in the same order as columnA, where columnB[i] is the correct match for columnA[i]',
+					]),
+		'Questions must match the specified difficulty level',
+		'Do not repeat previous questions',
+		examName
+			? `Match the tone and rigor expected in ${examName} objective practice papers.`
+			: 'Keep questions practical and realistic.',
+		testMode === 'full-exam'
+			? 'Generate a full-length exam paper style output for objective testing.'
+			: 'Generate a concise quiz-practice style output.',
+		'Do not include explanation fields for questions. Explanations are generated later on demand.',
+		...(usesOptions
+			? ['Before returning, verify that every answer is exactly equal to one of its options.']
+			: []),
+		'For each question, work out the correct answer first, then write the rationale, then build the distractors around it.',
+		...(usesOptions
+			? [
+					'Distractors must be plausible and educational: common misconceptions, same category and difficulty as the key. Never use "all of the above", "none of the above", joke options, or obviously wrong options.',
+					'OPTION LENGTH BALANCE (automatically checked): keep all four options within about 20% of each other in character length. The correct option must never be the longest option. If the correct answer needs extra words, give the distractors the same level of detail instead of padding the key. Example - BAD: key "Oxidation of primary alcohols with acidified potassium dichromate" vs distractors "Reduction", "Hydration", "Substitution". GOOD: key "Oxidation of primary alcohols" vs distractors "Reduction of aldehydes", "Hydration of alkenes", "Substitution of alkanes".',
+					'Exactly one option must be defensible. Never include two near-synonyms, two facts that are both true, or an option that is correct under a different interpretation.',
+				]
+			: []),
+		'Match the requested language and script: a Hindi paper uses Devanagari for question, statements, columns and options (standard English technical terms are allowed).',
+		...(usesOptions
+			? [
+					'FINAL LENGTH CHECK: before returning, compare the character length of the correct option with the longest distractor for every question. If the correct option is longer, rewrite that question\'s options until it is not.',
+				]
+			: []),
+	];
+
 	return `You are an expert quiz generator. Generate a ${difficulty}-level ${testType} quiz with ${numQuestions} questions.
     
     LANGUAGE: ${language || 'English'}
@@ -30,46 +125,10 @@ export function generatePrompt({
     
     OUTPUT FORMAT:
     The response must be a valid JSON object with this exact structure:
-    {
-      "topic": "A clear topic description",
-      "questions": [
-        {
-          "question": "Question text with formatting",
-          "rationale": "Private reasoning: why the key is right and the closest distractor is wrong",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "answer": "Must match exactly one of the options"
-        }
-      ]
-    }
-
-    For every question, decide the correct answer first, then write the rationale, then build the options around it.
+    ${outputContract}
     
     IMPORTANT RULES:
-    1. Response must be ONLY the JSON object - no other text
-    2. Use double quotes for all strings
-    3. Multiple choice questions must have exactly 4 options
-    4. True/False questions must have exactly 2 options using localized equivalents of true/false
-    5. Copy each answer exactly from one complete option string, character-for-character. Never output a label (A/B), a combination (both A and B), or any prefix in the answer field
-    6. Questions must match the specified difficulty level
-    7. Do not repeat previous questions
-    8. ${
-		examName
-			? `Match the tone and rigor expected in ${examName} objective practice papers.`
-			: 'Keep questions practical and realistic.'
-	}
-    9. ${
-		testMode === 'full-exam'
-			? 'Generate a full-length exam paper style output for objective testing.'
-			: 'Generate a concise quiz-practice style output.'
-	}
-    10. Do not include explanation fields for questions. Explanations are generated later on demand.
-    11. Before returning, verify that every answer is exactly equal to one of its options.
-    12. For each question, work out the correct answer first, then write the rationale, then build the distractors around it.
-    13. Distractors must be plausible and educational: common misconceptions, same category and difficulty as the key. Never use "all of the above", "none of the above", joke options, or obviously wrong options.
-    14. OPTION LENGTH BALANCE (automatically checked): keep all four options within about 20% of each other in character length. The correct option must never be the longest option. If the correct answer needs extra words, give the distractors the same level of detail instead of padding the key. Example - BAD: key "Oxidation of primary alcohols with acidified potassium dichromate" vs distractors "Reduction", "Hydration", "Substitution". GOOD: key "Oxidation of primary alcohols" vs distractors "Reduction of aldehydes", "Hydration of alkenes", "Substitution of alkanes".
-    15. Exactly one option must be defensible. Never include two near-synonyms, two facts that are both true, or an option that is correct under a different interpretation.
-    16. Match the requested language and script: a Hindi paper uses Devanagari for question and options (standard English technical terms are allowed).
-    17. FINAL LENGTH CHECK: before returning, compare the character length of the correct option with the longest distractor for every question. If the correct option is longer, rewrite that question's options until it is not.
+    ${formatRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n    ')}
     
     CONTENT FORMATTING:
     For code questions (especially when testType is 'coding'):
@@ -144,7 +203,20 @@ export function generatePrompt({
           - Keep question stems concise and direct while preserving difficulty
           - Favor practical recall and quick reasoning over long derivations
           - Ensure wrong options are plausible but clearly distinguishable`
-								: `
+								: testType === 'matching'
+									? `
+          - Create "Match the following" questions: Column I with exactly 4 short items and Column II with their 4 correct matches written in the same order.
+          - Keep every item short (at most about six words) so both columns stay readable on a phone screen.
+          - Both columns must describe the same category of thing (terms, people, events, quantities) and every pair must be unambiguous.
+          - Do not output options or an answer: the platform scrambles Column II and builds four combination options from your pairs.
+          - Vary the subject matter across questions and keep pairs factual and exam-grade.`
+									: testType === 'assertion-reasoning'
+										? `
+          - Write one Assertion (A) and one Reason (R) per question, each a single factual statement.
+          - Choose the relationship code honestly: a = both true and R explains A; b = both true but R does not explain A; c = A true and R false; d = A false and R true.
+          - Distribute the codes across the paper; never make every answer "a".
+          - Never let the reason merely restate the assertion, and never output the four standard options yourself.`
+										: `
           - Mix different question types for comprehensive assessment
           - Include properly formatted code examples where relevant
           - Balance theoretical concepts with practical application
@@ -206,7 +278,9 @@ export function generatePrompt({
           PREVIOUS QUESTIONS TO AVOID:
           ${
 				previousQuestions.length > 0
-					? previousQuestions.map((q) => `Q: ${q.question}\nA: ${q.answer}`).join('\n\n')
+					? previousQuestions
+							.map((q) => `Q: ${questionTextFor(q)}\nA: ${q.answer || ''}`)
+							.join('\n\n')
 					: 'No previous questions.'
 			}
           FORMATTING GUIDELINES:

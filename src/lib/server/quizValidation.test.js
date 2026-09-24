@@ -3,6 +3,7 @@ import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	answerMatchesOption,
+	inspectGeneratedPaper,
 	parseRequestBody,
 	repairGeneratedPaper,
 	sanitizePreviousTestIds,
@@ -10,6 +11,8 @@ import {
 	validateGeneratedPaper,
 	validateTestRecordPayload,
 } from './quizValidation';
+import { buildMatchingQuestion } from './matchingBuilder';
+import { buildAssertionReasoningQuestion } from './assertionReasoning';
 
 function jsonRequest(body) {
 	return { text: () => Promise.resolve(body) };
@@ -374,5 +377,168 @@ describe('validateTestRecordPayload', () => {
 			questions: [{ question: 'x'.repeat(2001), options: ['A', 'B'], answer: 'A' }],
 		});
 		expect(error).not.toBeNull();
+	});
+});
+
+describe('new paper formats', () => {
+	const fullExamBase = {
+		topic: 'Physics',
+		language: 'english',
+		numQuestions: 10,
+		difficulty: 'intermediate',
+		testMode: 'full-exam',
+		examName: 'CTET Paper 1',
+		objectiveOnly: true,
+	};
+
+	it('accepts matching and assertion-reasoning full-exam requests', () => {
+		expect(validateGenerateRequest({ ...fullExamBase, testType: 'matching' })).toBeNull();
+		expect(
+			validateGenerateRequest({ ...fullExamBase, testType: 'assertion-reasoning' })
+		).toBeNull();
+	});
+
+	it('still rejects non-objective formats in full-exam mode', () => {
+		for (const testType of ['coding', 'true-false', 'speed-challenge', 'mixed']) {
+			expect(validateGenerateRequest({ ...fullExamBase, testType }).code).toBe(
+				'MCQ_ONLY_FULL_EXAM'
+			);
+		}
+	});
+
+	function seededRandom(seed) {
+		let state = seed >>> 0;
+		return () => {
+			state += 0x6d2b79f5;
+			let value = Math.imul(state ^ (state >>> 15), 1 | state);
+			value ^= value + Math.imul(value ^ (value >>> 7), 61 | value);
+			return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+		};
+	}
+
+	function builtMatching() {
+		return buildMatchingQuestion(
+			{
+				question: 'Match the vitamin in Column I with the deficiency disease in Column II.',
+				rationale: 'Pairs.',
+				columnA: ['Vitamin A', 'Vitamin B1', 'Vitamin C', 'Vitamin D'],
+				columnB: ['Night blindness', 'Beriberi', 'Scurvy', 'Rickets'],
+			},
+			{ random: seededRandom(4) }
+		).question;
+	}
+
+	function builtAssertionReasoning() {
+		return buildAssertionReasoningQuestion({
+			assertion: 'Iron rusts in moist air.',
+			reason: 'Oxygen and water react with iron.',
+			rationale: 'Rusting needs both.',
+			answer: 'a',
+		}).question;
+	}
+
+	it('accepts a clean matching question built by the server', () => {
+		const question = builtMatching();
+		expect(
+			inspectGeneratedPaper({
+				questionPaper: { topic: 'Vitamins', questions: [question] },
+				testType: 'matching',
+				numQuestions: 1,
+			})
+		).toEqual([]);
+	});
+
+	it('flags malformed matching options, column counts, and answer mismatches', () => {
+		const question = builtMatching();
+		const malformed = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Vitamins',
+				questions: [{ ...question, options: [...question.options.slice(1), 'not-a-combination'] }],
+			},
+			testType: 'matching',
+			numQuestions: 1,
+		});
+		expect(malformed.map((issue) => issue.issue)).toContain('matching-option-malformed');
+
+		const shortColumns = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Vitamins',
+				questions: [{ ...question, columnA: question.columnA.slice(0, 3) }],
+			},
+			testType: 'matching',
+			numQuestions: 1,
+		});
+		expect(shortColumns.map((issue) => issue.issue)).toContain('matching-columns');
+
+		const absentKey = [
+			'1-A, 2-B, 3-C, 4-D',
+			'1-A, 2-C, 3-D, 4-B',
+			'1-B, 2-A, 3-D, 4-C',
+			'1-C, 2-D, 3-A, 4-B',
+			'1-D, 2-A, 3-B, 4-C',
+		].find((candidate) => !question.options.includes(candidate));
+		const keyedElsewhere = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Vitamins',
+				questions: [{ ...question, answer: absentKey }],
+			},
+			testType: 'matching',
+			numQuestions: 1,
+		});
+		expect(keyedElsewhere.map((issue) => issue.issue)).toContain('answer-mismatch');
+	});
+
+	it('accepts a clean assertion-reasoning question and flags drift', () => {
+		const question = builtAssertionReasoning();
+		expect(
+			inspectGeneratedPaper({
+				questionPaper: { topic: 'Chemistry', questions: [question] },
+				testType: 'assertion-reasoning',
+				numQuestions: 1,
+				language: 'english',
+			})
+		).toEqual([]);
+
+		const drifted = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Chemistry',
+				questions: [{ ...question, options: [...question.options].reverse() }],
+			},
+			testType: 'assertion-reasoning',
+			numQuestions: 1,
+			language: 'english',
+		});
+		expect(drifted.map((issue) => issue.issue)).toContain('ar-options-mismatch');
+
+		const sameStatements = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Chemistry',
+				questions: [{ ...question, reason: question.assertion }],
+			},
+			testType: 'assertion-reasoning',
+			numQuestions: 1,
+			language: 'english',
+		});
+		expect(sameStatements.map((issue) => issue.issue)).toContain('ar-statements-invalid');
+	});
+
+	it('accepts the Hindi canonical set when the language is hindi', () => {
+		const question = buildAssertionReasoningQuestion(
+			{
+				assertion: 'लोहे को नम हवा में रखने पर जंग लगता है।',
+				reason: 'ऑक्सीजन और जल लोहे से क्रिया करते हैं।',
+				rationale: 'दोनों आवश्यक हैं।',
+				answer: 'a',
+			},
+			{ language: 'hindi' }
+		).question;
+		expect(
+			inspectGeneratedPaper({
+				questionPaper: { topic: 'रसायन', questions: [question] },
+				testType: 'assertion-reasoning',
+				numQuestions: 1,
+				language: 'hindi',
+			})
+		).toEqual([]);
 	});
 });

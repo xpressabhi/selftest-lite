@@ -20,6 +20,9 @@
 		getWeekActivity,
 	} from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import QuestionMatching from '$lib/client/QuestionMatching.svelte';
+	import QuestionAssertionReasoning from '$lib/client/QuestionAssertionReasoning.svelte';
+	import { questionTextFor } from '$lib/shared/questionText';
 	import {
 		disableReminders,
 		enableReminders,
@@ -348,7 +351,7 @@
 	}
 
 	function questionKey(question) {
-		return `${question.question}::${question.answer}`;
+		return `${questionTextFor(question)}::${question.answer}`;
 	}
 
 	const activityDateFormatters = new Map();
@@ -383,7 +386,7 @@
 				bookmarkPulse = null;
 			}, 450);
 		}
-		track('results:bookmark-question', { q: question.question?.slice(0, 40) });
+		track('results:bookmark-question', { q: questionTextFor(question).slice(0, 40) });
 		refreshLearningPanels();
 	}
 
@@ -417,11 +420,31 @@
 		const weakQuestions = wrongIndices
 			.map((index) => questionPaper.questions[index])
 			.filter(Boolean)
-			.map((question) => ({
-				question: question.question,
-				options: [...question.options],
-				answer: question.answer,
-			}));
+			.map((question) => {
+				// Preserve structured format fields (matching columns,
+				// assertion/reason) so the review paper renders correctly.
+				const copy = {
+					question: question.question,
+					options: [...(question.options || [])],
+					answer: question.answer,
+				};
+				if (question.format) {
+					copy.format = question.format;
+				}
+				if (Array.isArray(question.columnA)) {
+					copy.columnA = [...question.columnA];
+				}
+				if (Array.isArray(question.columnB)) {
+					copy.columnB = [...question.columnB];
+				}
+				if (typeof question.assertion === 'string') {
+					copy.assertion = question.assertion;
+				}
+				if (typeof question.reason === 'string') {
+					copy.reason = question.reason;
+				}
+				return copy;
+			});
 		if (weakQuestions.length === 0) {
 			return;
 		}
@@ -607,7 +630,7 @@
 				},
 				body: JSON.stringify({
 					topic: questionPaper.topic,
-					question: question.question,
+					question: questionTextFor(question),
 					answer: question.answer,
 					language: questionPaper.requestParams?.language || 'english',
 				}),
@@ -1252,7 +1275,13 @@
 					>
 						<span class="review-card-question">
 							<span class="review-card-number">{index + 1}.</span>
-							<MarkdownContent content={question.question} links="text" />
+							<MarkdownContent
+								content={question.question?.trim() ||
+									(question.format === 'assertion-reasoning'
+										? $t('assertionReasoning')
+										: '')}
+								links="text"
+							/>
 						</span>
 						<span
 							class="badge"
@@ -1325,6 +1354,11 @@
 									>
 										{$t('reportQuestion')}
 									</button>
+								{/if}
+								{#if question.format === 'matching'}
+									<QuestionMatching {question} />
+								{:else if question.format === 'assertion-reasoning'}
+									<QuestionAssertionReasoning {question} />
 								{/if}
 								<p class="mb-1">
 									<span class="fw-semibold">{$t('yourAnswer')}:</span>

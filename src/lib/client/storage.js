@@ -1,5 +1,6 @@
 import { LOCAL_STORAGE_CHANGE_EVENT, LOCAL_STORAGE_SYNC_EVENT, STORAGE_KEYS } from './constants';
 import { getClientHeaders } from './identity';
+import { questionTextFor } from '$lib/shared/questionText';
 
 export function emitLocalStorageChange(keys = []) {
 	if (typeof window === 'undefined') {
@@ -182,26 +183,32 @@ export function saveQuestionBookmarks(bookmarks) {
 }
 
 export function isQuestionBookmarked(question) {
+	const text = questionTextFor(question);
 	return getQuestionBookmarks().some(
-		(item) => item.question === question?.question && item.answer === question?.answer
+		(item) => item.question === text && item.answer === question?.answer
 	);
 }
 
 export function toggleQuestionBookmark(question, metadata = {}) {
-	if (!question?.question) {
+	// Structured formats (matching, assertion-reasoning) carry their content in
+	// dedicated fields; store the composed text so bookmark cards are never
+	// blank and identical-answer questions stay distinct.
+	const text = questionTextFor(question);
+	if (!text) {
 		return [];
 	}
 	const bookmarks = getQuestionBookmarks();
 	const exists = bookmarks.some(
-		(item) => item.question === question.question && item.answer === question.answer
+		(item) => item.question === text && item.answer === question.answer
 	);
 	const nextBookmarks = exists
 		? bookmarks.filter(
-				(item) => item.question !== question.question || item.answer !== question.answer
+				(item) => item.question !== text || item.answer !== question.answer
 			)
 		: [
 				{
 					...question,
+					question: text,
 					...metadata,
 					bookmarkedAt: Date.now(),
 				},

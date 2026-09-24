@@ -15,9 +15,12 @@ import {
 	saveTestIntentRecord,
 } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
-import { paperSchema } from '$lib/server/quizSchema';
+import { paperSchemaFor } from '$lib/server/quizSchema';
 import { parseJsonResponse } from '$lib/server/jsonResponse';
 import { normalizeMathText } from '$lib/shared/latex';
+import { questionTextFor } from '$lib/shared/questionText';
+import { buildMatchingQuestion } from '$lib/server/matchingBuilder';
+import { buildAssertionReasoningQuestion } from '$lib/server/assertionReasoning';
 import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
 import {
 	buildProfileContext,
@@ -159,22 +162,83 @@ function normalizeGeneratedPaper(questionPaper) {
 					)
 				: null;
 
+			// Structured formats keep their content in dedicated fields; the
+			// model output has no `format` yet, so detect by shape.
+			const structured = {};
+			if (Array.isArray(question.columnA) && Array.isArray(question.columnB)) {
+				structured.columnA = question.columnA.map((item) =>
+					normalizeMathText(item).trim()
+				);
+				structured.columnB = question.columnB.map((item) =>
+					normalizeMathText(item).trim()
+				);
+			}
+			if (typeof question.assertion === 'string' || typeof question.reason === 'string') {
+				structured.assertion = normalizeMathText(question.assertion).trim();
+				structured.reason = normalizeMathText(question.reason).trim();
+			}
+
 			return {
 				...question,
 				question: normalizeMathText(question.question).trim(),
 				options,
 				answer: matchingOption || normalizedAnswer,
+				...structured,
 			};
 		}),
 	};
 }
 
+/**
+ * Converts matching / assertion-reasoning drafts into their final stored
+ * shape, where the server owns options and the answer. Builder failures are
+ * returned as structural issues for the index so the salvage path regenerates
+ * only those questions.
+ */
+function buildStructuredQuestions(questionPaper, { testType, language }) {
+	if (testType !== 'matching' && testType !== 'assertion-reasoning') {
+		return { paper: questionPaper, issues: [] };
+	}
+
+	const issues = [];
+	const questions = questionPaper.questions.map((raw, index) => {
+		const result =
+			testType === 'matching'
+				? buildMatchingQuestion(raw)
+				: buildAssertionReasoningQuestion(raw, { language });
+		if (result.ok) {
+			return result.question;
+		}
+		for (const issue of result.issues) {
+			issues.push({
+				index,
+				issue,
+				message: `Question ${index + 1} failed ${issue}`,
+			});
+		}
+		return raw;
+	});
+
+	return { paper: { ...questionPaper, questions }, issues };
+}
+
 function sanitizeQuestion(question) {
-	return {
+	const sanitized = {
 		question: normalizeMathText(question.question).trim(),
 		options: question.options.map((option) => normalizeMathText(option).trim()),
 		answer: normalizeMathText(question.answer).trim(),
 	};
+	if (question.format === 'matching') {
+		sanitized.format = 'matching';
+		sanitized.columnA = question.columnA.map((item) => normalizeMathText(item).trim());
+		sanitized.columnB = question.columnB.map((item) => normalizeMathText(item).trim());
+	}
+	if (question.format === 'assertion-reasoning') {
+		sanitized.format = 'assertion-reasoning';
+		sanitized.assertion = normalizeMathText(question.assertion).trim();
+		sanitized.reason = normalizeMathText(question.reason).trim();
+	}
+	return sanitized;
 }
 
 function parseGeneratedJson(text) {
@@ -232,7 +296,7 @@ async function generateQuestionBatch({
 				contents: prompt,
 				config: {
 					responseMimeType: 'application/json',
-					responseJsonSchema: z.toJSONSchema(paperSchema),
+					responseJsonSchema: z.toJSONSchema(paperSchemaFor(testType)),
 				},
 				runState,
 			}),
@@ -325,8 +389,8 @@ async function generatePaper({
 	const generatedQuestions = [];
 	const salvage = { rounds: 0, rejected: 0, issueCounts: {}, trimmed: false };
 	const crossPaperTexts = [
-		...previousQuestions.map((question) => question.question),
-		...recentQuestions.map((question) => question.question),
+		...previousQuestions.map((question) => questionTextFor(question)),
+		...recentQuestions.map((question) => questionTextFor(question)),
 	];
 	let resolvedPaperTopic = resolvedTopic;
 
@@ -373,7 +437,7 @@ async function generatePaper({
 				round > 0
 					? buildTopUpInstruction({
 							rejected,
-							approvedTexts: approvedSoFar.map((question) => question.question),
+							approvedTexts: approvedSoFar.map((question) => questionTextFor(question)),
 							round,
 							ask,
 						})
@@ -397,7 +461,7 @@ async function generatePaper({
 							...previousQuestions,
 							...recentQuestions,
 							...approvedSoFar.map((question) => ({
-								question: question.question,
+								question: questionTextFor(question),
 								answer: question.answer,
 							})),
 						],
@@ -415,11 +479,19 @@ async function generatePaper({
 					questionPaper: candidatePaper,
 					fallbackTopic: resolvedTopic,
 				});
-				const structuralIssues = inspectGeneratedPaper({
-					questionPaper: repairedPaper,
-					testType,
-					numQuestions: ask,
-				});
+				// Matching / assertion-reasoning: turn content drafts into final
+				// questions (server-owned options and answer). Builder failures
+				// become structural issues so only those drafts regenerate.
+				const built = buildStructuredQuestions(repairedPaper, { testType, language });
+				const structuralIssues = [
+					...built.issues,
+					...inspectGeneratedPaper({
+						questionPaper: built.paper,
+						testType,
+						numQuestions: ask,
+						language,
+					}),
+				];
 				const fatalStructureIssue = structuralIssues.find(
 					(issue) => issue.index < 0 && issue.issue === 'invalid-structure'
 				);
@@ -437,9 +509,9 @@ async function generatePaper({
 				// answer-position bias) and reject length/duplicate/language
 				// defects that prompt-level checks miss. Duplicates are checked
 				// within this paper at 0.8 and against earlier papers at 0.85.
-				const qualityResult = applyQualityFixes(repairedPaper.questions, {
+				const qualityResult = applyQualityFixes(built.paper.questions, {
 					previousQuestionTexts: crossPaperTexts,
-					currentPaperTexts: approvedSoFar.map((question) => question.question),
+					currentPaperTexts: approvedSoFar.map((question) => questionTextFor(question)),
 					language,
 				});
 
@@ -1063,12 +1135,13 @@ export async function POST({ request, cookies }) {
 		const seenQuestionKeys = new Set();
 		for (const record of previousTestRecords) {
 			for (const q of record.test?.questions || []) {
-				const key = comparableText(q.question);
+				const displayText = questionTextFor(q);
+				const key = comparableText(displayText);
 				if (!key || seenQuestionKeys.has(key)) {
 					continue;
 				}
 				seenQuestionKeys.add(key);
-				previousQuestions.push({ question: q.question, answer: q.answer });
+				previousQuestions.push({ question: displayText, answer: q.answer });
 				if (previousQuestions.length >= MAX_PREVIOUS_QUESTIONS) {
 					break;
 				}
@@ -1078,10 +1151,20 @@ export async function POST({ request, cookies }) {
 			}
 		}
 
-		const recentTopicQuestions = await getRecentQuestionsForTopic({
-			topic: resolvedTopic,
-			language,
-		}).catch(() => []);
+		const recentTopicQuestions = (
+			await getRecentQuestionsForTopic({
+				topic: resolvedTopic,
+				language,
+			}).catch(() => [])
+		)
+			.map((row) => {
+				const value = row?.question;
+				if (value && typeof value === 'object') {
+					return { ...value, answer: value.answer ?? row.answer };
+				}
+				return { question: typeof value === 'string' ? value : '', answer: row?.answer };
+			})
+			.filter((question) => questionTextFor(question));
 
 		const apiKey = env.GEMINI_API_KEY;
 		if (!apiKey) {

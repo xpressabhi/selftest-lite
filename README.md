@@ -6,6 +6,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 
 - **Dynamic test generation**: describe the test you want and Gemini generates it (MCQ papers, full-length exam mock papers, objective-only papers).
 - **Multiple-choice quizzes**: take tests with instant scoring and answer review.
+- **Paper formats**: multiple-choice, true/false, coding, speed challenge, **match the columns**, and **assertion-reasoning** (both available in quiz practice and full-exam papers).
 - **Explanations**: per-question explanations on demand.
 - **Exam support**: syllabus-focused practice for Indian exams, with reusable full-exam papers to avoid repetition.
 - **Local-first history**: tests and answers cached in the browser; generated papers persisted to PostgreSQL.

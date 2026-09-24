@@ -3,6 +3,7 @@ import {
 	CROSS_PAPER_DUPLICATE_THRESHOLD,
 	HINDI_SCRIPT_RATIO_MIN,
 	LENGTH_RATIO_LIMIT,
+	MATCHING_ITEM_LONG_CHARS,
 	NEAR_DUPLICATE_THRESHOLD,
 	improveQuestion,
 	inspectQuestion,
@@ -12,6 +13,8 @@ import {
 	summarizeQuestionLengths,
 	trigramSimilarity,
 } from './questionQuality';
+import { AR_OPTIONS } from './assertionReasoning';
+import { questionTextFor } from '$lib/shared/questionText';
 
 function baseQuestion(overrides = {}) {
 	return {
@@ -204,5 +207,68 @@ describe('script ratio constant', () => {
 	it('stays in a sane range', () => {
 		expect(HINDI_SCRIPT_RATIO_MIN).toBeGreaterThan(0);
 		expect(HINDI_SCRIPT_RATIO_MIN).toBeLessThan(1);
+	});
+});
+
+describe('server-built formats (matching, assertion-reasoning)', () => {
+	const matching = {
+		format: 'matching',
+		question: 'Match the vitamin in Column I with the deficiency disease in Column II.',
+		columnA: ['Vitamin A', 'Vitamin B1', 'Vitamin C', 'Vitamin D'],
+		columnB: ['Scurvy', 'Night blindness', 'Rickets', 'Beriberi'],
+		options: [
+			'1-B, 2-D, 3-A, 4-C',
+			'1-A, 2-B, 3-C, 4-D',
+			'1-B, 2-C, 3-A, 4-D',
+			'1-D, 2-B, 3-C, 4-A',
+		],
+		answer: '1-B, 2-D, 3-A, 4-C',
+	};
+	const assertionReasoning = {
+		format: 'assertion-reasoning',
+		question: '',
+		assertion: 'Iron rusts in moist air.',
+		reason: 'Oxygen and water react with iron.',
+		options: [...AR_OPTIONS.english],
+		answer: AR_OPTIONS.english[0],
+	};
+
+	it('never shuffles server-built option orders', () => {
+		expect(improveQuestion(matching, { random: () => 0 }).question.options).toEqual(
+			matching.options
+		);
+		expect(
+			improveQuestion(assertionReasoning, { random: () => 0 }).question.options
+		).toEqual(assertionReasoning.options);
+	});
+
+	it('skips the longest-answer tell for the canonical statement set', () => {
+		expect(inspectQuestion(assertionReasoning)).not.toContain('longest-answer-tell');
+	});
+
+	it('flags over-long matching items as a soft issue', () => {
+		const longItem = 'x'.repeat(MATCHING_ITEM_LONG_CHARS + 1);
+		const long = { ...matching, columnA: [...matching.columnA.slice(0, 3), longItem] };
+		expect(inspectQuestion(long)).toContain('matching-item-long');
+		expect(inspectQuestion(matching)).not.toContain('matching-item-long');
+	});
+
+	it('detects structured near-duplicates through the composed text', () => {
+		// Without composition both stems are empty, so similarity would be 0
+		// and a repeated assertion/reason pair would slip through.
+		expect(trigramSimilarity('', '')).toBe(0);
+		const nearDuplicate = {
+			...assertionReasoning,
+			reason: 'Oxygen and water react with the iron metal.',
+		};
+		expect(
+			inspectQuestion(nearDuplicate, {
+				currentPaperTexts: [questionTextFor(assertionReasoning)],
+			})
+		).toContain('near-duplicate');
+	});
+
+	it('keeps key-length aggregation blind to server-built formats', () => {
+		expect(summarizeQuestionLengths([assertionReasoning, matching]).count).toBe(0);
 	});
 });

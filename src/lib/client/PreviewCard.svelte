@@ -84,6 +84,18 @@
 			icon: 'zap',
 			desc: $t('speedChallenge'),
 		},
+		{
+			value: 'matching',
+			label: $t('matchingColumns'),
+			icon: 'link',
+			desc: $t('matchingColumns'),
+		},
+		{
+			value: 'assertion-reasoning',
+			label: $t('assertionReasoning'),
+			icon: 'scale',
+			desc: $t('assertionReasoning'),
+		},
 	]);
 
 	const DIFFICULTIES = $derived.by(() => [

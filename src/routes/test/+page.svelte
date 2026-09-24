@@ -9,6 +9,8 @@
 	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import QuestionMatching from '$lib/client/QuestionMatching.svelte';
+	import QuestionAssertionReasoning from '$lib/client/QuestionAssertionReasoning.svelte';
 	import ReviewSheet from '$lib/client/ReviewSheet.svelte';
 	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
 	import { prewarmRichMarkdown } from '$lib/client/markdownRenderer';
@@ -124,6 +126,13 @@
 		totalQuestions > 0 ? Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100) : 0
 	);
 	let question = $derived(questionPaper?.questions?.[currentQuestionIndex]);
+	let questionFormatLabel = $derived(
+		question?.format === 'matching'
+			? $t('matchingColumns')
+			: question?.format === 'assertion-reasoning'
+				? $t('assertionReasoning')
+				: ''
+	);
 
 	$effect(() => {
 		if (!questionCardHost) {
@@ -871,6 +880,9 @@
 							{$t('of')}
 							{totalQuestions}
 						</span>
+						{#if questionFormatLabel}
+							<span class="test-format-chip">{questionFormatLabel}</span>
+						{/if}
 						<div class="test-card-tools">
 							<span class="hint-btn">
 								<button
@@ -928,9 +940,26 @@
 								class:question-content-forward={navigationDirection === 'forward'}
 								class:question-content-backward={navigationDirection === 'backward'}
 							>
-								<h2 class="test-question-text" bind:this={questionHeading} tabindex="-1">
-									<MarkdownContent content={question.question} />
+								<h2
+									class="test-question-text"
+									class:visually-hidden={!question.question}
+									bind:this={questionHeading}
+									tabindex="-1"
+								>
+									{#if question.question}
+										<MarkdownContent content={question.question} />
+									{:else}
+										{$t('question')}
+										{currentQuestionIndex + 1}
+										{$t('of')}
+										{totalQuestions}
+									{/if}
 								</h2>
+								{#if question.format === 'matching'}
+									<QuestionMatching {question} />
+								{:else if question.format === 'assertion-reasoning'}
+									<QuestionAssertionReasoning {question} />
+								{/if}
 								<div class="d-grid gap-2">
 									{#each question.options || [] as option, optionIndex (optionIndex)}
 										<button
@@ -1348,6 +1377,19 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+	}
+
+	.test-format-chip {
+		margin-right: auto;
+		padding: 2px 8px;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--brand-text) 10%, transparent);
+		color: var(--brand-text);
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		white-space: nowrap;
 	}
 
 	.hint-btn {

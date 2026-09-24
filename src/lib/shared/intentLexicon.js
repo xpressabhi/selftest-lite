@@ -581,6 +581,14 @@ const TEST_TYPE_VALUE_PATTERNS = [
 		pattern: /\btrue\s?-?\s?false\b|\bbinary\b|\byes\s?-?\s?no\b|सही\s*\/?\s*गलत/iu,
 	},
 	{ value: 'speed-challenge', pattern: /\b(speed|rapid|timer|timed)\b|तेज़/iu },
+	{
+		value: 'matching',
+		pattern: /\b(match(ing)?\s+(the\s+)?(following|columns?|lists?)|column\s+match)\b|सुमेलित|मिलान/iu,
+	},
+	{
+		value: 'assertion-reasoning',
+		pattern: /\bassertion\s*[-&/]?\s*reason(ing)?\b|\bassertion\b|अभिकथन/iu,
+	},
 	{ value: 'multiple-choice', pattern: /\b(mcq|mcqs|multiple\s?-?\s?choice|objective)\b/iu },
 ];
 

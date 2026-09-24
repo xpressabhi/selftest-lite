@@ -976,7 +976,7 @@
 			examName: exam.name,
 			examStream: exam.stream,
 			syllabusFocus: focus,
-			testType: 'multiple-choice',
+			testType: !testType || testType === 'mixed' ? 'multiple-choice' : testType,
 			numQuestions: $isDataSaverActive
 				? Math.min(Number(exam.defaultNumQuestions || 20), 10)
 				: Number(exam.defaultNumQuestions || 20),

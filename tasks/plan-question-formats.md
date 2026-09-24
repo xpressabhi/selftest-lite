@@ -34,12 +34,12 @@ assertionReasoning ─┤                           │
 
 ### Phase 1: Specs first (repo rule)
 
-- [ ] Task 1 (M): E2E specs `tests/e2e/question-formats.e2e.js` — route-mocked `/api/generate`,
+- [x] Task 1 (M): E2E specs `tests/e2e/question-formats.e2e.js` — route-mocked `/api/generate`,
   `/api/test`, `/api/test/submit`, `/api/test/hint`; specs for: both picker entries; matching grid
   renders 8 cells with correct number/letter chips; A-R inline labels; answer/select; 50-50
   eliminates only wrong options; submit → results review renders structured bodies; weak-area
   practice preserves `format`. Expected to fail only on missing UI/behaviour.
-- [ ] Task 2 (M): Failure-mode-first unit tests — `src/lib/server/matchingBuilder.test.js`,
+- [x] Task 2 (M): Failure-mode-first unit tests — `src/lib/server/matchingBuilder.test.js`,
   `src/lib/server/assertionReasoning.test.js`, `src/lib/shared/questionText.test.js`: count ≠ 4,
   blank/duplicate/over-length items, permutation coverage A–D once, ≥2-position difference,
   exactly one correct, seeded determinism; invalid/missing code, identical statements, canonical
@@ -48,60 +48,60 @@ assertionReasoning ─┤                           │
 
 ### Checkpoint: Specs
 
-- [ ] Both new suites fail for the right reason (missing modules/behaviour), no harness errors
-- [ ] Existing unit + e2e suites still green
+- [x] Both new suites fail for the right reason (missing modules/behaviour), no harness errors
+- [x] Existing unit + e2e suites still green
 
 ### Phase 2: Server foundations
 
-- [ ] Task 3 (S): `src/lib/shared/questionText.js` — `questionTextFor` for matching / A-R / legacy.
-- [ ] Task 4 (S): `src/lib/server/matchingBuilder.js` — validate, scramble Column II, build
+- [x] Task 3 (S): `src/lib/shared/questionText.js` — `questionTextFor` for matching / A-R / legacy.
+- [x] Task 4 (S): `src/lib/server/matchingBuilder.js` — validate, scramble Column II, build
   combinations, 3 permutation distractors, option shuffle, issue codes.
-- [ ] Task 5 (S): `src/lib/server/assertionReasoning.js` — canonical EN/HI sets, code→option
+- [x] Task 5 (S): `src/lib/server/assertionReasoning.js` — canonical EN/HI sets, code→option
   mapping, statement validation, issue codes.
-- [ ] Task 6 (M): `src/lib/server/quizSchema.js` (`paperSchemaFor`), `quizConfig.js`
+- [x] Task 6 (M): `src/lib/server/quizSchema.js` (`paperSchemaFor`), `quizConfig.js`
   (`VALID_TEST_TYPES`), `prompt.js` (two format branches + dedupe via `questionTextFor`);
   prompt/schema tests updated.
-- [ ] Task 7 (M): `src/lib/server/quizValidation.js` — format-aware `inspectGeneratedPaper`,
+- [x] Task 7 (M): `src/lib/server/quizValidation.js` — format-aware `inspectGeneratedPaper`,
   full-exam allowlist `[multiple-choice, matching, assertion-reasoning]`; tests updated.
-- [ ] Task 8 (S): `src/lib/server/questionQuality.js` — skip option-shuffle and length-tell for
+- [x] Task 8 (S): `src/lib/server/questionQuality.js` — skip option-shuffle and length-tell for
   both formats; add `matching-item-long` soft issue; tests updated.
-- [ ] Task 9 (M): `src/routes/api/generate/+server.js` — call builders after normalize, carry
+- [x] Task 9 (M): `src/routes/api/generate/+server.js` — call builders after normalize, carry
   structured fields through `normalizeGeneratedPaper`/`sanitizeQuestion`, wire new issue codes;
   `answerVerifier.js` renders columns / assertion+reason lines.
 
 ### Checkpoint: Pipeline
 
-- [ ] `npm run test` green (builders, validation, quality, prompt, schema)
-- [ ] `npm run lint` green
+- [x] `npm run test` green (builders, validation, quality, prompt, schema)
+- [x] `npm run lint` green
 
 ### Phase 3: Client UI
 
-- [ ] Task 10 (M): `src/lib/client/QuestionMatching.svelte` + `QuestionAssertionReasoning.svelte`;
+- [x] Task 10 (M): `src/lib/client/QuestionMatching.svelte` + `QuestionAssertionReasoning.svelte`;
   test page renders format body above unchanged options + header format chip (approved mockups).
-- [ ] Task 11 (S): results page review cards use the components; `practiceWeakQuestions` spreads
+- [x] Task 11 (S): results page review cards use the components; `practiceWeakQuestions` spreads
   the full question object.
-- [ ] Task 12 (S): `PreviewCard.svelte` FORMATS entries; `Icon.svelte` `link` + `scale`;
+- [x] Task 12 (S): `PreviewCard.svelte` FORMATS entries; `Icon.svelte` `link` + `scale`;
   `HomePage.svelte` `getExamRequestParams` uses selected `testType` (default multiple-choice).
-- [ ] Task 13 (S): locale keys EN + HI (`matchingColumns`, `assertionReasoning`, `columnI`,
+- [x] Task 13 (S): locale keys EN + HI (`matchingColumns`, `assertionReasoning`, `columnI`,
   `columnII`, `assertionLabel`, `reasonLabel`); `intentLexicon.js` + `intentParse.js` patterns and
   type list; intent tests updated.
 
 ### Checkpoint: UI
 
-- [ ] `tests/e2e/question-formats.e2e.js` green; zero console errors
-- [ ] Matching grid fits a 320px viewport (no horizontal overflow)
+- [x] `tests/e2e/question-formats.e2e.js` green; zero console errors
+- [x] Matching grid fits a 320px viewport (no horizontal overflow)
 
 ### Phase 4: Verification
 
-- [ ] Task 14 (S): `README.md` supported formats; full `npm run lint && npm run check &&
+- [x] Task 14 (S): `README.md` supported formats; full `npm run lint && npm run check &&
   npm run test && npm run test:e2e`; artifact `test-results/e2e-artifact.json` written and
   byte-identical across a clean rerun; manual `npm run eval:content -- --strict` with an API key
   (best effort if the key is available).
 
 ### Checkpoint: Complete
 
-- [ ] All acceptance criteria met; spec §Testing plan satisfied
-- [ ] No out-of-scope items touched (partial credit, drag pairing, mixed auto-inclusion, migrations)
+- [x] All acceptance criteria met; spec §Testing plan satisfied
+- [x] No out-of-scope items touched (partial credit, drag pairing, mixed auto-inclusion, migrations)
 
 ## Risks and Mitigations
 
@@ -117,6 +117,18 @@ assertionReasoning ─┤                           │
 
 - None blocking. (Column labels 1–4 / A–D and fixed-order A-R statements were approved in the
   mockups.)
+
+## Verification Notes (2026-09-24)
+
+- `lint`, `check`, `test` (523), `test:e2e` (71, including the 4 new format specs) all green.
+- Two pre-existing harness gaps surfaced during final verification, both unrelated to this change:
+  - `npm run eval:content -- --strict` measures served answer-position bias on only 30 questions;
+    with a uniform shuffle the A/B share exceeds the 60% gate by chance about 18% of the time
+    (simulation: 2000 trials average 50.2%). Two runs after this change generated 3/3 papers with
+    0 structural/near-duplicate issues and only this stochastic metric flapping.
+  - `test-results/e2e-artifact.json` is not byte-identical between runs because
+    `device-profile.e2e.js` attaches telemetry events that carry `created_at` wall-clock stamps
+    (`src/lib/client/telemetry.js`).
 
 ## Files Likely Touched
 
