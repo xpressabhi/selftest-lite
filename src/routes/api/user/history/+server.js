@@ -7,6 +7,7 @@ import {
 } from '$lib/server/storage';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { markTestsSubmitted } from '$lib/server/testStats';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
 const HISTORY_GET_RATE_LIMIT = 60;
@@ -160,6 +161,15 @@ export async function POST({ request, cookies }) {
 		const body = await request.json().catch(() => ({}));
 		const attempts = Array.isArray(body?.attempts) ? body.attempts.slice(0, 300) : [];
 		const storedCount = await upsertUserTestAttempts({ userId: user?.id, clientId }, attempts);
+
+		try {
+			const submittedIds = attempts
+				.map((attempt) => Number(attempt?.testId))
+				.filter((id) => Number.isInteger(id) && id > 0);
+			await markTestsSubmitted({ testIds: submittedIds, userId: user?.id || null, clientId });
+		} catch (markError) {
+			console.error('Failed to mark history submissions:', markError);
+		}
 
 		await logApiEvent({
 			route: '/api/user/history',

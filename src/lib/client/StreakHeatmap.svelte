@@ -21,7 +21,9 @@
 				<span class="streak-current-unit">{$t('streakDaysUnit')}</span>
 			</p>
 		</div>
-		<Icon name="flame" size={26} class="streak-flame" />
+		<span class="streak-flame">
+			<Icon name="flame" size={26} />
+		</span>
 	</header>
 
 	<p class="streak-meta">
@@ -107,6 +109,7 @@
 	}
 
 	.streak-flame {
+		display: flex;
 		color: var(--warn);
 	}
 

@@ -27,6 +27,7 @@
 		readDraftAnswers,
 		readDraftFlags,
 		readDraftHints,
+		reportTestActivity,
 		resolveTestRecord,
 		saveAttemptResult,
 		saveUnsubmittedTest,
@@ -39,8 +40,11 @@
 	import { pushAttempt } from '$lib/client/sync';
 	import { showToast } from '$lib/client/toast';
 	import { requestPersonalize } from '$lib/client/personalize';
+	import { parseChallengeParams } from '$lib/client/challenge';
+	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
 
 	let questionPaper = $state(null);
+	let challenge = $state(null);
 	let answers = $state({});
 	let flagged = $state([]);
 	let currentQuestionIndex = $state(0);
@@ -203,6 +207,7 @@
 
 	onMount(async () => {
 		const testId = page.url.searchParams.get('id');
+		challenge = parseChallengeParams(page.url.search);
 		try {
 			questionPaper = await resolveTestRecord(testId);
 			if (!questionPaper) {
@@ -210,19 +215,31 @@
 				return;
 			}
 			if (questionPaper.userAnswers) {
-				await goto(`/results?id=${questionPaper.id}`);
+				await goto(resultUrlWithChallenge(questionPaper.id));
 				return;
 			}
 			answers = readDraftAnswers(questionPaper.id);
 			flagged = readDraftFlags(questionPaper.id);
 			eliminated = readDraftHints(questionPaper.id);
 			saveUnsubmittedTest(questionPaper);
+			reportTestActivity(questionPaper.id, 'view', { name: challenge?.by || '' });
 		} catch (caughtError) {
 			error = caughtError.message || $t('testNotFound');
 		} finally {
 			loading = false;
 		}
 	});
+
+	// Challenge links keep `ch`/`by` through submission so the recipient
+	// lands on a results page that can still show the comparison.
+	function resultUrlWithChallenge(testId) {
+		const params = new URLSearchParams({ id: String(testId) });
+		if (challenge) {
+			params.set('ch', String(challenge.score));
+			params.set('by', challenge.by);
+		}
+		return `/results?${params.toString()}`;
+	}
 
 	function startTest() {
 		if (!questionPaper || testStarted) {
@@ -368,6 +385,9 @@
 		}
 		liveAnnouncement = `${$t('optionSelected', { option })}`;
 		track('test:answer', { q: index });
+		if (!isClearing && questionPaper?.id) {
+			reportTestActivity(questionPaper.id, 'start');
+		}
 		skipStreak = 0;
 		if (!isClearing && $autoAdvance && index < totalQuestions - 1) {
 			window.clearTimeout(autoAdvanceTimer);
@@ -438,18 +458,21 @@
 				clearDraftFlags(questionPaper.id);
 				clearDraftHints(questionPaper.id);
 				clearUnsubmittedTest(questionPaper.id);
-				// Locally-graded attempts never hit /api/test/submit; push them to
-				// the server (best-effort, offline-safe) so history survives across
-				// devices and survives sign-in via client_id attribution.
-				pushAttempt({
-					testId: questionPaper.id,
-					userAnswers: finalAnswers,
-					score: gradedResult.score,
-					totalQuestions: gradedResult.totalQuestions,
-					timeTaken,
-					hintedIndexes: eliminated,
-					submittedAt: new Date().toISOString(),
-				});
+				// Locally-graded attempts never hit /api/test/submit, so push
+				// them to the server (best-effort, offline-safe) so history
+				// survives across devices and survives sign-in. Server-graded
+				// attempts are already stored, so pushing again would double-count.
+				if (hasLocalAnswerKey) {
+					pushAttempt({
+						testId: questionPaper.id,
+						userAnswers: finalAnswers,
+						score: gradedResult.score,
+						totalQuestions: gradedResult.totalQuestions,
+						timeTaken,
+						hintedIndexes: eliminated,
+						submittedAt: new Date().toISOString(),
+					});
+				}
 				const nextHistory = upsertHistory(submittedPaper, getHistory());
 				const streak = recordStreakActivity();
 				const newlyUnlocked = unlockAchievements(nextHistory, streak);
@@ -462,7 +485,7 @@
 				stopKeepingScreenAwake();
 				triggerVibration(SUBMIT_HAPTIC);
 				showReviewSheet = false;
-				goto(`/results?id=${questionPaper.id}`);
+				goto(resultUrlWithChallenge(questionPaper.id));
 			} catch (caughtError) {
 				track('test:submit-fail');
 				const localized = caughtError?.data
@@ -855,6 +878,7 @@
 						</button>
 					</div>
 				</div>
+				<TestStatsCard testId={questionPaper.id} />
 			</main>
 		{:else}
 			<div class="test-progress-track" aria-hidden="true">

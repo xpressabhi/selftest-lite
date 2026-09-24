@@ -70,20 +70,20 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
 
 ### Phase C: Social stats + share fix (F1)
 
-- [ ] Task 11 (S): E2E spec first — `tests/e2e/test-stats.e2e.js`: two contexts, view/start/submit counters,
+- [x] Task 11 (S): E2E spec first — `tests/e2e/test-stats.e2e.js`: two contexts, view/start/submit counters,
   public score, owner-only breakdown, challenge params survive to `/results`.
-- [ ] Task 12 (M): Schema v7 (`ai_test_visits`) + storage accessors (`recordTestVisit`, `markTestStarted`,
+- [x] Task 12 (M): Schema v7 (`ai_test_visits`) + storage accessors (`recordTestVisit`, `markTestStarted`,
   `markTestSubmitted`, `getTestStats`) with pure helpers + unit tests.
-- [ ] Task 13 (S): `POST /api/test/activity`, `GET /api/test/stats`; mark submitted in `/api/test/submit` and
+- [x] Task 13 (S): `POST /api/test/activity`, `GET /api/test/stats`; mark submitted in `/api/test/submit` and
   `/api/user/history`; rate limits; telemetry metadata.
-- [ ] Task 14 (S): `reportTestActivity` client helper; test page view/start pings; challenge param carry-through.
-- [ ] Task 15 (M): `TestStatsCard.svelte` on `/test` + `/results`; `/test/stats` page; noindex; locale keys.
-- [ ] Task 16 (S): `npm run verify:vercel` (new route).
+- [x] Task 14 (S): `reportTestActivity` client helper; test page view/start pings; challenge param carry-through.
+- [x] Task 15 (M): `TestStatsCard.svelte` on `/test` + `/results`; `/test/stats` page; noindex; locale keys.
+- [x] Task 16 (S): `npm run verify:vercel` (new route).
 
 ### Checkpoint: C
 
-- [ ] Counters match seeded activity exactly; scores never leak answers/emails
-- [ ] Full suite + vercel verification green
+- [x] Counters match seeded activity exactly; scores never leak answers/emails
+- [x] Full suite + vercel verification green
 
 ### Phase D: Full-exam engine (F3/F5/F6/F7)
 
@@ -131,6 +131,21 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   and `recordStreakActivity` untouched.
 - 320px viewport: zero horizontal overflow, zero console errors.
 - `lint`, `test` (539, +7), `test:e2e` (75, +3) all green.
+
+### Phase C (2026-09-24)
+
+- Tests failed first for the right reasons: unit suite on the missing `testStats` module, e2e on the
+  missing stats endpoints and card.
+- Two integration bugs found and fixed while making the e2e deterministic:
+  - The stats fetch itself records the visit server-side, so the viewer's own count is never racing the
+    separate `view` ping.
+  - The submit flow pushed every attempt to `/api/user/history` even when the server had already stored
+    it, double-counting submissions; the push now only covers locally-graded papers (matching its comment).
+- E2E (real DB): first visitor sees no card; second visitor sees visitors=2, in-progress=1 after
+  answering, then submissions=1, score 1/2, `isMine` for the taker; the first visitor sees the other
+  score with no own-score chip; `/test/stats` renders; challenge `?ch=1&by=Ravi` survives submission and
+  names the public score "Ravi".
+- `lint`, `check`, `test` (552, +13), `test:e2e` (77, +2), `verify:vercel` all green.
 
 ## Risks and Mitigations
 

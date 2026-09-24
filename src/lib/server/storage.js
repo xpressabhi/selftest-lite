@@ -73,7 +73,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -442,6 +442,30 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_question_explanations_last_used
 			ON question_explanations (last_used_at DESC)
+		`);
+
+		// Per-test visitor ledger: who opened a test, who started it, and who
+		// submitted. Counters shown publicly derive from this table; rows are
+		// upserted by identity and never deleted (see AGENTS.md).
+		await query(`
+			CREATE TABLE IF NOT EXISTS ai_test_visits (
+				id BIGSERIAL PRIMARY KEY,
+				test_id BIGINT NOT NULL REFERENCES ai_test(id) ON DELETE CASCADE,
+				identity_key TEXT NOT NULL,
+				user_id BIGINT,
+				client_id TEXT,
+				first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				started_at TIMESTAMPTZ,
+				submitted_at TIMESTAMPTZ,
+				display_name TEXT,
+				UNIQUE (test_id, identity_key)
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_ai_test_visits_test
+			ON ai_test_visits (test_id)
 		`);
 
 		// Archive tables preserve anything that leaves a hot table; nothing

@@ -9,6 +9,7 @@ import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { parseRequestBody } from '$lib/server/quizValidation';
 import { sanitizeHintedIndexes } from '$lib/server/hint';
+import { markTestsSubmitted } from '$lib/server/testStats';
 import { MAX_ANSWER_TEXT_LENGTH } from '$lib/server/quizConfig';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
@@ -133,6 +134,12 @@ export async function POST({ request, cookies }) {
 		} catch (attemptError) {
 			// Grading must succeed even if attempt persistence fails.
 			console.error('Failed to persist test attempt:', attemptError);
+		}
+
+		try {
+			await markTestsSubmitted({ testIds: [testId], userId: user?.id || null, clientId });
+		} catch (markError) {
+			console.error('Failed to mark test submitted:', markError);
 		}
 
 		await logApiEvent({

@@ -18,6 +18,7 @@
 		getStats,
 	} from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
+	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
 	import QuestionMatching from '$lib/client/QuestionMatching.svelte';
 	import QuestionAssertionReasoning from '$lib/client/QuestionAssertionReasoning.svelte';
 	import { questionTextFor } from '$lib/shared/questionText';
@@ -1061,6 +1062,10 @@
 					{$t('challengeBack')}
 				</button>
 			</section>
+		{/if}
+
+		{#if questionPaper?.id}
+			<TestStatsCard testId={questionPaper.id} />
 		{/if}
 
 		<div

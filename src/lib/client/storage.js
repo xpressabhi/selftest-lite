@@ -392,6 +392,32 @@ export async function submitTestAnswers({ id, answers = {}, timeTaken = 0, hinte
 	return data;
 }
 
+const reportedTestActivity = new Set();
+
+/**
+ * Best-effort visitor activity ping (`view` when a test opens, `start` when
+ * the first answer is chosen). Deduped per page session; failures are
+ * ignored because stats are never worth breaking the test flow for.
+ */
+export function reportTestActivity(testId, event, { name = '' } = {}) {
+	if (typeof window === 'undefined' || !testId || !event) {
+		return;
+	}
+	const key = `${testId}:${event}`;
+	if (reportedTestActivity.has(key)) {
+		return;
+	}
+	reportedTestActivity.add(key);
+	fetch('/api/test/activity', {
+		method: 'POST',
+		headers: getClientHeaders(),
+		body: JSON.stringify({ testId, event, name }),
+		keepalive: true,
+	}).catch(() => {
+		// Stats bookkeeping is best-effort only.
+	});
+}
+
 export function writeTrackedStorageSnapshot(snapshot) {
 	if (typeof window === 'undefined' || !snapshot || typeof snapshot !== 'object') {
 		return [];
