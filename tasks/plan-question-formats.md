@@ -121,14 +121,16 @@ assertionReasoning ─┤                           │
 ## Verification Notes (2026-09-24)
 
 - `lint`, `check`, `test` (523), `test:e2e` (71, including the 4 new format specs) all green.
-- Two pre-existing harness gaps surfaced during final verification, both unrelated to this change:
-  - `npm run eval:content -- --strict` measures served answer-position bias on only 30 questions;
-    with a uniform shuffle the A/B share exceeds the 60% gate by chance about 18% of the time
-    (simulation: 2000 trials average 50.2%). Two runs after this change generated 3/3 papers with
-    0 structural/near-duplicate issues and only this stochastic metric flapping.
-  - `test-results/e2e-artifact.json` is not byte-identical between runs because
-    `device-profile.e2e.js` attaches telemetry events that carry `created_at` wall-clock stamps
-    (`src/lib/client/telemetry.js`).
+- Two pre-existing harness gaps surfaced during final verification and were fixed in a follow-up
+  commit:
+  - `npm run eval:content -- --strict` judged served answer-position bias with a fixed 60% gate on
+    only 30 questions (a uniform shuffle exceeded it ~18% of the time by chance; two runs after
+    this change flagged only this metric, with 3/3 papers and zero structural/duplicate issues).
+    The gate is now a one-sided binomial test at 50% + 2σ (`scripts/eval-content.mjs`), so real
+    shuffle failures still fail while sampling noise does not.
+  - `test-results/e2e-artifact.json` was not byte-identical between runs because telemetry events
+    in `device-profile.e2e.js` evidence carry `created_at` wall-clock stamps. The artifact reporter
+    now strips volatile `created_at` keys from evidence (`tests/e2e/artifactReporter.js`).
 
 ## Files Likely Touched
 

@@ -29,12 +29,29 @@ function readEvidence(attachments = []) {
 				: attachment.path
 					? readFileSync(attachment.path, 'utf8')
 					: '';
-			if (raw) evidence.push(JSON.parse(raw));
+			if (raw) evidence.push(stripVolatile(JSON.parse(raw)));
 		} catch {
 			// Non-JSON evidence is skipped so the artifact stays parseable.
 		}
 	}
 	return evidence;
+}
+
+// The artifact contract is byte-identity across runs on the same revision, so
+// wall-clock stamps captured from live payloads (telemetry events carry
+// `created_at`) must not leak into evidence.
+function stripVolatile(value) {
+	if (Array.isArray(value)) {
+		return value.map(stripVolatile);
+	}
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(
+			Object.entries(value)
+				.filter(([key]) => key !== 'created_at')
+				.map(([key, entry]) => [key, stripVolatile(entry)])
+		);
+	}
+	return value;
 }
 
 export default class E2eArtifactReporter {
