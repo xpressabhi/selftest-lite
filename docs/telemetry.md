@@ -52,6 +52,8 @@ It prints:
 - rate-limiter requests per route (every limiter call, not only blocked ones)
 - generation failures: stage/code/model breakdown, top issue codes per failing
   batch, and client-reported `generate:fail` codes
+- device & network: per-identity device tier mix, top low-tier models, network
+  mix per session, generate outcomes by downlink bucket, and the supported floor
 - data-quality checks: null `test_mode`/`difficulty`/`language`, generate and
   explain success rates, server 5xx count
 - quality gates (PASS/FAIL). Pass `--strict` to exit non-zero when any gate
@@ -73,6 +75,7 @@ It prints:
 | Non-discriminating repeated items                   | < 35%      |
 | D1 retention                                        | >= 15%     |
 | D7 retention                                        | >= 8%      |
+| Device profile coverage                             | >= 80%     |
 
 ## Generation failure diagnostics
 
@@ -141,6 +144,38 @@ Use it to answer: how often does the planner ask questions (and about what),
 how often are topics span-extracted vs raw, is failure rate stable, and whether
 Hindi turns show lower confidence or more failures.
 
+## Device & network diagnostics
+
+Every session emits one `device:profile` event (flat props) plus capped
+`net:change` events when the connection tuple moves. Data-saver users are
+tracked like everyone else — they are the population of interest.
+
+| Event           | Props                                                                                                                                                          | Meaning                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `device:profile` | `tier` (`low`/`mid`/`high`/`unknown`), `ramGb`, `cores`, `model`, `android`, `screen`, `dpr`, `platform`, `standalone`, `type`, `down`, `rtt`, `save`?, `wifi` | One per session, after the ≤400 ms UA-CH race |
+| `net:change`     | `type`, `down`, `rtt`, `save`?, `wifi`                                                                                                                          | Debounced 1.5 s, bucket-compared, ≤10/session |
+
+Rules to keep in mind when reading the numbers:
+
+- Tier is RAM-primary (`<= 2` low, `4` mid, `8` high; cores only when RAM is
+  unknown, and never `high` alone). Budget SoCs report 8 cores.
+- Downlink is quantized to 25 kbps and capped at 10 Mbps; RTT is quantized to
+  25 ms and capped at 3 s. Buckets are ranges, not exact speeds.
+- iOS Safari and Firefox do not expose the Connection API; their rows are
+  `unknown` and are reported separately, not as slow.
+- Model strings come from UA client hints (Chrome reduced the model to `"K"` in
+  the UA); they are sanitized and capped at 40 chars.
+- Correlation uses `session_id`: the report joins the nearest
+  `device:profile`/`net:change` row before each `generate:success`/`generate:fail`
+  to attribute outcomes to the connection at call time.
+- The "supported floor" line is the p10 of per-session worst downlink, the p90
+  of per-session worst RTT, and the generate failure rate at or below the floor
+  bucket — use it when deciding what speed to optimize for.
+
+The coverage gate (`device:profile` sessions ÷ `page:view` sessions >= 80%)
+exists to catch instrumentation breakage: if the tracker stops emitting, the
+distributions silently skew, so the weekly strict run must fail instead.
+
 ## Weekly automation
 
 `.github/workflows/telemetry-report.yml` runs every Monday (and on manual
@@ -187,6 +222,9 @@ expired/revoked sessions (`app_user_session`), and legacy tables.
 8. **Planner health** — check `intent:parse-failed` stays near zero, the
    clarification asked → answered ratio, and whether `topicSource` is mostly
    `span`/`exam` (good) versus `raw` (the model found no subject).
+9. **Device & network** — read the tier/network mix, the top low-tier models,
+   failures by downlink bucket, and whether the supported floor moved; a
+   coverage-gate failure means the tracker broke, not that devices changed.
 
 ## Caveats
 

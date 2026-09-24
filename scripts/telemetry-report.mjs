@@ -485,6 +485,252 @@ printTable(
 	]
 );
 
+section('Device & network');
+const DEVICE_BUCKET_ORDER = {
+	type: ['slow-2g', '2g', '3g', '4g', 'unknown'],
+	downlink: ['lt025', '025-05', '05-1', '1-2', '2-5', '5-10', '10p', 'unknown'],
+	rtt: ['lt100', '100-200', '200-400', '400-800', '800-1500', '1500p', 'unknown'],
+};
+
+const deviceMix = await sql`
+	WITH latest AS (
+		SELECT DISTINCT ON (COALESCE(user_id::text, client_id))
+			COALESCE(user_id::text, client_id) AS identity,
+			props
+		FROM feature_events
+		WHERE event = 'device:profile'
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+			AND COALESCE(user_id::text, client_id) IS NOT NULL
+		ORDER BY COALESCE(user_id::text, client_id), created_at DESC
+	)
+	SELECT
+		COALESCE(NULLIF(props->>'tier', ''), 'unknown') AS tier,
+		COUNT(*)::int AS identities
+	FROM latest
+	GROUP BY 1
+	ORDER BY identities DESC
+`;
+const deviceIdentities = deviceMix.reduce((sum, row) => sum + row.identities, 0);
+printTable(
+	deviceMix.map((row) => ({ ...row, share: percent(row.identities, deviceIdentities) })),
+	[
+		{ key: 'tier', label: 'tier' },
+		{ key: 'identities', label: 'identities' },
+		{ key: 'share', label: 'share' },
+	]
+);
+
+console.log('\n  Low-tier device models:');
+printTable(
+	await sql`
+		WITH latest AS (
+			SELECT DISTINCT ON (COALESCE(user_id::text, client_id))
+				COALESCE(user_id::text, client_id) AS identity,
+				props
+			FROM feature_events
+			WHERE event = 'device:profile'
+				AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+				AND COALESCE(user_id::text, client_id) IS NOT NULL
+			ORDER BY COALESCE(user_id::text, client_id), created_at DESC
+		)
+		SELECT
+			COALESCE(NULLIF(props->>'model', ''), 'unknown') AS model,
+			COALESCE(NULLIF(props->>'android', ''), 'unknown') AS android,
+			COUNT(*)::int AS identities
+		FROM latest
+		WHERE props->>'tier' = 'low'
+		GROUP BY 1, 2
+		ORDER BY identities DESC
+		LIMIT 10
+	`,
+	[
+		{ key: 'model', label: 'model' },
+		{ key: 'android', label: 'android' },
+		{ key: 'identities', label: 'identities' },
+	]
+);
+
+const networkRows = await sql`
+	WITH session_net AS (
+		SELECT session_id,
+			MIN(CASE props->>'type' WHEN 'slow-2g' THEN 0 WHEN '2g' THEN 1 WHEN '3g' THEN 2 WHEN '4g' THEN 3 END)
+				FILTER (WHERE props->>'type' IN ('slow-2g', '2g', '3g', '4g')) AS type_rank,
+			MIN(CASE props->>'down' WHEN 'lt025' THEN 0 WHEN '025-05' THEN 1 WHEN '05-1' THEN 2 WHEN '1-2' THEN 3 WHEN '2-5' THEN 4 WHEN '5-10' THEN 5 WHEN '10p' THEN 6 END)
+				FILTER (WHERE props->>'down' IN ('lt025', '025-05', '05-1', '1-2', '2-5', '5-10', '10p')) AS down_rank,
+			MAX(CASE props->>'rtt' WHEN 'lt100' THEN 0 WHEN '100-200' THEN 1 WHEN '200-400' THEN 2 WHEN '400-800' THEN 3 WHEN '800-1500' THEN 4 WHEN '1500p' THEN 5 END)
+				FILTER (WHERE props->>'rtt' IN ('lt100', '100-200', '200-400', '400-800', '800-1500', '1500p')) AS rtt_rank
+		FROM feature_events
+		WHERE event IN ('device:profile', 'net:change')
+			AND session_id IS NOT NULL
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		GROUP BY session_id
+	)
+	SELECT 'type' AS dimension,
+		CASE type_rank WHEN 0 THEN 'slow-2g' WHEN 1 THEN '2g' WHEN 2 THEN '3g' WHEN 3 THEN '4g' ELSE 'unknown' END AS bucket,
+		COUNT(*)::int AS sessions
+	FROM session_net
+	GROUP BY 1, 2
+	UNION ALL
+	SELECT 'downlink',
+		CASE down_rank WHEN 0 THEN 'lt025' WHEN 1 THEN '025-05' WHEN 2 THEN '05-1' WHEN 3 THEN '1-2' WHEN 4 THEN '2-5' WHEN 5 THEN '5-10' WHEN 6 THEN '10p' ELSE 'unknown' END,
+		COUNT(*)::int
+	FROM session_net
+	GROUP BY 1, 2
+	UNION ALL
+	SELECT 'rtt',
+		CASE rtt_rank WHEN 0 THEN 'lt100' WHEN 1 THEN '100-200' WHEN 2 THEN '200-400' WHEN 3 THEN '400-800' WHEN 4 THEN '800-1500' WHEN 5 THEN '1500p' ELSE 'unknown' END,
+		COUNT(*)::int
+	FROM session_net
+	GROUP BY 1, 2
+`;
+
+console.log('\n  Network mix (worst observed per session):');
+const orderedNetworkRows = ['type', 'downlink', 'rtt'].flatMap((dimension) => {
+	const rows = networkRows.filter((row) => row.dimension === dimension);
+	const total = rows.reduce((sum, row) => sum + row.sessions, 0);
+	return DEVICE_BUCKET_ORDER[dimension].map((bucket) => {
+		const match = rows.find((row) => row.bucket === bucket);
+		const sessions = match?.sessions ?? 0;
+		return {
+			dimension,
+			bucket,
+			sessions,
+			share: percent(sessions, total),
+		};
+	});
+});
+printTable(orderedNetworkRows, [
+	{ key: 'dimension', label: 'dimension' },
+	{ key: 'bucket', label: 'bucket' },
+	{ key: 'sessions', label: 'sessions' },
+	{ key: 'share', label: 'share' },
+]);
+
+const generateByDownlinkRows = await sql`
+	SELECT
+		COALESCE(net.bucket, 'unknown') AS bucket,
+		COUNT(*) FILTER (WHERE fe.event = 'generate:success')::int AS succeeded,
+		COUNT(*) FILTER (WHERE fe.event = 'generate:fail')::int AS failed,
+		ROUND(
+			AVG(
+				CASE
+					WHEN fe.event = 'generate:fail' AND fe.props->>'elapsedSeconds' ~ '^[0-9]{1,6}$'
+					THEN (fe.props->>'elapsedSeconds')::numeric
+				END
+			),
+			1
+		) AS avg_fail_seconds
+	FROM feature_events fe
+	LEFT JOIN LATERAL (
+		SELECT props->>'down' AS bucket
+		FROM feature_events n
+		WHERE n.session_id = fe.session_id
+			AND n.event IN ('device:profile', 'net:change')
+			AND n.created_at <= fe.created_at
+		ORDER BY n.created_at DESC
+		LIMIT 1
+	) net ON TRUE
+	WHERE fe.event IN ('generate:success', 'generate:fail')
+		AND fe.created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+	GROUP BY 1
+`;
+const orderedGenerateByDownlink = DEVICE_BUCKET_ORDER.downlink.map((bucket) => {
+	const row = generateByDownlinkRows.find((entry) => entry.bucket === bucket) || {};
+	const succeeded = row.succeeded ?? 0;
+	const failed = row.failed ?? 0;
+	const started = succeeded + failed;
+	return {
+		bucket,
+		started,
+		failed,
+		fail_rate: started > 0 ? percent(failed, started) : '-',
+		avg_fail_seconds: row.avg_fail_seconds ?? '-',
+	};
+});
+console.log('\n  Generate outcomes by downlink (nearest network row before the call):');
+printTable(orderedGenerateByDownlink, [
+	{ key: 'bucket', label: 'downlink' },
+	{ key: 'started', label: 'started' },
+	{ key: 'failed', label: 'failed' },
+	{ key: 'fail_rate', label: 'fail %' },
+	{ key: 'avg_fail_seconds', label: 'avg fail s' },
+]);
+
+// Supported floor: p10 of per-session worst downlink, p90 of per-session worst
+// RTT, and the generate failure rate at or below the floor bucket.
+const downlinkBuckets = DEVICE_BUCKET_ORDER.downlink.filter((bucket) => bucket !== 'unknown');
+const downlinkCounts = downlinkBuckets.map((bucket) => ({
+	bucket,
+	sessions:
+		networkRows.find((row) => row.dimension === 'downlink' && row.bucket === bucket)?.sessions ?? 0,
+}));
+const downlinkTotal = downlinkCounts.reduce((sum, row) => sum + row.sessions, 0);
+let floorBucket = null;
+let floorWorseSessions = 0;
+if (downlinkTotal > 0) {
+	let cumulative = 0;
+	for (const row of downlinkCounts) {
+		if (cumulative + row.sessions >= downlinkTotal * 0.1) {
+			floorBucket = row.bucket;
+			floorWorseSessions = cumulative;
+			break;
+		}
+		cumulative += row.sessions;
+	}
+}
+const rttBuckets = DEVICE_BUCKET_ORDER.rtt.filter((bucket) => bucket !== 'unknown');
+const rttCounts = rttBuckets.map((bucket) => ({
+	bucket,
+	sessions: networkRows.find((row) => row.dimension === 'rtt' && row.bucket === bucket)?.sessions ?? 0,
+}));
+const rttTotal = rttCounts.reduce((sum, row) => sum + row.sessions, 0);
+let p90RttBucket = null;
+if (rttTotal > 0) {
+	let cumulative = 0;
+	for (const row of rttCounts) {
+		cumulative += row.sessions;
+		if (cumulative >= rttTotal * 0.9) {
+			p90RttBucket = row.bucket;
+			break;
+		}
+	}
+}
+if (floorBucket) {
+	const floorRank = downlinkBuckets.indexOf(floorBucket);
+	const atOrBelow = orderedGenerateByDownlink.filter(
+		(row) => downlinkBuckets.indexOf(row.bucket) !== -1 && downlinkBuckets.indexOf(row.bucket) <= floorRank
+	);
+	const startedBelow = atOrBelow.reduce((sum, row) => sum + row.started, 0);
+	const failedBelow = atOrBelow.reduce((sum, row) => sum + row.failed, 0);
+	const coverage = percent(downlinkTotal - floorWorseSessions, downlinkTotal);
+	console.log(
+		`\n  Supported floor: downlink ${floorBucket} Mbps (p10, covers ${coverage} of sessions with a known downlink) · RTT p90 ${p90RttBucket ?? 'unknown'} ms · generate failure at or below: ${
+			startedBelow > 0 ? percent(failedBelow, startedBelow) : '-'
+		} (${failedBelow}/${startedBelow})`
+	);
+} else {
+	console.log('\n  Supported floor: not enough downlink data in this window.');
+}
+console.log(
+	'  Note: browsers quantize downlink to 25 kbps (capped at 10 Mbps) and RTT to 25 ms (capped at 3 s); values are buckets, not exact speeds.'
+);
+
+const profileCoverage = (
+	await sql`
+		SELECT
+			COUNT(DISTINCT session_id) FILTER (WHERE event = 'page:view')::int AS page_sessions,
+			COUNT(DISTINCT session_id) FILTER (WHERE event = 'device:profile')::int AS profile_sessions
+		FROM feature_events
+		WHERE event IN ('page:view', 'device:profile')
+			AND session_id IS NOT NULL
+			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+	`
+)[0];
+const profileCoverageShare =
+	profileCoverage.page_sessions > 0
+		? profileCoverage.profile_sessions / profileCoverage.page_sessions
+		: null;
+
 section('Data quality');
 const quality = (
 	await sql`
@@ -727,6 +973,14 @@ const gates = [
 		label: 'D7 retention >= 8%',
 		passed: cohortSize === 0 || d7Rate >= 0.08,
 		detail: `${(d7Rate * 100).toFixed(1)}%`,
+	},
+	{
+		label: 'device profile coverage >= 80%',
+		passed: profileCoverageShare === null || profileCoverageShare >= 0.8,
+		detail:
+			profileCoverageShare === null
+				? 'no page views in window'
+				: `${(profileCoverageShare * 100).toFixed(1)}% (${profileCoverage.profile_sessions}/${profileCoverage.page_sessions} sessions)`,
 	},
 ];
 for (const gate of gates) {
