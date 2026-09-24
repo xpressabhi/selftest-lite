@@ -97,12 +97,17 @@ dependencies.
 
 ### Phase 7: Verification
 
-- [ ] Task 11 (S): `npm run lint`, `npm run test`, `npm run check`, `npm run test:e2e`;
+- [x] Task 11 (S): `npm run lint`, `npm run test`, `npm run check`, `npm run test:e2e`;
   conventional commits; spec checkboxes updated.
 
 ### Checkpoint: Complete
 
-- [ ] All acceptance criteria from spec §1 met; artifact written with the new suite's evidence.
+- [x] All acceptance criteria from spec §1 met; artifact written with the new suite's evidence
+  (60/60 passed, `test-results/e2e-artifact.json`).
+- [x] `npm run verify:vercel` OK (192 sitemap URLs, 190 prerendered pages, SSR function present).
+- [x] Report verified read-only against the real DB: section renders, coverage gate correctly
+  fails at 0% until the client ships, endpoint returns 401 unauthenticated and valid JSON when
+  authenticated, admin card renders with zero console errors.
 
 ## Risks and Mitigations
 
