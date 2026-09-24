@@ -38,6 +38,15 @@
 	import '$lib/styles/globals.css';
 
 	let { children, data } = $props();
+
+	// SSR renders one request synchronously, so re-pinning the store here (after
+	// every load resolved, before any child renders) keeps the language from
+	// leaking between concurrent server renders. On the client the +layout.js
+	// load and saved preferences own this store.
+	if (typeof window === 'undefined') {
+		activeLanguage.set(data?.lang ?? null);
+	}
+
 	let isOffline = $state(false);
 	let deferredInstallPrompt = $state(null);
 	let showInstallHint = $state(false);
