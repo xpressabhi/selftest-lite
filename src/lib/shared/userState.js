@@ -7,6 +7,7 @@ export const SYNCED_STATE_KEYS = [
 	'selftest_bookmarked_quiz_presets',
 	'selftest_bookmarks',
 	'selftest_user_profile',
+	'selftest_streak',
 ];
 
 export const MAX_STATE_VALUE_BYTES = 96 * 1024;
@@ -17,6 +18,7 @@ export const STATE_CAPS = {
 	selftest_bookmarked_quiz_presets: 20,
 	selftest_bookmarks: 300,
 	selftest_user_profile: 1,
+	selftest_streak: 1,
 };
 
 export function isSyncedStateKey(key) {
@@ -102,11 +104,79 @@ function mergeProfile(remote, local) {
 	return hasRemote ? remote : hasLocal ? local : null;
 }
 
+function parseDateKey(value) {
+	return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+// One practice day is one entry; two devices on the same day must not
+// double-count it, so the union keeps the larger quizCount per date.
+function mergeStreakHistory(remoteHistory, localHistory) {
+	const counts = new Map();
+	for (const entry of [...toArray(remoteHistory), ...toArray(localHistory)]) {
+		const date = parseDateKey(entry?.date);
+		if (!date) {
+			continue;
+		}
+		const quizCount = Math.max(1, Number(entry?.quizCount) || 1);
+		counts.set(date, Math.max(counts.get(date) || 0, quizCount));
+	}
+	return [...counts.entries()]
+		.sort(([left], [right]) => (left < right ? -1 : 1))
+		.slice(-90)
+		.map(([date, quizCount]) => ({ date, quizCount }));
+}
+
+// Streaks merge like a two-writer register: the side with the newer
+// lastActiveDate owns the live streak; ties keep the larger one. Longest
+// streak, total days and the day history only ever grow.
+function mergeStreak(remote, local) {
+	const hasRemote = isPlainObject(remote);
+	const hasLocal = isPlainObject(local);
+	if (!hasRemote && !hasLocal) {
+		return null;
+	}
+	if (!hasRemote) {
+		return local;
+	}
+	if (!hasLocal) {
+		return remote;
+	}
+	const remoteDate = parseDateKey(remote.lastActiveDate) || '';
+	const localDate = parseDateKey(local.lastActiveDate) || '';
+	const remoteCurrent = Math.max(0, Number(remote.currentStreak) || 0);
+	const localCurrent = Math.max(0, Number(local.currentStreak) || 0);
+	const newer =
+		remoteDate > localDate || (remoteDate === localDate && remoteCurrent >= localCurrent)
+			? remote
+			: local;
+	const history = mergeStreakHistory(remote.streakHistory, local.streakHistory);
+	const currentStreak = Math.max(0, Number(newer.currentStreak) || 0);
+	const longestStreak = Math.max(
+		currentStreak,
+		Math.max(0, Number(remote.longestStreak) || 0),
+		Math.max(0, Number(local.longestStreak) || 0)
+	);
+	const totalQuizDays = Math.max(
+		Math.max(0, Number(remote.totalQuizDays) || 0),
+		Math.max(0, Number(local.totalQuizDays) || 0),
+		history.length
+	);
+	return {
+		currentStreak,
+		longestStreak,
+		lastActiveDate: parseDateKey(newer.lastActiveDate) || history.at(-1)?.date || null,
+		freezesRemaining: Math.min(3, Math.max(0, Number(newer.freezesRemaining) || 0)),
+		streakHistory: history,
+		totalQuizDays,
+	};
+}
+
 const MERGE_STRATEGIES = {
 	selftest_bookmarked_exams: mergeExams,
 	selftest_bookmarked_quiz_presets: mergePresets,
 	selftest_bookmarks: mergeQuestionBookmarks,
 	selftest_user_profile: mergeProfile,
+	selftest_streak: mergeStreak,
 };
 
 /**

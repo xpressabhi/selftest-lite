@@ -33,6 +33,7 @@ const STATE_KEY_TO_STORAGE = {
 	selftest_bookmarked_quiz_presets: STORAGE_KEYS.BOOKMARKED_QUIZ_PRESETS,
 	selftest_bookmarks: STORAGE_KEYS.QUESTION_BOOKMARKS,
 	selftest_user_profile: STORAGE_KEYS.USER_PROFILE,
+	selftest_streak: STORAGE_KEYS.STREAK,
 };
 const STORAGE_TO_STATE_KEY = Object.fromEntries(
 	Object.entries(STATE_KEY_TO_STORAGE).map(([key, storageKey]) => [storageKey, key])

@@ -19,6 +19,7 @@
 		"test": "vitest run",
 		"telemetry:report": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/telemetry-report.mjs",
 		"telemetry:backfill": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-metadata.mjs",
+		"telemetry:backfill-visits": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-visits.mjs",
 		"telemetry:archive": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/archive-telemetry.mjs",
 		"reminders:send": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/send-reminders.mjs",
 		"eval:content": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/eval-content.mjs",

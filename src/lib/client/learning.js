@@ -1,6 +1,7 @@
-import { readJson, writeJson } from './storage';
+import { emitLocalStorageChange, readJson, writeJson } from './storage';
+import { STORAGE_KEYS } from './constants';
 
-const STREAK_KEY = 'selftest_streak';
+const STREAK_KEY = STORAGE_KEYS.STREAK;
 const ACHIEVEMENTS_KEY = 'selftest_achievements';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -134,6 +135,13 @@ export function getStreak() {
 	});
 }
 
+/** Writes the streak and announces it so cross-device sync picks it up. */
+function persistStreak(next) {
+	writeJson(STREAK_KEY, next);
+	emitLocalStorageChange([STREAK_KEY]);
+	return next;
+}
+
 export function recordStreakActivity() {
 	const previous = getStreak();
 	const today = todayString();
@@ -151,8 +159,7 @@ export function recordStreakActivity() {
 				? history
 				: [...history, { date: today, quizCount: 1 }].slice(-90),
 		};
-		writeJson(STREAK_KEY, next);
-		return next;
+		return persistStreak(next);
 	}
 
 	const nextCurrent =
@@ -168,8 +175,7 @@ export function recordStreakActivity() {
 		streakHistory: [...history, { date: today, quizCount: 1 }].slice(-90),
 		totalQuizDays: Number(previous.totalQuizDays || 0) + 1,
 	};
-	writeJson(STREAK_KEY, next);
-	return next;
+	return persistStreak(next);
 }
 
 export function getWeekActivity(streak = getStreak()) {

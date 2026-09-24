@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
 	BOOKMARKED_QUIZ_PRESETS: 'selftest_bookmarked_quiz_presets',
 	QUESTION_BOOKMARKS: 'selftest_bookmarks',
 	USER_PROFILE: 'selftest_user_profile',
+	STREAK: 'selftest_streak',
 	ATTEMPT_RESULTS: 'selftest_attempt_result',
 	PAPER_LANGUAGE: 'selftest_paper_language',
 	PWA_INSTALL_DISMISSED_AT: 'selftest_pwa_install_dismissed_at',
