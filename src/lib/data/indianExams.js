@@ -1118,3 +1118,139 @@ export function localizedSyllabus(syllabus, lang = 'english') {
 	}
 	return units.map((unit) => SYLLABUS_HI[unit] || unit);
 }
+
+// --- Practice hub categories and search -----------------------------------
+// The hub groups the flat registry into readable sections. The map is keyed by
+// exam.stream so the registry stays the single source of truth: a new exam
+// only needs a stream that already maps here (tests enforce full coverage).
+// searchTerms are bilingual on purpose - a Hindi keyboard should find
+// "शिक्षक" without switching the UI language. Catalog labels come from the
+// locale files via labelKey; data stays locale-neutral.
+
+export const HUB_CATEGORIES = [
+	{
+		id: 'ssc-central',
+		labelKey: 'practiceCategorySscCentral',
+		searchTerms: ['ssc', 'central government', 'staff selection', 'केंद्रीय', 'एसएससी'],
+		streams: [
+			'Government Jobs',
+			'Clerical',
+			'Multi Tasking Staff',
+			'Stenography',
+			'Selection Posts',
+			'EPFO',
+			'ESIC',
+			'Food Corporation',
+		],
+	},
+	{
+		id: 'banking',
+		labelKey: 'practiceCategoryBanking',
+		searchTerms: ['banking', 'bank', 'insurance', 'बैंक', 'बैंकिंग', 'बीमा'],
+		streams: ['Banking', 'Insurance'],
+	},
+	{
+		id: 'railways',
+		labelKey: 'practiceCategoryRailways',
+		searchTerms: ['railway', 'railways', 'रेलवे'],
+		streams: ['Railways'],
+	},
+	{
+		id: 'police-defence',
+		labelKey: 'practiceCategoryPoliceDefence',
+		searchTerms: ['police', 'defence', 'defense', 'army', 'paramilitary', 'पुलिस', 'रक्षा', 'सेना'],
+		streams: ['Police', 'Paramilitary', 'Railway Police', 'Defence Entrance', 'Defence & Security'],
+	},
+	{
+		id: 'civil-services',
+		labelKey: 'practiceCategoryCivilServices',
+		searchTerms: ['civil services', 'upsc', 'ias', 'ips', 'सिविल सेवा', 'यूपीएससी'],
+		streams: ['Civil Services', 'Forest Services', 'Medical Services'],
+	},
+	{
+		id: 'state-govt',
+		labelKey: 'practiceCategoryStateGovt',
+		searchTerms: ['state government', 'state psc', 'राज्य', 'राज्य सरकार'],
+		streams: [
+			'State PSC',
+			'State Services',
+			'State Group C',
+			'State Group D',
+			'State Group C/D',
+			'UP Group C/D',
+			'Revenue',
+			'Village Development',
+			'Secretariat',
+		],
+	},
+	{
+		id: 'entrance',
+		labelKey: 'practiceCategoryEntrance',
+		searchTerms: ['entrance', 'entrance exam', 'प्रवेश परीक्षा'],
+		streams: [
+			'Engineering Entrance',
+			'Medical Entrance',
+			'Postgraduate Engineering',
+			'MBA Entrance',
+			'University Entrance',
+			'Law Entrance',
+		],
+	},
+];
+
+export function getHubCategory(exam) {
+	const stream = exam?.stream;
+	if (!stream) {
+		return null;
+	}
+	return HUB_CATEGORIES.find((category) => category.streams.includes(stream)) || null;
+}
+
+export function groupExamsByCategory(exams = OBJECTIVE_ONLY_EXAMS) {
+	return HUB_CATEGORIES.map((category) => ({
+		...category,
+		exams: exams.filter((exam) => category.streams.includes(exam.stream)),
+	})).filter((category) => category.exams.length > 0);
+}
+
+// Hub search: punctuation and hyphens collapse to spaces on both sides, so
+// "rrb-ntpc" and "rrb ntpc" behave the same, and Devanagari combining marks
+// survive (they are Unicode mark characters, not punctuation).
+const SEARCH_TEXT_PATTERN = /[^\p{L}\p{M}\p{N}]+/gu;
+
+function normalizeSearchText(value) {
+	return String(value ?? '')
+		.toLowerCase()
+		.replace(SEARCH_TEXT_PATTERN, ' ')
+		.trim();
+}
+
+export function buildExamHaystack(exam) {
+	if (!exam) {
+		return '';
+	}
+	const syllabus = Array.isArray(exam.syllabus) ? exam.syllabus : [];
+	const category = getHubCategory(exam);
+	return normalizeSearchText(
+		[
+			exam.name,
+			String(exam.id || '').replace(/-/gu, ' '),
+			exam.stream,
+			STREAM_HI[exam.stream] || '',
+			...syllabus,
+			...localizedSyllabus(syllabus, 'hindi'),
+			...(category?.searchTerms || []),
+		].join(' ')
+	);
+}
+
+export function searchExams(query, exams = OBJECTIVE_ONLY_EXAMS) {
+	const tokens = normalizeSearchText(query).split(' ').filter(Boolean);
+	if (tokens.length === 0) {
+		return [];
+	}
+	return exams.filter((exam) => {
+		const haystack = buildExamHaystack(exam);
+		return tokens.every((token) => haystack.includes(token));
+	});
+}
