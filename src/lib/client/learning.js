@@ -15,10 +15,14 @@ const ACHIEVEMENTS = [
 	{ id: 'streak_7' },
 ];
 
+function dateKey(date) {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function todayString(offsetDays = 0) {
 	const date = new Date();
 	date.setDate(date.getDate() + offsetDays);
-	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+	return dateKey(date);
 }
 
 function completedTests(history) {
@@ -181,6 +185,67 @@ export function getWeekActivity(streak = getStreak()) {
 			isToday: offset === 0,
 		};
 	});
+}
+
+/**
+ * Builds a GitHub-style practice grid: `weeks` Monday-aligned columns of seven
+ * days each, ending on the week that contains `today`. Pure and deterministic
+ * for a given `today`/`locale`, so the heatmap is unit-testable without a DOM.
+ *
+ * Returns `{ weeks, monthLabels }` where each cell is
+ * `{ date, quizCount, active, isToday, isFuture }` and `monthLabels` marks the
+ * columns where the month changes (the first column always carries a label).
+ */
+export function buildStreakGrid(
+	streakHistory = [],
+	{ weeks = 8, today = new Date(), locale = 'en' } = {}
+) {
+	const safeWeeks = Math.max(1, Math.floor(Number(weeks) || 8));
+	const counts = new Map();
+	for (const entry of Array.isArray(streakHistory) ? streakHistory : []) {
+		const date = typeof entry?.date === 'string' ? entry.date : null;
+		if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+			continue;
+		}
+		counts.set(date, Math.max(0, Number(entry?.quizCount) || 0));
+	}
+
+	const anchor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+	const todayKey = dateKey(anchor);
+	const endWeekday = (anchor.getDay() + 6) % 7;
+	const lastMonday = new Date(anchor);
+	lastMonday.setDate(anchor.getDate() - endWeekday);
+	const firstMonday = new Date(lastMonday);
+	firstMonday.setDate(lastMonday.getDate() - (safeWeeks - 1) * 7);
+
+	const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'short' });
+	const grid = [];
+	const monthLabels = [];
+	let lastMonth = null;
+	for (let week = 0; week < safeWeeks; week += 1) {
+		const monday = new Date(firstMonday);
+		monday.setDate(firstMonday.getDate() + week * 7);
+		if (monday.getMonth() !== lastMonth) {
+			monthLabels.push({ index: week, label: monthFormatter.format(monday) });
+			lastMonth = monday.getMonth();
+		}
+		const column = [];
+		for (let day = 0; day < 7; day += 1) {
+			const cellDate = new Date(monday);
+			cellDate.setDate(monday.getDate() + day);
+			const key = dateKey(cellDate);
+			const quizCount = counts.get(key) || 0;
+			column.push({
+				date: key,
+				quizCount,
+				active: quizCount > 0,
+				isToday: key === todayKey,
+				isFuture: cellDate > anchor,
+			});
+		}
+		grid.push(column);
+	}
+	return { weeks: grid, monthLabels };
 }
 
 export function unlockAchievements(history, streak = getStreak()) {

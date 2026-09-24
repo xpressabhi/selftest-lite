@@ -57,16 +57,16 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
 
 ### Phase B: Streak on home (F4)
 
-- [ ] Task 7 (S): `buildStreakGrid` pure helper (+ failure-mode unit tests first): Monday alignment, 8-week
+- [x] Task 7 (S): `buildStreakGrid` pure helper (+ failure-mode unit tests first): Monday alignment, 8-week
   window, counts, empty days, month labels, today marker, empty history.
-- [ ] Task 8 (M): `StreakHeatmap.svelte` with EN/HI explainer and empty state; locale keys.
-- [ ] Task 9 (S): Home swap (replace returning card); results panel removal; `streak:view` telemetry kept.
-- [ ] Task 10 (S): `tests/e2e/streak-home.e2e.js` — seeded streak renders; EN + HI copy; results panel gone.
+- [x] Task 8 (M): `StreakHeatmap.svelte` with EN/HI explainer and empty state; locale keys.
+- [x] Task 9 (S): Home swap (replace returning card); results panel removal; `streak:view` telemetry kept.
+- [x] Task 10 (S): `tests/e2e/streak-home.e2e.js` — seeded streak renders; EN + HI copy; results panel gone.
 
 ### Checkpoint: B
 
-- [ ] Grid fits 320px, no horizontal overflow; zero console errors
-- [ ] Full suite green
+- [x] Grid fits 320px, no horizontal overflow; zero console errors
+- [x] Full suite green
 
 ### Phase C: Social stats + share fix (F1)
 
@@ -120,6 +120,17 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   call hit in 0.3 s (`cached: true`, identical text); `use_count` advanced by exactly the number
   of hits.
 - `lint`, `check`, `test` (532, +9), `test:e2e` (72, +1) all green.
+
+### Phase B (2026-09-24)
+
+- Tests failed first for the right reasons: unit suite on the missing `buildStreakGrid`, e2e on the
+  missing `.streak-card` and the still-present results `.week-strip`.
+- Home shows the grid (56 cells, 2 active, 1 today), current streak, best/freezes/practice-days meta,
+  and the plain-language explainer; `/hi` renders the Hindi explainer with the same numbers.
+- Results page no longer renders the streak panel (`week-strip` and "Day Streak" absent), achievements
+  and `recordStreakActivity` untouched.
+- 320px viewport: zero horizontal overflow, zero console errors.
+- `lint`, `test` (539, +7), `test:e2e` (75, +3) all green.
 
 ## Risks and Mitigations
 

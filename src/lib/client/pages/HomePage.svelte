@@ -58,6 +58,7 @@
 	} from '$lib/client/plannerState';
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
 	import QuickStart from '$lib/client/QuickStart.svelte';
+	import StreakHeatmap from '$lib/client/StreakHeatmap.svelte';
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
 	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
@@ -157,8 +158,7 @@
 	// server refresh must not swap rows under an in-flight tap (it opened
 	// the wrong test); when touched, the local list stays put.
 	let recentListTouched = false;
-	let lastTestId = $state(null);
-	let showReturningCard = $state(false);
+	let showStreakCard = $state(false);
 	let difficultyTouched = $state(false);
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
@@ -268,7 +268,6 @@
 			}
 		});
 		streak = getStreak();
-		lastTestId = historyEntries[0]?.id ? String(historyEntries[0].id) : null;
 		// Central personalization (fail-open, once per load): Jev picks one
 		// entry point to promote; hides stay behind existing toggles/links.
 		void requestPersonalize('home', {
@@ -284,10 +283,10 @@
 				showManualConfig = true;
 			}
 		});
-		showReturningCard = Boolean(
+		showStreakCard = Boolean(
 			!unsubmittedTest && (streak?.currentStreak > 0 || historyEntries.length > 0)
 		);
-		if (showReturningCard) {
+		if (showStreakCard) {
 			track('streak:view', {
 				streak: streak?.currentStreak || 0,
 				hasHistory: historyEntries.length > 0,
@@ -1476,24 +1475,8 @@
 			</div>
 		{/if}
 
-		{#if showReturningCard}
-			<div class="returning-card">
-				<div>
-					<div class="fw-bold">{$t('welcomeBack')}</div>
-					<div class="small text-muted">
-						{$t('streakLabel', { count: streak?.currentStreak || 0 })}
-					</div>
-				</div>
-				{#if lastTestId}
-					<a
-						class="btn btn-outline-secondary btn-sm fw-bold"
-						href={`/test?id=${lastTestId}`}
-						onclick={() => track('home:resume-test')}
-					>
-						{$t('lastTest')}
-					</a>
-				{/if}
-			</div>
+		{#if showStreakCard}
+			<StreakHeatmap {streak} locale={$activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN'} />
 		{/if}
 
 		<QuickStart
@@ -1737,18 +1720,6 @@
 		margin: 20px 0 0;
 		text-align: center;
 		font-size: 0.82rem;
-	}
-
-	.returning-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		margin-bottom: 16px;
-		padding: 12px 14px;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-surface);
-		background: var(--surface);
 	}
 
 	.manual-section {

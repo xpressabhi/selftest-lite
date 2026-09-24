@@ -16,8 +16,6 @@
 		formatDuration,
 		getAchievements,
 		getStats,
-		getStreak,
-		getWeekActivity,
 	} from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import QuestionMatching from '$lib/client/QuestionMatching.svelte';
@@ -60,8 +58,6 @@
 	let loadingExplanation = $state({});
 	let explanationError = $state({});
 	let stats = $state(null);
-	let streak = $state(null);
-	let weekActivity = $state([]);
 	let achievements = $state([]);
 	let topicMastery = $state([]);
 	let reviewQueue = $state({ today: [], upcoming: [] });
@@ -334,8 +330,6 @@
 	function refreshLearningPanels() {
 		const history = getHistory();
 		stats = getStats(history);
-		streak = getStreak();
-		weekActivity = getWeekActivity(streak);
 		achievements = getAchievements();
 		topicMastery = buildTopicMasteryItems(history);
 		reviewQueue = buildReviewQueue(history);
@@ -352,23 +346,6 @@
 
 	function questionKey(question) {
 		return `${questionTextFor(question)}::${question.answer}`;
-	}
-
-	const activityDateFormatters = new Map();
-
-	function formatActivityDate(value) {
-		const locale = $language === 'hindi' ? 'hi-IN' : 'en-IN';
-		let formatter = activityDateFormatters.get(locale);
-		if (!formatter) {
-			formatter = new Intl.DateTimeFormat(locale, {
-				weekday: 'short',
-				day: 'numeric',
-				month: 'short',
-			});
-			activityDateFormatters.set(locale, formatter);
-		}
-		const date = new Date(`${value}T00:00:00`);
-		return Number.isNaN(date.getTime()) ? value : formatter.format(date);
 	}
 
 	function toggleBookmark(question) {
@@ -1148,33 +1125,6 @@
 		<div class="row g-3 mb-4">
 			<div class="col-md-6">
 				<section class="result-panel bg-body border rounded-3 p-3">
-					<div class="d-flex align-items-center justify-content-between gap-3">
-						<div>
-							<h2 class="h6 fw-bold mb-1">{$t('streaks')}</h2>
-							<p class="text-muted small mb-0">{$t('dayStreak')}</p>
-						</div>
-						<div class="display-6 fw-bold text-primary">
-							{streak?.currentStreak || 0}
-						</div>
-					</div>
-					<div class="week-strip mt-3">
-						{#each weekActivity as day (day.date)}
-							<span
-								class:active={day.active}
-								class:today={day.isToday}
-								role="img"
-								aria-label={formatActivityDate(day.date)}
-								title={day.date}
-							></span>
-						{/each}
-					</div>
-					<p class="small text-muted mt-2 mb-0">
-						{$t('best')}: {streak?.longestStreak || 0}
-					</p>
-				</section>
-			</div>
-			<div class="col-md-6">
-				<section class="result-panel bg-body border rounded-3 p-3">
 					<h2 class="h6 fw-bold">{$t('yourProgress')}</h2>
 					<div class="stats-grid">
 						<div>
@@ -1853,26 +1803,6 @@
 
 	.result-panel {
 		height: 100%;
-	}
-
-	.week-strip {
-		display: grid;
-		grid-template-columns: repeat(7, 1fr);
-		gap: 6px;
-	}
-
-	.week-strip span {
-		height: 12px;
-		border-radius: 999px;
-		background: var(--surface-muted);
-	}
-
-	.week-strip span.active {
-		background: var(--color-brand-600);
-	}
-
-	.week-strip span.today {
-		outline: 2px solid color-mix(in srgb, var(--color-brand-600) 25%, transparent);
 	}
 
 	.stats-grid {
