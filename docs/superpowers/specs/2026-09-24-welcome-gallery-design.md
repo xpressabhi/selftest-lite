@@ -21,8 +21,9 @@ kind of sentence the planner understands.
 
 Success criteria:
 
-- A user with no history sees greeting + 3 group labels + 6 examples + tip without scrolling at
-  390×844.
+- A user with no history sees the greeting, the tip and at least the first four examples without
+  scrolling at 390×844 (measured: six 44px full-width rows plus the greeting exceed the 352px log;
+  the last group is a short scroll away — see §4 and §14).
 - The first typed character (or paste) removes the gallery and tip; clearing the field brings them
   back; the panel height never changes, so nothing jumps.
 - Tapping an example fills the composer exactly, fires no `/api/parse-intent` or `/api/generate`
@@ -63,7 +64,7 @@ showWelcome = recentTests.length === 0
 Inside the log, in order:
 
 1. Assistant-style greeting bubble (`plannerWelcomeGreeting`): "Tell me what you want to practice
-   — an exam, a school chapter or a skill. I'll draft the plan; you can tweak every part."
+   — an exam, a school chapter or a skill." (kept to two lines at phone width).
 2. Three groups, each a small uppercase label plus two full-width tappable rows (44px minimum,
    same visual language as recent-test rows):
    - `plannerGroupExam` — SSC CGL general awareness practice · UPSC prelims polity — 15 questions
@@ -72,20 +73,28 @@ Inside the log, in order:
 3. Pinned below the log (above the composer, outside the scroll area): the tip
    `plannerWelcomeTip` — "💡 Add a level, count or language: “hard”, “20 questions”, “in Hindi”".
 
-If the panel is shorter than the content (very short phones), the log scrolls; greeting, tip and
-composer stay pinned. No new network calls.
+If the panel is shorter than the content (the normal case on phones), the log scrolls; greeting,
+tip and composer stay pinned. Measured at 390×844: the log is 352px while the gallery is ~420px
+after tightening (greeting ~2 lines, 10px gaps between groups, 4px inside them), so the first four
+examples are above the fold and the last two are a short scroll away. Six 44px tap targets cannot
+fit 352px without breaking the repository's minimum tap-target rule, which is why this bound is
+deliberate rather than a bug. No new network calls.
 
 ## 5. Interaction and motion
 
 - **Tap a row** → fills the composer with the localized sentence, does not submit, does not focus
   the input (no surprise keyboard), gallery stays visible; `planner:example-tap` fires. No preview
   may run from this fill: the live-preview `$effect` on `intentValue` (HomePage.svelte:704) is
-  gated on `plannerTyped`, so only typed text previews. Without the gate a tap would commit a
-  local topic, pop the plan card and wipe the gallery instantly — the opposite of the intent.
+  gated on a `galleryFill` flag, so only user-owned text previews. Without the gate a tap would
+  commit a local topic, pop the plan card and wipe the gallery instantly.
 - **First typed character / paste** → gallery and tip are conditionally removed (instant, from the
   DOM, so a plan card that commits mid-typing lands at the top of the log). Entering the state
   fades in softly via a CSS keyframe; under `html.reduce-motion` / `html.data-saver` there is no
   animation. Previews resume on the first real edit of a tapped example.
+- **Typed state is derived from the value, not from input events**: text that was already in the
+  field when hydration finished still counts as typed (and previews), while a gallery fill keeps
+  the gallery until the user edits it. This closes the hydration race that input-event detection
+  would leave open.
 - **Clear to empty** → gallery returns while no conversation or plan card exists.
 - **Send** → unchanged planner turn.
 - Panel height, header, composer, search overlay, Daily 5 and all network behaviour are unchanged.
@@ -95,18 +104,18 @@ composer stay pinned. No new network calls.
 - `src/lib/client/ChatThread.svelte`: new props `welcome` (boolean) and `exampleGroups`
   (array of `{ labelKey, examples: [{ key, group, slot }] }`), replacing `examples`; greeting +
   groups render inside `.chat-log`, tip as a footer row; `onexample` now receives the example
-  object and no longer submits.
-- `src/lib/client/PlannerComposer.svelte`: new `ontyping` callback invoked from
-  `handleIntentInput` (real input events only).
-- `src/lib/client/pages/HomePage.svelte`: `plannerTyped` state, `showWelcome` derived, example
-  group data, `handleExampleTap` (fill + `track`), reset points, and the preview `$effect` gate
-  (`if (!plannerTyped) return;` after the timer clears) so programmatic fills never preview.
+  object and no longer submits. The welcome state keeps the log scrolled to the top instead of the
+  conversation's bottom-pinned behaviour.
+- `src/lib/client/pages/HomePage.svelte`: `plannerTyped` + `galleryFill` state, `showWelcome`
+  derived, example group data, `handleExampleTap` (fill + `track`), the value-derived typed effect,
+  reset points, and the preview `$effect` gate (`if (galleryFill) return;`) so gallery fills never
+  preview. `PlannerComposer` is unchanged.
 
 ## 7. Copy (en / hi)
 
 | Key | English | Hindi |
 | --- | --- | --- |
-| `plannerWelcomeGreeting` | Tell me what you want to practice — an exam, a school chapter or a skill. I'll draft the plan; you can tweak every part. | बताइए आप क्या अभ्यास करना चाहते हैं — कोई परीक्षा, स्कूल का पाठ या कोई स्किल। मैं योजना तैयार कर दूँगा, और हर हिस्सा आप बदल सकते हैं। |
+| `plannerWelcomeGreeting` | Tell me what you want to practice — an exam, a school chapter or a skill. | बताइए आप क्या अभ्यास करना चाहते हैं — परीक्षा, स्कूल का पाठ या कोई स्किल। |
 | `plannerGroupExam` | Exam prep | परीक्षा की तैयारी |
 | `plannerGroupSchool` | School & boards | स्कूल और बोर्ड |
 | `plannerGroupSkills` | Skills & interviews | स्किल और इंटरव्यू |
@@ -135,7 +144,9 @@ Removed: `plannerExample1-3`, `welcomeTryThese` (both locales) and the `.example
 2. Gallery does not hide on typing, or does not return when the field is cleared.
 3. Tap submits a request, does not fill exactly (index/locale mapping wrong), or the programmatic
    fill triggers the live-preview effect (card/gallery flash).
-4. Programmatic prefill counts as typing and wipes the gallery (tap would blink).
+4. Programmatic prefill counts as typing and wipes the gallery (tap would blink), or text typed
+   before hydration finished never previews (hydration race). Both are covered by the
+   value-derived typed rule; the welcome suite proves the tap case, planner-calm the typing case.
 5. Gallery is announced by the live region on first load / reappearance.
 6. Hindi copy missing or English leaking on `/hi`.
 7. Hydration mismatch from SSR-rendered gallery (home is streamed SSR).
@@ -147,7 +158,8 @@ Removed: `plannerExample1-3`, `welcomeTryThese` (both locales) and the `.example
 E2E first (`tests/e2e/welcome-gallery.e2e.js`), stubbing `/api/user/history` and `/api/test` as the
 existing planner suite does; evidence attached to `test-results/e2e-artifact.json`:
 
-1. Empty history + `/` → greeting, 3 group labels, 6 rows, tip; no console errors (covers 5, 7).
+1. Empty history + `/` at 390×844 → greeting, 3 group labels, 6 rows, tip; greeting + tip + first
+   four examples above the fold (measured bound, see spec §4); no console errors (covers 5, 7).
 2. One stubbed recent test → no gallery, recent rows as today (covers 1).
 3. Tap an example → input value equals that sentence; no `/api/generate`, no `/api/parse-intent`;
    gallery still visible (covers 3, 4). The existing planner-calm suite guards that typed text
@@ -190,7 +202,7 @@ emit sites honest in the same commit.
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Gallery content scrolls even at 390×844 | Med | Six rows + greeting + tip measured in E2E; trim tip or fourth row if not |
+| Gallery content scrolls at 390×844 | Med | Measured: six 44px rows + greeting cannot fit the 352px log. Greeting shortened to two lines and gaps tightened so four examples are above the fold; the E2E asserts that bound instead of zero overflow |
 | Returning users lose the old "Try these" chips | Low | Deliberate: recent list is the useful pre-typing content for them |
 | Tap-to-fill feels inert (no keyboard, no submit) | Low | Send stays enabled and visible; E2E asserts the exact filled value |
 | Example copy ages (exams change) | Low | All copy is locale-keyed in one table, cheap to edit |

@@ -27,52 +27,52 @@ motion, no API/schema/dependency changes. E2E-first; artifact updated.
 
 ### Phase 1: Specs first (repo rule)
 
-- [ ] Task 1 (S): `tests/e2e/welcome-gallery.e2e.js` — the seven cases from spec §10 (new user
+- [x] Task 1 (S): `tests/e2e/welcome-gallery.e2e.js` — the seven cases from spec §10 (new user
   renders gallery; returning user unaffected; tap fills + no requests + gallery stays; type/clear
   hide/return; `/hi` copy; panel height stable; data-saver disables the animation), each attaching
   evidence. Written before app code; expected to fail only on the missing selectors.
 
 ### Checkpoint: Specs
 
-- [ ] New suite fails for the right reason (missing `.welcome-gallery` / `.welcome-tip`), no harness
+- [x] New suite fails for the right reason (missing `.welcome-gallery` / `.welcome-tip`), no harness
   errors; existing 33 e2e tests still green
 
 ### Phase 2: Copy and rendering
 
-- [ ] Task 2 (XS): Locale keys — add the 11 new en + hi strings from spec §7; `npm run test` locale
+- [x] Task 2 (XS): Locale keys — add the 11 new en + hi strings from spec §7; `npm run test` locale
   parity green.
-- [ ] Task 3 (M): `ChatThread.svelte` — `welcome` / `exampleGroups` props, greeting + groups inside
+- [x] Task 3 (M): `ChatThread.svelte` — `welcome` / `exampleGroups` props, greeting + groups inside
   the log and tip pinned below it, styles + 44px rows, `role`/`aria-live` omitted while welcome,
   delete the `examples` block and `.example-chip(s)` styles; delete `plannerExample1-3` and
   `welcomeTryThese` from both locales.
 
 ### Checkpoint: Rendered
 
-- [ ] `npm run test` green; manual look at `/` and `/hi` — gallery visible, recent-list path for
+- [x] `npm run test` green; manual look at `/` and `/hi` — gallery visible, recent-list path for
   seeded history unchanged (tap still submits until Task 4 — known, temporary)
 
 ### Phase 3: Behaviour
 
-- [ ] Task 4 (M): `PlannerComposer` `ontyping`; `HomePage` `plannerTyped` (set on typing, reset on
+- [x] Task 4 (M): `PlannerComposer` `ontyping`; `HomePage` `plannerTyped` (set on typing, reset on
   empty / Start over), `showWelcome`, example group data, `handleExampleTap` (fill + `track`),
   preview-effect gate; add `planner:example-tap` to `telemetryEvents.js` (emit site and allowlist
   in the same change).
-- [ ] Task 5 (S): E2E — make all seven cases green, tune selectors/waits; full suite + artifact.
+- [x] Task 5 (S): E2E — make all seven cases green, tune selectors/waits; full suite + artifact.
 
 ### Checkpoint: Behaviour
 
-- [ ] `tests/e2e/welcome-gallery.e2e.js` green; `planner-calm.e2e.js` green (typed previews still
+- [x] `tests/e2e/welcome-gallery.e2e.js` green; `planner-calm.e2e.js` green (typed previews still
   work through the new gate); panel height unchanged by typing
 
 ### Phase 4: Verification
 
-- [ ] Task 6 (S): `npm run lint`, `npm run test`, `npm run check`, `npm run test:e2e`,
+- [x] Task 6 (S): `npm run lint`, `npm run test`, `npm run check`, `npm run test:e2e`,
   `npm run verify:vercel`; manual 390×844 and data-saver pass; docs touch-up only if drift;
   small conventional commits.
 
 ### Checkpoint: Complete
 
-- [ ] All acceptance criteria met; artifact written with the new suite's evidence; ready for review
+- [x] All acceptance criteria met; artifact written with the new suite's evidence; ready for review
 
 ## Risks and Mitigations
 
