@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { t } from '$lib/client/i18n';
+	import { activeLanguage, t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
 	import {
 		getBookmarkedExamIds,
@@ -10,9 +10,10 @@
 		saveBookmarkedQuizPresets,
 		saveQuestionBookmarks,
 	} from '$lib/client/storage';
+	import Icon from '$lib/client/Icon.svelte';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import { hydrateUserState } from '$lib/client/sync';
-	import { getIndianExamById } from '$lib/data/indianExams';
+	import { getIndianExamById, localizedStream } from '$lib/data/indianExams';
 
 	let examIds = $state([]);
 	let presets = $state([]);
@@ -73,116 +74,115 @@
 </svelte:head>
 
 <section class="container py-4">
-	<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+	<header class="page-head">
 		<div>
 			<h1 class="h2 fw-bold mb-1">{$t('bookmarks')}</h1>
 			<p class="text-muted mb-0">{$t('useBookmarksOrChooseMode')}</p>
 		</div>
 		<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
-	</div>
+	</header>
 
-	<div class="row g-3">
-		<section class="col-lg-6">
-			<div class="bg-body border rounded-3 p-3 h-100">
-				<h2 class="h5 fw-bold">{$t('bookmarkedExams')}</h2>
-				{#if exams.length === 0}
-					<p class="text-muted mb-0">{$t('noBookmarkedExams')}</p>
-				{:else}
-					<div class="list-group list-group-flush">
-						{#each exams as exam (exam.id)}
-							<div
-								class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3"
-							>
-								<div>
-									<div class="fw-semibold">{exam.name}</div>
-									<div class="small text-muted">
-										{exam.stream} · {exam.durationMinutes}
-										{$t('minuteShort')}
-									</div>
-								</div>
-								<div class="d-flex gap-2">
-									<a
-										class="btn btn-sm btn-outline-primary"
-										href={`/?exam=${exam.id}`}
-									>
-										{$t('select')}
-									</a>
-									<button
-										class="btn btn-sm btn-outline-danger"
-										type="button"
-										onclick={() => removeExam(exam.id)}
-									>
-										{$t('removeBookmark')}
-									</button>
-								</div>
-							</div>
-						{/each}
+	<div class="bookmark-grid">
+		<section class="bm-section">
+			<header class="bm-head">
+				<h2 class="bm-title">{$t('bookmarkedExams')}</h2>
+				<span class="bm-count">{exams.length}</span>
+			</header>
+			{#if exams.length === 0}
+				<p class="bm-empty">{$t('noBookmarkedExams')}</p>
+			{:else}
+				{#each exams as exam (exam.id)}
+					<div class="bm-item">
+						<a class="bm-row" href={`/?exam=${exam.id}`}>
+							<span class="bm-main">
+								<span class="bm-name">{exam.name}</span>
+								<span class="bm-meta">
+									{localizedStream(exam.stream, $activeLanguage)} ·
+									{exam.durationMinutes}
+									{$t('minuteShort')}
+								</span>
+							</span>
+							<Icon name="chevron-right" size={18} />
+						</a>
+						<button
+							class="bm-remove"
+							type="button"
+							aria-label={`${$t('removeBookmark')}: ${exam.name}`}
+							onclick={() => removeExam(exam.id)}
+						>
+							<Icon name="trash" size={18} />
+						</button>
 					</div>
-				{/if}
-			</div>
+				{/each}
+			{/if}
 		</section>
 
-		<section class="col-lg-6">
-			<div class="bg-body border rounded-3 p-3 h-100">
-				<h2 class="h5 fw-bold">{$t('bookmarkedQuizPresets')}</h2>
-				{#if presets.length === 0}
-					<p class="text-muted mb-0">{$t('noBookmarkedQuizPresets')}</p>
-				{:else}
-					<div class="list-group list-group-flush">
-						{#each presets as preset (preset.id)}
-							<div
-								class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3"
-							>
-								<div>
-									<div class="fw-semibold">
-										{preset.label || preset.topicSeed || $t('quizPractice')}
-									</div>
-									<div class="small text-muted">
-										{preset.numQuestions || 10}
-										{$t('questions')} · {preset.difficulty ||
-											$t('intermediate')}
-									</div>
-								</div>
-								<button
-									class="btn btn-sm btn-outline-danger"
-									type="button"
-									onclick={() => removePreset(preset.id)}
-								>
-									{$t('removeBookmark')}
-								</button>
-							</div>
-						{/each}
+		<section class="bm-section">
+			<header class="bm-head">
+				<h2 class="bm-title">{$t('bookmarkedQuizPresets')}</h2>
+				<span class="bm-count">{presets.length}</span>
+			</header>
+			{#if presets.length === 0}
+				<p class="bm-empty">{$t('noBookmarkedQuizPresets')}</p>
+			{:else}
+				{#each presets as preset (preset.id)}
+					<div class="bm-item">
+						<div class="bm-row is-static">
+							<span class="bm-main">
+								<span class="bm-name">
+									{preset.label || preset.topicSeed || $t('quizPractice')}
+								</span>
+								<span class="bm-meta">
+									{preset.numQuestions || 10}
+									{$t('questions')} · {preset.difficulty || $t('intermediate')}
+								</span>
+							</span>
+						</div>
+						<button
+							class="bm-remove"
+							type="button"
+							aria-label={`${$t('removeBookmark')}: ${
+								preset.label || preset.topicSeed || $t('quizPractice')
+							}`}
+							onclick={() => removePreset(preset.id)}
+						>
+							<Icon name="trash" size={18} />
+						</button>
 					</div>
-				{/if}
-			</div>
+				{/each}
+			{/if}
 		</section>
 	</div>
 
-	<section class="bg-body border rounded-3 p-3 mt-3">
-		<h2 class="h5 fw-bold">{$t('bookmarkQuestion')}</h2>
+	<section class="bm-section questions-section">
+		<header class="bm-head">
+			<h2 class="bm-title">{$t('bookmarkedQuestions')}</h2>
+			<span class="bm-count">{questionBookmarks.length}</span>
+		</header>
 		{#if questionBookmarks.length === 0}
-			<p class="text-muted mb-0">{$t('noBookmarksYet')}</p>
+			<p class="bm-empty">{$t('noBookmarksYet')}</p>
 		{:else}
-			<div class="d-grid gap-3">
+			<div class="q-list">
 				{#each questionBookmarks as bookmark (`${bookmark.question}-${bookmark.answer}`)}
-					<article class="border rounded-3 p-3">
-						<div class="d-flex align-items-start justify-content-between gap-3">
-							<div class="min-w-0">
-								<p class="small text-muted mb-1">
-									{bookmark.topic || $t('quizPractice')}
-								</p>
-								<MarkdownContent content={bookmark.question} />
-							</div>
+					<article class="q-card">
+						<div class="q-head">
+							<span class="q-topic">{bookmark.topic || $t('quizPractice')}</span>
 							<button
-								class="btn btn-sm btn-outline-danger"
+								class="bm-remove"
 								type="button"
+								aria-label={`${$t('removeBookmark')}: ${
+									bookmark.topic || $t('quizPractice')
+								}`}
 								onclick={() => removeQuestionBookmark(bookmark)}
 							>
-								{$t('removeBookmark')}
+								<Icon name="trash" size={18} />
 							</button>
 						</div>
-						<div class="small text-success mt-2 mb-0">
-							<strong>{$t('correctAnswer')}:</strong>
+						<div class="q-body">
+							<MarkdownContent content={bookmark.question} />
+						</div>
+						<div class="q-answer">
+							<span class="q-answer-label">{$t('correctAnswer')}</span>
 							<MarkdownContent content={bookmark.answer} />
 						</div>
 					</article>
@@ -191,3 +191,198 @@
 		{/if}
 	</section>
 </section>
+
+<style>
+	.page-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 16px;
+	}
+
+	.bookmark-grid {
+		display: grid;
+		gap: 16px;
+	}
+
+	.bm-section {
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+		overflow: hidden;
+	}
+
+	.bm-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 12px 16px;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.bm-title {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
+	.bm-count {
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.bm-empty {
+		margin: 0;
+		padding: 16px;
+		color: var(--text-muted);
+		font-size: 0.88rem;
+	}
+
+	.bm-item {
+		display: flex;
+		align-items: center;
+	}
+
+	.bm-item + .bm-item {
+		border-top: 1px solid var(--line);
+	}
+
+	.bm-row {
+		display: flex;
+		min-width: 0;
+		flex: 1 1 auto;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 4px 12px 16px;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.bm-row:not(.is-static):hover {
+		background: var(--surface-muted);
+	}
+
+	.bm-row:focus-visible {
+		outline-offset: -2px;
+	}
+
+	.bm-row > :global(svg) {
+		flex: 0 0 auto;
+		color: var(--text-muted);
+	}
+
+	.bm-main {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.bm-name {
+		font-weight: 600;
+		line-height: 1.35;
+		overflow-wrap: anywhere;
+	}
+
+	.bm-meta {
+		color: var(--text-muted);
+		font-size: 0.78rem;
+	}
+
+	.bm-remove {
+		display: grid;
+		width: 44px;
+		height: 44px;
+		flex: 0 0 auto;
+		margin-right: 8px;
+		place-items: center;
+		border: 0;
+		border-radius: var(--radius-control);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		transition:
+			background var(--motion-fast) var(--ease-out),
+			color var(--motion-fast) var(--ease-out);
+	}
+
+	.bm-remove:hover,
+	.bm-remove:focus-visible {
+		background: color-mix(in srgb, var(--danger) 10%, transparent);
+		color: var(--danger);
+	}
+
+	.questions-section {
+		margin-top: 16px;
+	}
+
+	.q-list {
+		display: grid;
+		gap: 12px;
+		padding: 16px;
+	}
+
+	.q-card {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 14px 16px;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+	}
+
+	.q-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+
+	.q-topic {
+		color: var(--text-muted);
+		font-size: 0.78rem;
+		font-weight: 600;
+	}
+
+	.q-head .bm-remove {
+		margin-right: -8px;
+	}
+
+	.q-body {
+		line-height: 1.6;
+		overflow-wrap: anywhere;
+	}
+
+	.q-answer {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 10px 12px;
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--ok) 8%, transparent);
+	}
+
+	.q-answer-label {
+		color: var(--ok);
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	@media (min-width: 992px) {
+		.bookmark-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			align-items: start;
+		}
+
+		.q-list {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			align-items: start;
+		}
+	}
+</style>
