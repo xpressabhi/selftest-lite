@@ -39,6 +39,11 @@ import {
 	answerMatchesOption,
 } from '$lib/server/quizValidation';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
+import {
+	assignSectionsToPaper,
+	buildPatternConstraint,
+	getExamPattern,
+} from '$lib/server/examPattern';
 import { buildOriginalRequest, sanitizeIntentCapture } from '$lib/server/intentCapture';
 import {
 	applyQualityFixes,
@@ -672,7 +677,7 @@ async function runGenerationAndStore(context, onProgress) {
 	const generationRun = { model: null };
 
 	try {
-		const questionPaper = await generatePaper({
+		const generatedPaper = await generatePaper({
 			ai,
 			resolvedTopic,
 			numQuestions,
@@ -694,6 +699,24 @@ async function runGenerationAndStore(context, onProgress) {
 			onProgress,
 		});
 
+		// The model produces a flat paper; section ranges are assigned
+		// server-side from the pattern so a hallucinated range can never ship.
+		const assignment = generatedPaper.sections?.length
+			? {
+					questions: generatedPaper.questions,
+					sections: generatedPaper.sections,
+					examMeta: generatedPaper.examMeta || null,
+				}
+			: assignSectionsToPaper(generatedPaper.questions, context.examPattern || null, {
+					section: context.focusSection || null,
+				});
+		const questionPaper = {
+			...generatedPaper,
+			questions: assignment.questions,
+			...(assignment.sections.length > 0 ? { sections: assignment.sections } : {}),
+			...(assignment.examMeta ? { examMeta: assignment.examMeta } : {}),
+		};
+
 		const storedPaper = {
 			...questionPaper,
 			requestParams: {
@@ -702,6 +725,7 @@ async function runGenerationAndStore(context, onProgress) {
 				examId: context.examId,
 				examName,
 				examStream,
+				sectionFocus: context.focusSection?.id || null,
 				category: category || null,
 				selectedTopics,
 				syllabusFocus,
@@ -727,6 +751,7 @@ async function runGenerationAndStore(context, onProgress) {
 			language,
 			testMode,
 			examId: context.examId,
+			sectionFocus: context.focusSection?.id || null,
 			objectiveOnly,
 			durationMinutes: context.durationMinutes,
 			createdByUserId: user?.id || null,
@@ -923,6 +948,11 @@ export async function POST({ request, cookies }) {
 			objectiveOnly = false,
 			durationMinutes = null,
 			intentCapture = null,
+			sectionFocus = null,
+			board = null,
+			classLevel = null,
+			subject = null,
+			paperName = null,
 		} = await parseRequestBody(request);
 
 		const validationError = validateGenerateRequest({
@@ -1039,7 +1069,47 @@ export async function POST({ request, cookies }) {
 			}
 		}
 
-		if (testMode === 'full-exam' && examId) {
+		let effectiveNumQuestions = numQuestions;
+		let examPattern = null;
+		let focusSection = null;
+		const normalizedSectionFocus =
+			typeof sectionFocus === 'string' && sectionFocus.trim()
+				? sectionFocus.trim().slice(0, 80)
+				: null;
+		if (testMode === 'full-exam') {
+			// Standard exams use a cached pattern opportunistically; a sectional
+			// paper needs the pattern, so it discovers one synchronously.
+			try {
+				examPattern = await getExamPattern(
+					{ examId, paperName: paperName || examName, board, classLevel, subject },
+					{ language, discover: Boolean(normalizedSectionFocus) }
+				);
+			} catch (patternError) {
+				console.error('Exam pattern resolution failed:', patternError);
+			}
+			if (examPattern && normalizedSectionFocus) {
+				focusSection =
+					examPattern.sections.find((section) => section.id === normalizedSectionFocus) ||
+					null;
+			}
+			if (normalizedSectionFocus && !focusSection) {
+				return json(
+					{
+						error: 'That section is not available for this exam',
+						code: 'SECTION_NOT_FOUND',
+					},
+					{ status: 400 }
+				);
+			}
+			if (focusSection) {
+				effectiveNumQuestions = Math.min(
+					Math.max(Number(focusSection.questionCount) || numQuestions, 1),
+					200
+				);
+			}
+		}
+
+		if (testMode === 'full-exam' && examId && !focusSection) {
 			const locallyAttemptedTestIds = previousTestRecords
 				.filter((record) => {
 					if (!normalizedAttemptedTestIds.has(Number(record.id))) {
@@ -1127,6 +1197,11 @@ export async function POST({ request, cookies }) {
 			.filter(Boolean)
 			.join('\n');
 
+		const patternConstraint = buildPatternConstraint(examPattern, focusSection);
+		const generationTopicContext = patternConstraint
+			? `${topicContext}\n${patternConstraint}`
+			: topicContext;
+
 		// Keep the "previous questions to avoid" context bounded: every past
 		// test can hold 100+ questions and 10 tests of that would balloon the
 		// prompt into tens of thousands of tokens, slowing every generation.
@@ -1180,11 +1255,11 @@ export async function POST({ request, cookies }) {
 			user,
 			clientId,
 			resolvedTopic,
-			numQuestions,
+			numQuestions: effectiveNumQuestions,
 			resolvedDifficulty,
 			difficulty,
 			testType,
-			topicContext,
+			topicContext: generationTopicContext,
 			examName,
 			examStream,
 			category,
@@ -1201,6 +1276,8 @@ export async function POST({ request, cookies }) {
 			tailoredSummary,
 			examId,
 			durationMinutes,
+			examPattern,
+			focusSection,
 			originalRequest,
 			intentCapture: capture,
 			deadlineMs: startedAt + GENERATION_TIMEOUT_MS,

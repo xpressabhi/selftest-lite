@@ -87,13 +87,13 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
 
 ### Phase D: Full-exam engine (F3/F5/F6/F7)
 
-- [ ] Task 17 (M): Schema v8 (`exam_patterns`, `ai_test.section_focus`, `premium_entitlements`) + accessors.
-- [ ] Task 18 (M): `examPatternSchema` + `discoverExamPattern` + `getExamPattern` (TTL, stale-refresh,
+- [x] Task 17 (M): Schema v8 (`exam_patterns`, `ai_test.section_focus`, `premium_entitlements`) + accessors.
+- [x] Task 18 (M): `examPatternSchema` + `discoverExamPattern` + `getExamPattern` (TTL, stale-refresh,
   in-flight dedupe) + failure-mode unit tests.
-- [ ] Task 19 (S): `GET /api/exam/pattern` (public, rate-limited).
-- [ ] Task 20 (M): Paper `sections`/`examMeta` in `quizSchema.js`, prompt constraint block, server-side index
+- [x] Task 19 (S): `GET /api/exam/pattern` (public, rate-limited).
+- [x] Task 20 (M): Paper `sections`/`examMeta` in `quizSchema.js`, prompt constraint block, server-side index
   ranges, generation wiring.
-- [ ] Task 21 (M): Section headers/progress on `/test`, section breakdown on `/results`; legacy flat papers
+- [x] Task 21 (M): Section headers/progress on `/test`, section breakdown on `/results`; legacy flat papers
   unchanged.
 - [ ] Task 22 (M): `/exam-paper` page (board/named tabs, pattern confirmation, gate screen) + home card.
 - [ ] Task 23 (S): `GET /api/premium/access`, `hasPremiumAccess`, `403 PREMIUM_REQUIRED` in `/api/generate`;
@@ -101,8 +101,8 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
 - [ ] Task 24 (M): Section chips in the exam flow (single-select v1) + `sectionFocus` generation.
 - [ ] Task 25 (M): `resolveGenerationParams` precedence engine + `explicit` contract client-side + table-driven
   unit tests.
-- [ ] Task 26 (S): E2E `tests/e2e/exam-paper.e2e.js` (mocked pattern/generation): section headers render,
-  sectional chip generation, gate + 403, admin grant flow; `verify:vercel`.
+- [ ] Task 26 (S): E2E `tests/e2e/exam-engine.e2e.js` (pattern cache + section rendering done; gate, admin
+  grant and `/exam-paper` flows pending); `verify:vercel`.
 
 ### Checkpoint: D
 
@@ -146,6 +146,19 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   score with no own-score chip; `/test/stats` renders; challenge `?ch=1&by=Ravi` survives submission and
   names the public score "Ravi".
 - `lint`, `check`, `test` (552, +13), `test:e2e` (77, +2), `verify:vercel` all green.
+
+### Phase D, part 1 — pattern cache + sections (2026-09-24)
+
+- Unit suites written first: `examPattern.test.js` (schema, slug normalization, keys, expiry,
+  section assignment, focused sections) — 14 tests.
+- E2E `exam-engine.e2e.js`: a seeded pattern is served with `stale: false` and the cache key
+  `exam:e2e-pattern-probe`; a DB paper with two sections renders "Section 1 of 2", the section name,
+  instructions and marks chip, switches to Section B on advance, and the results page shows
+  `1/1` / `0/1` per section.
+- Standard exam generation resolves a cached pattern opportunistically (`discover: false`); sectional
+  requests discover synchronously; section index ranges are assigned server-side from the batch order;
+  `section_focus` is stored for reuse keying.
+- `lint`, `check`, `test` (566, +14), `test:e2e` (79, +2) all green.
 
 ## Risks and Mitigations
 

@@ -110,6 +110,35 @@
 			: null
 	);
 
+	// Per-section scores for pattern-based papers. Uses the graded `correct`
+	// flags when present and falls back to comparing stored answers.
+	let sectionBreakdown = $derived.by(() => {
+		const sections = questionPaper?.sections || [];
+		const questions = questionPaper?.questions || [];
+		if (!sections.length || !questions.length || !questionPaper?.userAnswers) {
+			return [];
+		}
+		return sections.map((section) => {
+			const indexes = section.questionIndexes || [];
+			let correct = 0;
+			for (const index of indexes) {
+				const question = questions[index];
+				if (!question) {
+					continue;
+				}
+				if (question.correct === true) {
+					correct += 1;
+				} else if (
+					question.correct === undefined &&
+					questionPaper.userAnswers[index] === question.answer
+				) {
+					correct += 1;
+				}
+			}
+			return { id: section.id, name: section.name, correct, total: indexes.length };
+		});
+	});
+
 	$effect(() => {
 		if (challengeOutcome && !challengeViewTracked) {
 			challengeViewTracked = true;
@@ -1068,6 +1097,20 @@
 			<TestStatsCard testId={questionPaper.id} />
 		{/if}
 
+		{#if sectionBreakdown.length > 0}
+			<section class="section-breakdown bg-body border rounded-3 p-3 mb-4">
+				<h2 class="h6 fw-bold mb-2">{$t('sectionBreakdownTitle')}</h2>
+				<ul class="section-breakdown-list">
+					{#each sectionBreakdown as section (section.id)}
+						<li class="section-breakdown-row">
+							<span class="section-breakdown-name">{section.name}</span>
+							<span class="section-breakdown-score">{section.correct}/{section.total}</span>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
 		<div
 			class="filter-bar bg-body border rounded-3 p-2 mb-4"
 			role="group"
@@ -1852,6 +1895,38 @@
 		border-radius: var(--radius-control);
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.section-breakdown-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.section-breakdown-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 6px 0;
+		border-top: 1px solid var(--line);
+		font-size: 0.85rem;
+	}
+
+	.section-breakdown-row:first-child {
+		border-top: none;
+	}
+
+	.section-breakdown-name {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.section-breakdown-score {
+		font-weight: 700;
+		white-space: nowrap;
 	}
 
 	.challenge-card {

@@ -73,7 +73,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -118,6 +118,7 @@ export async function ensureStorageSchema() {
 		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS objective_only BOOLEAN`);
 		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS duration_minutes INTEGER`);
 		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS created_by_user_id BIGINT`);
+		await query(`ALTER TABLE ai_test ADD COLUMN IF NOT EXISTS section_focus TEXT`);
 
 		await query(`
 				CREATE INDEX IF NOT EXISTS idx_ai_test_created_at
@@ -468,6 +469,41 @@ export async function ensureStorageSchema() {
 			ON ai_test_visits (test_id)
 		`);
 
+		// Discovered exam patterns, refreshed on a TTL. Payloads are updated in
+		// place (never deleted) when the pattern is rediscovered.
+		await query(`
+			CREATE TABLE IF NOT EXISTS exam_patterns (
+				id BIGSERIAL PRIMARY KEY,
+				pattern_key TEXT NOT NULL UNIQUE,
+				source TEXT NOT NULL,
+				payload JSONB NOT NULL,
+				model TEXT,
+				fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				expires_at TIMESTAMPTZ NOT NULL
+			)
+		`);
+
+		// Premium access grants. Revocation flips `status`; rows are never
+		// deleted (see AGENTS.md). Admin sessions bypass this table.
+		await query(`
+			CREATE TABLE IF NOT EXISTS premium_entitlements (
+				id BIGSERIAL PRIMARY KEY,
+				user_id BIGINT NOT NULL,
+				feature TEXT NOT NULL,
+				granted_by TEXT,
+				granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				expires_at TIMESTAMPTZ,
+				notes TEXT,
+				status TEXT NOT NULL DEFAULT 'active',
+				UNIQUE (user_id, feature)
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_premium_entitlements_user
+			ON premium_entitlements (user_id, feature, status)
+		`);
+
 		// Archive tables preserve anything that leaves a hot table; nothing
 		// is ever dropped (see src/lib/shared/dataArchive.js).
 		for (const statement of ARCHIVE_TABLE_STATEMENTS) {
@@ -497,6 +533,7 @@ export async function createTestRecord(test, requestParams = {}) {
 	const language = requestParams.language || null;
 	const testMode = requestParams.testMode || null;
 	const examId = normalizeExamId(requestParams.examId);
+	const sectionFocus = normalizeExamId(requestParams.sectionFocus);
 	const objectiveOnly =
 		typeof requestParams.objectiveOnly === 'boolean' ? requestParams.objectiveOnly : null;
 	const durationMinutes = Number.isFinite(Number(requestParams.durationMinutes))
@@ -511,8 +548,8 @@ export async function createTestRecord(test, requestParams = {}) {
 
 	const result = await query(
 		`INSERT INTO ai_test
-		 (test, topic, test_type, difficulty, language, num_questions, test_mode, exam_id, objective_only, duration_minutes, created_by_user_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		 (test, topic, test_type, difficulty, language, num_questions, test_mode, exam_id, objective_only, duration_minutes, created_by_user_id, section_focus)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		 RETURNING id`,
 		[
 			JSON.stringify(test),
@@ -526,6 +563,7 @@ export async function createTestRecord(test, requestParams = {}) {
 			objectiveOnly,
 			durationMinutes,
 			createdByUserId,
+			sectionFocus,
 		]
 	);
 

@@ -88,6 +88,18 @@
 	const SUBMIT_HAPTIC = [25, 50, 25];
 
 	let answeredCount = $derived(Object.keys(answers).length);
+	let paperSections = $derived(questionPaper?.sections || []);
+	let currentSection = $derived(
+		paperSections.find((section) =>
+			(section.questionIndexes || []).includes(currentQuestionIndex)
+		) || null
+	);
+	let currentSectionPosition = $derived(
+		currentSection ? paperSections.indexOf(currentSection) + 1 : 0
+	);
+	let sectionFirstQuestion = $derived(
+		Boolean(currentSection && (currentSection.questionIndexes || [])[0] === currentQuestionIndex)
+	);
 	let hintsUsedCount = $derived(Object.keys(eliminated).length);
 	let canUseHint = $derived(
 		testStarted &&
@@ -964,6 +976,29 @@
 								class:question-content-forward={navigationDirection === 'forward'}
 								class:question-content-backward={navigationDirection === 'backward'}
 							>
+								{#if currentSection}
+									<div class="test-section-banner">
+										<span class="test-section-label">
+											{$t('sectionLabel', {
+												index: currentSectionPosition,
+												total: paperSections.length,
+											})}
+										</span>
+										<span class="test-section-name">{currentSection.name}</span>
+										{#if currentSection.marksPerQuestion}
+											<span class="test-section-marks">
+												{$t('marksEachLabel', {
+													count: currentSection.marksPerQuestion,
+												})}
+											</span>
+										{/if}
+									</div>
+									{#if sectionFirstQuestion && currentSection.instructions}
+										<p class="test-section-instructions">
+											{currentSection.instructions}
+										</p>
+									{/if}
+								{/if}
 								<h2
 									class="test-question-text"
 									class:visually-hidden={!question.question}
@@ -1478,6 +1513,40 @@
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		white-space: nowrap;
+	}
+
+	.test-section-banner {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 8px;
+		padding-bottom: 8px;
+		margin-bottom: 10px;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.test-section-label {
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+
+	.test-section-name {
+		font-size: 0.85rem;
+		font-weight: 700;
+	}
+
+	.test-section-marks {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+	}
+
+	.test-section-instructions {
+		margin: 0 0 10px;
+		font-size: 0.78rem;
+		color: var(--text-muted);
 	}
 
 	.test-question-no {
