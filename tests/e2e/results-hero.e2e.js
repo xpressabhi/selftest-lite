@@ -80,12 +80,13 @@ test('hero leads with the score, comparison, and one next step', async ({ page }
 	await expect(page.locator('.result-hero-card')).toBeVisible();
 	await expect(page.locator('.score-ring-pct')).toHaveText('67%');
 	await expect(page.locator('.score-ring-sub')).toHaveText('2 of 3 correct');
-	await expect(page.locator('.hero-compare')).toHaveText('First test — baseline saved');
+	await expect(page.locator('.hero-compare')).toHaveText('First test: baseline saved');
 	await expect(page.locator('.hero-cta')).toContainText('Practice 1 weak questions');
 
 	// The follow-up loops stay one tap away, without button chrome.
 	await expect(page.locator('.hero-links')).toContainText('Review wrong answers');
-	await expect(page.locator('.hero-links')).toContainText('Practice more');
+	// One CTA per intent: the practice CTA lives on .hero-cta, not repeated here.
+	await expect(page.locator('.hero-links')).not.toContainText('Practice more');
 	await expect(page.locator('.hero-links')).toContainText('New quiz');
 
 	// Utilities and settings live in the quiet rows, not in the hero.
@@ -120,7 +121,7 @@ const comparisonCases = [
 	{
 		name: 'personal best',
 		previous: [previous({ id: 'p1', score: 1, total: 3 })],
-		expected: '★ Personal best',
+		expected: 'Personal best',
 	},
 	{
 		// Best 100%, average 60%: the attempt is ahead of the average but not a best.
@@ -129,12 +130,12 @@ const comparisonCases = [
 			previous({ id: 'p1', score: 3, total: 3 }),
 			previous({ id: 'p2', score: 1, total: 5 }),
 		],
-		expected: '▲ +7% vs your average',
+		expected: '+7% vs your average',
 	},
 	{
 		name: 'behind the average',
 		previous: [previous({ id: 'p1', score: 3, total: 3 })],
-		expected: '▼ 33% vs your average',
+		expected: '33% vs your average',
 	},
 	{
 		name: 'same as the average',
