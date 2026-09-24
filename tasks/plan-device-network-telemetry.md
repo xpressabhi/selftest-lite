@@ -68,31 +68,31 @@ dependencies.
 
 ### Phase 4: Report
 
-- [ ] Task 7 (M): `scripts/telemetry-report.mjs` — "Device & network" section: device mix per
+- [x] Task 7 (M): `scripts/telemetry-report.mjs` — "Device & network" section: device mix per
   identity, top low-tier models, network mix per session (type/down/rtt, worst observed),
   generate outcomes by downlink bucket, supported-floor line; coverage gate in the quality-gates
   table; `docs/telemetry.md` gates table + events + weekly checklist item.
 
 ### Checkpoint: Report
 
-- [ ] `npm run telemetry:report -- --days=30` renders the section against the real DB (empty
+- [x] `npm run telemetry:report -- --days=30` renders the section against the real DB (empty
   tables + vacuous gate before deploy; no SQL errors).
 
 ### Phase 5: Admin
 
-- [ ] Task 8 (M): `ensureStorageSchema` session index; `getDeviceNetworkStats({ days })` in
+- [x] Task 8 (M): `ensureStorageSchema` session index; `getDeviceNetworkStats({ days })` in
   `storage.js` (regex-guarded casts, `days` capped 90).
-- [ ] Task 9 (S): `GET /api/admin/device-network` (admin auth + rate limit, mirrors
+- [x] Task 9 (S): `GET /api/admin/device-network` (admin auth + rate limit, mirrors
   feature-usage) and the `/admin` card (English-only).
 
 ### Checkpoint: Admin
 
-- [ ] Endpoint returns 401 unauthenticated, JSON stats when authenticated; card renders without
+- [x] Endpoint returns 401 unauthenticated, JSON stats when authenticated; card renders without
   console errors.
 
 ### Phase 6: Privacy
 
-- [ ] Task 10 (XS): `privacyItemAnalyticsBody` in `english.json` + `hindi.json` mentions
+- [x] Task 10 (XS): `privacyItemAnalyticsBody` in `english.json` + `hindi.json` mentions
   anonymous device-capability and connection-quality data; locale parity test green.
 
 ### Phase 7: Verification

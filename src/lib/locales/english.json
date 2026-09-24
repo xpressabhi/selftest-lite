@@ -555,7 +555,7 @@
 	"privacyItemContactTitle": "Contact Information:",
 	"privacyItemContactBody": "Optional. If you contact us, we collect your name and email to respond.",
 	"privacyItemAnalyticsTitle": "Analytics:",
-	"privacyItemAnalyticsBody": "We use anonymized analytics to understand usage trends and improve performance.",
+	"privacyItemAnalyticsBody": "We use anonymized analytics to understand usage trends and improve performance, including anonymous device-capability and connection-quality details (such as RAM class, device model and network speed) so the app can be tuned for slower phones and networks.",
 	"privacySection2Title": "2. How we use data",
 	"privacySection2Body": "Data is used to improve quiz quality, troubleshoot technical issues, and measure product reliability. We do not sell user data.",
 	"privacySection3Title": "3. Cookies and tracking",
