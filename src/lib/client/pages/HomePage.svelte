@@ -1487,6 +1487,11 @@
 			disabled={status === 'loading'}
 		/>
 
+		<a class="exam-paper-cta" href="/exam-paper">
+			<span class="fw-bold">{$t('examPaperCtaTitle')}</span>
+			<span class="small text-muted">{$t('examPaperCtaBody')}</span>
+		</a>
+
 		<nav class="popular-exams" aria-label={$t('practiceTitle')}>
 			<span class="popular-exams-label">{$t('practiceTitle')}:</span>
 			<a href={localizedPath('/practice/ssc-cgl', $activeLanguage)}>SSC CGL</a>
@@ -1720,6 +1725,19 @@
 		margin: 20px 0 0;
 		text-align: center;
 		font-size: 0.82rem;
+	}
+
+	.exam-paper-cta {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin-bottom: 16px;
+		padding: 12px 14px;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+		text-decoration: none;
+		color: inherit;
 	}
 
 	.manual-section {

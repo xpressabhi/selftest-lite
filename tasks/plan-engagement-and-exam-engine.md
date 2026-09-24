@@ -95,19 +95,21 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   ranges, generation wiring.
 - [x] Task 21 (M): Section headers/progress on `/test`, section breakdown on `/results`; legacy flat papers
   unchanged.
-- [ ] Task 22 (M): `/exam-paper` page (board/named tabs, pattern confirmation, gate screen) + home card.
-- [ ] Task 23 (S): `GET /api/premium/access`, `hasPremiumAccess`, `403 PREMIUM_REQUIRED` in `/api/generate`;
+- [x] Task 22 (M): `/exam-paper` page (board/named tabs, pattern confirmation, gate screen) + home card.
+- [x] Task 23 (S): `GET /api/premium/access`, `hasPremiumAccess`, `403 PREMIUM_REQUIRED` in `/api/generate`;
   admin `/api/admin/premium` + dashboard panel.
-- [ ] Task 24 (M): Section chips in the exam flow (single-select v1) + `sectionFocus` generation.
-- [ ] Task 25 (M): `resolveGenerationParams` precedence engine + `explicit` contract client-side + table-driven
-  unit tests.
-- [ ] Task 26 (S): E2E `tests/e2e/exam-engine.e2e.js` (pattern cache + section rendering done; gate, admin
-  grant and `/exam-paper` flows pending); `verify:vercel`.
+- [x] Task 24 (M): Section picker on `/exam-paper` (single-select: full paper or one section) driving
+  `sectionFocus` generation. Note: the free exam flow's "sectional" link still preselects the home
+  composer; reusing the same picker there is a follow-up.
+- [x] Task 25 (M): `resolveGenerationParams` precedence engine + `explicit` contract + table-driven unit tests.
+- [x] Task 26 (S): E2E `tests/e2e/exam-engine.e2e.js` — pattern cache, section rendering, anonymous gate
+  (UI + 403 + admin 401). Admin grant and signed-in generation flows need a Google session and stay
+  manually verifiable.
 
 ### Checkpoint: D
 
-- [ ] Free user cannot reach generation server-side; entitled user can
-- [ ] Full suite + vercel verification green
+- [x] Free user cannot reach premium generation server-side (`PREMIUM_REQUIRED`); admin API closed anonymously
+- [x] Full suite + vercel verification green
 
 ## Verification Notes
 
@@ -159,6 +161,26 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   requests discover synchronously; section index ranges are assigned server-side from the batch order;
   `section_focus` is stored for reuse keying.
 - `lint`, `check`, `test` (566, +14), `test:e2e` (79, +2) all green.
+
+### Phase D, part 2 — premium gate, section picker, precedence (2026-09-24)
+
+- `/exam-paper`: access check, early-access gate (Google sign-in when signed out), board/named-paper
+  forms, pattern preview with provenance, full-paper/section chips, SSE generation into `/test`.
+- Entitlements: `premium_entitlements` (grants by email, revocations flip `status`), `GET /api/premium/access`,
+  admin `GET/POST /api/admin/premium`, admin dashboard "Premium" tab. `/api/generate` returns
+  `403 PREMIUM_REQUIRED` for full-exam requests without an exam id unless admin/entitled.
+- Precedence: `resolveGenerationParams` (explicit → constraint → profile → request) wired into
+  `/api/generate`; the client explicit contract now also accepts the `explicit` field list alongside
+  the legacy `difficultyExplicit` flag.
+- Live discovery check with the real key exposed and fixed a real bug: a bare `?examId=` sent no
+  human-readable name, the model invented an exam (JEE Advanced for `ssc-cgl`), and the wrong pattern
+  was cached. The endpoint now resolves the name from the exam registry and the prompt **fails
+  closed** without a name; refresh overwrote the bad row and returned the real SSC CGL Tier-I pattern
+  (4 sections × 25 questions × 2 marks, 60 min, 200 marks). Unknown ids now return 502 instead of
+  caching a hallucination.
+- E2E adds the anonymous gate (UI, 403, admin 401); pattern cache and section rendering were already
+  covered. Admin grant and signed-in generation need a Google session and are manually verifiable.
+- `lint`, `check`, `test` (574, +8), `test:e2e` (80, +3), `verify:vercel` all green.
 
 ## Risks and Mitigations
 

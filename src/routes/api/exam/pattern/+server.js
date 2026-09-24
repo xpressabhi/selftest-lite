@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { getClientKey, logApiEvent } from '$lib/server/storage';
 import { getExamPattern, patternKeyFor } from '$lib/server/examPattern';
+import { getIndianExamById } from '$lib/data/indianExams';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { VALID_LANGUAGES } from '$lib/server/quizConfig';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
@@ -48,8 +49,13 @@ export async function GET({ request, url }) {
 			);
 		}
 
+		const examId = url.searchParams.get('examId');
+		// Discovery needs the human-readable name; without it the model would
+		// invent an exam for a bare id.
+		const exam = examId ? getIndianExamById(examId) : null;
 		const target = {
-			examId: url.searchParams.get('examId'),
+			examId,
+			examName: exam?.name || url.searchParams.get('examName') || null,
 			board: url.searchParams.get('board'),
 			classLevel: url.searchParams.get('class'),
 			subject: url.searchParams.get('subject'),

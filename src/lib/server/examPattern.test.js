@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	assignSectionsToPaper,
+	buildPatternResearchPrompt,
 	examPatternSchema,
 	isPatternExpired,
 	normalizeExamPattern,
@@ -138,6 +139,25 @@ describe('isPatternExpired', () => {
 		expect(isPatternExpired(null, now)).toBe(true);
 		expect(isPatternExpired('2026-10-24T12:00:00.000Z', now)).toBe(false);
 		expect(isPatternExpired('2026-09-01T12:00:00.000Z', now)).toBe(true);
+	});
+});
+
+describe('buildPatternResearchPrompt', () => {
+	it('refuses an empty target instead of letting the model invent an exam', () => {
+		expect(() => buildPatternResearchPrompt({})).toThrow();
+	});
+
+	it('names the exam and board details in the prompt', () => {
+		const prompt = buildPatternResearchPrompt({
+			examName: 'SSC CGL Tier 1',
+			board: 'CBSE',
+			classLevel: '10',
+			subject: 'Science',
+		});
+		expect(prompt).toContain('SSC CGL Tier 1');
+		expect(prompt).toContain('CBSE board');
+		expect(prompt).toContain('class 10');
+		expect(prompt).toContain('Science');
 	});
 });
 

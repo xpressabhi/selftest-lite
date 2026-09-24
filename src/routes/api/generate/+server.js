@@ -44,6 +44,8 @@ import {
 	buildPatternConstraint,
 	getExamPattern,
 } from '$lib/server/examPattern';
+import { hasPremiumAccess } from '$lib/server/premium';
+import { resolveGenerationParams } from '$lib/server/generationParams';
 import { buildOriginalRequest, sanitizeIntentCapture } from '$lib/server/intentCapture';
 import {
 	applyQualityFixes,
@@ -953,6 +955,7 @@ export async function POST({ request, cookies }) {
 			classLevel = null,
 			subject = null,
 			paperName = null,
+			explicit = null,
 		} = await parseRequestBody(request);
 
 		const validationError = validateGenerateRequest({
@@ -972,6 +975,40 @@ export async function POST({ request, cookies }) {
 				{ error: validationError.message, code: validationError.code },
 				{ status: 400 }
 			);
+		}
+
+		const explicitFields = new Set(
+			(Array.isArray(explicit) ? explicit : [])
+				.filter((field) => typeof field === 'string' && field.length > 0)
+				.slice(0, 20)
+		);
+		if (difficultyExplicit === true) {
+			explicitFields.add('difficulty');
+		}
+
+		// Board and named papers (full exam without a registry exam id) are the
+		// premium surface; registry exams stay free.
+		if (testMode === 'full-exam' && !examId) {
+			const access = await hasPremiumAccess(request, { userId: user?.id });
+			if (!access.allowed) {
+				await logApiEvent({
+					route: '/api/generate',
+					action: 'generate_quiz',
+					clientKey,
+					request,
+					statusCode: 403,
+					durationMs: Date.now() - startedAt,
+					userId: user?.id || null,
+					metadata: { code: 'PREMIUM_REQUIRED', reason: access.reason },
+				});
+				return json(
+					{
+						error: 'Full exam papers are an early-access feature.',
+						code: 'PREMIUM_REQUIRED',
+					},
+					{ status: 403 }
+				);
+			}
 		}
 
 		const resolvedTopic = topic || (examName ? `${examName} mock paper` : '');
@@ -1045,7 +1082,7 @@ export async function POST({ request, cookies }) {
 							profile,
 							signals,
 							requestDifficulty: difficulty,
-							difficultyExplicit: difficultyExplicit === true,
+							difficultyExplicit: explicitFields.has('difficulty'),
 							topicKeywords,
 						});
 						warmUpDifficulty = resolveWarmUpDifficulty(resolvedDifficulty);
@@ -1108,6 +1145,19 @@ export async function POST({ request, cookies }) {
 				);
 			}
 		}
+
+		const resolvedParams = resolveGenerationParams({
+			request: {
+				difficulty,
+				numQuestions: effectiveNumQuestions,
+				testType,
+				durationMinutes,
+				explicit: [...explicitFields],
+			},
+			pattern: examPattern,
+			section: focusSection,
+			resolvedDifficulty,
+		});
 
 		if (testMode === 'full-exam' && examId && !focusSection) {
 			const locallyAttemptedTestIds = previousTestRecords
@@ -1255,10 +1305,10 @@ export async function POST({ request, cookies }) {
 			user,
 			clientId,
 			resolvedTopic,
-			numQuestions: effectiveNumQuestions,
+			numQuestions: resolvedParams.numQuestions,
 			resolvedDifficulty,
 			difficulty,
-			testType,
+			testType: resolvedParams.testType,
 			topicContext: generationTopicContext,
 			examName,
 			examStream,
@@ -1275,7 +1325,7 @@ export async function POST({ request, cookies }) {
 			personalized,
 			tailoredSummary,
 			examId,
-			durationMinutes,
+			durationMinutes: resolvedParams.durationMinutes,
 			examPattern,
 			focusSection,
 			originalRequest,

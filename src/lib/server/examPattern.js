@@ -228,7 +228,8 @@ export function buildPatternConstraint(pattern, section = null) {
 }
 
 /** The generic research prompt: the model must state the real current format. */
-export function buildPatternResearchPrompt(target, { language = 'english' } = {}) {	const label = [
+export function buildPatternResearchPrompt(target, { language = 'english' } = {}) {
+	const label = [
 		target.paperName || target.examName || null,
 		target.board ? `${target.board} board` : null,
 		target.classLevel ? `class ${target.classLevel}` : null,
@@ -236,6 +237,11 @@ export function buildPatternResearchPrompt(target, { language = 'english' } = {}
 	]
 		.filter(Boolean)
 		.join(', ');
+	if (!label) {
+		// Fail closed: without a name the model would invent an exam and the
+		// hallucinated pattern would be cached under a real key.
+		throw new Error('Pattern target needs an exam name, paper name, or board details');
+	}
 	return `You are an exam pattern researcher. Using your most recent verified knowledge of the official current pattern for: ${label}.
 
 Determine the ACTUAL current structure of this paper and return it as JSON:

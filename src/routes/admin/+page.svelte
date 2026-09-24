@@ -17,6 +17,12 @@
 	let healthLoading = $state(false);
 	let days = $state(1);
 	let activeTab = $state('overview');
+	let premiumGrants = $state(null);
+	let premiumEmail = $state('');
+	let premiumExpiry = $state('');
+	let premiumNotes = $state('');
+	let premiumBusy = $state(false);
+	let premiumMessage = $state('');
 
 	const TABS = [
 		{ id: 'overview', label: 'Overview' },
@@ -25,6 +31,7 @@
 		{ id: 'recent', label: 'Recent Events' },
 		{ id: 'features', label: 'Feature Usage' },
 		{ id: 'device', label: 'Device & Network' },
+		{ id: 'premium', label: 'Premium' },
 		{ id: 'health', label: 'Health' },
 	];
 
@@ -141,7 +148,71 @@
 		activeTab = tabId;
 		if (tabId === 'features' && !featureUsage) void loadFeatureUsage();
 		if (tabId === 'device' && !deviceNetwork) void loadDeviceNetwork();
+		if (tabId === 'premium') void loadPremium();
 		if (tabId === 'health') void loadHealth();
+	}
+
+	async function loadPremium() {
+		try {
+			const response = await fetch('/api/admin/premium', { cache: 'no-store' });
+			if (response.status === 401) {
+				authed = false;
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error || 'Failed');
+			premiumGrants = data.grants || [];
+		} catch (caughtError) {
+			console.error(caughtError);
+			premiumGrants = null;
+		}
+	}
+
+	async function grantPremium(event) {
+		event.preventDefault();
+		if (!premiumEmail.trim() || premiumBusy) return;
+		premiumBusy = true;
+		premiumMessage = '';
+		try {
+			const response = await fetch('/api/admin/premium', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					email: premiumEmail.trim(),
+					expiresAt: premiumExpiry ? new Date(premiumExpiry).toISOString() : null,
+					notes: premiumNotes.trim() || null,
+				}),
+			});
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error || 'Grant failed');
+			premiumMessage = `Granted access to ${premiumEmail.trim()}`;
+			premiumEmail = '';
+			premiumExpiry = '';
+			premiumNotes = '';
+			await loadPremium();
+		} catch (caughtError) {
+			premiumMessage = caughtError.message || 'Grant failed';
+		} finally {
+			premiumBusy = false;
+		}
+	}
+
+	async function revokePremium(userId) {
+		premiumBusy = true;
+		premiumMessage = '';
+		try {
+			const response = await fetch('/api/admin/premium', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'revoke', userId }),
+			});
+			if (!response.ok) throw new Error('Revoke failed');
+			await loadPremium();
+		} catch (caughtError) {
+			premiumMessage = caughtError.message || 'Revoke failed';
+		} finally {
+			premiumBusy = false;
+		}
 	}
 
 	async function login() {
@@ -1024,6 +1095,97 @@
 			{/if}
 
 			<!-- HEALTH TAB -->
+			{#if activeTab === 'premium'}
+				<div class="bg-body border rounded-3 p-3 mb-4">
+					<h2 class="h6 fw-bold mb-3">Premium access</h2>
+					<form class="row g-2 align-items-end mb-3" onsubmit={grantPremium}>
+						<div class="col-md-4">
+							<label class="form-label small" for="premium-email">User email</label>
+							<input
+								id="premium-email"
+								class="form-control form-control-sm"
+								type="email"
+								bind:value={premiumEmail}
+								required
+							/>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label small" for="premium-expiry">Expires (optional)</label>
+							<input
+								id="premium-expiry"
+								class="form-control form-control-sm"
+								type="date"
+								bind:value={premiumExpiry}
+							/>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label small" for="premium-notes">Notes</label>
+							<input
+								id="premium-notes"
+								class="form-control form-control-sm"
+								type="text"
+								maxlength="200"
+								bind:value={premiumNotes}
+							/>
+						</div>
+						<div class="col-md-2">
+							<button class="btn btn-sm btn-primary w-100" type="submit" disabled={premiumBusy}>
+								Grant
+							</button>
+						</div>
+					</form>
+					{#if premiumMessage}
+						<p class="small text-muted">{premiumMessage}</p>
+					{/if}
+					{#if premiumGrants}
+						<div class="table-responsive">
+							<table class="table table-sm align-middle mb-0">
+								<thead>
+									<tr>
+										<th>User</th>
+										<th>Feature</th>
+										<th>Status</th>
+										<th>Granted</th>
+										<th>Expires</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each premiumGrants as grant (grant.id)}
+										<tr>
+											<td>
+												{grant.email || `user #${grant.user_id}`}
+												{#if grant.name}
+													<span class="text-muted small"> · {grant.name}</span>
+												{/if}
+											</td>
+											<td>{grant.feature}</td>
+											<td>{grant.status}</td>
+											<td>{formatTime(grant.granted_at)}</td>
+											<td>{grant.expires_at ? formatTime(grant.expires_at) : 'never'}</td>
+											<td>
+												{#if grant.status === 'active'}
+													<button
+														class="btn btn-sm btn-outline-secondary"
+														type="button"
+														disabled={premiumBusy}
+														onclick={() => revokePremium(grant.user_id)}
+													>
+														Revoke
+													</button>
+												{/if}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<p class="text-muted small mb-0">No grants yet.</p>
+					{/if}
+				</div>
+			{/if}
+
 			{#if activeTab === 'health'}
 				<div class="bg-body border rounded-3 p-3 mb-4">
 					<div

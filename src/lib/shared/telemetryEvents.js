@@ -38,6 +38,11 @@ export const TELEMETRY_EVENTS = new Set([
 	'generate:quick-start-preset',
 	'generate:quick-start-daily',
 
+	// Premium exam papers
+	'exam-paper:open',
+	'exam-paper:pattern',
+	'exam-paper:generate',
+
 	// Search (smart intent dropdown)
 	'search:open',
 	'search:keystroke',

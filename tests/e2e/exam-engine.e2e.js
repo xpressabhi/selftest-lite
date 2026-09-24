@@ -87,6 +87,43 @@ const seededPattern = {
 	generalInstructions: [],
 };
 
+test('premium exam papers are gated for anonymous users', async ({ page, request }, testInfo) => {
+	const errors = await collectErrors(page);
+
+	await page.goto('/exam-paper');
+	await expect(page.locator('.exam-paper-page')).toBeVisible({ timeout: 15000 });
+	await expect(page.locator('.exam-paper-gate')).toBeVisible();
+	await expect(page.locator('.exam-paper-gate')).toContainText('Early access');
+
+	// The gate is enforced server-side too, not just in the UI.
+	const blocked = await request.post('/api/generate', {
+		data: {
+			testMode: 'full-exam',
+			objectiveOnly: true,
+			examName: 'E2E Gate Probe',
+			board: 'CBSE',
+			classLevel: '10',
+			subject: 'Science',
+			numQuestions: 5,
+			difficulty: 'intermediate',
+			language: 'english',
+		},
+	});
+	expect(blocked.status()).toBe(403);
+	const blockedBody = await blocked.json();
+	expect(blockedBody.code).toBe('PREMIUM_REQUIRED');
+
+	// The admin API stays closed without an admin session.
+	const adminDenied = await request.get('/api/admin/premium');
+	expect(adminDenied.status()).toBe(401);
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ gateVisible: true, generateStatus: 403, adminStatus: 401 }, null, 2),
+	});
+});
+
 test('serves a cached exam pattern without a model call', async ({ request }, testInfo) => {
 	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
 	const sql = neon(databaseUrl);
