@@ -23,6 +23,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'intent:preview',
 	'preview:edit-toggle',
 	'preview:edit-chip',
+	'planner:example-tap',
 	'home:manual-expand',
 	'home:resume-test',
 	'streak:view',

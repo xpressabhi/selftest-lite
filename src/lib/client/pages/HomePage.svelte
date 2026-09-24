@@ -76,6 +76,7 @@
 	const PROFILE_WIZARD_DISMISS_KEY = 'selftest_profile_wizard_dismissed_at';
 	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
+	let plannerTyped = $state(false);
 	let plannerDraft = $state(createPlannerDraft());
 	let recentTests = $state([]);
 	let previewStatus = $state('idle');
@@ -93,10 +94,28 @@
 	let committedPulseTimer = null;
 	let planDensity = $state('full');
 
-	const plannerExamples = [
-		{ key: 'plannerExample1' },
-		{ key: 'plannerExample2' },
-		{ key: 'plannerExample3' },
+	const plannerExampleGroups = [
+		{
+			labelKey: 'plannerGroupExam',
+			examples: [
+				{ key: 'plannerWelcomeExample1', group: 'exam', slot: 1 },
+				{ key: 'plannerWelcomeExample2', group: 'exam', slot: 2 },
+			],
+		},
+		{
+			labelKey: 'plannerGroupSchool',
+			examples: [
+				{ key: 'plannerWelcomeExample3', group: 'school', slot: 1 },
+				{ key: 'plannerWelcomeExample4', group: 'school', slot: 2 },
+			],
+		},
+		{
+			labelKey: 'plannerGroupSkills',
+			examples: [
+				{ key: 'plannerWelcomeExample5', group: 'skills', slot: 1 },
+				{ key: 'plannerWelcomeExample6', group: 'skills', slot: 2 },
+			],
+		},
 	];
 	let topic = $state('');
 	let numQuestions = $state(10);
@@ -190,6 +209,17 @@
 	);
 	const showPlanCard = $derived(
 		Boolean(topic.trim() || examId || parsedFromIntent || intentParseFailed)
+	);
+	// Welcome gallery: only users with no history, no conversation, no plan and
+	// nothing typed yet get the teaching state instead of an empty log.
+	const showWelcome = $derived(
+		recentTests.length === 0 &&
+			plannerDraft.messages.length === 0 &&
+			!plannerDraft.pendingClarify &&
+			!showPlanCard &&
+			intentStatus !== 'parsing' &&
+			status !== 'loading' &&
+			!plannerTyped
 	);
 	// A pending preview challenger keeps the card in its settling (draft) state.
 	const settling = $derived(hasPendingChallenger(settleState));
@@ -706,6 +736,10 @@
 		if (typeof window === 'undefined') return;
 		window.clearTimeout(previewTimer);
 		window.clearTimeout(settleTickTimer);
+		// Programmatic fills (welcome-gallery example taps) are not typing: no
+		// preview may run until the user actually edits the text, otherwise the
+		// tap would commit a topic, pop the plan card and wipe the gallery.
+		if (!plannerTyped) return;
 		const local = untrack(() => applyLocalPreviewFor(text));
 		const trimmed = String(text || '').trim();
 		if (!trimmed) return;
@@ -716,6 +750,14 @@
 			void maybeRunJevPreview(trimmed);
 		}, PREVIEW_DEBOUNCE_MS);
 		return () => window.clearTimeout(previewTimer);
+	});
+
+	// Clearing the field (or Start over) restores the welcome gallery — the
+	// user stopped typing, so the teaching state applies again.
+	$effect(() => {
+		if (intentValue === '') {
+			plannerTyped = false;
+		}
 	});
 
 	// Density tier follows the visual viewport, so the plan card and the search
@@ -880,6 +922,7 @@
 		plannerDraft = createPlannerDraft();
 		clearPlannerDraft();
 		intentValue = '';
+		plannerTyped = false;
 		topic = '';
 		parsedFromIntent = false;
 		intentParseFailed = false;
@@ -1304,6 +1347,13 @@
 		await fetchProfileInsights();
 	}
 
+	function handleExampleTap(example) {
+		track('planner:example-tap', { group: example.group, slot: example.slot });
+		// Teach, don't act: fill the composer so the user can read and edit the
+		// kind of sentence the planner understands. No submit, no preview.
+		intentValue = $t(example.key);
+	}
+
 	function handleTestNavigate(testId) {
 		// Tapping a past test leaves the planner: stop in-flight previews and
 		// forget half-settled values so coming back never shows a stale plan.
@@ -1425,7 +1475,8 @@
 				status={intentStatus}
 				planCard={showPlanCard ? planCard : null}
 				recentTests={recentTestsView}
-				{plannerExamples}
+				welcome={showWelcome}
+				exampleGroups={plannerExampleGroups}
 				onquickreply={answerClarification}
 				onskip={skipClarification}
 				onstartover={resetPlanner}
@@ -1433,12 +1484,15 @@
 				onrecenttouch={() => {
 					recentListTouched = true;
 				}}
-				onexample={sendPlannerIntent}
+				onexample={handleExampleTap}
 			></ChatThread>
 			<PlannerComposer
 				bind:value={intentValue}
 				onsubmit={sendPlannerIntent}
 				onnavigate={handleTestNavigate}
+				ontyping={(nextValue) => {
+					plannerTyped = nextValue !== '';
+				}}
 				disabled={status === 'loading' || isOffline}
 				status={intentStatus}
 				planTopic={topic}

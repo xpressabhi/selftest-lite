@@ -7,7 +7,8 @@
 		status = 'idle',
 		recentTests = [],
 		planCard = null,
-		examples = [],
+		welcome = false,
+		exampleGroups = [],
 		onquickreply = () => {},
 		onskip = () => {},
 		onstartover = () => {},
@@ -39,6 +40,13 @@
 		messages.length;
 		pendingClarify;
 		status;
+		if (welcome) {
+			// The welcome gallery reads top-down: open at the greeting, never
+			// scrolled to the bottom of the example list.
+			pinnedToBottom = false;
+			if (logRef) logRef.scrollTop = 0;
+			return;
+		}
 		scrollLogToBottom(true);
 	});
 
@@ -109,10 +117,33 @@
 		{/if}
 	</div>
 
-	<div class="chat-log" role="log" aria-live="polite" bind:this={logRef}>
+	<div
+		class="chat-log"
+		role={welcome ? undefined : 'log'}
+		aria-live={welcome ? undefined : 'polite'}
+		bind:this={logRef}
+	>
 		{#if showIdleState}
 			<div class="chat-idle">
-				{#if recentTests.length > 0}
+				{#if welcome}
+					<div class="welcome-gallery">
+						<div class="welcome-greeting">{$t('plannerWelcomeGreeting')}</div>
+						{#each exampleGroups as group (group.labelKey)}
+							<div class="welcome-group">
+								<span class="welcome-group-label">{$t(group.labelKey)}</span>
+								{#each group.examples as example (example.key)}
+									<button
+										class="welcome-example"
+										type="button"
+										onclick={() => onexample(example)}
+									>
+										{$t(example.key)}
+									</button>
+								{/each}
+							</div>
+						{/each}
+					</div>
+				{:else if recentTests.length > 0}
 					<div class="recent-block" onpointerdown={onrecenttouch}>
 						<span class="recent-title">{$t('plannerRecentTests')}</span>
 						{#each recentTests as test (test.id)}
@@ -126,22 +157,6 @@
 							</button>
 						{/each}
 						<a class="recent-all" href="/history">{$t('plannerViewAll')}</a>
-					</div>
-				{/if}
-				{#if examples.length > 0}
-					<div class="example-block">
-						<span class="recent-title">{$t('welcomeTryThese')}</span>
-						<div class="example-chips">
-							{#each examples as example (example.key)}
-								<button
-									class="example-chip"
-									type="button"
-									onclick={() => onexample($t(example.key))}
-								>
-									{$t(example.key)}
-								</button>
-							{/each}
-						</div>
 					</div>
 				{/if}
 			</div>
@@ -230,6 +245,10 @@
 			<div class="chat-plan">{@render planCard()}</div>
 		{/if}
 	</div>
+
+	{#if welcome}
+		<p class="welcome-tip">{$t('plannerWelcomeTip')}</p>
+	{/if}
 </section>
 
 <style>
@@ -380,10 +399,10 @@
 	}
 
 	.recent-block,
-	.example-block {
+	.welcome-group {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 4px;
 	}
 
 	.recent-title {
@@ -441,31 +460,80 @@
 		text-decoration: none;
 	}
 
-	.example-chips {
+	.welcome-gallery {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
+		flex-direction: column;
+		gap: 10px;
+		animation: welcome-in 0.22s ease;
 	}
 
-	.example-chip {
-		font-size: 0.8rem;
-		padding: 8px 12px;
-		border-radius: 12px;
-		border: 1px solid var(--line);
+	.welcome-greeting {
 		background: var(--surface-muted);
+		border: 1px solid var(--line);
+		border-radius: 16px;
+		border-bottom-left-radius: 6px;
+		padding: 10px 14px;
+		font-size: 0.9rem;
+		line-height: 1.45;
+		color: var(--text);
+	}
+
+	.welcome-group-label {
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 		color: var(--text-muted);
-		cursor: pointer;
+	}
+
+	.welcome-example {
+		display: flex;
+		align-items: center;
+		width: 100%;
 		min-height: 44px;
+		padding: 10px 12px;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--surface-muted);
+		color: var(--text);
+		text-align: left;
+		font-size: 0.88rem;
+		font-weight: 600;
+		cursor: pointer;
 		transition:
 			border-color 0.15s ease,
-			color 0.15s ease,
 			background 0.15s ease;
 	}
 
-	.example-chip:hover {
-		border-color: rgb(var(--brand-text-rgb));
-		color: rgb(var(--brand-text-rgb));
-		background: rgba(var(--brand-rgb), 0.04);
+	.welcome-example:hover {
+		border-color: rgba(var(--brand-rgb), 0.4);
+		background: rgba(var(--brand-rgb), 0.05);
+	}
+
+	.welcome-tip {
+		margin: 0;
+		text-align: center;
+		font-size: 0.76rem;
+		color: var(--text-muted);
+		animation: welcome-in 0.22s ease;
+	}
+
+	@keyframes welcome-in {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	:global(html.data-saver) .welcome-gallery,
+	:global(html.reduce-motion) .welcome-gallery,
+	:global(html.data-saver) .welcome-tip,
+	:global(html.reduce-motion) .welcome-tip {
+		animation: none;
 	}
 
 	.typing-dot {
