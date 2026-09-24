@@ -48,7 +48,7 @@ test('home renders the planner composer', async ({ page }) => {
 test('practice hub lists exams', async ({ page }) => {
 	const errors = await collectErrors(page);
 	await page.goto('/practice');
-	await expect(page.locator('.practice-grid')).toBeVisible();
+	await expect(page.locator('.practice-category').first()).toBeVisible();
 	await expect(page.locator('.practice-card').first()).toBeVisible();
 	expect(errors).toEqual([]);
 });
