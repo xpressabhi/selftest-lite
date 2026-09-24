@@ -1,6 +1,7 @@
 <script>
 	import { activeLanguage, t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import SeoHead from '$lib/client/SeoHead.svelte';
 	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
@@ -69,8 +70,11 @@
 
 <section class="container py-4 py-md-5">
 	<div class="practice-wrap">
-		<nav class="practice-back" aria-label={$t('practiceTitle')}>
-			<a class="practice-back-link" href={localizedPath('/practice', $activeLanguage)}>← {$t('practiceAllExams')}</a>
+		<nav class="practice-back" aria-label={$t('practiceAllExams')}>
+			<a class="practice-back-link" href={localizedPath('/practice', $activeLanguage)}>
+				<Icon name="arrow-left" size={18} />
+				{$t('practiceAllExams')}
+			</a>
 		</nav>
 
 		<header class="practice-hero">
@@ -100,7 +104,7 @@
 					<dd>
 						{exam.durationMinutes
 							? $t('practiceMinutes', { count: exam.durationMinutes })
-							: '—'}
+							: $t('na')}
 					</dd>
 				</div>
 				<div>
@@ -140,8 +144,13 @@
 				<div class="practice-related">
 					{#each related as item (item.id)}
 						<a class="practice-card" href={localizedPath(`/practice/${item.id}`, $activeLanguage)}>
-							<strong>{item.name}</strong>
-							<span>{item.stream}</span>
+							<span class="practice-card-copy">
+								<strong>{item.name}</strong>
+								<span class="practice-card-meta">{localizedStream(item.stream, $activeLanguage)}</span>
+							</span>
+							<span class="practice-card-chevron" aria-hidden="true">
+								<Icon name="chevron-right" size={18} />
+							</span>
 						</a>
 					{/each}
 				</div>
@@ -170,6 +179,7 @@
 		display: inline-flex;
 		min-height: 44px;
 		align-items: center;
+		gap: 0.4rem;
 		color: var(--brand-text);
 		font-weight: 600;
 		text-decoration: none;
@@ -234,7 +244,7 @@
 	.practice-pattern div {
 		padding: 0.9rem;
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 
@@ -266,18 +276,47 @@
 
 	.practice-card {
 		display: grid;
-		gap: 0.15rem;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.75rem;
+		align-items: center;
 		padding: 0.9rem 1rem;
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		color: inherit;
 		text-decoration: none;
+		transition:
+			border-color 0.15s ease-out,
+			background-color 0.15s ease-out,
+			transform 0.12s ease-out;
 	}
 
-	.practice-card span {
+	.practice-card:hover {
+		border-color: var(--brand-text);
+		background: var(--surface-muted);
+	}
+
+	.practice-card:active {
+		transform: translateY(1px);
+	}
+
+	.practice-card-copy {
+		display: grid;
+		gap: 0.15rem;
+	}
+
+	.practice-card-meta {
 		color: var(--text-muted);
 		font-size: 0.85rem;
+	}
+
+	.practice-card-chevron {
+		color: var(--text-muted);
+		transition: color 0.15s ease-out;
+	}
+
+	.practice-card:hover .practice-card-chevron {
+		color: var(--brand-text);
 	}
 
 	@media (min-width: 768px) {
@@ -290,7 +329,16 @@
 		}
 
 		.practice-related {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.practice-related .practice-card:first-child {
+			grid-column: 1 / -1;
+			padding: 1.1rem 1.25rem;
+		}
+
+		.practice-related .practice-card:first-child strong {
+			font-size: 1.15rem;
 		}
 	}
 </style>

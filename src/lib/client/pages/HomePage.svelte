@@ -38,6 +38,7 @@
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import { getStreak } from '$lib/client/learning';
 	import ChatThread from '$lib/client/ChatThread.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import PlannerComposer from '$lib/client/PlannerComposer.svelte';
 	import SeoHead from '$lib/client/SeoHead.svelte';
 	import { localizedPath } from '$lib/shared/seo';
@@ -1449,7 +1450,7 @@
 				disabled={status === 'loading'}
 				onclick={startDailyFive}
 			>
-				<span aria-hidden="true">⚡</span> {$t('dailyFive')}
+				<Icon name="zap" size={16} /> {$t('dailyFive')}
 			</button>
 			<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
 		</div>
@@ -1518,7 +1519,7 @@
 
 		{#if tailoredSummary}
 			<div class="tailored-chip">
-				<span class="tailored-badge" aria-hidden="true">🎯</span>
+				<span class="tailored-badge" aria-hidden="true"><Icon name="target" size={18} /></span>
 				<span class="small">
 					<strong>{$t('profileChipLabel')}:</strong>
 					{tailoredSummary}
@@ -1607,8 +1608,9 @@
 	}
 
 	.home-kicker {
-		font-size: 1.05rem;
+		font-size: 1.15rem;
 		font-weight: 700;
+		letter-spacing: -0.01em;
 		color: var(--text);
 		text-align: center;
 		margin: 0 0 12px;
@@ -1635,7 +1637,7 @@
 		height: clamp(440px, 68dvh, 720px);
 		padding: 14px;
 		border: 1px solid var(--line);
-		border-radius: 20px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
 	}
@@ -1644,7 +1646,6 @@
 		.planner-panel {
 			height: clamp(300px, calc(min(var(--vvh, 100dvh), 100dvh) * 0.62), 560px);
 			padding: 10px;
-			border-radius: 16px;
 		}
 	}
 
@@ -1658,6 +1659,9 @@
 	}
 
 	.daily-five-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		border: 1px solid color-mix(in srgb, var(--color-brand-600) 35%, transparent);
 		background: color-mix(in srgb, var(--color-brand-600) 8%, transparent);
 		color: var(--brand-text);
@@ -1667,6 +1671,18 @@
 		border-radius: 999px;
 		min-height: 44px;
 		cursor: pointer;
+		transition:
+			background var(--motion-fast) var(--ease-out),
+			border-color var(--motion-fast) var(--ease-out);
+	}
+
+	.daily-five-btn:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
+		border-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
+	}
+
+	.daily-five-btn:active:not(:disabled) {
+		transform: translateY(1px);
 	}
 
 	.daily-five-btn:disabled {
@@ -1698,10 +1714,18 @@
 		display: inline-flex;
 		min-height: 44px;
 		align-items: center;
-		padding: 0 0.6rem;
+		padding: 0 0.75rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
 		color: var(--brand-text);
 		font-weight: 600;
 		text-decoration: none;
+		transition: border-color var(--motion-fast) var(--ease-out);
+	}
+
+	.popular-exams a:hover {
+		border-color: color-mix(in srgb, var(--color-brand-600) 45%, transparent);
 	}
 
 	.popular-exams-more {
@@ -1723,7 +1747,7 @@
 		margin-bottom: 16px;
 		padding: 12px 14px;
 		border: 1px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 
@@ -1765,7 +1789,9 @@
 	}
 
 	.tailored-badge {
+		display: inline-flex;
 		flex: 0 0 auto;
+		color: var(--brand-text);
 	}
 
 	.tailored-chip .small {
@@ -1784,7 +1810,7 @@
 
 	@media (max-width: 480px) {
 		.home-kicker {
-			font-size: 0.95rem;
+			font-size: 1rem;
 		}
 	}
 </style>

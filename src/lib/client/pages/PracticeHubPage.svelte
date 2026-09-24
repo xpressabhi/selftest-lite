@@ -1,7 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { activeLanguage, t } from '$lib/client/i18n';
-	import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+	import Icon from '$lib/client/Icon.svelte';
+	import { OBJECTIVE_ONLY_EXAMS, localizedStream } from '$lib/data/indianExams';
 	import { requestPersonalize } from '$lib/client/personalize';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 	import SeoHead from '$lib/client/SeoHead.svelte';
@@ -60,12 +61,17 @@
 		<div class="practice-grid">
 			{#each orderedExams as exam (exam.id)}
 				<a class="practice-card" href={localizedPath(`/practice/${exam.id}`, $activeLanguage)}>
-					<strong>{exam.name}</strong>
-					<span
-						>{exam.stream} · {exam.fullLengthQuestions ||
-							exam.defaultNumQuestions}
-						{$t('practiceQuestions')}</span
-					>
+					<span class="practice-card-copy">
+						<strong>{exam.name}</strong>
+						<span class="practice-card-meta">
+							{localizedStream(exam.stream, $activeLanguage)} · {exam.fullLengthQuestions ||
+								exam.defaultNumQuestions}
+							{$t('practiceQuestions')}
+						</span>
+					</span>
+					<span class="practice-card-chevron" aria-hidden="true">
+						<Icon name="chevron-right" size={18} />
+					</span>
 				</a>
 			{/each}
 		</div>
@@ -103,23 +109,61 @@
 
 	.practice-card {
 		display: grid;
-		gap: 0.2rem;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.75rem;
+		align-items: center;
 		padding: 0.9rem 1rem;
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		color: inherit;
 		text-decoration: none;
+		transition:
+			border-color 0.15s ease-out,
+			background-color 0.15s ease-out,
+			transform 0.12s ease-out;
 	}
 
-	.practice-card span {
+	.practice-card:hover {
+		border-color: var(--brand-text);
+		background: var(--surface-muted);
+	}
+
+	.practice-card:active {
+		transform: translateY(1px);
+	}
+
+	.practice-card-copy {
+		display: grid;
+		gap: 0.2rem;
+	}
+
+	.practice-card-meta {
 		color: var(--text-muted);
 		font-size: 0.85rem;
 	}
 
+	.practice-card-chevron {
+		color: var(--text-muted);
+		transition: color 0.15s ease-out;
+	}
+
+	.practice-card:hover .practice-card-chevron {
+		color: var(--brand-text);
+	}
+
 	@media (min-width: 768px) {
 		.practice-grid {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.practice-card:first-child {
+			grid-column: 1 / -1;
+			padding: 1.25rem 1.25rem;
+		}
+
+		.practice-card:first-child strong {
+			font-size: 1.15rem;
 		}
 	}
 </style>

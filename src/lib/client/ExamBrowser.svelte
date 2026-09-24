@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import Icon from '$lib/client/Icon.svelte';
 	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 	let {
 		examSearchQuery = '',
@@ -34,10 +35,14 @@
 		aria-controls="exam-browser-body"
 		onclick={() => (expanded = !expanded)}
 	>
-		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+		<span class="toggle-icon" aria-hidden="true">
+			<Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={16} />
+		</span>
 		<span class="toggle-label">{$t('browseAllExams')}</span>
 		{#if selectedExamId}
-			<span class="toggle-count">✓ {$t('examSelected')}</span>
+			<span class="toggle-count">
+				<Icon name="check" size={14} />{$t('examSelected')}
+			</span>
 		{/if}
 	</button>
 
@@ -105,7 +110,7 @@
 								? $t('removeBookmark')
 								: $t('bookmarkExam')}
 						>
-							{bookmarkedExamIds.includes(exam.id) ? '★' : '☆'}
+							<Icon name="star" size={20} />
 						</button>
 					</div>
 				{/each}
@@ -143,12 +148,18 @@
 	}
 
 	.toggle-icon {
-		font-size: 0.8rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		width: 16px;
-		text-align: center;
+		height: 16px;
+		flex-shrink: 0;
 	}
 
 	.toggle-count {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
 		font-size: 0.72rem;
 		color: rgb(var(--brand-text-rgb));
 		margin-left: auto;
@@ -181,7 +192,7 @@
 		flex: 1;
 		min-width: 160px;
 		padding: 10px 14px;
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		border: 1px solid var(--line);
 		background: var(--surface);
 		color: var(--text);
@@ -195,7 +206,7 @@
 
 	.exam-group-select {
 		padding: 10px 12px;
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		border: 1px solid var(--line);
 		background: var(--surface);
 		color: var(--text);
@@ -217,7 +228,7 @@
 		max-height: 320px;
 		overflow-y: auto;
 		border: 1px solid var(--line);
-		border-radius: 12px;
+		border-radius: var(--radius-surface);
 		-webkit-overflow-scrolling: touch;
 		overscroll-behavior: contain;
 	}
@@ -281,14 +292,21 @@
 	.exam-bookmark-btn {
 		border: 0;
 		background: transparent;
-		color: inherit;
-		font-size: 1.2rem;
+		color: var(--text-muted);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		min-width: 48px;
 		min-height: 52px;
+	}
+
+	.exam-bookmark-btn[aria-pressed='true'] {
+		color: var(--warn);
+	}
+
+	.exam-bookmark-btn[aria-pressed='true'] :global(svg) {
+		fill: currentColor;
 	}
 
 	.exam-empty {

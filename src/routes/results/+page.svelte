@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive, language } from '$lib/client/preferences';
 	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '$lib/client/countUp.js';
@@ -428,7 +429,7 @@
 		saveCurrentPaper({
 			...questionPaper,
 			id: `review-${questionPaper.id}-${Date.now()}`,
-			topic: `${questionPaper.topic} — ${$t('reviewWrongAnswers')}`,
+			topic: `${questionPaper.topic}: ${$t('reviewWrongAnswers')}`,
 			questions: weakQuestions,
 			userAnswers: undefined,
 			score: undefined,
@@ -853,10 +854,6 @@
 		</div>
 	{:else if questionPaper}
 		<div class="result-hero-card mb-4">
-			<span class="hero-spark hero-spark-1" aria-hidden="true">✦</span>
-			<span class="hero-spark hero-spark-2" aria-hidden="true">✦</span>
-			<span class="hero-spark hero-spark-3" aria-hidden="true">✦</span>
-
 			<div class="hero-top">
 				<span class="hero-eyebrow">{$t('resultsHeroEyebrow')}</span>
 				<div class="hero-share-wrap" bind:this={shareSheetWrap}>
@@ -869,19 +866,7 @@
 						onclick={toggleShareSheet}
 					>
 						<span class="visually-hidden">{$t('share')}</span>
-						<svg
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							width="16"
-							height="16"
-							aria-hidden="true"
-						>
-							<path d="M12 16V4" />
-							<path d="m7 9 5-5 5 5" />
-							<path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />
-						</svg>
+						<Icon name="share" size={16} />
 					</button>
 					{#if shareSheetOpen}
 						<div
@@ -926,12 +911,6 @@
 							aria-label={`${percentage}%`}
 						>
 							<svg viewBox="0 0 100 100" aria-hidden="true">
-								<defs>
-									<linearGradient id="hero-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-										<stop offset="0%" stop-color="#a5b4fc" />
-										<stop offset="100%" stop-color="#22d3ee" />
-									</linearGradient>
-								</defs>
 								<circle class="ring-track" cx="50" cy="50" r={RING_RADIUS}></circle>
 								<circle
 									class="ring-progress"
@@ -969,14 +948,14 @@
 
 				{#if wrongIndices.length > 0}
 					<button class="hero-cta no-print" type="button" onclick={practiceWeakQuestions}>
-						<span aria-hidden="true">⚡</span>
+						<Icon name="zap" size={18} />
 						{$t('practiceWeak', { count: wrongIndices.length })}
-						<span aria-hidden="true">→</span>
+						<Icon name="arrow-right" size={18} />
 					</button>
 				{:else}
 					<a class="hero-cta no-print" href={practiceMoreHref()}>
 						{$t('resultsPracticeMoreCta')}
-						<span aria-hidden="true">→</span>
+						<Icon name="arrow-right" size={18} />
 					</a>
 				{/if}
 			</div>
@@ -988,7 +967,6 @@
 					{$t('reviewWrongAnswers')}
 				</button>
 			{/if}
-			<a class="result-link" href={practiceMoreHref()}>{$t('practiceMore')}</a>
 			<a class="result-link" href="/">{$t('newQuizShort')}</a>
 		</div>
 
@@ -1000,7 +978,7 @@
 			<span class="utility-id">{$t('testId')}: {questionPaper.id}</span>
 			{#if bookmarkedQuestionKeys.length > 0}
 				<span class="bookmark-count" aria-hidden="true">
-					<span class="bookmark-count-glyph">🔖</span>
+					<Icon name="bookmark" size={14} />
 					{#key bookmarkedQuestionKeys.length}
 						<span class="bookmark-number">{bookmarkedQuestionKeys.length}</span>
 					{/key}
@@ -1022,7 +1000,9 @@
 						</svg>
 					</span>
 					{$t('dailyReminder')}
-					<span class="review-chevron" aria-hidden="true">▾</span>
+					<span class="review-chevron" aria-hidden="true">
+						<Icon name="chevron-down" size={16} />
+					</span>
 				</button>
 			{/if}
 		</div>
@@ -1288,8 +1268,10 @@
 						<span
 							class="review-chevron"
 							class:open={expanded[index] === true}
-							aria-hidden="true">▾</span
+							aria-hidden="true"
 						>
+							<Icon name="chevron-down" size={16} />
+						</span>
 					</button>
 					<AnimatedHeight class="review-region">
 						{#if expanded[index] === true}
@@ -1300,7 +1282,9 @@
 									type="button"
 									onclick={() => toggleBookmark(question)}
 								>
-									<span class="bookmark-flip" aria-hidden="true">🔖</span>
+									<span class="bookmark-flip" aria-hidden="true">
+										<Icon name="bookmark" size={14} />
+									</span>
 									{bookmarkedQuestionKeys.includes(questionKey(question))
 										? $t('removeQuestionBookmark')
 										: $t('bookmarkQuestion')}
@@ -1372,7 +1356,10 @@
 														class="review-option-glyph"
 														aria-hidden="true"
 													>
-														{optionIsCorrect ? '✓' : '✗'}
+														<Icon
+															name={optionIsCorrect ? 'check' : 'x'}
+															size={16}
+														/>
 													</span>
 												{/if}
 												<MarkdownContent content={option} />
@@ -1451,7 +1438,7 @@
 						aria-label={$t('rateTestUp')}
 						onclick={() => rateTest('up')}
 					>
-						👍
+						<Icon name="thumb-up" size={18} />
 					</button>
 					<button
 						class="btn btn-sm btn-outline-danger"
@@ -1459,7 +1446,7 @@
 						aria-label={$t('rateTestDown')}
 						onclick={() => rateTest('down')}
 					>
-						👎
+						<Icon name="thumb-down" size={18} />
 					</button>
 				</div>
 				{#if remindersSupported() && historyCount >= 1}
@@ -1497,61 +1484,23 @@
 
 <style>
 	.result-hero-card {
-		--hero-text: #ffffff;
-		--hero-muted: #cbd5e1;
-		--hero-border: rgba(255, 255, 255, 0.1);
-		--hero-share-border: rgba(255, 255, 255, 0.14);
-		--hero-share-bg: rgba(255, 255, 255, 0.08);
+		--hero-text: var(--text);
+		--hero-muted: var(--text-muted);
 		position: relative;
 		overflow: hidden;
 		max-width: 860px;
 		padding: 18px;
-		border: 1px solid var(--hero-border);
-		border-radius: 22px;
-		background:
-			radial-gradient(120% 90% at 15% -10%, rgba(124, 58, 237, 0.55), rgba(15, 23, 42, 0) 55%),
-			radial-gradient(90% 70% at 110% 110%, rgba(13, 148, 136, 0.4), rgba(15, 23, 42, 0) 60%),
-			linear-gradient(160deg, #0b1120, #141b33);
-		box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.7);
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--color-brand-600) 5%, var(--surface));
+		box-shadow: 0 12px 30px -24px rgba(15, 23, 42, 0.4);
 		color: var(--hero-text);
-	}
-
-	:global(html.dark) .result-hero-card {
-		--hero-border: rgba(255, 255, 255, 0.16);
-	}
-
-	/* The default brand focus ring is too dark against the hero surface. */
-	.result-hero-card :focus-visible {
-		outline-color: #a5b4fc;
 	}
 
 	@media (min-width: 768px) {
 		.result-hero-card {
 			padding: 24px;
 		}
-	}
-
-	.hero-spark {
-		position: absolute;
-		color: rgba(255, 255, 255, 0.35);
-		font-size: 0.7rem;
-		line-height: 1;
-	}
-
-	.hero-spark-1 {
-		top: 14px;
-		left: 46%;
-	}
-
-	.hero-spark-2 {
-		top: 56px;
-		right: 22px;
-	}
-
-	.hero-spark-3 {
-		bottom: 26px;
-		left: 20px;
-		font-size: 0.55rem;
 	}
 
 	.hero-top {
@@ -1563,11 +1512,11 @@
 	}
 
 	.hero-eyebrow {
-		font-size: 0.625rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: #a5b4fc;
+		color: var(--brand-text);
 	}
 
 	.hero-share-wrap {
@@ -1580,10 +1529,20 @@
 		width: 34px;
 		height: 34px;
 		place-items: center;
-		border: 1px solid var(--hero-share-border);
+		border: 1px solid var(--line);
 		border-radius: 999px;
-		background: var(--hero-share-bg);
-		color: #e0e7ff;
+		background: var(--surface-muted);
+		color: var(--brand-text);
+	}
+
+	.hero-share:hover,
+	.hero-share:focus-visible {
+		border-color: var(--brand-text);
+		background: color-mix(in srgb, var(--color-brand-600) 10%, var(--surface));
+	}
+
+	.hero-share:active {
+		transform: translateY(1px);
 	}
 
 	/* Expand the 34px control to a 44px touch target. */
@@ -1602,10 +1561,10 @@
 		min-width: 210px;
 		gap: 2px;
 		padding: 6px;
-		border: 1px solid rgba(255, 255, 255, 0.16);
-		border-radius: 14px;
-		background: #0f172a;
-		box-shadow: 0 18px 36px -16px rgba(0, 0, 0, 0.8);
+		border: 1px solid var(--line);
+		border-radius: var(--radius-overlay);
+		background: var(--surface);
+		box-shadow: 0 18px 36px -16px rgba(15, 23, 42, 0.35);
 	}
 
 	.share-sheet-item {
@@ -1614,9 +1573,9 @@
 		align-items: center;
 		padding: 0 12px;
 		border: 0;
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		background: none;
-		color: #e2e8f0;
+		color: var(--text);
 		font-size: 0.9rem;
 		font-weight: 600;
 		text-align: left;
@@ -1624,7 +1583,7 @@
 
 	.share-sheet-item:hover,
 	.share-sheet-item:focus-visible {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--surface-muted);
 	}
 
 	.hero-body {
@@ -1649,14 +1608,6 @@
 		position: relative;
 	}
 
-	.hero-ring-wrap::before {
-		position: absolute;
-		inset: 8px;
-		border-radius: 50%;
-		background: radial-gradient(circle, rgba(99, 102, 241, 0.4), rgba(99, 102, 241, 0) 70%);
-		content: '';
-	}
-
 	.hero-meta {
 		margin: 14px 0 0;
 		color: var(--hero-muted);
@@ -1677,28 +1628,28 @@
 	}
 
 	.hero-compare.is-best {
-		border-color: rgba(245, 158, 11, 0.45);
-		background: rgba(245, 158, 11, 0.16);
-		color: #fcd34d;
+		border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+		background: color-mix(in srgb, var(--warn) 14%, transparent);
+		color: var(--warn);
 	}
 
 	.hero-compare.is-ahead {
-		border-color: rgba(16, 185, 129, 0.25);
-		background: rgba(16, 185, 129, 0.12);
-		color: #6ee7b7;
+		border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+		background: color-mix(in srgb, var(--ok) 12%, transparent);
+		color: var(--ok);
 	}
 
 	.hero-compare.is-behind,
 	.hero-compare.is-same {
-		border-color: rgba(148, 163, 184, 0.3);
-		background: rgba(148, 163, 184, 0.12);
+		border-color: var(--line);
+		background: var(--surface-muted);
 		color: var(--hero-muted);
 	}
 
 	.hero-compare.is-baseline {
 		border-style: dashed;
-		border-color: rgba(148, 163, 184, 0.5);
-		color: #94a3b8;
+		border-color: var(--line);
+		color: var(--hero-muted);
 		font-weight: 500;
 	}
 
@@ -1711,13 +1662,22 @@
 		gap: 8px;
 		margin-top: 16px;
 		border: 0;
-		border-radius: 12px;
-		background: linear-gradient(120deg, #6366f1, #22d3ee);
-		box-shadow: 0 12px 26px -12px rgba(99, 102, 241, 0.9);
-		color: #06121f;
+		border-radius: var(--radius-control);
+		background: var(--color-brand-600);
+		color: var(--on-brand);
 		font-size: 0.95rem;
 		font-weight: 750;
 		text-decoration: none;
+		transition: background var(--motion-fast) var(--ease-out);
+	}
+
+	.hero-cta:hover,
+	.hero-cta:focus-visible {
+		background: var(--color-brand-700);
+	}
+
+	.hero-cta:active {
+		transform: translateY(1px);
 	}
 
 	.hero-links {
@@ -1740,6 +1700,12 @@
 		font-size: 0.9rem;
 		font-weight: 600;
 		text-decoration: none;
+	}
+
+	.result-link:hover,
+	.result-link:focus-visible {
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
 	.hero-utility {
@@ -1772,6 +1738,11 @@
 		text-decoration: underline;
 		text-decoration-color: var(--line);
 		text-underline-offset: 3px;
+	}
+
+	.utility-link:hover,
+	.utility-link:focus-visible {
+		color: var(--text);
 	}
 
 	.utility-id {
@@ -1820,7 +1791,7 @@
 		gap: 12px 18px;
 		padding: 12px 14px;
 		border: 1px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius-surface);
 		background: var(--surface-muted);
 	}
 
@@ -1867,7 +1838,7 @@
 	}
 
 	.week-strip span.today {
-		outline: 2px solid rgba(var(--brand-rgb), 0.25);
+		outline: 2px solid color-mix(in srgb, var(--color-brand-600) 25%, transparent);
 	}
 
 	.stats-grid {
@@ -1882,7 +1853,7 @@
 		align-items: center;
 		flex-direction: column;
 		justify-content: center;
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted);
 	}
 
@@ -1909,7 +1880,7 @@
 		gap: 12px;
 		padding: 8px 10px;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 		color: inherit;
 		text-decoration: none;
 	}
@@ -1937,7 +1908,12 @@
 	:global(.explanation-loading)::after {
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+		background: linear-gradient(
+			90deg,
+			transparent,
+			color-mix(in srgb, var(--brand-text) 18%, transparent),
+			transparent
+		);
 		content: '';
 		transform: translateX(-100%);
 		animation: explanation-shimmer 1.2s ease-in-out infinite;
@@ -1955,7 +1931,7 @@
 		gap: 6px;
 		padding: 8px 10px;
 		border: 1px solid var(--line);
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 	}
 
 	.review-option :global(.markdown-content) {
@@ -1964,23 +1940,25 @@
 	}
 
 	.review-option-glyph {
+		display: inline-flex;
 		flex: 0 0 auto;
-		font-weight: 700;
+		align-items: center;
+		margin-top: 2px;
 	}
 
 	.correct-option .review-option-glyph {
-		color: #059669;
+		color: var(--ok);
 	}
 
 	.user-option .review-option-glyph {
-		color: #dc2626;
+		color: var(--danger);
 	}
 
 	.retake-confirm {
 		flex: 1 1 100%;
 		padding: 10px 12px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted);
 	}
 
@@ -1997,13 +1975,13 @@
 	}
 
 	.correct-option {
-		border-color: #059669;
-		background: rgba(25, 135, 84, 0.08);
+		border-color: var(--ok);
+		background: color-mix(in srgb, var(--ok) 8%, transparent);
 	}
 
 	.user-option {
-		border-color: #dc2626;
-		background: rgba(220, 53, 69, 0.08);
+		border-color: var(--danger);
+		background: color-mix(in srgb, var(--danger) 8%, transparent);
 	}
 
 	.filter-bar {
@@ -2051,7 +2029,7 @@
 
 	.filter-chip.active .filter-count {
 		background: var(--color-brand-600);
-		color: #fff;
+		color: var(--on-brand);
 	}
 
 	.score-ring {
@@ -2143,13 +2121,13 @@
 
 	.ring-track {
 		fill: none;
-		stroke: rgba(255, 255, 255, 0.12);
+		stroke: var(--line);
 		stroke-width: 8;
 	}
 
 	.ring-progress {
 		fill: none;
-		stroke: url(#hero-ring-gradient);
+		stroke: var(--brand-text);
 		stroke-width: 8;
 		stroke-linecap: round;
 		transition: stroke-dashoffset 500ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -2162,7 +2140,7 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		color: #fff;
+		color: var(--hero-text);
 	}
 
 	.score-ring-pct {
@@ -2181,8 +2159,8 @@
 
 	.score-ring-sub {
 		margin-top: 5px;
-		color: #94a3b8;
-		font-size: 0.68rem;
+		color: var(--hero-muted);
+		font-size: 0.7rem;
 		font-weight: 600;
 	}
 
@@ -2216,9 +2194,10 @@
 	}
 
 	.review-chevron {
+		display: inline-flex;
+		align-items: center;
 		margin-top: 2px;
 		color: var(--text-muted);
-		font-size: 0.9rem;
 		transition: transform 180ms ease;
 	}
 
@@ -2242,9 +2221,9 @@
 		.result-hero-card {
 			--hero-text: #0f172a;
 			--hero-muted: #475569;
-			--hero-border: #cbd5e1;
 			overflow: visible;
-			background: #fff;
+			border-color: #cbd5e1;
+			background: var(--on-brand);
 			box-shadow: none;
 			color: var(--hero-text);
 		}
@@ -2253,35 +2232,18 @@
 			color: #475569;
 		}
 
-		.hero-spark,
-		.hero-ring-wrap::before {
-			display: none;
-		}
-
 		.ring-track {
 			stroke: #e2e8f0;
 		}
 
 		.ring-progress {
-			stroke: #4f46e5;
-		}
-
-		.score-ring-label {
-			color: #0f172a;
-		}
-
-		.score-ring-sub {
-			color: #475569;
+			stroke: var(--color-brand-600);
 		}
 
 		.hero-compare {
 			border-color: #cbd5e1 !important;
 			background: transparent !important;
 			color: #0f172a !important;
-		}
-
-		.hero-topic {
-			color: #0f172a;
 		}
 	}
 

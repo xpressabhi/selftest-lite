@@ -17,16 +17,85 @@
 />
 
 <section class="container py-4 py-md-5">
-	<div class="mx-auto" style="max-width: 820px;">
-		<h1 class="h2 fw-bold">{$t('termsHeroTitle')}</h1>
-		<p class="text-muted">{$t('termsHeroBody')}</p>
-		<article class="bg-body border rounded-3 p-3 mb-3">
-			<h2 class="h5 fw-bold">{$t('termsSectionUseTitle')}</h2>
-			<p class="mb-0 text-muted">{$t('termsSectionUseBody')}</p>
-		</article>
-		<article class="bg-body border rounded-3 p-3">
-			<h2 class="h5 fw-bold">{$t('termsSectionLiabilityTitle')}</h2>
-			<p class="mb-0 text-muted">{$t('termsSectionLiabilityBody')}</p>
-		</article>
+	<div class="legal-wrap">
+		<header class="legal-hero">
+			<h1 class="legal-title">{$t('termsHeroTitle')}</h1>
+			<p class="legal-lead">{$t('termsHeroBody')}</p>
+		</header>
+		<div class="legal-grid">
+			<article class="legal-card">
+				<h2 class="legal-card-title">{$t('termsSectionUseTitle')}</h2>
+				<p class="legal-card-body">{$t('termsSectionUseBody')}</p>
+			</article>
+			<article class="legal-card">
+				<h2 class="legal-card-title">{$t('termsSectionLiabilityTitle')}</h2>
+				<p class="legal-card-body">{$t('termsSectionLiabilityBody')}</p>
+			</article>
+		</div>
 	</div>
 </section>
+
+<style>
+	.legal-wrap {
+		max-width: 46rem;
+		margin: 0 auto;
+		display: grid;
+		gap: 1.5rem;
+	}
+
+	.legal-hero {
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.legal-title {
+		margin: 0;
+		font-size: 1.9rem;
+		line-height: 1.15;
+		font-weight: 700;
+	}
+
+	.legal-lead {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: 1.05rem;
+		line-height: 1.65;
+	}
+
+	.legal-grid {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.legal-card {
+		display: grid;
+		gap: 0.5rem;
+		align-content: start;
+		padding: 1.1rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+	}
+
+	.legal-card-title {
+		margin: 0;
+		font-size: 1.05rem;
+		font-weight: 700;
+	}
+
+	.legal-card-body {
+		margin: 0;
+		color: var(--text-muted);
+		line-height: 1.65;
+	}
+
+	@media (min-width: 768px) {
+		.legal-title {
+			font-size: 2.25rem;
+		}
+
+		.legal-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+</style>

@@ -1,8 +1,13 @@
 <script>
 	import { onMount } from 'svelte';
+	import Icon from '$lib/client/Icon.svelte';
+	import { t } from '$lib/client/i18n';
 	import { dismissToast, runToastAction } from '$lib/client/toast';
 
 	let { entry } = $props();
+
+	const ICON_BY_TYPE = { info: 'info', success: 'check', warning: 'alert', error: 'alert' };
+	const typeIcon = $derived(ICON_BY_TYPE[entry.type] || 'info');
 
 	let swipeX = $state(0);
 	let dragging = $state(false);
@@ -143,6 +148,7 @@
 	class:is-leaving={leaving}
 	class:is-dragging={dragging}
 	role={entry.type === 'error' ? 'alert' : 'status'}
+	tabindex="0"
 	style={`--toast-duration: ${entry.durationMs || 3000}ms; transform: translateX(${swipeX}px);`}
 	onpointerdown={onPointerDown}
 	onpointermove={onPointerMove}
@@ -158,12 +164,21 @@
 		}
 	}}
 >
+	<span class="toast-icon" aria-hidden="true"><Icon name={typeIcon} size={18} /></span>
 	<span class="toast-text">{entry.message}</span>
 	{#if entry.actionLabel}
 		<button class="toast-action" type="button" onclick={handleAction}>
 			{entry.actionLabel}
 		</button>
 	{/if}
+	<button
+		class="toast-dismiss"
+		type="button"
+		aria-label={$t('dismissNotification')}
+		onclick={() => dismissEntry('dismiss')}
+	>
+		<Icon name="close" size={16} />
+	</button>
 	<span class="toast-fuse" class:paused aria-hidden="true"></span>
 </div>
 
@@ -178,15 +193,33 @@
 		gap: 10px;
 		max-width: min(360px, calc(100vw - 32px));
 		padding: 10px 12px;
-		border-radius: 8px;
-		background: #111827;
-		color: #fff;
+		border: 1px solid var(--line);
+		border-left: 4px solid var(--line);
+		border-radius: var(--radius-control);
+		background: var(--surface);
+		color: var(--text);
 		box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
 		overflow: hidden;
 		touch-action: pan-y;
 		transition:
 			transform var(--motion-base) var(--ease-out),
 			opacity var(--motion-fast) linear;
+	}
+
+	.toast-lite.info {
+		border-left-color: var(--color-brand-600);
+	}
+
+	.toast-lite.success {
+		border-left-color: var(--ok);
+	}
+
+	.toast-lite.warning {
+		border-left-color: var(--warn);
+	}
+
+	.toast-lite.error {
+		border-left-color: var(--danger);
 	}
 
 	.toast-lite.is-dragging {
@@ -197,6 +230,27 @@
 		pointer-events: none;
 	}
 
+	.toast-icon {
+		flex: none;
+		display: inline-flex;
+	}
+
+	.toast-lite.info .toast-icon {
+		color: var(--color-brand-600);
+	}
+
+	.toast-lite.success .toast-icon {
+		color: var(--ok);
+	}
+
+	.toast-lite.warning .toast-icon {
+		color: var(--warn);
+	}
+
+	.toast-lite.error .toast-icon {
+		color: var(--danger);
+	}
+
 	.toast-text {
 		flex: 1 1 auto;
 	}
@@ -205,18 +259,37 @@
 		flex: none;
 		min-height: 44px;
 		padding: 0 12px;
-		margin: -6px -4px -6px 0;
+		margin: -6px 0 -6px 0;
 		border: 0;
-		border-radius: 6px;
-		background: rgba(255, 255, 255, 0.16);
-		color: #fff;
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, transparent);
+		color: var(--brand-text);
 		font-size: 0.85rem;
 		font-weight: 700;
 	}
 
 	.toast-action:hover,
 	.toast-action:focus-visible {
-		background: rgba(255, 255, 255, 0.26);
+		background: color-mix(in srgb, var(--color-brand-600) 20%, transparent);
+	}
+
+	.toast-dismiss {
+		flex: none;
+		display: inline-grid;
+		width: 44px;
+		height: 44px;
+		margin: -12px -8px -12px 0;
+		place-items: center;
+		border: 0;
+		border-radius: var(--radius-control);
+		background: transparent;
+		color: var(--text-muted);
+	}
+
+	.toast-dismiss:hover,
+	.toast-dismiss:focus-visible {
+		background: var(--surface-muted);
+		color: var(--text);
 	}
 
 	.toast-fuse {

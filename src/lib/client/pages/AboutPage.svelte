@@ -2,6 +2,7 @@
 	import { activeLanguage, t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
 	import FaqAccordion from '$lib/client/FaqAccordion.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import { getFaqItems } from '$lib/data/faqs';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 	import SeoHead from '$lib/client/SeoHead.svelte';
@@ -38,7 +39,7 @@
 		{
 			titleKey: 'aboutPracticeAnyTitle',
 			bodyKey: 'aboutPracticeAnyBody',
-			icon: 'doc',
+			icon: 'note',
 		},
 		{
 			titleKey: 'aboutPracticeExamsTitle',
@@ -61,12 +62,12 @@
 		{
 			titleKey: 'aboutValueSpeedTitle',
 			bodyKey: 'aboutValueSpeedBody',
-			icon: 'bolt',
+			icon: 'zap',
 		},
 		{
 			titleKey: 'aboutValueFocusTitle',
 			bodyKey: 'aboutValueFocusBody',
-			icon: 'focus',
+			icon: 'target',
 		},
 	];
 
@@ -111,14 +112,15 @@
 			<p class="about-mission">{$t('aboutMissionBody')}</p>
 
 			<h3 class="about-subtitle">{$t('aboutWhyWorksTitle')}</h3>
-			<div class="about-grid three">
-				{#each whyItWorks as point (point.titleKey)}
-					<div class="about-card">
-						<h4 class="about-card-title">{$t(point.titleKey)}</h4>
+			<ul class="about-principles">
+				{#each whyItWorks as point, index (point.titleKey)}
+					<li class="about-principle">
+						<span class="principle-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+						<p class="about-principle-title">{$t(point.titleKey)}</p>
 						<p class="about-card-body">{$t(point.bodyKey)}</p>
-					</div>
+					</li>
 				{/each}
-			</div>
+			</ul>
 		</section>
 
 		<section class="about-section">
@@ -142,35 +144,7 @@
 				{#each practice as item (item.titleKey)}
 					<div class="about-card">
 						<span class="about-icon" aria-hidden="true">
-							{#if item.icon === 'doc'}
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<path
-										d="M5 3h7l3 3v11H5V3z"
-										stroke="currentColor"
-										stroke-width="1.6"
-										stroke-linejoin="round"
-									/>
-									<path d="M7.5 9h5M7.5 12h5" stroke="currentColor" stroke-width="1.6" />
-								</svg>
-							{:else if item.icon === 'list'}
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<path
-										d="M4 5.5h12M4 10h12M4 14.5h8"
-										stroke="currentColor"
-										stroke-width="1.6"
-										stroke-linecap="round"
-									/>
-								</svg>
-							{:else}
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6" />
-									<path
-										d="M3 10h14M10 3c2 2.2 2 11.8 0 14M10 3c-2 2.2-2 11.8 0 14"
-										stroke="currentColor"
-										stroke-width="1.3"
-									/>
-								</svg>
-							{/if}
+							<Icon name={item.icon} />
 						</span>
 						<h3 class="about-card-title">{$t(item.titleKey)}</h3>
 						<p class="about-card-body">{$t(item.bodyKey)}</p>
@@ -180,45 +154,19 @@
 		</section>
 
 		<section class="about-section">
-			<div class="about-grid three">
+			<ul class="about-values">
 				{#each values as value (value.titleKey)}
-					<div class="about-card">
+					<li class="about-value">
 						<span class="about-icon" aria-hidden="true">
-							{#if value.icon === 'shield'}
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<path
-										d="M10 3l6 2v5c0 3.4-2.4 5.9-6 7-3.6-1.1-6-3.6-6-7V5l6-2z"
-										stroke="currentColor"
-										stroke-width="1.6"
-										stroke-linejoin="round"
-									/>
-								</svg>
-							{:else if value.icon === 'bolt'}
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<path
-										d="M11 3L5.5 11H10l-1 6 5.5-8H10l1-6z"
-										stroke="currentColor"
-										stroke-width="1.6"
-										stroke-linejoin="round"
-									/>
-								</svg>
-							{:else}
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<circle cx="10" cy="7.5" r="3" stroke="currentColor" stroke-width="1.6" />
-									<path
-										d="M4.5 16c.9-2.8 3-4.2 5.5-4.2s4.6 1.4 5.5 4.2"
-										stroke="currentColor"
-										stroke-width="1.6"
-										stroke-linecap="round"
-									/>
-								</svg>
-							{/if}
+							<Icon name={value.icon} />
 						</span>
-						<h3 class="about-card-title">{$t(value.titleKey)}</h3>
-						<p class="about-card-body">{$t(value.bodyKey)}</p>
-					</div>
+						<div>
+							<p class="about-value-title">{$t(value.titleKey)}</p>
+							<p class="about-card-body">{$t(value.bodyKey)}</p>
+						</div>
+					</li>
 				{/each}
-			</div>
+			</ul>
 			<p class="about-built">
 				<strong>{$t('aboutBuiltTitle')}</strong>
 				{$t('aboutBuiltBody')}
@@ -284,7 +232,7 @@
 
 	.about-badge.badge-free {
 		border-color: transparent;
-		background: rgba(79, 70, 229, 0.12);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, transparent);
 		color: var(--brand-text);
 	}
 
@@ -339,13 +287,42 @@
 		gap: 0.9rem;
 	}
 
+	.about-principles {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 1rem 1.75rem;
+	}
+
+	.about-principle {
+		display: grid;
+		gap: 0.3rem;
+		align-content: start;
+		padding-top: 0.75rem;
+		border-top: 2px solid color-mix(in srgb, var(--color-brand-600) 30%, transparent);
+	}
+
+	.principle-number {
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		color: var(--brand-text);
+	}
+
+	.about-principle-title {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
 	.about-card {
 		display: grid;
 		gap: 0.35rem;
 		align-content: start;
 		padding: 1rem;
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 
@@ -367,8 +344,8 @@
 		height: 2.25rem;
 		align-items: center;
 		justify-content: center;
-		border-radius: 0.6rem;
-		background: rgba(79, 70, 229, 0.1);
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--color-brand-600) 10%, transparent);
 		color: var(--brand-text);
 	}
 
@@ -386,7 +363,7 @@
 		align-items: flex-start;
 		padding: 1rem;
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 
@@ -398,8 +375,28 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 999px;
-		background: var(--brand-text);
-		color: #fff;
+		background: var(--color-brand-600);
+		color: var(--on-brand);
+		font-weight: 700;
+	}
+
+	.about-values {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 1.1rem;
+	}
+
+	.about-value {
+		display: flex;
+		gap: 0.75rem;
+		align-items: flex-start;
+	}
+
+	.about-value-title {
+		margin: 0 0 0.15rem;
+		font-size: 1rem;
 		font-weight: 700;
 	}
 
@@ -426,8 +423,16 @@
 			font-size: 2.25rem;
 		}
 
+		.about-principles {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
 		.about-grid.three {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+
+		.about-values {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 
 		.about-steps {

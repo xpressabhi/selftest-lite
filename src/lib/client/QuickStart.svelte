@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import Icon from '$lib/client/Icon.svelte';
 
 	let {
 		bookmarkedExams = [],
@@ -23,7 +24,7 @@
 					onclick={() => onQuickStartExam(exam.id)}
 					{disabled}
 				>
-					<span class="chip-star" aria-hidden="true">&#9733;</span>
+					<span class="chip-star" aria-hidden="true"><Icon name="star" size={16} /></span>
 					<span class="chip-text">{exam.name}</span>
 				</button>
 			{/each}
@@ -34,7 +35,7 @@
 					onclick={() => onQuickStartPreset(preset)}
 					{disabled}
 				>
-					<span class="chip-star" aria-hidden="true">&#9733;</span>
+					<span class="chip-star" aria-hidden="true"><Icon name="star" size={16} /></span>
 					<span class="chip-text">{preset.label}</span>
 				</button>
 			{/each}
@@ -67,7 +68,7 @@
 		align-items: center;
 		gap: 6px;
 		padding: 8px 16px;
-		border-radius: 12px;
+		border-radius: var(--radius-control);
 		border: 1px solid var(--line);
 		background: var(--surface);
 		color: var(--text);
@@ -92,8 +93,13 @@
 		cursor: not-allowed;
 	}
 
+	.chip-star {
+		display: inline-flex;
+		align-items: center;
+	}
+
 	.exam-chip .chip-star {
-		color: #f59e0b;
+		color: var(--warn);
 	}
 
 	.preset-chip .chip-star {

@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import Icon from '$lib/client/Icon.svelte';
 	import { track } from '$lib/client/telemetry';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import {
@@ -72,24 +73,24 @@
 		{
 			value: 'multiple-choice',
 			label: $t('multipleChoice'),
-			icon: '📊',
+			icon: 'chart',
 			desc: $t('multipleChoice'),
 		},
-		{ value: 'true-false', label: $t('trueFalse'), icon: '✅', desc: $t('trueFalse') },
-		{ value: 'coding', label: $t('codingProblems'), icon: '💻', desc: $t('codingProblems') },
+		{ value: 'true-false', label: $t('trueFalse'), icon: 'check', desc: $t('trueFalse') },
+		{ value: 'coding', label: $t('codingProblems'), icon: 'code', desc: $t('codingProblems') },
 		{
 			value: 'speed-challenge',
 			label: $t('speedChallenge'),
-			icon: '⚡',
+			icon: 'zap',
 			desc: $t('speedChallenge'),
 		},
 	]);
 
 	const DIFFICULTIES = $derived.by(() => [
-		{ value: 'beginner', label: $t('beginner'), emoji: '🌱' },
-		{ value: 'intermediate', label: $t('intermediate'), emoji: '🔥' },
-		{ value: 'advanced', label: $t('advanced'), emoji: '💎' },
-		{ value: 'expert', label: $t('expert'), emoji: '👑' },
+		{ value: 'beginner', label: $t('beginner'), icon: 'leaf' },
+		{ value: 'intermediate', label: $t('intermediate'), icon: 'flame' },
+		{ value: 'advanced', label: $t('advanced'), icon: 'gem' },
+		{ value: 'expert', label: $t('expert'), icon: 'crown' },
 	]);
 
 	const DIFFICULTY_LABEL = $derived(
@@ -558,14 +559,14 @@
 									type="button"
 									class="stepper-btn"
 									onclick={() => pickQuestions(numQuestions - 5)}
-									aria-label={$t('fewerQuestions')}>−</button
+									aria-label={$t('fewerQuestions')}><Icon name="minus" size={18} /></button
 								>
 								<span class="stepper-value">{numQuestions}</span>
 								<button
 									type="button"
 									class="stepper-btn"
 									onclick={() => pickQuestions(numQuestions + 5)}
-									aria-label={$t('moreQuestions')}>+</button
+									aria-label={$t('moreQuestions')}><Icon name="plus" size={18} /></button
 								>
 							</div>
 							<div class="picker-presets">
@@ -605,7 +606,9 @@
 									aria-pressed={testType === f.value}
 									onclick={() => pickFormat(f.value)}
 								>
-									<span class="picker-emoji" aria-hidden="true">{f.icon}</span>
+									<span class="picker-emoji" aria-hidden="true">
+										<Icon name={f.icon} size={18} />
+									</span>
 									<span class="picker-label">{f.label}</span>
 								</button>
 							{/each}
@@ -622,7 +625,9 @@
 									aria-pressed={difficulty === d.value}
 									onclick={() => pickDifficulty(d.value)}
 								>
-									<span class="picker-emoji" aria-hidden="true">{d.emoji}</span>
+									<span class="picker-emoji" aria-hidden="true">
+										<Icon name={d.icon} size={18} />
+									</span>
 									<span class="picker-label">{d.label}</span>
 								</button>
 							{/each}
@@ -638,7 +643,9 @@
 								aria-pressed={language === 'english'}
 								onclick={() => pickLanguage('english')}
 							>
-								<span class="picker-emoji" aria-hidden="true">🇬🇧</span>
+								<span class="picker-emoji" aria-hidden="true">
+									<Icon name="globe" size={18} />
+								</span>
 								<span class="picker-label">{$t('englishLabel')}</span>
 							</button>
 							<button
@@ -648,7 +655,9 @@
 								aria-pressed={language === 'hindi'}
 								onclick={() => pickLanguage('hindi')}
 							>
-								<span class="picker-emoji" aria-hidden="true">🇮🇳</span>
+								<span class="picker-emoji" aria-hidden="true">
+									<Icon name="globe" size={18} />
+								</span>
 								<span class="picker-label">{$t('hindiLabel')}</span>
 							</button>
 						</div>
@@ -695,7 +704,6 @@
 		<div class="preview-footer">
 			<button
 				class="generate-btn"
-				class:ai-shimmer={GENERATING}
 				disabled={GENERATING || !topic || checking}
 				onclick={handleGenerate}
 				type="button"
@@ -720,37 +728,15 @@
 		overflow: hidden;
 		background: var(--surface);
 		border: 1px solid var(--line);
-		border-radius: 20px;
+		border-radius: var(--radius-overlay);
 		padding: 14px 14px 12px;
-		transition:
-			border-color 0.2s ease,
-			box-shadow 0.2s ease;
+		transition: border-color 0.2s ease;
 	}
 
 	@media (min-width: 480px) {
 		.preview-card {
 			padding: 18px 20px 14px;
 		}
-	}
-
-	.preview-card::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 3px;
-		background: linear-gradient(90deg, rgb(var(--brand-rgb)), rgba(var(--brand-rgb), 0.25));
-		opacity: 0;
-		transition: opacity 0.3s ease;
-	}
-
-	.preview-card:not(.empty)::before {
-		opacity: 1;
-	}
-
-	.preview-card.parsing-failed::before {
-		background: linear-gradient(90deg, #d97706, rgba(217, 119, 6, 0.25));
 	}
 
 	.preview-top {
@@ -762,7 +748,7 @@
 	}
 
 	.preview-eyebrow {
-		font-size: 0.66rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		letter-spacing: 0.09em;
 		text-transform: uppercase;
@@ -776,7 +762,7 @@
 		padding: 4px 10px;
 		border-radius: 999px;
 		border: 1px solid transparent;
-		font-size: 0.68rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		white-space: nowrap;
 	}
@@ -792,17 +778,6 @@
 		height: 6px;
 		border-radius: 50%;
 		background: currentColor;
-		animation: status-pulse 1.4s ease-in-out infinite;
-	}
-
-	@keyframes status-pulse {
-		0%,
-		100% {
-			opacity: 0.35;
-		}
-		50% {
-			opacity: 1;
-		}
 	}
 
 	.status-pill.is-draft {
@@ -817,21 +792,13 @@
 	}
 
 	.status-pill.is-ready {
-		background: rgba(16, 185, 129, 0.12);
-		color: #047857;
+		background: color-mix(in srgb, var(--ok) 12%, transparent);
+		color: var(--ok);
 	}
 
 	.status-pill.is-failed {
-		background: rgba(217, 119, 6, 0.14);
-		color: #b45309;
-	}
-
-	:global(.dark) .status-pill.is-ready {
-		color: #6ee7b7;
-	}
-
-	:global(.dark) .status-pill.is-failed {
-		color: #fcd34d;
+		background: color-mix(in srgb, var(--warn) 14%, transparent);
+		color: var(--warn);
 	}
 
 	.preview-empty {
@@ -848,7 +815,7 @@
 		place-items: center;
 		width: 44px;
 		height: 44px;
-		border-radius: 14px;
+		border-radius: var(--radius-surface);
 		background: rgba(var(--brand-rgb), 0.08);
 		color: rgb(var(--brand-text-rgb));
 	}
@@ -878,7 +845,7 @@
 		place-items: center;
 		width: 40px;
 		height: 40px;
-		border-radius: 13px;
+		border-radius: var(--radius-surface);
 		background: rgba(var(--brand-rgb), 0.08);
 		color: rgb(var(--brand-text-rgb));
 	}
@@ -948,11 +915,7 @@
 	}
 
 	.preview-note.is-warning {
-		color: #b45309;
-	}
-
-	:global(.dark) .preview-note.is-warning {
-		color: #fcd34d;
+		color: var(--warn);
 	}
 
 	.topic-edit-row {
@@ -965,7 +928,7 @@
 		min-width: 0;
 		padding: 10px 12px;
 		border: 1px solid var(--line);
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted);
 		color: var(--text);
 		/* 16px keeps iOS Safari from zooming the page when the field is focused. */
@@ -982,9 +945,9 @@
 		min-height: 44px;
 		padding: 0 14px;
 		border: 0;
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 		background: rgb(var(--brand-rgb));
-		color: #fff;
+		color: var(--on-brand);
 		font-size: 0.8rem;
 		font-weight: 700;
 		cursor: pointer;
@@ -1012,7 +975,7 @@
 		min-height: 58px;
 		padding: 9px 11px;
 		border: 1px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted);
 		color: var(--text);
 		text-align: left;
@@ -1047,7 +1010,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		font-size: 0.62rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
@@ -1083,7 +1046,7 @@
 		margin-top: 10px;
 		padding: 10px;
 		border: 1px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius-surface);
 		background: var(--surface-muted);
 		animation: picker-in 0.14s ease;
 	}
@@ -1118,7 +1081,7 @@
 		min-height: 44px;
 		padding: 7px 12px;
 		border: 1px solid var(--line);
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		color: var(--text);
 		font-size: 0.82rem;
@@ -1141,8 +1104,14 @@
 	}
 
 	.picker-emoji {
-		font-size: 0.95rem;
-		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
+		color: var(--text-muted);
+	}
+
+	.picker-option.selected .picker-emoji {
+		color: rgb(var(--brand-text-rgb));
 	}
 
 	.picker-label {
@@ -1159,7 +1128,7 @@
 		width: 44px;
 		height: 44px;
 		border: 1px solid var(--line);
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		color: var(--text);
 		font-size: 1.1rem;
@@ -1189,7 +1158,7 @@
 	.preset-btn {
 		min-height: 44px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		color: var(--text);
 		font-size: 0.82rem;
@@ -1211,7 +1180,7 @@
 		width: 100%;
 		padding: 10px 12px;
 		border: 1px solid var(--line);
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		color: var(--text);
 		/* 16px keeps iOS Safari from zooming the page when the field is focused. */
@@ -1241,7 +1210,7 @@
 		min-height: 44px;
 		padding: 8px 14px;
 		border: 1px solid var(--line);
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		color: var(--text);
 		font-size: 0.82rem;
@@ -1285,9 +1254,9 @@
 		min-height: 48px;
 		padding: 0 16px;
 		border: 0;
-		border-radius: 14px;
+		border-radius: var(--radius-control);
 		background: rgb(var(--brand-rgb));
-		color: #fff;
+		color: var(--on-brand);
 		font-size: 0.92rem;
 		font-weight: 700;
 		cursor: pointer;
@@ -1308,17 +1277,6 @@
 	.generate-btn:disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
-	}
-
-	.generate-btn.ai-shimmer {
-		background: linear-gradient(
-			100deg,
-			rgb(var(--brand-rgb)) 30%,
-			rgba(var(--brand-rgb), 0.72) 50%,
-			rgb(var(--brand-rgb)) 70%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 2s linear infinite;
 	}
 
 	.generate-time {
@@ -1344,7 +1302,7 @@
 		width: 7px;
 		height: 7px;
 		border-radius: 50%;
-		background: #fff;
+		background: var(--on-brand);
 		animation: thinking-bounce 1.2s ease-in-out infinite;
 	}
 
@@ -1369,13 +1327,14 @@
 		}
 	}
 
+	:global(html.data-saver) .thinking-dots span {
+		animation: none;
+		opacity: 0.7;
+	}
+
 	/* --- Settling (calm preview) --- */
 	.preview-card.settling {
 		border-style: dashed;
-	}
-
-	.preview-card.settling::before {
-		opacity: 0.45;
 	}
 
 	.preview-note.is-refining {
@@ -1405,7 +1364,7 @@
 	/* --- Keyboard tiers: all four tiles stay, only the density changes. --- */
 	.preview-card.tier-dense {
 		padding: 10px 11px 9px;
-		border-radius: 17px;
+		border-radius: var(--radius-overlay);
 	}
 
 	.preview-card.tier-dense .preview-top {
@@ -1415,7 +1374,7 @@
 	.preview-card.tier-dense .preview-topic-icon {
 		width: 32px;
 		height: 32px;
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 	}
 
 	.preview-card.tier-dense .preview-topic-icon svg {
@@ -1428,7 +1387,7 @@
 	}
 
 	.preview-card.tier-dense .preview-note {
-		font-size: 0.68rem;
+		font-size: 0.7rem;
 	}
 
 	.preview-card.tier-dense .preview-specs {
@@ -1439,15 +1398,11 @@
 	.preview-card.tier-dense .spec-tile {
 		min-height: 44px;
 		padding: 6px 9px;
-		border-radius: 11px;
+		border-radius: var(--radius-control);
 	}
 
 	.preview-card.tier-dense .spec-value {
 		font-size: 0.78rem;
-	}
-
-	.preview-card.tier-dense .spec-label {
-		font-size: 0.55rem;
 	}
 
 	.preview-card.tier-dense .preview-footer {
@@ -1461,7 +1416,7 @@
 
 	.preview-card.tier-micro {
 		padding: 8px 9px 8px;
-		border-radius: 15px;
+		border-radius: var(--radius-overlay);
 	}
 
 	.preview-card.tier-micro .preview-topic-icon {
@@ -1480,7 +1435,7 @@
 	.preview-card.tier-micro .spec-tile {
 		min-height: 44px;
 		padding: 5px 8px;
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 	}
 
 	.preview-card.tier-micro .spec-value {

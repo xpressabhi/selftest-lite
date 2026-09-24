@@ -87,8 +87,11 @@
 	<button
 		class={`hold-button ${className}`}
 		class:is-filled={filled}
+		class:is-busy={busy}
 		type="button"
-		disabled={disabled || busy}
+		disabled={disabled}
+		aria-disabled={busy || undefined}
+		aria-busy={busy}
 		aria-describedby={hint ? hintId : undefined}
 		onpointerdown={startHold}
 		onpointerup={cancelHold}
@@ -129,6 +132,12 @@
 		user-select: none;
 	}
 
+	/* Busy: keep focus on the button (no native disabled) while blocking input. */
+	.hold-button.is-busy {
+		pointer-events: none;
+		opacity: 0.6;
+	}
+
 	.hold-fill {
 		position: absolute;
 		inset: 0;
@@ -136,20 +145,8 @@
 		overflow: hidden;
 		transform: scaleY(0);
 		transform-origin: bottom;
-		background: rgba(15, 23, 42, 0.24);
+		background: color-mix(in srgb, var(--text) 24%, transparent);
 		transition: transform 140ms ease-out;
-	}
-
-	.hold-fill::before {
-		position: absolute;
-		top: -8px;
-		left: -60%;
-		width: 220%;
-		height: 16px;
-		border-radius: 50%;
-		background: inherit;
-		content: '';
-		animation: hold-wave 1.6s ease-in-out infinite alternate;
 	}
 
 	.hold-button.is-filled .hold-fill {
@@ -176,15 +173,6 @@
 		animation: hold-nudge 1.4s var(--ease-out);
 	}
 
-	@keyframes hold-wave {
-		from {
-			transform: translateX(-3%);
-		}
-		to {
-			transform: translateX(3%);
-		}
-	}
-
 	@keyframes hold-nudge {
 		0%,
 		100% {
@@ -197,16 +185,9 @@
 		}
 	}
 
-	/* Data saver: the fill still communicates state, without the wave. */
-	:global(html.data-saver) .hold-fill::before {
-		animation: none;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.hold-fill,
-		.hold-fill::before {
+		.hold-fill {
 			transition: none;
-			animation: none;
 		}
 	}
 </style>

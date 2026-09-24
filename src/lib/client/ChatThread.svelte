@@ -158,6 +158,8 @@
 						{/each}
 						<a class="recent-all" href="/history">{$t('plannerViewAll')}</a>
 					</div>
+				{:else}
+					<p class="chat-idle-hint">{$t('plannerWelcomeGreeting')}</p>
 				{/if}
 			</div>
 		{/if}
@@ -313,7 +315,7 @@
 	.chat-bubble {
 		max-width: 86%;
 		padding: 10px 14px;
-		border-radius: 16px;
+		border-radius: var(--radius-overlay);
 		font-size: 0.9rem;
 		line-height: 1.45;
 		word-break: break-word;
@@ -321,15 +323,15 @@
 
 	.chat-bubble-user {
 		background: rgb(var(--brand-rgb));
-		color: #fff;
-		border-bottom-right-radius: 6px;
+		color: var(--on-brand);
+		border-bottom-right-radius: var(--radius-control);
 	}
 
 	.chat-bubble-assistant {
 		background: var(--surface-muted);
 		color: var(--text);
 		border: 1px solid var(--line);
-		border-bottom-left-radius: 6px;
+		border-bottom-left-radius: var(--radius-control);
 	}
 
 	.chat-question {
@@ -398,6 +400,15 @@
 		padding-top: 4px;
 	}
 
+	.chat-idle-hint {
+		margin: 0;
+		padding: 10px 6px;
+		text-align: center;
+		font-size: 0.82rem;
+		line-height: 1.5;
+		color: var(--text-muted);
+	}
+
 	.recent-block,
 	.welcome-group {
 		display: flex;
@@ -421,7 +432,7 @@
 		width: 100%;
 		padding: 10px 12px;
 		border: 1px solid var(--line);
-		border-radius: 12px;
+		border-radius: var(--radius-surface);
 		background: var(--surface-muted);
 		color: var(--text);
 		text-align: left;
@@ -470,8 +481,8 @@
 	.welcome-greeting {
 		background: var(--surface-muted);
 		border: 1px solid var(--line);
-		border-radius: 16px;
-		border-bottom-left-radius: 6px;
+		border-radius: var(--radius-overlay);
+		border-bottom-left-radius: var(--radius-control);
 		padding: 10px 14px;
 		font-size: 0.9rem;
 		line-height: 1.45;
@@ -493,7 +504,7 @@
 		min-height: 44px;
 		padding: 10px 12px;
 		border: 1px solid var(--line);
-		border-radius: 12px;
+		border-radius: var(--radius-surface);
 		background: var(--surface-muted);
 		color: var(--text);
 		text-align: left;

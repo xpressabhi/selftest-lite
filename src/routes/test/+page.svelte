@@ -5,6 +5,7 @@
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
 	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
@@ -737,9 +738,11 @@
 	<div class="visually-hidden" aria-live="polite">{liveAnnouncement}</div>
 	{#if loading}
 		<div class="py-5 text-center">
-			<div class="thinking-dots" role="status" aria-label={$t('loading')}>
-				<span></span><span></span><span></span>
-			</div>
+			<div
+				class="test-loading-skeleton ai-shimmer"
+				role="status"
+				aria-label={$t('loading')}
+			></div>
 			<p class="text-muted mt-3">{$t('loading')}</p>
 		</div>
 	{:else if error}
@@ -750,7 +753,7 @@
 	{:else if questionPaper}
 		<header class="test-header">
 			<button class="test-exit" type="button" onclick={requestExit} aria-label={$t('exit')}>
-				<span aria-hidden="true">←</span>
+				<Icon name="arrow-left" size={18} />
 				<span class="test-exit-label">{$t('exit')}</span>
 			</button>
 			<h1 class="test-topic">
@@ -776,7 +779,7 @@
 						aria-expanded={showOverflowMenu}
 						onclick={() => (showOverflowMenu = !showOverflowMenu)}
 					>
-						⋯
+						<Icon name="menu" size={20} />
 					</button>
 					{#if showOverflowMenu}
 						<div class="test-overflow-menu" bind:this={overflowMenuElement}>
@@ -801,7 +804,9 @@
 		{#if !testStarted}
 			<main class="test-summary-wrap">
 				<div class="test-summary-card">
-					<span class="test-summary-badge" aria-hidden="true">📝</span>
+					<span class="test-summary-badge" aria-hidden="true">
+						<Icon name="note" size={26} />
+					</span>
 					<h2 class="test-summary-title">{$t('testSummaryTitle')}</h2>
 					<p class="test-summary-topic">
 						<MarkdownContent content={questionPaper.topic} tag="span" />
@@ -901,7 +906,7 @@
 								: $t('flagForReview')}
 							onclick={() => toggleFlag(currentQuestionIndex)}
 						>
-							<span aria-hidden="true">⚑</span>
+							<Icon name="flag" size={18} />
 							<span
 								>{flagged.includes(currentQuestionIndex)
 									? $t('flaggedQuestions')
@@ -946,9 +951,9 @@
 												<MarkdownContent content={option} links="text" />
 											</span>
 											{#if answers[currentQuestionIndex] === option}
-												<span class="test-option-check" aria-hidden="true"
-													>✓</span
-												>
+												<span class="test-option-check" aria-hidden="true">
+													<Icon name="check" size={16} />
+												</span>
 											{/if}
 										</button>
 									{/each}
@@ -975,7 +980,7 @@
 							class="test-flag-badge"
 							aria-label={`${$t('flaggedQuestions')}: ${flaggedCount}`}
 						>
-							<span aria-hidden="true">⚑</span>
+							<Icon name="flag" size={14} />
 							{flaggedCount}
 						</span>
 					{/if}
@@ -1086,7 +1091,7 @@
 		gap: 6px;
 		padding: 0 10px;
 		border: 0;
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 		background: transparent;
 		color: inherit;
 		font-size: 0.9rem;
@@ -1146,8 +1151,6 @@
 		border-radius: 50%;
 		background: transparent;
 		color: inherit;
-		font-size: 1.3rem;
-		line-height: 1;
 	}
 
 	.test-overflow-btn:hover,
@@ -1165,7 +1168,7 @@
 		min-width: 230px;
 		padding: 6px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
 	}
@@ -1193,6 +1196,14 @@
 		margin: 12px 12px 0;
 	}
 
+	.test-loading-skeleton {
+		width: 100%;
+		max-width: 480px;
+		height: 200px;
+		margin: 0 auto;
+		border-radius: var(--radius-surface);
+	}
+
 	.test-summary-wrap {
 		display: flex;
 		flex: 1 1 auto;
@@ -1206,7 +1217,7 @@
 		max-width: 480px;
 		padding: 28px 22px;
 		border: 1px solid var(--line);
-		border-radius: 18px;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
 		text-align: center;
@@ -1218,9 +1229,9 @@
 		height: 56px;
 		margin: 0 auto 12px;
 		place-items: center;
-		border-radius: 16px;
+		border-radius: var(--radius-overlay);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
-		font-size: 1.6rem;
+		color: var(--brand-text);
 	}
 
 	.test-summary-title {
@@ -1273,18 +1284,12 @@
 	.test-trimmed-notice {
 		margin: 0 0 16px;
 		padding: 9px 12px;
-		border: 1px solid rgba(217, 119, 6, 0.35);
-		border-radius: 12px;
-		background: rgba(217, 119, 6, 0.08);
-		color: #b45309;
+		border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--warn) 10%, transparent);
+		color: var(--warn);
 		font-size: 0.8rem;
 		line-height: 1.45;
-	}
-
-	:global(.dark) .test-trimmed-notice {
-		border-color: rgba(252, 211, 77, 0.35);
-		background: rgba(252, 211, 77, 0.08);
-		color: #fcd34d;
 	}
 
 	.test-summary-id {
@@ -1431,14 +1436,14 @@
 	}
 
 	.test-flag.active {
-		border-color: #d97706;
-		background: rgba(217, 119, 6, 0.1);
-		color: #b45309;
+		border-color: var(--warn);
+		background: color-mix(in srgb, var(--warn) 12%, transparent);
+		color: var(--warn);
 	}
 
 	.test-flag:hover,
 	.test-flag:focus-visible {
-		border-color: #d97706;
+		border-color: var(--warn);
 	}
 
 	:global(.test-card) {
@@ -1460,7 +1465,7 @@
 		gap: 12px;
 		padding: 8px 12px;
 		border: 1px solid var(--line);
-		border-radius: 12px;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		color: var(--text);
 		font-size: 0.95rem;
@@ -1572,7 +1577,7 @@
 	.test-option.selected .test-option-letter {
 		border-color: var(--brand-text);
 		background: var(--color-brand-600);
-		color: #fff;
+		color: var(--on-brand);
 	}
 
 	.test-option-text {
@@ -1587,9 +1592,7 @@
 		place-items: center;
 		border-radius: 999px;
 		background: var(--color-brand-600);
-		color: #fff;
-		font-size: 0.85rem;
-		font-weight: 700;
+		color: var(--on-brand);
 	}
 
 	.test-bottom-bar {
@@ -1645,8 +1648,8 @@
 		gap: 4px;
 		padding: 0 12px;
 		border-radius: 999px;
-		background: rgba(217, 119, 6, 0.12);
-		color: #b45309;
+		background: color-mix(in srgb, var(--warn) 14%, transparent);
+		color: var(--warn);
 		font-size: 0.8rem;
 		font-weight: 700;
 	}
@@ -1676,7 +1679,7 @@
 		max-width: 380px;
 		padding: 20px;
 		border: 1px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
 	}

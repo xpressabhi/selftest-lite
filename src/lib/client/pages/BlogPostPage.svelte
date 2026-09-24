@@ -1,6 +1,7 @@
 <script>
 	import { activeLanguage, t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import { formatBlogDate, getBlogCategory } from '$lib/data/blogPosts';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 	import SeoHead from '$lib/client/SeoHead.svelte';
@@ -47,8 +48,11 @@
 
 <article class="container py-4 py-md-5">
 	<div class="post-wrap">
-		<nav class="post-back" aria-label={$t('blogHeroTitle')}>
-			<a class="post-back-link" href={localizedPath('/blog', $activeLanguage)}>← {$t('blog')}</a>
+		<nav class="post-back" aria-label={$t('backToBlog')}>
+			<a class="post-back-link" href={localizedPath('/blog', $activeLanguage)}>
+				<Icon name="arrow-left" size={18} />
+				{$t('blog')}
+			</a>
 		</nav>
 
 		<header class="post-header">
@@ -69,15 +73,7 @@
 				{#each post.pointKeys as pointKey (pointKey)}
 					<li class="post-point">
 						<span class="post-check" aria-hidden="true">
-							<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-								<path
-									d="M3.5 8.5l3 3 6-7"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								/>
-							</svg>
+							<Icon name="check" size={14} />
 						</span>
 						<span>{$t(pointKey)}</span>
 					</li>
@@ -135,6 +131,7 @@
 		display: inline-flex;
 		min-height: 44px;
 		align-items: center;
+		gap: 0.4rem;
 		color: var(--brand-text);
 		font-weight: 600;
 		text-decoration: none;
@@ -161,8 +158,8 @@
 		align-items: center;
 		padding: 0.15rem 0.7rem;
 		border-radius: 999px;
-		background: var(--brand-text);
-		color: #fff;
+		background: var(--color-brand-600);
+		color: var(--on-brand);
 		font-size: 0.75rem;
 		font-weight: 600;
 	}
@@ -197,7 +194,7 @@
 		gap: 0.75rem;
 		padding: 1.1rem;
 		border: 1px solid var(--line);
-		border-radius: 1rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 
@@ -235,9 +232,10 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 999px;
-		background: rgba(79, 70, 229, 0.12);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, transparent);
 		color: var(--brand-text);
 	}
+
 	.post-points-title {
 		margin: 0;
 		font-size: 0.85rem;
@@ -245,34 +243,6 @@
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 		color: var(--text-muted);
-	}
-
-	.post-list {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		display: grid;
-		gap: 0.75rem;
-	}
-
-	.post-point {
-		display: flex;
-		gap: 0.6rem;
-		align-items: flex-start;
-		line-height: 1.65;
-	}
-
-	.post-check {
-		display: inline-flex;
-		width: 1.35rem;
-		height: 1.35rem;
-		flex-shrink: 0;
-		margin-top: 0.15rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: 999px;
-		background: rgba(79, 70, 229, 0.12);
-		color: var(--brand-text);
 	}
 
 	.post-related {
@@ -297,7 +267,7 @@
 		gap: 0.3rem;
 		padding: 0.9rem;
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 

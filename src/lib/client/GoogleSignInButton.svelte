@@ -142,6 +142,11 @@
 	<div class="auth-google-error">
 		{googleClientId ? $t('googleLoginUnavailable') : $t('googleClientMissing')}
 	</div>
+{:else if status === 'loading'}
+	<div class="google-sign-in-button" role="status">
+		<span class="google-loading-track ai-shimmer" aria-hidden="true"></span>
+		<span class="visually-hidden">{$t('signInWithGoogle')}</span>
+	</div>
 {:else}
 	<div bind:this={buttonRef} class="google-sign-in-button"></div>
 {/if}
@@ -152,6 +157,14 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.google-loading-track {
+		width: 100%;
+		max-width: 280px;
+		height: 40px;
+		border-radius: 999px;
+		background: var(--surface-muted);
 	}
 
 	.auth-google-error {

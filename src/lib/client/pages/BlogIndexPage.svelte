@@ -99,7 +99,7 @@
 			<article class="blog-featured">
 				<div class="blog-featured-body">
 					<div class="blog-meta">
-						<span class="blog-badge">{$t(getBlogCategory(featured.categoryId).labelKey)}</span>
+						<span class="blog-badge">{categoryLabel(featured)}</span>
 						<span class="blog-meta-text">
 							{formatDate(featured.date)} · {$t(featured.readTimeKey)}
 						</span>
@@ -128,11 +128,6 @@
 				{/each}
 			</div>
 		{/if}
-
-		<p class="blog-more">
-			{$t('blogMorePosts')}
-			<a class="blog-inline-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
-		</p>
 
 		<CtaBanner
 			titleKey="blogPracticeCtaTitle"
@@ -196,18 +191,16 @@
 
 	.blog-chip.active {
 		border-color: transparent;
-		background: var(--brand-text);
-		color: #fff;
+		background: var(--color-brand-600);
+		color: var(--on-brand);
 	}
 
 	.blog-featured {
 		position: relative;
 		padding: 1.3rem;
-		border: 1px solid var(--line);
-		border-radius: 1rem;
-		background:
-			linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(129, 140, 248, 0.04)),
-			var(--surface);
+		border: 1px solid color-mix(in srgb, var(--color-brand-600) 22%, var(--line));
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--color-brand-600) 4%, var(--surface));
 	}
 
 	.blog-featured-body {
@@ -227,8 +220,8 @@
 		align-items: center;
 		padding: 0.15rem 0.65rem;
 		border-radius: 999px;
-		background: var(--brand-text);
-		color: #fff;
+		background: var(--color-brand-600);
+		color: var(--on-brand);
 		font-size: 0.75rem;
 		font-weight: 600;
 	}
@@ -252,7 +245,7 @@
 		align-content: start;
 		padding: 1.1rem;
 		border: 1px solid var(--line);
-		border-radius: 1rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		transition: border-color 0.15s ease-out;
 	}
@@ -288,19 +281,6 @@
 	.blog-grid {
 		display: grid;
 		gap: 1rem;
-	}
-
-	.blog-more {
-		margin: 0;
-		color: var(--text-muted);
-	}
-
-	.blog-inline-link {
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-		color: var(--brand-text);
-		font-weight: 600;
 	}
 
 	@media (min-width: 768px) {

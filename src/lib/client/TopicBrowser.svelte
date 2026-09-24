@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import Icon from '$lib/client/Icon.svelte';
 	import { TOPIC_CATEGORIES } from '$lib/shared/constants';
 
 	let { selectedCategory = '', selectedTopics = [], ontopicchange = () => {} } = $props();
@@ -30,7 +31,9 @@
 		aria-controls="topic-browser-body"
 		onclick={() => (expanded = !expanded)}
 	>
-		<span class="toggle-icon" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+		<span class="toggle-icon" aria-hidden="true">
+			<Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={16} />
+		</span>
 		<span class="toggle-label">{$t('browseTopics')}</span>
 		{#if selectedTopics.length > 0}
 			<span class="toggle-count">{selectedTopics.length} {$t('unitsSelected')}</span>
@@ -106,9 +109,12 @@
 	}
 
 	.toggle-icon {
-		font-size: 0.8rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		width: 16px;
-		text-align: center;
+		height: 16px;
+		flex-shrink: 0;
 	}
 
 	.toggle-count {
@@ -141,7 +147,7 @@
 
 	.category-btn {
 		padding: 8px 16px;
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		border: 1px solid var(--line);
 		background: var(--surface);
 		color: var(--text-muted);
@@ -175,7 +181,7 @@
 
 	.topic-chip {
 		padding: 8px 14px;
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		border: 1px solid var(--line);
 		background: var(--surface);
 		color: var(--text-muted);

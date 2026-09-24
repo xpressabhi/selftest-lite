@@ -1,5 +1,13 @@
 <script>
+	// Accessible name is required: pass `label` (visible) or `ariaLabel`
+	// (when the visible text lives outside the switch).
 	let { checked = false, label = '', ariaLabel = '', disabled = false, onchange } = $props();
+
+	$effect(() => {
+		if (!label && !ariaLabel && import.meta.env.DEV) {
+			console.warn('SquishSwitch: pass `label` or `ariaLabel` so the switch has a name.');
+		}
+	});
 </script>
 
 <label class="squish-switch" class:is-disabled={disabled}>
@@ -7,7 +15,7 @@
 		class="squish-input"
 		type="checkbox"
 		role="switch"
-		aria-label={ariaLabel || undefined}
+		aria-label={ariaLabel || label || undefined}
 		{checked}
 		{disabled}
 		onchange={(event) => onchange?.(event.currentTarget.checked)}
@@ -50,7 +58,7 @@
 	}
 
 	.squish-input:checked + .squish-track {
-		background: var(--color-brand-600);
+		background: var(--brand-text);
 	}
 
 	.squish-input:focus-visible + .squish-track {
@@ -65,7 +73,7 @@
 		width: 20px;
 		height: 20px;
 		border-radius: 999px;
-		background: #fff;
+		background: var(--surface);
 		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
 		transition: transform var(--motion-base) var(--ease-commit);
 	}

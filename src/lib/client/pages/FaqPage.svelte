@@ -48,7 +48,7 @@
 			<p class="faq-subtitle">{$t('faqHeroBody')}</p>
 		</header>
 
-		<nav class="faq-nav" aria-label={$t('faqHeroTitle')}>
+		<nav class="faq-nav" aria-label={$t('faq')}>
 			{#each FAQ_SECTIONS as section (section.id)}
 				<a class="faq-chip" href={`#section-${section.id}`}>{$t(section.titleKey)}</a>
 			{/each}
@@ -134,10 +134,8 @@
 
 	.faq-section-title {
 		margin: 0 0 0.75rem;
-		font-size: 1.1rem;
+		font-size: 1rem;
 		font-weight: 700;
 		color: var(--text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
 	}
 </style>

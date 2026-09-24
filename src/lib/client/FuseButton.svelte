@@ -5,6 +5,7 @@
 	// one instance armed.
 	let {
 		armed = false,
+		disabled = false,
 		label = '',
 		undoLabel = '',
 		durationMs = 4000,
@@ -24,6 +25,9 @@
 	});
 
 	function handleClick() {
+		if (disabled) {
+			return;
+		}
 		if (armed) {
 			oncancel?.();
 		} else {
@@ -36,6 +40,7 @@
 	class={`fuse-button ${className}`}
 	class:is-armed={armed}
 	type="button"
+	{disabled}
 	aria-label={armed ? undoLabel : label}
 	onclick={handleClick}
 >
@@ -53,9 +58,16 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		min-height: 44px;
 		overflow: hidden;
 		border: 0;
+		border-radius: var(--radius-control);
 		cursor: pointer;
+	}
+
+	.fuse-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
 	}
 
 	.fuse-button.is-armed {

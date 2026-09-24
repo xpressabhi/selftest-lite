@@ -1,4 +1,5 @@
 <script>
+	import Icon from '$lib/client/Icon.svelte';
 	import { t } from './i18n';
 	import { saveProfile } from './profile';
 	import { track } from './telemetry';
@@ -73,6 +74,7 @@
 	const TOTAL_STEPS = 4;
 
 	let examQuery = $state('');
+	let highlightedIndex = $state(-1);
 	const filteredExams = $derived.by(() => {
 		const query = examQuery.trim().toLowerCase();
 		if (!query) {
@@ -84,6 +86,49 @@
 				(exam.shortName || '').toLowerCase().includes(query)
 		).slice(0, 8);
 	});
+
+	const activeOptionId = $derived(
+		highlightedIndex >= 0 && filteredExams[highlightedIndex]
+			? examOptionId(filteredExams[highlightedIndex])
+			: undefined
+	);
+
+	function examOptionId(exam) {
+		return `wizard-exam-option-${exam.id}`;
+	}
+
+	// Keep the highlighted option inside the modal's scroll viewport.
+	$effect(() => {
+		const exam = filteredExams[highlightedIndex];
+		if (!exam) {
+			return;
+		}
+		document.getElementById(examOptionId(exam))?.scrollIntoView({ block: 'nearest' });
+	});
+
+	function handleExamKeydown(event) {
+		if (filteredExams.length === 0) {
+			return;
+		}
+		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			const delta = event.key === 'ArrowDown' ? 1 : -1;
+			if (highlightedIndex < 0) {
+				highlightedIndex = delta > 0 ? 0 : filteredExams.length - 1;
+			} else {
+				const count = filteredExams.length;
+				highlightedIndex = (highlightedIndex + delta + count) % count;
+			}
+			return;
+		}
+		if (event.key === 'Enter' && highlightedIndex >= 0) {
+			const exam = filteredExams[highlightedIndex];
+			if (exam) {
+				event.preventDefault();
+				selectExam(exam);
+			}
+		}
+	}
 
 	function closeModal() {
 		onclose?.();
@@ -130,11 +175,13 @@
 	function selectExam(exam) {
 		draft.examTarget = { examId: exam.id, name: exam.name };
 		examQuery = exam.name;
+		highlightedIndex = -1;
 	}
 
 	function clearExam() {
 		draft.examTarget = null;
 		examQuery = '';
+		highlightedIndex = -1;
 	}
 
 	function canAdvance() {
@@ -194,7 +241,7 @@
 			aria-label={$t('profileWizardDismissAria')}
 			onclick={closeModal}
 		>
-			×
+			<Icon name="close" size={18} />
 		</button>
 		<div class="wizard-header">
 			<h2 class="wizard-title">{$t('profileWizardTitle')}</h2>
@@ -255,16 +302,19 @@
 					aria-autocomplete="list"
 					aria-expanded={filteredExams.length > 0}
 					aria-controls="wizard-exam-suggestions"
+					aria-activedescendant={activeOptionId}
 					placeholder={$t('profileWizardSearchExam')}
 					aria-label={$t('profileWizardSearchExam')}
 					bind:value={examQuery}
 					maxlength={MAX_SEARCH_CHARS}
 					oninput={(event) => {
 						examQuery = sanitizeInputText(event.currentTarget.value, MAX_SEARCH_CHARS);
+						highlightedIndex = -1;
 						if (draft.examTarget && examQuery !== draft.examTarget.name) {
 							draft.examTarget = null;
 						}
 					}}
+					onkeydown={handleExamKeydown}
 				/>
 				{#if filteredExams.length > 0}
 					<ul
@@ -277,6 +327,8 @@
 							<li role="presentation">
 								<button
 									type="button"
+									id={examOptionId(exam)}
+									class:highlighted={activeOptionId === examOptionId(exam)}
 									role="option"
 									aria-selected={draft.examTarget?.examId === exam.id}
 									onclick={() => selectExam(exam)}
@@ -289,7 +341,7 @@
 				{/if}
 				{#if draft.examTarget}
 					<button type="button" class="selected-exam" onclick={clearExam}>
-						{draft.examTarget.name} <span aria-hidden="true">×</span>
+						{draft.examTarget.name} <Icon name="close" size={14} />
 					</button>
 				{/if}
 			</section>
@@ -356,8 +408,8 @@
 						bind:value={draft.preferences.language}
 					>
 						<option value="">{$t('profileWizardLanguageDefault')}</option>
-						<option value="english">English</option>
-						<option value="hindi">हिन्दी</option>
+						<option value="english">{$t('englishLabel')}</option>
+						<option value="hindi">{$t('hindiLabel')}</option>
 					</select>
 				</div>
 				<div class="form-group">
@@ -391,7 +443,7 @@
 								aria-pressed="true"
 								onclick={() => toggleFocus(topic)}
 							>
-								{topic} <span aria-hidden="true">×</span>
+								{topic} <Icon name="close" size={14} />
 							</button>
 						{/each}
 					</div>
@@ -470,7 +522,7 @@
 		display: grid;
 		place-items: center;
 		padding: 16px;
-		background: color-mix(in srgb, #000 55%, transparent);
+		background: color-mix(in srgb, #0f172a 55%, transparent);
 	}
 
 	.profile-wizard {
@@ -481,9 +533,9 @@
 		overflow-y: auto;
 		padding: 24px 20px 16px;
 		border: 1px solid var(--line);
-		border-radius: 16px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 20px 60px color-mix(in srgb, #000 35%, transparent);
+		box-shadow: 0 20px 60px color-mix(in srgb, #0f172a 35%, transparent);
 	}
 
 	.wizard-close {
@@ -497,6 +549,12 @@
 		background: transparent;
 		color: var(--text-muted);
 		font-size: 1.3rem;
+	}
+
+	.wizard-close:hover,
+	.wizard-close:focus-visible {
+		background: var(--surface-muted);
+		color: var(--text);
 	}
 
 	.wizard-header {
@@ -555,7 +613,7 @@
 
 	.wizard-error {
 		margin: 10px 0 0;
-		color: #dc2626;
+		color: var(--danger);
 		font-size: 0.85rem;
 		font-weight: 600;
 	}
@@ -589,7 +647,7 @@
 		padding: 0;
 		list-style: none;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		overflow: hidden;
 	}
 
@@ -605,7 +663,8 @@
 		text-align: left;
 	}
 
-	.exam-suggestions button:hover {
+	.exam-suggestions button:hover,
+	.exam-suggestions button.highlighted {
 		background: var(--surface-muted);
 	}
 
@@ -654,7 +713,7 @@
 		min-height: 44px;
 		padding: 8px 12px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted);
 		color: var(--text);
 	}

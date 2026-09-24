@@ -1,4 +1,5 @@
 <script>
+	import Icon from '$lib/client/Icon.svelte';
 	import { t } from '$lib/client/i18n';
 	import { focusTrap } from '$lib/client/focusTrap';
 	import HoldButton from '$lib/client/HoldButton.svelte';
@@ -65,7 +66,7 @@
 				aria-label={$t('closeMenu')}
 				onclick={onClose}
 			>
-				×
+				<Icon name="close" size={20} />
 			</button>
 		</header>
 
@@ -149,7 +150,8 @@
 		display: flex;
 		flex-direction: column;
 		border: 1px solid var(--line);
-		border-radius: 16px 16px 10px 10px;
+		border-radius: var(--radius-overlay) var(--radius-overlay) var(--radius-control)
+			var(--radius-control);
 		background: var(--surface);
 		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
 		animation: sheet-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -223,7 +225,7 @@
 		min-height: 44px;
 		place-items: center;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		color: var(--text);
 		font-size: 0.85rem;
@@ -233,7 +235,7 @@
 	.sheet-tile.answered {
 		border-color: var(--brand-text);
 		background: var(--color-brand-600);
-		color: #fff;
+		color: var(--on-brand);
 	}
 
 	.sheet-tile.current {
@@ -249,12 +251,12 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 999px;
-		background: #d97706;
+		background: var(--warn);
 		content: '';
 	}
 
 	.sheet-tile.answered.flagged::after {
-		background: #fde68a;
+		background: var(--on-warn);
 	}
 
 	.sheet-legend {
@@ -286,8 +288,8 @@
 	}
 
 	.legend-dot.flagged {
-		border-color: #d97706;
-		background: #d97706;
+		border-color: var(--warn);
+		background: var(--warn);
 	}
 
 	.sheet-footer {
@@ -298,9 +300,9 @@
 	.sheet-warning {
 		margin: 0 0 10px;
 		padding: 8px 12px;
-		border-radius: 8px;
-		background: rgba(217, 119, 6, 0.1);
-		color: #b45309;
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--warn) 12%, transparent);
+		color: var(--warn);
 		font-size: 0.85rem;
 		font-weight: 600;
 	}
@@ -308,9 +310,9 @@
 	.sheet-error {
 		margin: 0 0 10px;
 		padding: 8px 12px;
-		border-radius: 8px;
-		background: rgba(220, 53, 69, 0.1);
-		color: #dc2626;
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--danger) 12%, transparent);
+		color: var(--danger);
 		font-size: 0.85rem;
 		font-weight: 600;
 	}
@@ -323,7 +325,7 @@
 
 	.sheet-actions .btn {
 		flex: 1 1 auto;
-		min-height: 48px;
+		min-height: 44px;
 	}
 
 	@keyframes backdrop-in {
@@ -352,7 +354,7 @@
 		}
 
 		.review-sheet {
-			border-radius: 16px;
+			border-radius: var(--radius-overlay);
 		}
 
 		.sheet-handle {

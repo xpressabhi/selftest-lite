@@ -2,6 +2,7 @@
 	import { t } from '$lib/client/i18n';
 	import { loginWithGoogleCredential, user } from '$lib/client/auth';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
 	import {
 		fetchProfile,
@@ -244,7 +245,7 @@
 
 	const signals = $derived($profileInsights?.signals || null);
 	const percent = $derived((value) =>
-		typeof value === 'number' ? `${Math.round(value * 100)}%` : '—'
+		typeof value === 'number' ? `${Math.round(value * 100)}%` : $t('na')
 	);
 </script>
 
@@ -253,10 +254,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section
-	class="container py-4 py-md-5"
-	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px)));"
->
+<section class="container py-4 py-md-5">
 	<div class="mx-auto profile-wrap">
 		<h1 class="h3 fw-bold mb-3">{$t('profilePageTitle')}</h1>
 
@@ -380,9 +378,11 @@
 									<button
 										type="button"
 										class="chip-selected mt-2"
+										aria-label={`${$t('clear')} ${draft.examTarget.name}`}
 										onclick={clearExam}
 									>
-										{draft.examTarget.name} <span aria-hidden="true">×</span>
+										{draft.examTarget.name}
+										<Icon name="close" size={14} />
 									</button>
 								{/if}
 							</div>
@@ -409,6 +409,7 @@
 									<input
 										class="form-control"
 										type="text"
+										aria-label={$t('profileWizardAddSubjectPlaceholder')}
 										placeholder={$t('profileWizardAddSubjectPlaceholder')}
 										bind:value={subjectInput}
 										maxlength={MAX_PROFILE_FIELD_CHARS}
@@ -475,9 +476,11 @@
 									<button
 										type="button"
 										class="chip selected"
+										aria-label={`${$t('clear')} ${topic}`}
 										onclick={() => toggleInList('declaredFocus', topic)}
 									>
-										{topic} <span aria-hidden="true">×</span>
+										{topic}
+										<Icon name="close" size={14} />
 									</button>
 								{/each}
 							</div>
@@ -486,6 +489,7 @@
 							<input
 								class="form-control"
 								type="text"
+								aria-label={$t('profileWizardAddFocusPlaceholder')}
 								placeholder={$t('profileWizardAddFocusPlaceholder')}
 								bind:value={focusInput}
 								maxlength={MAX_PROFILE_FIELD_CHARS}
@@ -530,7 +534,7 @@
 										{$t('profileWeakTopics')}
 									</h3>
 									{#if signals.weakTopics.length === 0}
-										<p class="text-muted small">—</p>
+										<p class="text-muted small">{$t('na')}</p>
 									{:else}
 										<ul class="insight-list">
 											{#each signals.weakTopics as topic (topic.topic)}
@@ -552,7 +556,7 @@
 										{$t('profileStrongTopics')}
 									</h3>
 									{#if signals.strongTopics.length === 0}
-										<p class="text-muted small">—</p>
+										<p class="text-muted small">{$t('na')}</p>
 									{:else}
 										<ul class="insight-list">
 											{#each signals.strongTopics as topic (topic.topic)}
@@ -618,7 +622,17 @@
 				{/if}
 			</div>
 		{:else}
-			<p class="text-muted">…</p>
+			<div class="profile-skeleton" role="status" aria-label={$t('loadingContent')}>
+				<div class="skeleton-block skeleton-heading ai-shimmer"></div>
+				<div class="skeleton-card">
+					<div class="skeleton-block ai-shimmer"></div>
+					<div class="skeleton-block skeleton-short ai-shimmer"></div>
+				</div>
+				<div class="skeleton-card">
+					<div class="skeleton-block ai-shimmer"></div>
+					<div class="skeleton-block skeleton-short ai-shimmer"></div>
+				</div>
+			</div>
 		{/if}
 	</div>
 </section>
@@ -635,7 +649,10 @@
 	}
 
 	.chip {
+		display: inline-flex;
 		min-height: 44px;
+		align-items: center;
+		gap: 6px;
 		padding: 8px 14px;
 		border: 1px solid var(--line);
 		border-radius: 999px;
@@ -645,10 +662,20 @@
 		font-weight: 600;
 	}
 
+	.chip:hover,
+	.chip:focus-visible {
+		border-color: var(--color-brand-500);
+	}
+
 	.chip.selected {
 		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
 		color: var(--brand-text);
+	}
+
+	.chip:active,
+	.chip-selected:active {
+		transform: translateY(1px);
 	}
 
 	.chip-selected {
@@ -662,6 +689,11 @@
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
 		color: var(--brand-text);
 		font-weight: 600;
+	}
+
+	.chip-selected:hover,
+	.chip-selected:focus-visible {
+		background: color-mix(in srgb, var(--color-brand-600) 22%, transparent);
 	}
 
 	.add-row {
@@ -680,7 +712,7 @@
 		padding: 0;
 		list-style: none;
 		border: 1px solid var(--line);
-		border-radius: 10px;
+		border-radius: var(--radius-control);
 		overflow: hidden;
 	}
 
@@ -721,5 +753,35 @@
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 10px;
+	}
+
+	.profile-skeleton {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.skeleton-block {
+		height: 14px;
+		border-radius: var(--radius-control);
+	}
+
+	.skeleton-heading {
+		width: 40%;
+		height: 28px;
+	}
+
+	.skeleton-short {
+		width: 55%;
+	}
+
+	.skeleton-card {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 24px;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
 	}
 </style>

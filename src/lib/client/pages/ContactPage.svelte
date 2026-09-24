@@ -1,6 +1,7 @@
 <script>
 	import { activeLanguage, t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 	import SeoHead from '$lib/client/SeoHead.svelte';
 	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
@@ -73,7 +74,7 @@
 				<ul class="contact-social">
 					<li>
 						<a
-							class="contact-link"
+							class="contact-pill"
 							href="https://xpressabhi.github.io/"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -83,7 +84,7 @@
 					</li>
 					<li>
 						<a
-							class="contact-link"
+							class="contact-pill"
 							href="https://github.com/xpressabhi"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -93,7 +94,7 @@
 					</li>
 					<li>
 						<a
-							class="contact-link"
+							class="contact-pill"
 							href="https://www.linkedin.com/in/akm85/"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -105,43 +106,41 @@
 			</article>
 		</div>
 
-		<section class="contact-section">
-			<h2 class="contact-section-title">{$t('contactTipsTitle')}</h2>
-			<ul class="contact-tips">
-				{#each tips as tipKey (tipKey)}
-					<li class="contact-tip">
-						<span class="tip-check" aria-hidden="true">
-							<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-								<path
-									d="M3.5 8.5l3 3 6-7"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								/>
-							</svg>
-						</span>
-						<span>{$t(tipKey)}</span>
-					</li>
-				{/each}
-			</ul>
-		</section>
+		<section class="contact-help">
+			<div class="contact-help-group">
+				<h2 class="contact-section-title">{$t('contactTipsTitle')}</h2>
+				<ul class="contact-tips">
+					{#each tips as tipKey (tipKey)}
+						<li class="contact-tip">
+							<span class="tip-check" aria-hidden="true">
+								<Icon name="check" size={14} />
+							</span>
+							<span>{$t(tipKey)}</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
 
-		<section class="contact-section">
-			<h2 class="contact-section-title">{$t('contactQuickHelpTitle')}</h2>
-			<ul class="contact-links">
-				<li>
-					<a class="contact-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
-				</li>
-				<li>
-					<a class="contact-link" href={localizedPath('/privacy', $activeLanguage)}>{$t('contactQuickHelpPrivacy')}</a>
-				</li>
-				<li>
-					<a class="contact-link" href={`${localizedPath('/faq', $activeLanguage)}#q-wrong-answer`}>
-						{$t('contactQuickHelpReport')}
-					</a>
-				</li>
-			</ul>
+			<div class="contact-help-group">
+				<h2 class="contact-section-title">{$t('contactQuickHelpTitle')}</h2>
+				<ul class="contact-quick">
+					<li>
+						<a class="contact-pill" href={localizedPath('/faq', $activeLanguage)}>
+							{$t('contactQuickHelpFaq')}
+						</a>
+					</li>
+					<li>
+						<a class="contact-pill" href={localizedPath('/privacy', $activeLanguage)}>
+							{$t('contactQuickHelpPrivacy')}
+						</a>
+					</li>
+					<li>
+						<a class="contact-pill" href={`${localizedPath('/faq', $activeLanguage)}#q-wrong-answer`}>
+							{$t('contactQuickHelpReport')}
+						</a>
+					</li>
+				</ul>
+			</div>
 		</section>
 
 		<CtaBanner
@@ -192,7 +191,7 @@
 		align-content: start;
 		padding: 1.25rem;
 		border: 1px solid var(--line);
-		border-radius: 1rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 	}
 
@@ -212,24 +211,68 @@
 		grid-column: 1 / -1;
 	}
 
-	.contact-social {
+	.contact-social,
+	.contact-quick {
 		margin: 0;
 		padding: 0;
 		list-style: none;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.25rem 1.25rem;
+		gap: 0.5rem;
+	}
+
+	.contact-help {
+		display: grid;
+		gap: 1.25rem;
+		padding: 1.25rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+	}
+
+	.contact-help-group {
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.contact-help-group + .contact-help-group {
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--line);
+	}
+
+	.contact-pill {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		padding: 0 0.9rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface-muted);
+		color: var(--text);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition:
+			border-color 0.15s ease-out,
+			background-color 0.15s ease-out,
+			color 0.15s ease-out,
+			transform 0.12s ease-out;
+	}
+
+	.contact-pill:hover {
+		border-color: var(--brand-text);
+		background: color-mix(in srgb, var(--color-brand-600) 8%, var(--surface));
+		color: var(--brand-text);
+	}
+
+	.contact-pill:active {
+		transform: translateY(1px);
 	}
 
 	.contact-action {
 		justify-self: start;
 		margin-top: 0.25rem;
 		text-decoration: none;
-	}
-
-	.contact-section {
-		display: grid;
-		gap: 0.75rem;
 	}
 
 	.contact-section-title {
@@ -263,29 +306,8 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 999px;
-		background: rgba(79, 70, 229, 0.12);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, transparent);
 		color: var(--brand-text);
-	}
-
-	.contact-links {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		display: grid;
-		gap: 0.25rem;
-	}
-
-	.contact-link {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		color: var(--brand-text);
-		font-weight: 600;
-		text-decoration: none;
-	}
-
-	.contact-link:hover {
-		text-decoration: underline;
 	}
 
 	@media (min-width: 768px) {

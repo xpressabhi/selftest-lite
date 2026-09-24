@@ -424,7 +424,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 6px 6px 8px;
-		border-radius: 20px;
+		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		border: 2px solid var(--line);
 		transition:
@@ -439,27 +439,6 @@
 
 	.composer-group.parsing {
 		border-color: rgb(var(--brand-text-rgb));
-		box-shadow: 0 0 0 4px rgba(var(--brand-rgb), 0.15);
-		animation: parsing-glow 2s ease-in-out infinite;
-	}
-
-	@keyframes parsing-glow {
-		0%,
-		100% {
-			box-shadow:
-				0 0 0 4px rgba(var(--brand-rgb), 0.12),
-				0 0 12px rgba(var(--brand-rgb), 0.06);
-		}
-		50% {
-			box-shadow:
-				0 0 0 6px rgba(var(--brand-rgb), 0.08),
-				0 0 20px rgba(var(--brand-rgb), 0.1);
-		}
-	}
-
-	:global(html.data-saver) .composer-group.parsing,
-	:global(html.reduce-motion) .composer-group.parsing {
-		animation: none;
 	}
 
 	.composer-search {
@@ -467,7 +446,7 @@
 		width: 44px;
 		height: 44px;
 		border: 0;
-		border-radius: 14px;
+		border-radius: var(--radius-control);
 		background: transparent;
 		color: var(--text-muted);
 		display: flex;
@@ -490,7 +469,7 @@
 		width: 44px;
 		height: 44px;
 		border: 0;
-		border-radius: 14px;
+		border-radius: var(--radius-control);
 		background: transparent;
 		color: var(--text-muted);
 		display: flex;
@@ -590,9 +569,9 @@
 		width: 44px;
 		height: 44px;
 		border: 0;
-		border-radius: 14px;
+		border-radius: var(--radius-control);
 		background: rgb(var(--brand-rgb));
-		color: #fff;
+		color: var(--on-brand);
 		display: flex;
 		align-items: center;
 		justify-content: center;

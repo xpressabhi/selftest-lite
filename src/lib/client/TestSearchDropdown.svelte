@@ -1,5 +1,6 @@
 <script>
 	import { untrack } from 'svelte';
+	import Icon from '$lib/client/Icon.svelte';
 	import { t } from '$lib/client/i18n';
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { getHiddenHistoryIds, getHistory } from '$lib/client/storage';
@@ -219,7 +220,7 @@
 					type="button"
 					onclick={() => handleResultClick(exactTestIdMatch.id)}
 				>
-					<span class="result-icon" aria-hidden="true">&#128269;</span>
+					<span class="result-icon" aria-hidden="true"><Icon name="search" size={18} /></span>
 					<span class="result-text">
 						<strong>{exactTestIdMatch.topic || $t('untitledTest')}</strong>
 						<span class="result-meta">
@@ -298,7 +299,7 @@
 					type="button"
 					onclick={() => ongenerate(trimmedQuery, hasMatches ? 'overlay-footer' : 'no-matches')}
 				>
-					<span class="generate-icon" aria-hidden="true">⚡</span>
+					<span class="generate-icon" aria-hidden="true"><Icon name="zap" size={18} /></span>
 					<span class="generate-text">
 						<span class="generate-label">{$t('plannerGenerateNew')}</span>
 						<span class="generate-query">{trimmedQuery}</span>
@@ -350,7 +351,7 @@
 
 	.strip-label {
 		flex-shrink: 0;
-		font-size: 0.68rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -473,7 +474,8 @@
 
 	.result-icon {
 		flex-shrink: 0;
-		font-size: 0.9rem;
+		display: inline-flex;
+		align-items: center;
 		opacity: 0.6;
 	}
 
@@ -542,7 +544,7 @@
 
 	.dropdown-plan-label {
 		flex-shrink: 0;
-		font-size: 0.58rem;
+		font-size: 0.7rem;
 		font-weight: 800;
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
@@ -566,19 +568,15 @@
 		border-radius: 999px;
 		border: 1px solid var(--line);
 		background: var(--surface);
-		font-size: 0.58rem;
+		font-size: 0.7rem;
 		font-weight: 800;
 		color: var(--text-muted);
 	}
 
 	.dropdown-plan-state.is-ready {
 		border-color: transparent;
-		background: rgba(16, 185, 129, 0.12);
-		color: #047857;
-	}
-
-	:global(.dark) .dropdown-plan-state.is-ready {
-		color: #6ee7b7;
+		background: color-mix(in srgb, var(--ok) 12%, transparent);
+		color: var(--ok);
 	}
 
 	.dropdown-generate:hover {
@@ -586,8 +584,10 @@
 	}
 
 	.generate-icon {
-		font-size: 1.1rem;
 		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		color: var(--brand-text);
 	}
 
 	.generate-text {

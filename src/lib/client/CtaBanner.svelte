@@ -37,11 +37,10 @@
 		gap: 1rem;
 		align-items: flex-start;
 		padding: 1.25rem;
-		border: 1px solid var(--line);
-		border-radius: 1rem;
-		background:
-			linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(129, 140, 248, 0.05)),
-			var(--surface);
+		border: 1px solid var(--color-brand-700);
+		border-radius: var(--radius-surface);
+		background: var(--color-brand-600);
+		color: var(--on-brand);
 	}
 
 	.cta-copy {
@@ -53,11 +52,12 @@
 		font-size: 1.25rem;
 		line-height: 1.3;
 		font-weight: 700;
+		color: var(--on-brand);
 	}
 
 	.cta-body {
 		margin: 0;
-		color: var(--text-muted);
+		color: color-mix(in srgb, var(--on-brand) 88%, transparent);
 	}
 
 	.cta-actions {
@@ -67,17 +67,39 @@
 		gap: 0.75rem 1rem;
 	}
 
+	/* Invert the primary button on the solid brand fill: the default
+	   indigo-on-indigo button would disappear. */
+	.cta-banner .btn-primary {
+		background: var(--on-brand);
+		color: var(--color-brand-700);
+	}
+
+	.cta-banner .btn-primary:hover {
+		background: color-mix(in srgb, var(--on-brand) 88%, var(--color-brand-600));
+	}
+
+	.cta-banner .btn-primary:focus-visible {
+		outline-color: var(--on-brand);
+	}
+
 	.cta-secondary {
 		min-height: 44px;
 		display: inline-flex;
 		align-items: center;
-		color: var(--brand-text);
+		color: var(--on-brand);
 		font-weight: 600;
-		text-decoration: none;
+		text-decoration: underline;
+		text-decoration-color: color-mix(in srgb, var(--on-brand) 45%, transparent);
+		text-underline-offset: 3px;
 	}
 
 	.cta-secondary:hover {
-		text-decoration: underline;
+		text-decoration-color: currentColor;
+	}
+
+	.cta-secondary:focus-visible {
+		outline-color: var(--on-brand);
+		border-radius: var(--radius-control);
 	}
 
 	.compact {

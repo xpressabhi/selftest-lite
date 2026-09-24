@@ -1,5 +1,6 @@
 <script>
 	import { t } from '$lib/client/i18n';
+	import Icon from '$lib/client/Icon.svelte';
 	import { deriveGenerationTrace } from '$lib/client/generationTrace.js';
 
 	let { progress = null, elapsedSeconds = 0, done = false, failed = false, onCancel = null } = $props();
@@ -47,14 +48,10 @@
 			class:spark-failed={failed}
 			aria-hidden="true"
 		>
-			{#if trace.phase === 'ready'}
-				<svg viewBox="0 0 16 16" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
-				</svg>
-			{:else}
-				<i></i>
-				<i></i>
-				<i></i>
+			{#if failed}
+				<Icon name="alert" size={14} />
+			{:else if trace.phase === 'ready'}
+				<Icon name="check" size={14} />
 			{/if}
 		</span>
 		<span class="trace-title">
@@ -77,8 +74,11 @@
 				class:is-running={step.status === 'running'}
 				class:is-done={step.status === 'done'}
 			>
-				<span class="step-dot" aria-hidden="true">
-					<span class="step-arc"></span>
+				<span
+					class="step-dot"
+					class:ai-shimmer={step.status === 'running'}
+					aria-hidden="true"
+				>
 					<span class="step-check"></span>
 				</span>
 				<span class="step-text">{$t(STEP_LABEL_KEYS[step.id])}</span>
@@ -94,7 +94,7 @@
 		gap: 0.5rem;
 		padding: 0.75rem 1rem;
 		border: 1px solid var(--line);
-		border-radius: 0.75rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface-muted);
 	}
 
@@ -126,54 +126,17 @@
 	.trace-spark {
 		display: inline-flex;
 		align-items: center;
-		gap: 3px;
 		min-width: 14px;
 		justify-content: center;
+		color: var(--ok);
 	}
 
-	.trace-spark i {
-		width: 5px;
-		height: 5px;
-		border-radius: 999px;
-		background: var(--brand-text);
-		animation: trace-breathe 1.4s ease-in-out infinite;
+	.trace-spark.spark-failed {
+		color: var(--danger);
 	}
 
-	.trace-spark i:nth-child(2) {
-		animation-delay: 0.18s;
-	}
-
-	.trace-spark i:nth-child(3) {
-		animation-delay: 0.36s;
-	}
-
-	.trace-spark svg {
-		width: 14px;
-		height: 14px;
-		fill: none;
-		stroke: var(--success, #16a34a);
-		stroke-width: 2;
-		stroke-linecap: round;
-		stroke-linejoin: round;
+	.trace-spark :global(svg) {
 		animation: trace-pop var(--motion-slow) var(--ease-commit);
-	}
-
-	.trace-spark.spark-failed i {
-		background: var(--danger, #dc2626);
-		animation: trace-shake 0.3s ease-in-out;
-	}
-
-	@keyframes trace-breathe {
-		0%,
-		80%,
-		100% {
-			opacity: 0.25;
-			transform: scale(0.7);
-		}
-		40% {
-			opacity: 1;
-			transform: scale(1);
-		}
 	}
 
 	@keyframes trace-pop {
@@ -182,19 +145,6 @@
 		}
 		100% {
 			transform: scale(1);
-		}
-	}
-
-	@keyframes trace-shake {
-		0%,
-		100% {
-			transform: translateX(0);
-		}
-		25% {
-			transform: translateX(-2px);
-		}
-		75% {
-			transform: translateX(2px);
 		}
 	}
 
@@ -240,18 +190,9 @@
 		opacity: 1;
 	}
 
-	.step-arc {
-		position: absolute;
-		inset: -1.5px;
-		border-radius: 999px;
-		border: 1.5px solid transparent;
-		border-top-color: var(--brand-text);
-		opacity: 0;
-	}
-
-	.trace-step.is-running .step-arc {
+	.trace-step.is-running .step-dot {
+		border-color: transparent;
 		opacity: 1;
-		animation: trace-spin 0.9s linear infinite;
 	}
 
 	.step-check {
@@ -260,8 +201,8 @@
 		top: 3.5px;
 		width: 6px;
 		height: 3.5px;
-		border-left: 1.5px solid var(--success, #16a34a);
-		border-bottom: 1.5px solid var(--success, #16a34a);
+		border-left: 1.5px solid var(--ok);
+		border-bottom: 1.5px solid var(--ok);
 		transform: rotate(-45deg) scale(0);
 		opacity: 0;
 		transition:
@@ -274,20 +215,8 @@
 		opacity: 1;
 	}
 
-	@keyframes trace-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	/* Data saver: keep the state visible but stop the decorative loops. */
-	:global(html.data-saver) .trace-spark i,
-	:global(html.data-saver) .trace-step.is-running .step-arc {
+	/* Data saver: keep the running state visible but stop the decorative loop. */
+	:global(html.data-saver) .trace-step.is-running .step-dot.ai-shimmer {
 		animation: none;
-	}
-
-	:global(html.data-saver) .trace-step.is-running .step-arc {
-		border-top-color: var(--brand-text);
-		border-right-color: var(--brand-text);
 	}
 </style>

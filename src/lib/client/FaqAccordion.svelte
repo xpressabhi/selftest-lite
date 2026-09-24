@@ -68,6 +68,7 @@
 				<button
 					type="button"
 					class="faq-question"
+					id={`${anchor}-question`}
 					aria-expanded={open}
 					aria-controls={`${anchor}-answer`}
 					onclick={() => toggle(item)}
@@ -96,7 +97,7 @@
 				class="faq-answer"
 				id={`${anchor}-answer`}
 				role="region"
-				aria-labelledby={anchor}
+				aria-labelledby={`${anchor}-question`}
 				hidden={!open}
 			>
 				<p>
@@ -115,7 +116,7 @@
 
 	.faq-item {
 		border: 1px solid var(--line);
-		border-radius: 0.9rem;
+		border-radius: var(--radius-surface);
 		background: var(--surface);
 		overflow: hidden;
 		scroll-margin-top: 5rem;
@@ -145,6 +146,10 @@
 
 	.faq-question:hover {
 		background: var(--surface-muted);
+	}
+
+	.faq-question:focus-visible {
+		outline-offset: -2px;
 	}
 
 	.faq-chevron {
