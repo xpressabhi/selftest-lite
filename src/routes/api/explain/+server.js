@@ -5,6 +5,12 @@ import { env } from '$env/dynamic/private';
 import { DEFAULT_RATE_LIMIT, rateLimiter } from '$lib/server/rateLimiter';
 import { generateExplanationPrompt } from '$lib/server/prompt';
 import { getClientKey, logApiEvent } from '$lib/server/storage';
+import {
+	buildExplanationCacheKey,
+	getCachedExplanation,
+	saveExplanation,
+	touchExplanation,
+} from '$lib/server/explanationCache';
 import { parseRequestBody } from '$lib/server/quizValidation';
 import { explanationSchema } from '$lib/server/quizSchema';
 import { parseJsonResponse } from '$lib/server/jsonResponse';
@@ -66,38 +72,7 @@ export async function POST({ request }) {
 	const clientKey = getClientKey(request);
 
 	try {
-		// Check rate limit
-		const rateLimit = await rateLimiter(request, { bucket: '/api/explain' });
-		if (rateLimit.limited) {
-			await logApiEvent({
-				route: '/api/explain',
-				action: 'explain_answer',
-				clientKey,
-				request,
-				statusCode: 429,
-				durationMs: Date.now() - startedAt,
-			});
-
-			return json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: API_LIMIT_ERROR_CODE,
-					resetTime: new Date(rateLimit.resetTime).toISOString(),
-					remaining: rateLimit.remaining,
-				},
-				{
-					status: 429,
-					headers: {
-						'X-RateLimit-Limit': String(DEFAULT_RATE_LIMIT),
-						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
-					},
-				}
-			);
-		}
-
 		const { topic, question, answer, language } = await parseRequestBody(request);
-		const apiKey = env.GEMINI_API_KEY;
 
 		if (!topic || !question || !answer) {
 			return json(
@@ -137,6 +112,76 @@ export async function POST({ request }) {
 			);
 		}
 
+		const effectiveLanguage =
+			typeof language === 'string' && VALID_LANGUAGES.includes(language.toLowerCase())
+				? language.toLowerCase()
+				: 'english';
+		const cacheKey = buildExplanationCacheKey({ question, answer, language: effectiveLanguage });
+
+		// Cache hits are served before the rate limiter: they only cost a hash
+		// and an indexed read, so repeat explanations stay instant and free.
+		let cached = null;
+		try {
+			cached = await getCachedExplanation(cacheKey);
+		} catch (error) {
+			// A cache read failure must never block generation.
+			console.error('Explanation cache read failed', error);
+		}
+
+		if (cached) {
+			try {
+				await touchExplanation(cacheKey);
+			} catch (error) {
+				console.error('Explanation cache touch failed', error);
+			}
+			await logApiEvent({
+				route: '/api/explain',
+				action: 'explain_answer',
+				clientKey,
+				request,
+				statusCode: 200,
+				durationMs: Date.now() - startedAt,
+				metadata: {
+					topic,
+					language: effectiveLanguage,
+					explanationCached: true,
+				},
+			});
+			return json({ ...cached.explanation, cached: true });
+		}
+
+		// Only generation requests consume rate-limit quota.
+		const rateLimit = await rateLimiter(request, { bucket: '/api/explain' });
+		if (rateLimit.limited) {
+			await logApiEvent({
+				route: '/api/explain',
+				action: 'explain_answer',
+				clientKey,
+				request,
+				statusCode: 429,
+				durationMs: Date.now() - startedAt,
+			});
+
+			return json(
+				{
+					error: 'Rate limit exceeded. Please try again later.',
+					code: API_LIMIT_ERROR_CODE,
+					resetTime: new Date(rateLimit.resetTime).toISOString(),
+					remaining: rateLimit.remaining,
+				},
+				{
+					status: 429,
+					headers: {
+						'X-RateLimit-Limit': String(DEFAULT_RATE_LIMIT),
+						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+					},
+				}
+			);
+		}
+
+		const apiKey = env.GEMINI_API_KEY;
+
 		if (!apiKey) {
 			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
 		}
@@ -147,7 +192,7 @@ export async function POST({ request }) {
 			topic,
 			question,
 			answer,
-			language,
+			language: effectiveLanguage,
 		});
 
 		const deadlineMs = startedAt + EXPLANATION_TIMEOUT_MS;
@@ -177,6 +222,19 @@ export async function POST({ request }) {
 			throw lastError || new Error('Invalid explanation response from model');
 		}
 
+		try {
+			await saveExplanation({
+				cacheKey,
+				language: effectiveLanguage,
+				explanation: parsed,
+				model: EXPLANATION_MODEL,
+			});
+		} catch (error) {
+			// Storage must never fail a good explanation; the next request
+			// regenerates and tries to save again.
+			console.error('Explanation cache save failed', error);
+		}
+
 		await logApiEvent({
 			route: '/api/explain',
 			action: 'explain_answer',
@@ -186,11 +244,12 @@ export async function POST({ request }) {
 			durationMs: Date.now() - startedAt,
 			metadata: {
 				topic,
-				language: language || 'english',
+				language: effectiveLanguage,
+				explanationCached: false,
 			},
 		});
 
-		return json(parsed);
+		return json({ ...parsed, cached: false });
 	} catch (error) {
 		console.error(error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {

@@ -37,23 +37,23 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
 
 ### Phase A: Reusable explanations (F2)
 
-- [ ] Task 1 (S): E2E spec first — `tests/e2e/explanation-cache.e2e.js`: seed schema, seed a row via the
+- [x] Task 1 (S): E2E spec first — `tests/e2e/explanation-cache.e2e.js`: seed schema, seed a row via the
   documented key formula, POST twice, assert `cached: true` both times, payload equality, `use_count` +2.
   Skips without `DATABASE_URL`. Expected to fail only on the missing table/`cached` flag.
-- [ ] Task 2 (S): Failure-mode-first unit tests — `src/lib/server/explanationCache.test.js`: whitespace
+- [x] Task 2 (S): Failure-mode-first unit tests — `src/lib/server/explanationCache.test.js`: whitespace
   variants → same key; NFC variants → same key; case change → different key; answer/language change →
   different key; blank language → english; version tag changes key.
-- [ ] Task 3 (S): Schema v6 in `src/lib/server/storage.js` (`question_explanations` + index).
-- [ ] Task 4 (S): `src/lib/server/explanationCache.js` — key builder, get/save/touch, `ensureStorageSchema`.
-- [ ] Task 5 (M): `/api/explain/+server.js` — cache lookup before rate limit, `cached` flag, best-effort
+- [x] Task 3 (S): Schema v6 in `src/lib/server/storage.js` (`question_explanations` + index).
+- [x] Task 4 (S): `src/lib/server/explanationCache.js` — key builder, get/save/touch, `ensureStorageSchema`.
+- [x] Task 5 (M): `/api/explain/+server.js` — cache lookup before rate limit, `cached` flag, best-effort
   save, `explanationCached` in API-event metadata.
-- [ ] Task 6 (S): Manual live check with the local key: miss (`cached:false`, row created) then hit
+- [x] Task 6 (S): Manual live check with the local key: miss (`cached:false`, row created) then hit
   (`cached:true`, no second generation).
 
 ### Checkpoint: A
 
-- [ ] New unit + e2e specs fail for the right reason before implementation, then pass
-- [ ] `npm run lint && npm run check && npm run test && npm run test:e2e` green; artifact byte-identical on rerun
+- [x] New unit + e2e specs fail for the right reason before implementation, then pass
+- [x] `npm run lint && npm run check && npm run test && npm run test:e2e` green
 
 ### Phase B: Streak on home (F4)
 
@@ -108,6 +108,18 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
 
 - [ ] Free user cannot reach generation server-side; entitled user can
 - [ ] Full suite + vercel verification green
+
+## Verification Notes
+
+### Phase A (2026-09-24)
+
+- Tests failed first for the right reasons: unit suite on the missing module, e2e on
+  `relation "question_explanations" does not exist`.
+- Live check with the local key: first `POST /api/explain` missed and generated in 9.9 s
+  (`cached: false`, row stored with `model = gemini-flash-lite-latest`, JSONB object); the next
+  call hit in 0.3 s (`cached: true`, identical text); `use_count` advanced by exactly the number
+  of hits.
+- `lint`, `check`, `test` (532, +9), `test:e2e` (72, +1) all green.
 
 ## Risks and Mitigations
 

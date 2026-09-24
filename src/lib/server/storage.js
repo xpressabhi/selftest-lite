@@ -73,7 +73,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -421,6 +421,27 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_feature_events_session
 			ON feature_events (session_id, created_at DESC)
+		`);
+
+		// Cross-user explanation cache: one generated explanation per
+		// question+answer+language, reused by every later request. Rows are
+		// append/update only; nothing is deleted (see AGENTS.md).
+		await query(`
+			CREATE TABLE IF NOT EXISTS question_explanations (
+				id BIGSERIAL PRIMARY KEY,
+				cache_key TEXT NOT NULL UNIQUE,
+				language TEXT NOT NULL DEFAULT 'english',
+				explanation JSONB NOT NULL,
+				model TEXT,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				use_count INTEGER NOT NULL DEFAULT 0
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_question_explanations_last_used
+			ON question_explanations (last_used_at DESC)
 		`);
 
 		// Archive tables preserve anything that leaves a hot table; nothing
