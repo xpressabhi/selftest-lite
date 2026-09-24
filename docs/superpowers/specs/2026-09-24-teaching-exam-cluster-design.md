@@ -45,7 +45,7 @@
 | 9 | UP TGT/PGT | `up-tgt-pgt` | B/C | — |
 | 10 | REET | `reet` | C | Level 1 + 2 combined |
 | 11 | MPTET | `mptet` | C | Paper I + II combined |
-| 12 | BTET | `btet` | C | use current Bihar eligibility route if BTET not held |
+| 12 | Bihar STET | `bihar-stet` | B/C | replaced BTET (discontinued Feb 2026; CTET is the Bihar route for classes 1-8) |
 | 13 | HTET | `htet` | C | Level 1/2/3 combined |
 | 14 | PSTET | `pstet` | C | Paper I + II combined |
 | 15 | UTET | `utet` | C | Paper I + II combined |
@@ -137,3 +137,25 @@ Keys: `practiceSearchLabel`, `practiceSearchPlaceholder`, `practiceSearchClear`,
 2. Hub UI + locales + e2e updates (teacher pages still absent; smoke stays green).
 3. Teaching exam data + Hindi overlays (after background research lands) + teacher-page e2e.
 4. Full verification pass (`verify:vercel`, optional content eval) and final commits.
+
+## Implementation notes (2026-09-24)
+
+Shipped as designed, with these deltas:
+
+- **BTET dropped, Bihar STET added.** BSEB discontinued BTET in Feb 2026 (CTET
+  is now the Bihar route for classes 1-8); Bihar STET (classes 9-12, 150
+  questions / 150 minutes) is the current Bihar teacher exam. The optional
+  extras (KTET, TNTET, EMRS, AWES) were included, so the cluster ships with 21
+  exams and hub growth is 81 → 102.
+- **SSR language race fixed.** Parallel e2e load exposed a pre-existing
+  server-render race: `activeLanguage` is module-scoped, and concurrent
+  English/Hindi renders could serve the wrong canonical (reproduced at 49/320
+  mixed requests). Fixed by re-pinning the store during the synchronous SSR
+  render in the root layout (`7952151`); the same repro now reports 0/320.
+- **Verification:** lint clean; 479 unit tests in 42 files; 67 e2e tests
+  including the new `practice-hub.e2e.js` contract; `npm run check` clean;
+  `npm run verify:vercel` OK with 234 sitemap URLs and 232 prerendered pages
+  (up 42 from the 21 new exams in both languages).
+- Pattern data carries the research date and source list in `indianExams.js`;
+  the Super TET 2026 pattern was independently re-verified (150 MCQs / 150
+  minutes / no negative marking, 10-subject split).
