@@ -712,6 +712,9 @@ async function runGenerationAndStore(context, onProgress) {
 			: assignSectionsToPaper(generatedPaper.questions, context.examPattern || null, {
 					section: context.focusSection || null,
 				});
+		if (assignment.examMeta && context.schoolName) {
+			assignment.examMeta = { ...assignment.examMeta, schoolName: context.schoolName };
+		}
 		const questionPaper = {
 			...generatedPaper,
 			questions: assignment.questions,
@@ -955,6 +958,7 @@ export async function POST({ request, cookies }) {
 			classLevel = null,
 			subject = null,
 			paperName = null,
+			school = null,
 			explicit = null,
 		} = await parseRequestBody(request);
 
@@ -985,6 +989,10 @@ export async function POST({ request, cookies }) {
 		if (difficultyExplicit === true) {
 			explicitFields.add('difficulty');
 		}
+		const schoolName =
+			typeof school === 'string' && school.trim()
+				? school.trim().replace(/\s+/g, ' ').slice(0, 120)
+				: null;
 
 		// Board and named papers (full exam without a registry exam id) are the
 		// premium surface; registry exams stay free.
@@ -1328,6 +1336,7 @@ export async function POST({ request, cookies }) {
 			durationMinutes: resolvedParams.durationMinutes,
 			examPattern,
 			focusSection,
+			schoolName,
 			originalRequest,
 			intentCapture: capture,
 			deadlineMs: startedAt + GENERATION_TIMEOUT_MS,

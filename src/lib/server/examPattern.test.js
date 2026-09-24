@@ -6,6 +6,7 @@ import {
 	isPatternExpired,
 	normalizeExamPattern,
 	patternKeyFor,
+	shouldHonorRefresh,
 } from './examPattern';
 
 function validPattern() {
@@ -158,6 +159,52 @@ describe('buildPatternResearchPrompt', () => {
 		expect(prompt).toContain('CBSE board');
 		expect(prompt).toContain('class 10');
 		expect(prompt).toContain('Science');
+	});
+
+	it('embeds fetched research notes when provided and drops junk', () => {
+		const prompt = buildPatternResearchPrompt(
+			{ examName: 'SSC CGL Tier 1' },
+			{ researchNotes: ['Official 2025 pattern: 100 questions, 60 minutes', '', null] }
+		);
+		expect(prompt).toContain('Verified notes fetched from official sources');
+		expect(prompt).toContain('100 questions, 60 minutes');
+	});
+
+	it('never mentions research when there are no notes', () => {
+		const prompt = buildPatternResearchPrompt({ examName: 'SSC CGL Tier 1' });
+		expect(prompt).not.toContain('Verified notes');
+	});
+});
+
+describe('shouldHonorRefresh', () => {
+	const now = new Date('2026-09-24T12:00:00.000Z');
+	it('always refreshes when there is no cached row', () => {
+		expect(shouldHonorRefresh({ hasRow: false, now })).toBe(true);
+	});
+	it('ignores a forced refresh while the row is young', () => {
+		expect(
+			shouldHonorRefresh({ hasRow: true, fetchedAt: '2026-09-24T11:00:00.000Z', now })
+		).toBe(false);
+	});
+	it('honors a forced refresh once the row is old enough', () => {
+		expect(
+			shouldHonorRefresh({
+				hasRow: true,
+				fetchedAt: '2026-09-24T05:00:00.000Z',
+				minRefreshAgeMs: 6 * 60 * 60 * 1000,
+				now,
+			})
+		).toBe(true);
+	});
+	it('can be opened wide for admin refreshes', () => {
+		expect(
+			shouldHonorRefresh({
+				hasRow: true,
+				fetchedAt: '2026-09-24T11:59:00.000Z',
+				minRefreshAgeMs: 0,
+				now,
+			})
+		).toBe(true);
 	});
 });
 

@@ -23,6 +23,9 @@
 	let premiumNotes = $state('');
 	let premiumBusy = $state(false);
 	let premiumMessage = $state('');
+	let examPatterns = $state(null);
+	let patternBusyKey = $state('');
+	let patternMessage = $state('');
 
 	const TABS = [
 		{ id: 'overview', label: 'Overview' },
@@ -31,6 +34,7 @@
 		{ id: 'recent', label: 'Recent Events' },
 		{ id: 'features', label: 'Feature Usage' },
 		{ id: 'device', label: 'Device & Network' },
+		{ id: 'patterns', label: 'Exam Patterns' },
 		{ id: 'premium', label: 'Premium' },
 		{ id: 'health', label: 'Health' },
 	];
@@ -149,7 +153,45 @@
 		if (tabId === 'features' && !featureUsage) void loadFeatureUsage();
 		if (tabId === 'device' && !deviceNetwork) void loadDeviceNetwork();
 		if (tabId === 'premium') void loadPremium();
+		if (tabId === 'patterns') void loadPatterns();
 		if (tabId === 'health') void loadHealth();
+	}
+
+	async function loadPatterns() {
+		try {
+			const response = await fetch('/api/admin/patterns', { cache: 'no-store' });
+			if (response.status === 401) {
+				authed = false;
+				return;
+			}
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error || 'Failed');
+			examPatterns = data.patterns || [];
+		} catch (caughtError) {
+			console.error(caughtError);
+			examPatterns = null;
+		}
+	}
+
+	async function refreshPatternRow(patternKey) {
+		if (patternBusyKey) return;
+		patternBusyKey = patternKey;
+		patternMessage = '';
+		try {
+			const response = await fetch('/api/admin/patterns', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ patternKey }),
+			});
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error || 'Refresh failed');
+			patternMessage = `Refreshed ${data.pattern?.examName || patternKey}`;
+			await loadPatterns();
+		} catch (caughtError) {
+			patternMessage = caughtError.message || 'Refresh failed';
+		} finally {
+			patternBusyKey = '';
+		}
 	}
 
 	async function loadPremium() {
@@ -1095,6 +1137,68 @@
 			{/if}
 
 			<!-- HEALTH TAB -->
+			{#if activeTab === 'patterns'}
+				<div class="bg-body border rounded-3 p-3 mb-4">
+					<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+						<h2 class="h6 fw-bold mb-0">Exam patterns</h2>
+						<button
+							class="btn btn-sm btn-outline-secondary"
+							type="button"
+							onclick={() => void loadPatterns()}>Refresh list</button
+						>
+					</div>
+					{#if patternMessage}
+						<p class="small text-muted">{patternMessage}</p>
+					{/if}
+					{#if examPatterns}
+						{#if examPatterns.length === 0}
+							<p class="text-muted small mb-0">No patterns cached yet.</p>
+						{:else}
+							<div class="table-responsive">
+								<table class="table table-sm align-middle mb-0">
+									<thead>
+										<tr>
+											<th>Key</th>
+											<th>Exam</th>
+											<th>Year</th>
+											<th>Sections</th>
+											<th>Fetched</th>
+											<th>Expires</th>
+											<th></th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each examPatterns as pattern (pattern.patternKey)}
+											<tr>
+												<td class="text-muted small">{pattern.patternKey}</td>
+												<td>{pattern.examName || '-'}</td>
+												<td>{pattern.patternYear || '-'}</td>
+												<td>{pattern.sectionCount}</td>
+												<td>{formatTime(pattern.fetchedAt)}</td>
+												<td>{formatTime(pattern.expiresAt)}</td>
+												<td>
+													<button
+														class="btn btn-sm btn-outline-secondary"
+														type="button"
+														disabled={!pattern.refreshable ||
+															patternBusyKey === pattern.patternKey}
+														onclick={() => refreshPatternRow(pattern.patternKey)}
+													>
+														Refresh
+													</button>
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						{/if}
+					{:else}
+						<p class="text-muted small mb-0">Failed to load patterns.</p>
+					{/if}
+				</div>
+			{/if}
+
 			{#if activeTab === 'premium'}
 				<div class="bg-body border rounded-3 p-3 mb-4">
 					<h2 class="h6 fw-bold mb-3">Premium access</h2>

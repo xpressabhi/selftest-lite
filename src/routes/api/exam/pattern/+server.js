@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { getClientKey, logApiEvent } from '$lib/server/storage';
 import { getExamPattern, patternKeyFor } from '$lib/server/examPattern';
 import { getIndianExamById } from '$lib/data/indianExams';
+import { isAdminConfigured, isAdminRequest } from '$lib/server/adminAuth';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { VALID_LANGUAGES } from '$lib/server/quizConfig';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
@@ -74,9 +75,20 @@ export async function GET({ request, url }) {
 
 		const requestedLanguage = String(url.searchParams.get('language') || 'english').toLowerCase();
 		const language = VALID_LANGUAGES.includes(requestedLanguage) ? requestedLanguage : 'english';
-		const refresh = url.searchParams.get('refresh') === '1';
+		// Forced refreshes are an admin tool: public callers are rate-limited
+		// to 10/min and must not turn discovery into a model-call button.
+		const requestedRefresh = url.searchParams.get('refresh') === '1';
+		const isAdmin = isAdminConfigured() && isAdminRequest(request);
+		const refresh = requestedRefresh && isAdmin;
+		const discover = url.searchParams.get('discover') !== '0';
 
-		const pattern = await getExamPattern(target, { language, refresh });
+		const pattern = await getExamPattern(target, { language, refresh, discover });
+		if (!pattern) {
+			return json(
+				{ error: 'Pattern is not cached yet', code: 'PATTERN_NOT_FOUND' },
+				{ status: 404 }
+			);
+		}
 
 		await logApiEvent({
 			route: '/api/exam:pattern',
@@ -87,9 +99,11 @@ export async function GET({ request, url }) {
 			durationMs: Date.now() - startedAt,
 			metadata: {
 				patternKey,
-				source: pattern.source,
-				stale: pattern.stale,
+				source: pattern?.source || null,
+				stale: pattern?.stale ?? null,
+				requestedRefresh,
 				refresh,
+				discover,
 				language,
 			},
 		});

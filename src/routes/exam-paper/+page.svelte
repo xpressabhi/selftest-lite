@@ -119,6 +119,7 @@
 				classLevel: mode === 'board' ? classLevel : null,
 				subject: mode === 'board' ? subject : null,
 				sectionFocus: selectedSectionObject?.id || null,
+				school: school.trim() || null,
 				explicit: ['difficulty', 'numQuestions', 'testType', 'durationMinutes'],
 			};
 			const response = await fetch('/api/generate', {

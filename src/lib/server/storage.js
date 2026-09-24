@@ -73,7 +73,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -499,10 +499,18 @@ export async function ensureStorageSchema() {
 			)
 		`);
 
-		await query(`
-			CREATE INDEX IF NOT EXISTS idx_premium_entitlements_user
+		await query(`CREATE INDEX IF NOT EXISTS idx_premium_entitlements_user
 			ON premium_entitlements (user_id, feature, status)
 		`);
+
+		// The original discovery target rides with the pattern so admins can
+		// refresh any keyed pattern without guessing it back from the slug.
+		await query(`ALTER TABLE exam_patterns ADD COLUMN IF NOT EXISTS target JSONB`);
+
+		// Marks-aware scoring for pattern papers; count-based scoring stays as
+		// the primary percentage. NULL marks mean "not a marks paper".
+		await query(`ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS marks NUMERIC`);
+		await query(`ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS total_marks NUMERIC`);
 
 		// Archive tables preserve anything that leaves a hot table; nothing
 		// is ever dropped (see src/lib/shared/dataArchive.js).

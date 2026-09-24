@@ -855,6 +855,16 @@
 					<p class="test-summary-topic">
 						<MarkdownContent content={questionPaper.topic} tag="span" />
 					</p>
+					{#if questionPaper.examMeta && (questionPaper.examMeta.schoolName || questionPaper.examMeta.examName)}
+						<p class="test-summary-exam text-muted small">
+							{[
+								questionPaper.examMeta.schoolName,
+								questionPaper.examMeta.examName,
+							]
+								.filter(Boolean)
+								.join(' · ')}
+						</p>
+					{/if}
 					<div class="test-summary-meta">
 						<span class="test-meta-chip">
 							{$t('questionsCountFormat', { count: totalQuestions })}
@@ -1338,6 +1348,10 @@
 
 	.test-summary-topic :global(*) {
 		color: var(--text-muted);
+	}
+
+	.test-summary-exam {
+		margin: 0 0 14px;
 	}
 
 	.test-summary-meta {

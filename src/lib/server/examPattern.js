@@ -7,6 +7,8 @@ import { parseJsonResponse } from './jsonResponse.js';
 const PATTERN_MODEL = 'gemini-flash-lite-latest';
 const PATTERN_TIMEOUT_MS = 45000;
 export const PATTERN_TTL_MS = 45 * 24 * 60 * 60 * 1000;
+/** Forced refreshes younger than this are ignored (serves the cache). */
+export const PATTERN_REFRESH_MIN_AGE_MS = 6 * 60 * 60 * 1000;
 const MAX_SECTIONS = 20;
 
 /** Raw model answer for "what is the actual pattern of this paper". */
@@ -107,6 +109,26 @@ export function isPatternExpired(expiresAt, now = new Date()) {
 		return true;
 	}
 	return new Date(iso).getTime() <= now.getTime();
+}
+
+/**
+ * A forced refresh is only honored when the cached row is old enough. This
+ * keeps `?refresh=1` from becoming a model-call button.
+ */
+export function shouldHonorRefresh({
+	hasRow = false,
+	fetchedAt = null,
+	minRefreshAgeMs = PATTERN_REFRESH_MIN_AGE_MS,
+	now = new Date(),
+} = {}) {
+	if (!hasRow) {
+		return true;
+	}
+	const iso = toIso(fetchedAt);
+	if (!iso) {
+		return true;
+	}
+	return now.getTime() - new Date(iso).getTime() >= Math.max(0, Number(minRefreshAgeMs) || 0);
 }
 
 function patternSource({ examId = null, paperName = null } = {}) {
@@ -228,7 +250,7 @@ export function buildPatternConstraint(pattern, section = null) {
 }
 
 /** The generic research prompt: the model must state the real current format. */
-export function buildPatternResearchPrompt(target, { language = 'english' } = {}) {
+export function buildPatternResearchPrompt(target, { language = 'english', researchNotes = null } = {}) {
 	const label = [
 		target.paperName || target.examName || null,
 		target.board ? `${target.board} board` : null,
@@ -242,7 +264,15 @@ export function buildPatternResearchPrompt(target, { language = 'english' } = {}
 		// hallucinated pattern would be cached under a real key.
 		throw new Error('Pattern target needs an exam name, paper name, or board details');
 	}
+	const notes = (Array.isArray(researchNotes) ? researchNotes : [])
+		.map((note) => String(note || '').trim())
+		.filter(Boolean)
+		.slice(0, 8);
+	const researchBlock = notes.length
+		? `\nVerified notes fetched from official sources (trust these over your memory; ignore anything unrelated):\n${notes.map((note) => `- ${note.slice(0, 500)}`).join('\n')}\n`
+		: '';
 	return `You are an exam pattern researcher. Using your most recent verified knowledge of the official current pattern for: ${label}.
+${researchBlock}
 
 Determine the ACTUAL current structure of this paper and return it as JSON:
 - The sections (or subjects) in the order they appear, with the real number of questions, the question format used (for example multiple-choice, matching, assertion-reasoning), the marks per question, any negative marking, and the instructions printed for that section.
@@ -285,13 +315,13 @@ async function requestPatternText(ai, prompt, deadlineMs) {
 }
 
 /** One model call that returns a normalized, validated pattern. */
-export async function discoverExamPattern(target, { language = 'english' } = {}) {
+export async function discoverExamPattern(target, { language = 'english', researchNotes = null } = {}) {
 	const apiKey = env.GEMINI_API_KEY;
 	if (!apiKey) {
 		throw new Error('Gemini API key is not configured');
 	}
 	const ai = new GoogleGenAI({ apiKey });
-	const prompt = buildPatternResearchPrompt(target, { language });
+	const prompt = buildPatternResearchPrompt(target, { language, researchNotes });
 	const deadlineMs = Date.now() + PATTERN_TIMEOUT_MS;
 	let lastError = null;
 	for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -308,7 +338,7 @@ export async function discoverExamPattern(target, { language = 'english' } = {})
 async function readPatternRow(patternKey) {
 	await ensureStorageSchema();
 	const result = await query(
-		`SELECT pattern_key, source, payload, model, fetched_at, expires_at
+		`SELECT pattern_key, source, payload, model, fetched_at, expires_at, target
 		 FROM exam_patterns
 		 WHERE pattern_key = $1`,
 		[patternKey]
@@ -316,18 +346,26 @@ async function readPatternRow(patternKey) {
 	return result.rows[0] || null;
 }
 
-async function saveExamPattern({ patternKey, source, payload, model }) {
+async function saveExamPattern({ patternKey, source, payload, model, target = null }) {
 	await ensureStorageSchema();
 	await query(
-		`INSERT INTO exam_patterns (pattern_key, source, payload, model, fetched_at, expires_at)
-		 VALUES ($1, $2, $3, $4, NOW(), NOW() + ($5::text || ' milliseconds')::interval)
+		`INSERT INTO exam_patterns (pattern_key, source, payload, model, fetched_at, expires_at, target)
+		 VALUES ($1, $2, $3, $4, NOW(), NOW() + ($5::text || ' milliseconds')::interval, $6)
 		 ON CONFLICT (pattern_key) DO UPDATE
 		   SET payload = EXCLUDED.payload,
 		       model = EXCLUDED.model,
 		       source = EXCLUDED.source,
 		       fetched_at = NOW(),
-		       expires_at = EXCLUDED.expires_at`,
-		[patternKey, source, JSON.stringify(payload), model, PATTERN_TTL_MS]
+		       expires_at = EXCLUDED.expires_at,
+		       target = COALESCE(EXCLUDED.target, exam_patterns.target)`,
+		[
+			patternKey,
+			source,
+			JSON.stringify(payload),
+			model,
+			PATTERN_TTL_MS,
+			target ? JSON.stringify(target) : null,
+		]
 	);
 }
 
@@ -344,6 +382,7 @@ async function refreshPattern(patternKey, target, language) {
 			source: patternSource(target),
 			payload,
 			model: PATTERN_MODEL,
+			target,
 		});
 		const row = await readPatternRow(patternKey);
 		return {
@@ -367,7 +406,12 @@ async function refreshPattern(patternKey, target, language) {
  */
 export async function getExamPattern(
 	target,
-	{ language = 'english', refresh = false, discover = true } = {}
+	{
+		language = 'english',
+		refresh = false,
+		discover = true,
+		minRefreshAgeMs = PATTERN_REFRESH_MIN_AGE_MS,
+	} = {}
 ) {
 	const patternKey = patternKeyFor(target);
 	if (!patternKey) {
@@ -383,9 +427,15 @@ export async function getExamPattern(
 		throw error;
 	}
 
-	if (row && !refresh) {
+	if (row) {
+		const honorRefresh =
+			refresh &&
+			shouldHonorRefresh({ hasRow: true, fetchedAt: row.fetched_at, minRefreshAgeMs });
+		if (honorRefresh) {
+			return refreshPattern(patternKey, target, language);
+		}
 		const stale = isPatternExpired(row.expires_at);
-		if (stale) {
+		if (stale && !refresh) {
 			// Refresh after responding; a stale pattern still beats none.
 			void refreshPattern(patternKey, target, language).catch((error) => {
 				console.error('Background pattern refresh failed:', error);
@@ -397,10 +447,6 @@ export async function getExamPattern(
 			source: row.source,
 			stale,
 		};
-	}
-
-	if (row && refresh) {
-		return refreshPattern(patternKey, target, language);
 	}
 
 	if (!discover) {

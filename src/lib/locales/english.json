@@ -495,6 +495,7 @@
 	"examPaperPremiumRequired": "Full exam papers need early access.",
 	"examPaperCtaTitle": "Full Exam Paper",
 	"examPaperCtaBody": "Board and named papers in the real exam pattern (early access)",
+	"examPaperPatternMetaShort": "pattern {year}",
 	"testProgressLabel": "Test progress",
 	"enableSoundEffects": "Enable sound effects",
 	"disableSoundEffects": "Disable sound effects",

@@ -1097,6 +1097,22 @@
 			<TestStatsCard testId={questionPaper.id} />
 		{/if}
 
+		{#if questionPaper?.examMeta && (questionPaper.examMeta.schoolName || questionPaper.examMeta.examName)}
+			<p class="text-muted small mb-3">
+				{[
+					questionPaper.examMeta.schoolName,
+					questionPaper.examMeta.examName,
+					questionPaper.examMeta.patternYear
+						? $t('examPaperPatternMetaShort', {
+								year: questionPaper.examMeta.patternYear,
+							})
+						: null,
+				]
+					.filter(Boolean)
+					.join(' · ')}
+			</p>
+		{/if}
+
 		{#if sectionBreakdown.length > 0}
 			<section class="section-breakdown bg-body border rounded-3 p-3 mb-4">
 				<h2 class="h6 fw-bold mb-2">{$t('sectionBreakdownTitle')}</h2>
