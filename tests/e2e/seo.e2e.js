@@ -105,6 +105,18 @@ test('Hindi blog index renders Hindi', async ({ page }) => {
 	);
 });
 
+test('root favicon.ico is served for crawler fallbacks', async ({ request }) => {
+	// Google requests /favicon.ico even when the icon links point at
+	// /icons/*; a 404 here showed up in Search Console's Page indexing report.
+	// The dev server does not set a content-type for .ico, so assert the icon
+	// magic bytes (00 00 01 00) instead of the header.
+	const response = await request.get('/favicon.ico');
+	expect(response.status()).toBe(200);
+	const body = await response.body();
+	expect(body.length).toBeGreaterThan(0);
+	expect([...body.subarray(0, 4)]).toEqual([0, 0, 1, 0]);
+});
+
 test('language toggle navigates between twins and back', async ({ page }) => {
 	await page.goto('/about');
 	// The first click can land before hydration in dev; retry until it takes.
