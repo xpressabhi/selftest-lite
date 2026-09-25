@@ -348,7 +348,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section class="container py-4">
+<section class="app-container py-4">
 	<div class="mx-auto admin-wrap">
 		<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
 			<h1 class="h3 fw-bold mb-0">{$t('adminStatsTitle')}</h1>
@@ -559,7 +559,7 @@
 					<div class="row g-3 mb-4">
 						{#if o.testBreakdown?.byMode?.length}
 							<section class="col-md-4">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Tests by Mode</h3>
 									{#each o.testBreakdown.byMode as item (item.test_mode)}
 										<div
@@ -575,7 +575,7 @@
 						{/if}
 						{#if o.testBreakdown?.byDifficulty?.length}
 							<section class="col-md-4">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Tests by Difficulty</h3>
 									{#each o.testBreakdown.byDifficulty as item (item.difficulty)}
 										<div
@@ -591,7 +591,7 @@
 						{/if}
 						{#if o.testBreakdown?.byLanguage?.length}
 							<section class="col-md-4">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Tests by Language</h3>
 									{#each o.testBreakdown.byLanguage as item (item.language)}
 										<div
@@ -662,7 +662,7 @@
 					<section class="col-lg-6">
 						<div class="bg-body border rounded-3 p-3">
 							<h2 class="h6 fw-bold mb-2">{$t('adminByRoute')}</h2>
-							<div class="table-responsive">
+							<div class="overflow-x-auto">
 								<table class="admin-table">
 									<thead
 										><tr
@@ -758,7 +758,7 @@
 			{#if activeTab === 'recent'}
 				<div class="bg-body border rounded-3 p-3 mb-4">
 					<h2 class="h6 fw-bold mb-2">{$t('adminRecentEvents')}</h2>
-					<div class="table-responsive">
+					<div class="overflow-x-auto">
 						<table class="admin-table">
 							<thead
 								><tr
@@ -837,7 +837,7 @@
 						</div>
 						<div class="row g-3 mb-4">
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">{$t('adminFeatureRanking')}</h3>
 									{#each featureUsage.byEvent || [] as item (item.event)}
 										{@const maxCount = featureUsage.byEvent?.[0]?.count || 1}
@@ -869,7 +869,7 @@
 								</div>
 							</section>
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">{$t('adminFeatureTrend')}</h3>
 									{#if featureUsage.trend?.length}
 										{@const maxTrend = Math.max(
@@ -900,7 +900,7 @@
 						</div>
 						<div class="row g-3">
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">{$t('adminFeatureByPage')}</h3>
 									{#each featureUsage.byPage || [] as item (item.page)}
 										<div
@@ -918,11 +918,11 @@
 								</div>
 							</section>
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">
 										{$t('adminFeatureGenerateBreakdown')}
 									</h3>
-									<div class="table-responsive">
+									<div class="overflow-x-auto">
 										<table class="admin-table">
 											<thead
 												><tr
@@ -1002,9 +1002,9 @@
 						</div>
 						<div class="row g-3">
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Device tier (per identity)</h3>
-									<div class="table-responsive">
+									<div class="overflow-x-auto">
 										<table class="admin-table">
 											<thead
 												><tr
@@ -1032,9 +1032,9 @@
 								</div>
 							</section>
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Top low-tier models</h3>
-									<div class="table-responsive">
+									<div class="overflow-x-auto">
 										<table class="admin-table">
 											<thead
 												><tr
@@ -1062,11 +1062,11 @@
 								</div>
 							</section>
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Network mix (worst per session)</h3>
 									{#each [['type', 'Effective type'], ['downlink', 'Downlink (Mbps)'], ['rtt', 'RTT (ms)']] as [key, label] (key)}
 										<h4 class="small fw-semibold mt-3 mb-1">{label}</h4>
-										<div class="table-responsive">
+										<div class="overflow-x-auto">
 											<table class="admin-table">
 												<thead
 													><tr
@@ -1090,9 +1090,9 @@
 								</div>
 							</section>
 							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3 h-100">
+								<div class="panel h-full">
 									<h3 class="h6 fw-bold mb-2">Generate outcomes by downlink</h3>
-									<div class="table-responsive">
+									<div class="overflow-x-auto">
 										<table class="admin-table">
 											<thead
 												><tr
@@ -1154,7 +1154,7 @@
 						{#if examPatterns.length === 0}
 							<p class="text-muted small mb-0">No patterns cached yet.</p>
 						{:else}
-							<div class="table-responsive">
+							<div class="overflow-x-auto">
 								<table class="table table-sm align-middle mb-0">
 									<thead>
 										<tr>
@@ -1202,12 +1202,12 @@
 			{#if activeTab === 'premium'}
 				<div class="bg-body border rounded-3 p-3 mb-4">
 					<h2 class="h6 fw-bold mb-3">Premium access</h2>
-					<form class="row g-2 align-items-end mb-3" onsubmit={grantPremium}>
+					<form class="row g-3 align-items-end mb-3" onsubmit={grantPremium}>
 						<div class="col-md-4">
 							<label class="form-label small" for="premium-email">User email</label>
 							<input
 								id="premium-email"
-								class="form-control form-control-sm"
+								class="form-control"
 								type="email"
 								bind:value={premiumEmail}
 								required
@@ -1217,7 +1217,7 @@
 							<label class="form-label small" for="premium-expiry">Expires (optional)</label>
 							<input
 								id="premium-expiry"
-								class="form-control form-control-sm"
+								class="form-control"
 								type="date"
 								bind:value={premiumExpiry}
 							/>
@@ -1226,14 +1226,14 @@
 							<label class="form-label small" for="premium-notes">Notes</label>
 							<input
 								id="premium-notes"
-								class="form-control form-control-sm"
+								class="form-control"
 								type="text"
 								maxlength="200"
 								bind:value={premiumNotes}
 							/>
 						</div>
 						<div class="col-md-2">
-							<button class="btn btn-sm btn-primary w-100" type="submit" disabled={premiumBusy}>
+							<button class="btn btn-sm btn-primary w-full" type="submit" disabled={premiumBusy}>
 								Grant
 							</button>
 						</div>
@@ -1242,7 +1242,7 @@
 						<p class="small text-muted">{premiumMessage}</p>
 					{/if}
 					{#if premiumGrants}
-						<div class="table-responsive">
+						<div class="overflow-x-auto">
 							<table class="table table-sm align-middle mb-0">
 								<thead>
 									<tr>
@@ -1453,22 +1453,26 @@
 </section>
 
 <style>
-	.admin-wrap {
-		max-width: 1120px;
-	}
 	.admin-login {
 		max-width: 420px;
 	}
 
 	.tab-bar {
 		display: flex;
+		flex-wrap: nowrap;
 		gap: 0;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: thin;
 		border-bottom: 2px solid var(--line);
 	}
 	.tab-btn {
+		flex: none;
+		min-height: 44px;
 		padding: 10px 18px;
 		font-size: 0.85rem;
 		font-weight: 600;
+		white-space: nowrap;
 		color: var(--text-muted);
 		background: none;
 		border: none;
@@ -1519,7 +1523,7 @@
 	.overview-card {
 		background: var(--surface);
 		border: 1px solid var(--line);
-		border-radius: 0.75rem;
+		border-radius: var(--radius-surface);
 		padding: 12px 8px;
 		min-height: 76px;
 	}
@@ -1613,6 +1617,11 @@
 		.tab-btn {
 			padding: 10px 12px;
 			font-size: 0.78rem;
+		}
+		/* 24 hourly labels cannot sit side by side on a phone; keep the
+		   six-hour marks (00, 06, 12, 18) and drop the rest. */
+		.hour-bar:not(:nth-child(6n + 1)) .hour-bar-label {
+			display: none;
 		}
 	}
 </style>

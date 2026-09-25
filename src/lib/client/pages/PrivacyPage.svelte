@@ -29,7 +29,7 @@
 		: 'How selftest.in handles learning data, local storage and analytics.'}
 />
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="legal-wrap">
 		<header class="legal-hero">
 			<h1 class="legal-title">{$t('privacyHeroTitle')}</h1>
@@ -52,7 +52,7 @@
 
 <style>
 	.legal-wrap {
-		max-width: 46rem;
+		max-width: 40rem;
 		margin: 0 auto;
 		display: grid;
 		gap: 1.5rem;
@@ -65,7 +65,7 @@
 
 	.legal-title {
 		margin: 0;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
 	}
@@ -117,7 +117,7 @@
 
 	@media (min-width: 768px) {
 		.legal-title {
-			font-size: 2.25rem;
+			font-size: 1.875rem;
 		}
 
 		.legal-grid {

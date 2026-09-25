@@ -128,6 +128,15 @@ body {
 	   --brand-rgb (white text stays readable). */
 	--brand-text-rgb: 79, 70, 229;
 	--brand-text: #4f46e5;
+	/* One border-box shell for every route, header and footer. Desktop
+	   gutters leave 1056px of usable content inside the 1120px frame. */
+	--layout-shell-width: 1120px;
+	/* Overlay + elevation. Backdrops must stay visible on BOTH themes:
+	   the previous literal rgba(15, 23, 42, 0.55) equals the dark
+	   --surface-muted, so dark-mode modals dimmed nothing. */
+	--backdrop: rgb(15 23 42 / 0.55);
+	--shadow-1: 0 1px 2px rgb(15 23 42 / 0.08);
+	--shadow-2: 0 12px 30px rgb(15 23 42 / 0.16);
 }
 
 :root.dark {
@@ -142,6 +151,9 @@ body {
 	--danger: #fca5a5;
 	--brand-text-rgb: 165, 180, 252;
 	--brand-text: #a5b4fc;
+	--backdrop: rgb(2 6 23 / 0.72);
+	--shadow-1: 0 1px 2px rgb(0 0 0 / 0.45);
+	--shadow-2: 0 16px 40px rgb(0 0 0 / 0.55);
 }
 
 html {
@@ -190,9 +202,6 @@ select {
 
 /* Shared application primitives keep the Svelte pages small. */
 @layer components {
-	.container {
-		@apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
-	}
 	.bg-body {
 		background: var(--surface);
 	}
@@ -277,6 +286,9 @@ select {
 	.alert-light {
 		@apply bg-slate-50 text-slate-800 dark:bg-slate-800 dark:text-slate-100;
 	}
+	.alert-success {
+		@apply border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100;
+	}
 	.badge {
 		@apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold;
 	}
@@ -352,6 +364,92 @@ select {
 	.tap-target {
 		-webkit-tap-highlight-color: transparent;
 		touch-action: manipulation;
+	}
+
+	/* Surfaces: one card recipe for the whole app (padding grows on
+	   tablet+). Replaces ad-hoc `bg-body border rounded-3 p-*` strings and
+	   the missing legacy `.card` class. */
+	.panel {
+		padding: 1rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+	}
+	/* Interactive pills (filters, section pickers). 44px tall on every
+	   input, active state via color-mix so it adapts to dark mode. */
+	.chip {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 0 0.875rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-align: center;
+	}
+	.chip.active,
+	.chip[aria-pressed='true'],
+	.chip:focus-visible {
+		border-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
+		color: var(--brand-text);
+	}
+
+	/* Type scale: one ladder for the app. Page titles are 1.5rem on phones
+	   and 1.875rem from tablet up; section titles 1.125/1.25rem. Headings
+	   balance to avoid widows. */
+	.text-display,
+	.text-page,
+	.text-section {
+		text-wrap: balance;
+	}
+	.text-display {
+		font-size: 1.75rem;
+		font-weight: 700;
+		line-height: 1.15;
+		letter-spacing: -0.01em;
+	}
+	.text-page {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.01em;
+	}
+	.text-section {
+		margin: 0;
+		font-size: 1.125rem;
+		font-weight: 700;
+		line-height: 1.3;
+	}
+	.text-body {
+		font-size: 0.95rem;
+		line-height: 1.55;
+	}
+	.text-meta {
+		font-size: 0.8rem;
+	}
+	.text-micro {
+		font-size: 0.72rem;
+	}
+	@media (min-width: 768px) {
+		.panel {
+			padding: 1.5rem;
+		}
+		.text-display {
+			font-size: 2.25rem;
+		}
+		.text-page {
+			font-size: 1.875rem;
+		}
+		.text-section {
+			font-size: 1.25rem;
+		}
 	}
 	.list-group {
 		@apply overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700;
@@ -452,90 +550,25 @@ select {
 	.lh-base {
 		@apply leading-normal;
 	}
-	.h-100 {
-		@apply h-full;
-	}
-	.mx-auto {
-		@apply mx-auto;
-	}
-	.mt-1 {
-		@apply mt-1;
-	}
-	.mt-2 {
-		@apply mt-2;
-	}
-	.mt-3 {
-		@apply mt-4;
-	}
-	.mt-4 {
-		@apply mt-6;
-	}
-	.mb-0 {
-		@apply mb-0;
-	}
-	.mb-1 {
-		@apply mb-1;
-	}
-	.mb-2 {
-		@apply mb-2;
-	}
-	.mb-3 {
-		@apply mb-4;
-	}
-	.mb-4 {
-		@apply mb-6;
-	}
-	.ms-2 {
-		@apply ml-2;
-	}
-	.py-2 {
-		@apply py-2;
-	}
-	.py-4 {
-		@apply py-6;
-	}
-	.py-5 {
-		@apply py-10;
-	}
-	.p-2 {
-		@apply p-2;
-	}
-	.p-3 {
-		@apply p-4;
-	}
-	.p-4 {
-		@apply p-6;
-	}
-	.px-0 {
-		@apply px-0;
-	}
-	.pb-2 {
-		@apply pb-2;
-	}
-	.gap-2 {
-		@apply gap-2;
-	}
-	.gap-3 {
-		@apply gap-4;
-	}
+	/* Spacing is Tailwind's 4px scale, and only that. The old Bootstrap
+	   aliases that lived here (mt-3 → 1rem, p-3 → 1rem, py-5 → 2.5rem …)
+	   were silently dead: Tailwind's dynamic utilities sit in the
+	   utilities layer, which always beats the components layer. They were
+	   removed rather than re-added so the app has exactly one spacing
+	   scale instead of two competing ones. Use the real utilities
+	   (mt-4, p-4, py-10, …) and the helpers below. */
 	.row {
 		@apply grid grid-cols-1;
 	}
 	.g-3 {
 		@apply gap-4;
 	}
-	@media (min-width: 576px) {
+	@media (min-width: 640px) {
 		.flex-sm-row {
 			@apply flex-row;
 		}
 		.align-items-sm-center {
 			@apply items-center;
-		}
-		.py-md-5 {
-			@apply py-10;
-		}
-		.p-md-4 {
-			@apply p-6;
 		}
 	}
 	@media (min-width: 768px) {
@@ -557,13 +590,37 @@ select {
  * break every row that uses them. Defining them here, after Tailwind's
  * own utilities, restores the intended 1-col (mobile) / 2-col (md+) layout. */
 @layer utilities {
+	/* The explicit `.app-container` avoids Tailwind's responsive `.container`
+	   utility. The compatibility alias resolves to the same geometry while
+	   existing shared components migrate. */
+	.container,
+	.app-container {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: var(--layout-shell-width);
+		margin-inline: auto;
+		padding-inline: max(16px, var(--sal)) max(16px, var(--sar));
+	}
+	@media (min-width: 640px) {
+		.container,
+		.app-container {
+			padding-inline: max(24px, var(--sal)) max(24px, var(--sar));
+		}
+	}
+	@media (min-width: 1024px) {
+		.container,
+		.app-container {
+			padding-inline: max(32px, var(--sal)) max(32px, var(--sar));
+		}
+	}
+
 	.col-6 {
 		grid-column: span 1 / span 1;
 	}
 	.col-12 {
 		grid-column: 1 / -1;
 	}
-	@media (min-width: 576px) {
+	@media (min-width: 640px) {
 		.col-sm-6 {
 			grid-column: span 1 / span 1;
 		}

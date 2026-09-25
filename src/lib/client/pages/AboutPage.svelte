@@ -92,7 +92,7 @@
 	{@html aboutJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="about-wrap">
 		<header class="about-hero">
 			<h1 class="about-title">{$t('aboutHeroTitle')}</h1>
@@ -102,8 +102,12 @@
 				<span class="about-badge">{$t('aboutBadgePrivacy')}</span>
 			</div>
 			<div class="about-actions">
-				<a class="btn btn-primary" href={localizedPath('/', $activeLanguage)}>{$t('aboutCtaButton')}</a>
-				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
+				<a class="btn btn-primary" href={localizedPath('/', $activeLanguage)}
+					>{$t('aboutCtaButton')}</a
+				>
+				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}
+					>{$t('contactQuickHelpFaq')}</a
+				>
 			</div>
 		</header>
 
@@ -115,7 +119,9 @@
 			<ul class="about-principles">
 				{#each whyItWorks as point, index (point.titleKey)}
 					<li class="about-principle">
-						<span class="principle-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+						<span class="principle-number" aria-hidden="true"
+							>{String(index + 1).padStart(2, '0')}</span
+						>
 						<p class="about-principle-title">{$t(point.titleKey)}</p>
 						<p class="about-card-body">{$t(point.bodyKey)}</p>
 					</li>
@@ -176,19 +182,23 @@
 		<section class="about-section">
 			<div class="about-faq-head">
 				<h2 class="about-section-title">{$t('aboutFaqTeaserTitle')}</h2>
-				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
+				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}
+					>{$t('contactQuickHelpFaq')}</a
+				>
 			</div>
 			<FaqAccordion items={teaserItems} />
 		</section>
 
-		<CtaBanner titleKey="aboutCtaTitle" bodyKey="aboutCtaBody" href={localizedPath('/', $activeLanguage)} />
+		<CtaBanner
+			titleKey="aboutCtaTitle"
+			bodyKey="aboutCtaBody"
+			href={localizedPath('/', $activeLanguage)}
+		/>
 	</div>
 </section>
 
 <style>
 	.about-wrap {
-		max-width: 64rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 2.25rem;
 	}
@@ -200,14 +210,14 @@
 
 	.about-title {
 		margin: 0;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
 	}
 
 	.about-lead {
 		margin: 0;
-		max-width: 46rem;
+		max-width: 40rem;
 		color: var(--text-muted);
 		font-size: 1.1rem;
 		line-height: 1.6;
@@ -264,13 +274,13 @@
 
 	.about-section-title {
 		margin: 0;
-		font-size: 1.3rem;
+		font-size: 1.25rem;
 		font-weight: 700;
 	}
 
 	.about-mission {
 		margin: 0;
-		max-width: 52rem;
+		max-width: 40rem;
 		color: var(--text-muted);
 		line-height: 1.7;
 	}
@@ -420,7 +430,7 @@
 
 	@media (min-width: 768px) {
 		.about-title {
-			font-size: 2.25rem;
+			font-size: 1.875rem;
 		}
 
 		.about-principles {
@@ -434,7 +444,11 @@
 		.about-values {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+	}
 
+	/* The numbered steps carry a big number plus copy; three columns only
+	   fit once the page is desktop width. */
+	@media (min-width: 1024px) {
 		.about-steps {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}

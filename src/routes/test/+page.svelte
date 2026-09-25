@@ -834,7 +834,7 @@
 
 <svelte:window onkeydown={handleTestKeydown} onclick={handleDocumentClick} />
 
-<section class="test-shell">
+<section class="app-container test-shell">
 	<div class="visually-hidden" aria-live="polite">{liveAnnouncement}</div>
 	{#if loading}
 		<div class="py-5 text-center">
@@ -846,7 +846,7 @@
 			<p class="text-muted mt-3">{$t('loading')}</p>
 		</div>
 	{:else if error}
-		<div class="container py-4">
+		<div class="test-error-wrap py-4">
 			<div class="alert alert-danger">{error}</div>
 			<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
 		</div>
@@ -956,7 +956,9 @@
 						</button>
 					</div>
 				</div>
-				<TestStatsCard testId={questionPaper.id} />
+				<div class="test-stats-slot">
+					<TestStatsCard testId={questionPaper.id} />
+				</div>
 			</main>
 		{:else}
 			<div class="test-progress-track" aria-hidden="true">
@@ -1232,20 +1234,22 @@
 	.test-header {
 		position: sticky;
 		top: 0;
-		z-index: 1020;
+		z-index: var(--z-header);
 		display: flex;
 		min-height: 58px;
 		align-items: center;
 		gap: 10px;
-		padding: 6px 12px;
+		padding-block: calc(6px + var(--sat, env(safe-area-inset-top, 0px))) 6px;
 		border-bottom: 1px solid var(--line);
 		background: var(--surface);
 	}
 
 	.test-exit {
 		display: inline-flex;
+		min-width: 44px;
 		min-height: 44px;
 		align-items: center;
+		justify-content: center;
 		gap: 6px;
 		padding: 0 10px;
 		border: 0;
@@ -1321,14 +1325,14 @@
 		position: absolute;
 		top: calc(100% + 6px);
 		right: 0;
-		z-index: 1040;
+		z-index: var(--z-dropdown);
 		display: grid;
 		min-width: 230px;
 		padding: 6px;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 	}
 
 	.overflow-switch-row {
@@ -1362,22 +1366,38 @@
 		border-radius: var(--radius-surface);
 	}
 
+	/* Summary + activity. Phone: one centered column, both cards 480 max.
+	   Desktop (≥1024): two columns, summary 480 + activity 300–360. The
+	   old single non-wrapping row squeezed both cards at every width and
+	   spilled the stat-tile labels. */
 	.test-summary-wrap {
 		display: flex;
 		flex: 1 1 auto;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
+		gap: 16px;
 		padding: 24px 16px calc(24px + var(--sab, env(safe-area-inset-bottom, 0px)));
+	}
+
+	.test-stats-slot {
+		width: 100%;
+		max-width: 480px;
+	}
+
+	.test-stats-slot :global(.test-stats-card) {
+		width: 100%;
+		margin-top: 0;
 	}
 
 	.test-summary-card {
 		width: 100%;
 		max-width: 480px;
-		padding: 28px 22px;
+		padding: 1.5rem 1.25rem;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
 		background: var(--surface);
-		box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+		box-shadow: var(--shadow-1);
 		text-align: center;
 	}
 
@@ -1484,7 +1504,23 @@
 
 	@media (min-width: 640px) {
 		.test-summary-card {
-			padding-inline: 36px;
+			padding-inline: 1.5rem;
+		}
+	}
+
+	/* Desktop: the activity card has room beside the summary. Below 1024
+	   the pair stacks so neither card is squeezed. */
+	@media (min-width: 1024px) {
+		.test-summary-wrap {
+			display: grid;
+			grid-template-columns: minmax(0, 480px) minmax(300px, 360px);
+			align-items: start;
+			justify-content: center;
+			gap: 24px;
+		}
+
+		.test-stats-slot {
+			max-width: 360px;
 		}
 	}
 
@@ -1494,12 +1530,14 @@
 		margin: 0 auto;
 		/* Clear the sticky footer (~64px) plus safe area so focused options and
 		   the last question are never covered. */
-		padding: 16px 12px calc(96px + var(--sab, 0px));
+		padding: 16px 0 calc(96px + var(--sab, 0px));
 		flex: 1 1 auto;
 	}
 
 	.test-card-head {
 		display: flex;
+		flex-wrap: wrap;
+		row-gap: 8px;
 		align-items: center;
 		justify-content: space-between;
 		gap: 10px;
@@ -1587,6 +1625,15 @@
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		white-space: nowrap;
+	}
+
+	/* Phones: the teaser text is the first thing to go when the question
+	   header runs out of room; the state is still exposed on the hint
+	   button itself. */
+	@media (max-width: 639.98px) {
+		.hint-soon {
+			display: none;
+		}
 	}
 
 	.test-section-banner {
@@ -1791,6 +1838,8 @@
 
 	.test-option-text {
 		flex: 1 1 auto;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.test-option-check {
@@ -1807,14 +1856,16 @@
 	.test-bottom-bar {
 		position: sticky;
 		bottom: 0;
-		z-index: 1010;
-		padding: 8px 12px calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
+		z-index: var(--z-bottom-nav);
+		padding: 8px 0 calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		border-top: 1px solid var(--line);
 		background: var(--surface);
 	}
 
 	.test-bottom-inner {
 		display: flex;
+		flex-wrap: wrap;
+		row-gap: 8px;
 		max-width: 860px;
 		align-items: center;
 		gap: 10px;
@@ -1876,11 +1927,11 @@
 	.exit-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 1200;
+		z-index: var(--z-modal-backdrop);
 		display: grid;
 		place-items: center;
 		padding: 20px;
-		background: rgba(15, 23, 42, 0.55);
+		background: var(--backdrop);
 	}
 
 	.exit-modal {
@@ -1890,7 +1941,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+		box-shadow: var(--shadow-2);
 	}
 
 	.question-content-forward {
@@ -1924,16 +1975,8 @@
 	}
 
 	@media (min-width: 640px) {
-		.test-header {
-			padding-inline: 20px;
-		}
-
 		.test-exit-label {
 			display: inline;
-		}
-
-		.test-main {
-			padding-inline: 20px;
 		}
 	}
 

@@ -134,26 +134,26 @@
 	.sheet-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 1200;
+		z-index: var(--z-modal-backdrop);
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
 		padding: 16px;
-		background: rgba(15, 23, 42, 0.55);
+		background: var(--backdrop);
 		animation: backdrop-in 180ms ease-out both;
 	}
 
 	.review-sheet {
 		width: 100%;
 		max-width: 560px;
-		max-height: min(82vh, 640px);
+		max-height: min(82dvh, 640px);
 		display: flex;
 		flex-direction: column;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay) var(--radius-overlay) var(--radius-control)
 			var(--radius-control);
 		background: var(--surface);
-		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+		box-shadow: var(--shadow-2);
 		animation: sheet-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
 

@@ -254,12 +254,12 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="mx-auto profile-wrap">
-		<h1 class="h3 fw-bold mb-3">{$t('profilePageTitle')}</h1>
+		<h1 class="text-page mb-3">{$t('profilePageTitle')}</h1>
 
 		{#if !$user}
-			<div class="card p-4 text-center">
+			<div class="panel text-center">
 				<p class="text-muted mb-3">{$t('profilePageSignInHint')}</p>
 				{#if signInError}
 					<div class="alert alert-danger small mb-3" role="alert">{signInError}</div>
@@ -298,7 +298,7 @@
 					</div>
 				{/if}
 				{#if !loadError}
-					<section class="card p-4">
+					<section class="panel">
 						<h2 class="h5 fw-bold mb-3">{$t('profileSectionLearner')}</h2>
 						<div class="row g-3">
 							<div class="col-12 col-sm-6">
@@ -387,7 +387,7 @@
 								{/if}
 							</div>
 							<div class="col-12">
-								<span class="form-label fw-semibold d-block"
+								<span class="form-label fw-semibold block"
 									>{$t('profileWizardSubjectsTitle')}</span
 								>
 								<div class="chip-grid">
@@ -467,7 +467,7 @@
 						</div>
 					</section>
 
-					<section class="card p-4">
+					<section class="panel">
 						<h2 class="h5 fw-bold mb-1">{$t('profileSectionFocus')}</h2>
 						<p class="text-muted small mb-3">{$t('profileSaveHint')}</p>
 						{#if draft.declaredFocus.length > 0}
@@ -515,7 +515,7 @@
 						</div>
 					</section>
 
-					<section class="card p-4">
+					<section class="panel">
 						<h2 class="h5 fw-bold mb-3">{$t('profileSectionInsights')}</h2>
 						{#if !signals || signals.testsTaken === 0}
 							<p class="text-muted small mb-0">{$t('profileInsightsEmpty')}</p>
@@ -577,7 +577,7 @@
 						{/if}
 					</section>
 
-					<section class="card p-4">
+					<section class="panel">
 						<div class="d-flex align-items-center justify-content-between gap-3">
 							<div>
 								<h2 class="h6 fw-bold mb-1">{$t('profilePersonalizationLabel')}</h2>

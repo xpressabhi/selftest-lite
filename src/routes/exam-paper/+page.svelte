@@ -169,8 +169,8 @@
 	}
 </script>
 
-<section class="container py-4 exam-paper-page">
-	<h1 class="h4 fw-bold mb-1">{$t('examPaperTitle')}</h1>
+<section class="app-container py-4 py-md-5 exam-paper-page">
+	<h1 class="text-page mb-1">{$t('examPaperTitle')}</h1>
 	<p class="text-muted small mb-4">{$t('examPaperSubtitle')}</p>
 
 	{#if access === null}
@@ -217,10 +217,10 @@
 			</div>
 
 			{#if mode === 'board'}
-				<div class="row g-2">
+				<div class="row g-3">
 					<div class="col-6 col-md-3">
 						<label class="form-label small" for="exam-board">{$t('examPaperBoard')}</label>
-						<select id="exam-board" class="form-select form-select-sm" bind:value={board}>
+						<select id="exam-board" class="form-select" bind:value={board}>
 							{#each BOARDS as option (option)}
 								<option value={option}>{option}</option>
 							{/each}
@@ -230,7 +230,7 @@
 						<label class="form-label small" for="exam-class">{$t('examPaperClass')}</label>
 						<select
 							id="exam-class"
-							class="form-select form-select-sm"
+							class="form-select"
 							bind:value={classLevel}
 						>
 							{#each CLASS_LEVELS as option (option)}
@@ -242,7 +242,7 @@
 						<label class="form-label small" for="exam-subject">{$t('examPaperSubject')}</label>
 						<input
 							id="exam-subject"
-							class="form-control form-control-sm"
+							class="form-control"
 							type="text"
 							maxlength="80"
 							bind:value={subject}
@@ -250,14 +250,14 @@
 					</div>
 				</div>
 			{:else}
-				<div class="row g-2">
+				<div class="row g-3">
 					<div class="col-12 col-md-6">
 						<label class="form-label small" for="exam-paper-name">
 							{$t('examPaperName')}
 						</label>
 						<input
 							id="exam-paper-name"
-							class="form-control form-control-sm"
+							class="form-control"
 							type="text"
 							maxlength="120"
 							placeholder={$t('examPaperNamePlaceholder')}
@@ -267,14 +267,14 @@
 				</div>
 			{/if}
 
-			<div class="row g-2 mt-1">
+			<div class="row g-3 mt-3">
 				<div class="col-12 col-md-6">
 					<label class="form-label small" for="exam-school">
 						{$t('examPaperSchool')}
 					</label>
 					<input
 						id="exam-school"
-						class="form-control form-control-sm"
+						class="form-control"
 						type="text"
 						maxlength="120"
 						bind:value={school}
@@ -334,7 +334,7 @@
 
 				<div class="section-picker mt-3" role="radiogroup" aria-label={$t('examPaperPickSection')}>
 					<button
-						class="filter-chip"
+						class="chip"
 						class:active={selectedSection === 'full'}
 						type="button"
 						role="radio"
@@ -345,7 +345,7 @@
 					</button>
 					{#each pattern.sections as section (section.id)}
 						<button
-							class="filter-chip"
+							class="chip"
 							class:active={selectedSection === section.id}
 							type="button"
 							role="radio"
@@ -374,10 +374,11 @@
 </section>
 
 <style>
-	.exam-paper-form,
-	.exam-paper-pattern,
-	.exam-paper-gate {
+	/* The page owns the shared shell; the focused builder is an inner column. */
+	.exam-paper-page > * {
+		width: 100%;
 		max-width: 720px;
+		margin-inline: auto;
 	}
 
 	.tab-row {
@@ -416,18 +417,5 @@
 		gap: 8px;
 	}
 
-	.section-picker .filter-chip {
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface);
-		padding: 6px 12px;
-		font-size: 0.8rem;
-		font-weight: 600;
-	}
-
-	.section-picker .filter-chip.active {
-		border-color: var(--color-brand-600);
-		background: var(--color-brand-100);
-		color: var(--color-brand-700);
-	}
+	/* Section picker chips use the shared `.chip` primitive. */
 </style>

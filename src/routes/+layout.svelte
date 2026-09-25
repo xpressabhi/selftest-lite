@@ -491,7 +491,7 @@
 	<a class="skip-link" href="#main-content">{$t('skipToMainContent')}</a>
 	{#if !isImmersive}
 		<header class="app-header border-bottom bg-body">
-			<nav class="header-inner" aria-label={$t('mainNavigation')}>
+			<nav class="app-container header-inner" aria-label={$t('mainNavigation')}>
 				<a class="brand-link" href={localizedPath('/', $activeLanguage)}>
 					<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
 					<span>selftest.in</span>
@@ -769,7 +769,7 @@
 
 	{#if !isImmersive}
 		<footer class="site-footer border-top bg-body">
-			<div class="footer-inner">
+			<div class="app-container footer-inner">
 				<a class="brand-link" href={localizedPath('/', $activeLanguage)}>
 					<img class="brand-mark" src="/icons/96.png" alt="" width="32" height="32" />
 					<span>selftest.in</span>
@@ -851,7 +851,7 @@
 	.skip-link {
 		position: fixed;
 		top: -48px;
-		left: 12px;
+		left: max(12px, var(--sal));
 		z-index: var(--z-skip);
 		padding: 8px 12px;
 		border-radius: 0 0 var(--radius-control) var(--radius-control);
@@ -868,6 +868,10 @@
 	.app-header {
 		position: sticky;
 		top: 0;
+		/* Installed PWA / Capacitor: keep the header content below the
+		   status bar. --sat comes from env() (iOS) or the injected
+		   --safe-area-inset-* (Android WebView). */
+		padding-top: var(--sat, env(safe-area-inset-top, 0px));
 		z-index: var(--z-header);
 	}
 
@@ -877,9 +881,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 14px;
-		max-width: 1320px;
-		margin: 0 auto;
-		padding: 6px 20px;
+		padding-block: 6px;
 	}
 
 	.brand-link {
@@ -940,6 +942,7 @@
 		display: grid;
 		width: 44px;
 		height: 44px;
+		flex: none;
 		place-items: center;
 		border: 0;
 		border-radius: 50%;
@@ -968,7 +971,8 @@
 	.mobile-menu {
 		display: grid;
 		gap: 2px;
-		padding: 8px 20px 14px;
+		padding-block: 8px 14px;
+		padding-inline: max(20px, var(--sal)) max(20px, var(--sar));
 		border-top: 1px solid var(--line);
 		background: var(--surface);
 	}
@@ -1059,9 +1063,7 @@
 	.footer-inner {
 		display: grid;
 		gap: 12px;
-		max-width: 920px;
-		margin: 0 auto;
-		padding: 28px;
+		padding-block: 28px;
 	}
 
 	.footer-tagline {
@@ -1099,7 +1101,8 @@
 		z-index: var(--z-bottom-nav);
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		padding: 0 8px calc(6px + var(--sab, env(safe-area-inset-bottom, 0px)));
+		padding-block: 0 calc(6px + var(--sab, env(safe-area-inset-bottom, 0px)));
+		padding-inline: max(8px, var(--sal)) max(8px, var(--sar));
 	}
 
 	:global(html.keyboard-open) .bottom-nav {
@@ -1139,14 +1142,16 @@
 
 	.connection-banner {
 		position: sticky;
-		top: 56px;
+		/* 58px header + its safe-area padding. */
+		top: calc(58px + var(--sat, env(safe-area-inset-top, 0px)));
 		z-index: var(--z-banner);
 		display: flex;
 		min-height: 44px;
 		align-items: center;
 		justify-content: center;
 		gap: 12px;
-		padding: 8px 16px;
+		padding-block: 8px;
+		padding-inline: max(16px, var(--sal)) max(16px, var(--sar));
 		color: var(--on-brand);
 		font-size: 0.9rem;
 		font-weight: 600;
@@ -1159,9 +1164,9 @@
 
 	.pwa-install-hint {
 		position: fixed;
-		right: 12px;
+		right: max(12px, var(--sar));
 		bottom: calc(76px + var(--sab, env(safe-area-inset-bottom, 0px)));
-		left: 12px;
+		left: max(12px, var(--sal));
 		z-index: var(--z-header);
 		display: flex;
 		align-items: center;
@@ -1171,7 +1176,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
 		background: var(--surface);
-		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 	}
 
 	.user-menu-wrap {
@@ -1218,7 +1223,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 	}
 
 	.user-menu-header {
@@ -1263,7 +1268,7 @@
 		height: 100%;
 		padding: 0;
 		border: 0;
-		background: rgba(15, 23, 42, 0.55);
+		background: var(--backdrop);
 	}
 
 	.sign-in-modal {
@@ -1278,7 +1283,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+		box-shadow: var(--shadow-2);
 		text-align: center;
 	}
 
@@ -1309,15 +1314,35 @@
 		color: var(--on-brand);
 		font-size: 0.8rem;
 		font-weight: 700;
-		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 		translate: -50% 0;
 	}
 
+	/* Tablet (768–1023) keeps the hamburger: the full nav plus five 44px
+	   actions does not fit at 768–900 without shrinking tap targets. The
+	   full desktop nav returns at 1024 where there is room. */
 	@media (min-width: 768px) {
-		.header-inner {
-			padding-inline: 28px;
+		.bottom-nav {
+			display: none;
 		}
 
+		.site-footer {
+			display: block;
+		}
+
+		.mobile-main {
+			padding-bottom: 0;
+		}
+
+		.pwa-install-hint {
+			right: max(24px, var(--sar));
+			bottom: 24px;
+			left: auto;
+			max-width: 440px;
+		}
+	}
+
+	@media (min-width: 1024px) {
 		.desktop-nav,
 		.desktop-only,
 		.data-saver-control {
@@ -1332,32 +1357,9 @@
 		.mobile-menu {
 			display: none;
 		}
-
-		.bottom-nav {
-			display: none;
-		}
-
-		.site-footer {
-			display: block;
-		}
-
-		.mobile-main {
-			padding-bottom: 0;
-		}
-
-		.pwa-install-hint {
-			right: 24px;
-			bottom: 24px;
-			left: auto;
-			max-width: 440px;
-		}
 	}
 
 	@media (max-width: 575.98px) {
-		.header-inner {
-			padding-inline: 12px;
-		}
-
 		.pwa-install-hint {
 			align-items: flex-start;
 			flex-direction: column;
