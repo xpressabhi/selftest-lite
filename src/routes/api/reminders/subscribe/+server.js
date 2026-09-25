@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { getClientIdFromRequest } from '$lib/server/auth';
 import {
 	archivePushSubscription,
 	getClientKey,
@@ -8,15 +8,15 @@ import {
 	updatePushSubscriptionHour,
 } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
+import { readJsonBody } from '$lib/server/requestBody';
 import { parseReminderHour } from '$lib/shared/reminders';
 
 const SUBSCRIBE_RATE_LIMIT = 20;
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -24,13 +24,10 @@ export async function POST({ request, cookies }) {
 			limit: SUBSCRIBE_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return json(
-				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
-				{ status: 429 }
-			);
+			return rateLimited(rateLimit);
 		}
 
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const subscription = body?.subscription;
 		const endpoint = subscription?.endpoint;
 		const p256dh = subscription?.keys?.p256dh;
@@ -105,13 +102,10 @@ export async function PATCH({ request }) {
 			limit: SUBSCRIBE_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return json(
-				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
-				{ status: 429 }
-			);
+			return rateLimited(rateLimit);
 		}
 
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const endpoint = body?.endpoint;
 		const hour = parseReminderHour(body?.hour);
 
@@ -166,7 +160,7 @@ export async function DELETE({ request }) {
 	const clientKey = getClientKey(request);
 
 	try {
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const endpoint = body?.endpoint;
 		if (typeof endpoint !== 'string' || !endpoint) {
 			return json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });

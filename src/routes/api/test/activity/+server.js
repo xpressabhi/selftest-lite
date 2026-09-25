@@ -8,7 +8,7 @@ import {
 } from '$lib/server/testStats';
 import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { parseRequestBody } from '$lib/server/quizValidation';
+import { parseRequestBody } from '$lib/server/requestBody';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
 const ACTIVITY_RATE_LIMIT = 60;

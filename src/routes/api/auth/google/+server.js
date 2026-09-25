@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
 import {
 	createSessionForUser,
-	getClientIdFromRequest,
 	setSessionCookie,
 	upsertGoogleUser,
 	verifyGoogleCredential,
 } from '$lib/server/auth';
-import { backfillUserIdentity, getClientKey, logApiEvent } from '$lib/server/storage';
+import { backfillUserIdentity, logApiEvent } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { readJsonBody } from '$lib/server/requestBody';
+import { rateLimited } from '$lib/server/apiResponse';
+import { resolveRequestContext } from '$lib/server/apiContext';
 
 const GOOGLE_AUTH_RATE_LIMIT = 10;
 
@@ -34,9 +35,7 @@ function getStatusCode(error) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -53,18 +52,10 @@ export async function POST({ request, cookies }) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: API_LIMIT_ERROR_CODE,
-					resetTime: new Date(rateLimit.resetTime).toISOString(),
-					remaining: rateLimit.remaining,
-				},
-				{ status: 429 }
-			);
+			return rateLimited(rateLimit);
 		}
 
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const credential = body?.credential;
 
 		if (!credential) {

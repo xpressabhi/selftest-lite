@@ -1,13 +1,12 @@
 import { json } from '@sveltejs/kit';
 import {
 	createTestAttempt,
-	getClientKey,
 	getTestRecordById,
 	logApiEvent,
 } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { parseRequestBody } from '$lib/server/quizValidation';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { parseRequestBody } from '$lib/server/requestBody';
 import { sanitizeHintedIndexes } from '$lib/server/hint';
 import { markTestsSubmitted } from '$lib/server/testStats';
 import { computeAttemptMarks } from '$lib/shared/marks';
@@ -18,10 +17,7 @@ const SUBMIT_RATE_LIMIT = 10;
 const MAX_TIME_TAKEN_SECONDS = 6 * 60 * 60;
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {

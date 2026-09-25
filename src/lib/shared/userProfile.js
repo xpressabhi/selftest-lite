@@ -38,7 +38,6 @@ export const MAX_SUBJECTS = 12;
 export const MAX_FOCUS_TOPICS = 10;
 export const MAX_FOCUS_TOPIC_LENGTH = 80;
 export const MAX_EXAM_NAME_LENGTH = 120;
-export const MAX_PROFILE_BYTES = 16 * 1024;
 
 export function createDefaultProfile() {
 	return {

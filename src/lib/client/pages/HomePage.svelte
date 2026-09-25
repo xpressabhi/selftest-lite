@@ -374,8 +374,10 @@
 		};
 
 		const loadProfileState = async () => {
-			const profileData = await fetchProfile();
-			const insightsData = await fetchProfileInsights();
+			const [profileData, insightsData] = await Promise.all([
+				fetchProfile(),
+				fetchProfileInsights(),
+			]);
 			applyProfilePrefill(insightsData);
 			const needsSetup = !profileData || !profileData.setupComplete;
 			if (needsSetup && (!profileData || profileData.preferences?.personalized !== false)) {

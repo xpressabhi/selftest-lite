@@ -31,7 +31,10 @@ export default defineConfig(({ mode }) => {
 					// Route and renderer chunks cache at runtime after their first use.
 					// This keeps the install-time cache small on slow networks without removing
 					// offline availability for pages and renderers the user has opened.
-					globIgnores: ['**/_app/immutable/chunks/**'],
+					globIgnores: [
+						'**/_app/immutable/chunks/**',
+						'**/_app/immutable/assets/**',
+					],
 					runtimeCaching: [
 						{
 							// Hashed, immutable build assets (JS/CSS chunks, entry files):
@@ -51,13 +54,29 @@ export default defineConfig(({ mode }) => {
 							},
 						},
 						{
+							// Public GET APIs only. Personal or admin data (/api/user,
+							// /api/auth, /api/admin, /api/premium, /api/test) is never
+							// written to a shared cache, and responses that explicitly
+							// opt out with `Cache-Control: no-store` are skipped too.
 							urlPattern: ({ url }) =>
 								url.origin === self.location.origin &&
-								url.pathname.startsWith('/api/'),
+								url.pathname.startsWith('/api/') &&
+								!/^\/api\/(auth|admin|user|premium)\//.test(url.pathname) &&
+								url.pathname !== '/api/test',
 							handler: 'NetworkFirst',
 							options: {
 								cacheName: 'apis',
 								networkTimeoutSeconds: 10,
+								plugins: [
+									{
+										cacheWillUpdate: async ({ response }) =>
+											response.headers
+												.get('Cache-Control')
+												?.includes('no-store')
+												? null
+												: response,
+									},
+								],
 								expiration: {
 									maxEntries: 16,
 									maxAgeSeconds: 60 * 60 * 24,

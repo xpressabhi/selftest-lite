@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 
 export const ADMIN_COOKIE_NAME = 'selftest_admin';
@@ -89,4 +90,15 @@ export function isAdminRequest(request) {
 	}
 	const token = getAdminTokenFromRequest(request);
 	return Boolean(token && verifySessionToken(token));
+}
+
+/**
+ * The one admin gate for `/api/admin/*`: returns the 401 response to send, or
+ * `null` when the request may proceed.
+ */
+export function requireAdmin(request) {
+	if (!isAdminConfigured() || !isAdminRequest(request)) {
+		return json({ error: 'Unauthorized', code: 'ADMIN_UNAUTHORIZED' }, { status: 401 });
+	}
+	return null;
 }

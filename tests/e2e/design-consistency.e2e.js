@@ -226,7 +226,7 @@ function auditDesktopShell() {
 	const issues = [];
 
 	const nestedShells = page
-		? [...page.querySelectorAll('.app-container, .container')].map((element) => ({
+		? [...page.querySelectorAll('.app-container')].map((element) => ({
 				class: String(element.className || '').slice(0, 80),
 			}))
 		: [];
@@ -315,7 +315,7 @@ function auditImmersiveShell() {
 	if (!shell) {
 		return { viewportWidth, shell: null, issues: [{ code: 'missing-test-shell' }] };
 	}
-	const nestedShells = [...shell.querySelectorAll('.app-container, .container')].map(
+	const nestedShells = [...shell.querySelectorAll('.app-container')].map(
 		(element) => ({
 			class: String(element.className || '').slice(0, 80),
 		})

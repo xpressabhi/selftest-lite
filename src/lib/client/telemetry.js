@@ -112,8 +112,10 @@ export function trackDebounced(event, props, delay = 800) {
 function trackScrollDepth() {
 	const thresholds = new Set([25, 50, 75, 100]);
 	const reported = new Set();
+	let frame = 0;
 
-	const onScroll = () => {
+	const measure = () => {
+		frame = 0;
 		if (typeof window === 'undefined' || !document.documentElement) {
 			return;
 		}
@@ -126,8 +128,20 @@ function trackScrollDepth() {
 			if (ratio >= threshold && !reported.has(threshold)) {
 				reported.add(threshold);
 				track('scroll:depth', { depth: threshold });
+				if (reported.size === thresholds.size) {
+					window.removeEventListener('scroll', onScroll);
+				}
 			}
 		}
+	};
+
+	// One measurement per frame: scroll fires far faster than layout changes,
+	// and reading scrollHeight/innerHeight on every event forces a reflow.
+	const onScroll = () => {
+		if (frame) {
+			return;
+		}
+		frame = window.requestAnimationFrame(measure);
 	};
 
 	window.addEventListener('scroll', onScroll, { passive: true });

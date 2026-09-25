@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import { getAuthenticatedUser, getClientIdFromRequest, normalizeClientId } from '$lib/server/auth';
 import { recordTelemetryEvents, validateTelemetryPayload } from '$lib/server/telemetry';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { rateLimited } from '$lib/server/apiResponse';
+import { parseRequestBody } from '$lib/server/requestBody';
 
 const TELEMETRY_RATE_LIMIT = 240;
 
@@ -11,19 +13,12 @@ export async function POST({ request, cookies }) {
 		limit: TELEMETRY_RATE_LIMIT,
 	});
 	if (rateLimit.limited) {
-		return json(
-			{
-				error: 'Rate limit exceeded. Please try again later.',
-				code: 'RATE_LIMIT_EXCEEDED',
-				resetTime: new Date(rateLimit.resetTime).toISOString(),
-			},
-			{ status: 429 }
-		);
+		return rateLimited(rateLimit);
 	}
 
 	let body;
 	try {
-		body = await request.json();
+		body = await parseRequestBody(request);
 	} catch {
 		return json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, { status: 400 });
 	}

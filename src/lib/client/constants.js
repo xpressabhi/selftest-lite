@@ -21,4 +21,3 @@ export const STORAGE_KEYS = {
 
 export const LOCAL_STORAGE_CHANGE_EVENT = 'selftest-local-change';
 export const LOCAL_STORAGE_SYNC_EVENT = 'selftest-local-sync';
-export const FOCUS_SEARCH_EVENT = 'selftest-focus-search';

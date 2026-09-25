@@ -13,7 +13,15 @@
 		},
 		{
 			"source": "/og-cover.png",
-			"headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+			"headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+		},
+		{
+			"source": "/icons/(.*)",
+			"headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }]
+		},
+		{
+			"source": "/apk/(.*)",
+			"headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
 		}
 	]
 }

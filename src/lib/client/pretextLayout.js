@@ -41,15 +41,6 @@ function buildCacheKey(text, font, options) {
 	return JSON.stringify([text, font, options || {}]);
 }
 
-export function getCanvasFont(element, fallback = '16px Inter') {
-	if (!element || typeof window === 'undefined') {
-		return fallback;
-	}
-
-	const style = window.getComputedStyle(element);
-	return style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}` || fallback;
-}
-
 export async function prepareText(text, font, options = {}) {
 	const api = await loadPretext();
 	if (!api) {
@@ -140,9 +131,4 @@ function getMatchingColumnsHeight(columnResults) {
 		rowsHeight += Math.max(24, left + 12, right + 12);
 	}
 	return 6 + 20 + rowsHeight + 6 + 12;
-}
-
-export function clearTextMeasurementCache() {
-	preparedTextCache.clear();
-	pretextApi?.clearCache?.();
 }

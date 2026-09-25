@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import {
 	deleteStateForIdentity,
-	getClientKey,
 	getStateForIdentity,
 	logApiEvent,
 	upsertStateForIdentity,
 } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
+import { readJsonBody } from '$lib/server/requestBody';
 import {
 	PROFILE_STATE_KEY,
 	normalizeProfile,
@@ -19,27 +19,12 @@ const PROFILE_GET_RATE_LIMIT = 60;
 const PROFILE_POST_RATE_LIMIT = 30;
 const PROFILE_DELETE_RATE_LIMIT = 10;
 
-function rateLimitedResponse(rateLimit) {
-	return json(
-		{
-			error: 'Rate limit exceeded. Please try again later.',
-			code: API_LIMIT_ERROR_CODE,
-			resetTime: new Date(rateLimit.resetTime).toISOString(),
-			remaining: rateLimit.remaining,
-		},
-		{ status: 429 }
-	);
-}
-
 async function loadProfile(storage) {
 	return parseProfileStateValue(storage?.[PROFILE_STATE_KEY]);
 }
 
 export async function GET({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -47,7 +32,7 @@ export async function GET({ request, cookies }) {
 			limit: PROFILE_GET_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
@@ -102,10 +87,7 @@ export async function GET({ request, cookies }) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -113,7 +95,7 @@ export async function POST({ request, cookies }) {
 			limit: PROFILE_POST_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
@@ -131,7 +113,7 @@ export async function POST({ request, cookies }) {
 			);
 		}
 
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const profile = normalizeProfile(body?.profile);
 		if (!profile) {
 			await logApiEvent({
@@ -194,10 +176,7 @@ export async function POST({ request, cookies }) {
 }
 
 export async function DELETE({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -205,7 +184,7 @@ export async function DELETE({ request, cookies }) {
 			limit: PROFILE_DELETE_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {

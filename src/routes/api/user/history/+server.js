@@ -2,13 +2,13 @@ import { json } from '@sveltejs/kit';
 import {
 	listAttemptsForIdentity,
 	upsertUserTestAttempts,
-	getClientKey,
 	logApiEvent,
 } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
+import { readJsonBody } from '$lib/server/requestBody';
 import { markTestsSubmitted } from '$lib/server/testStats';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
 const HISTORY_GET_RATE_LIMIT = 60;
 const HISTORY_POST_RATE_LIMIT = 30;
@@ -26,23 +26,8 @@ function mapAttemptRow(row) {
 	};
 }
 
-function rateLimitedResponse(rateLimit) {
-	return json(
-		{
-			error: 'Rate limit exceeded. Please try again later.',
-			code: API_LIMIT_ERROR_CODE,
-			resetTime: new Date(rateLimit.resetTime).toISOString(),
-			remaining: rateLimit.remaining,
-		},
-		{ status: 429 }
-	);
-}
-
 export async function GET({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -60,7 +45,7 @@ export async function GET({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				userId: user?.id || null,
 			});
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
@@ -119,10 +104,7 @@ export async function GET({ request, cookies }) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -140,7 +122,7 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				userId: user?.id || null,
 			});
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
@@ -158,7 +140,7 @@ export async function POST({ request, cookies }) {
 			);
 		}
 
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const attempts = Array.isArray(body?.attempts) ? body.attempts.slice(0, 300) : [];
 		const storedCount = await upsertUserTestAttempts({ userId: user?.id, clientId }, attempts);
 

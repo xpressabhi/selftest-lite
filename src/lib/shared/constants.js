@@ -1,20 +1,3 @@
-export const STORAGE_KEYS = {
-	TEST_HISTORY: 'selftest_history',
-	QUESTION_PAPER: 'selftest_question_paper',
-	USER_ANSWERS: 'selftest_user_answers',
-	UNSUBMITTED_TEST: 'selftest_unsubmitted_test',
-	USER_PROMPTS: 'selftest_user_prompts',
-	BOOKMARKED_EXAMS: 'selftest_bookmarked_exams',
-	BOOKMARKED_QUIZ_PRESETS: 'selftest_bookmarked_quiz_presets',
-	PAPER_LANGUAGE: 'selftest_paper_language',
-	PWA_INSTALL_DISMISSED_AT: 'selftest_pwa_install_dismissed_at',
-};
-
-export const APP_EVENTS = {
-	OPEN_SEARCH: 'selftest-open-search',
-	OPEN_CREATE_TEST: 'selftest-open-create-test',
-};
-
 export const TOPIC_CATEGORIES = {
 	'Programming & Tech': [
 		'JavaScript',

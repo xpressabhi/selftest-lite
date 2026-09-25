@@ -7,14 +7,13 @@ import * as z from 'zod';
 import {
 	createTestRecord,
 	findReusableFullExamRecord,
-	getClientKey,
 	getRecentQuestionsForTopic,
 	getStateForIdentity,
 	getTestRecordsByIds,
 	logApiEvent,
 	saveTestIntentRecord,
 } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { resolveRequestContext } from '$lib/server/apiContext';
 import { paperSchemaFor } from '$lib/server/quizSchema';
 import { parseJsonResponse } from '$lib/server/jsonResponse';
 import { normalizeMathText } from '$lib/shared/latex';
@@ -30,7 +29,6 @@ import {
 	resolveWarmUpDifficulty,
 } from '$lib/server/profile';
 import {
-	parseRequestBody,
 	sanitizePreviousTestIds,
 	validateGenerateRequest,
 	repairGeneratedPaper,
@@ -38,6 +36,7 @@ import {
 	comparableText,
 	answerMatchesOption,
 } from '$lib/server/quizValidation';
+import { parseRequestBody } from '$lib/server/requestBody';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
 import {
 	assignSectionsToPaper,
@@ -995,10 +994,7 @@ function streamGenerate(context) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 	const wantsStream = String(request.headers.get('accept') || '').includes(
 		'text/event-stream'
 	);

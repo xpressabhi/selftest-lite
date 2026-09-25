@@ -1,8 +1,5 @@
 export const VALID_LANGUAGES = ['english', 'hindi'];
 
-export const TEST_MODE_QUIZ = 'quiz-practice';
-export const TEST_MODE_EXAM = 'full-exam';
-
 export const VALID_TEST_TYPES = [
 	'multiple-choice',
 	'true-false',
@@ -30,5 +27,4 @@ export const MAX_TEST_QUESTIONS = 200;
 export const MAX_QUESTION_TEXT_LENGTH = 2000;
 export const MAX_ANSWER_TEXT_LENGTH = 1000;
 export const MAX_OPTION_TEXT_LENGTH = 1000;
-export const MAX_EXPLANATION_LENGTH = 5000;
 export const MAX_REQUEST_BODY_BYTES = 2 * 1024 * 1024;

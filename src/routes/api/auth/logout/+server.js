@@ -4,14 +4,14 @@ import {
 	getRawSessionTokenFromRequest,
 	revokeSessionByToken,
 } from '$lib/server/auth';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
+import { logApiEvent } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { resolveRequestContext } from '$lib/server/apiContext';
 
 const LOGOUT_RATE_LIMIT = 10;
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
+	const { startedAt, clientKey } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {

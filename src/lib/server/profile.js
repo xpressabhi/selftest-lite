@@ -13,7 +13,6 @@ import { isPersonalized } from '$lib/shared/userProfile';
 export const MIN_TOPIC_ATTEMPTS = 2;
 export const HIGH_ACCURACY = 0.85;
 export const LOW_ACCURACY = 0.6;
-export const WARM_UP_RATIO = 0.2;
 export const MAX_FOCUS_TOPICS = 5;
 export const MAX_WEAK_TOPICS_IN_CONTEXT = 3;
 export const RECENCY_HALF_LIFE_DAYS = 30;

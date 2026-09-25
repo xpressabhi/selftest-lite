@@ -114,6 +114,16 @@
 	 * keyboard is up). Without this the panel's first rows slide under the
 	 * status bar and the section title becomes unreachable.
 	 */
+	let headerEl = null;
+	let searchSpaceFrame = 0;
+
+	function currentHeader() {
+		if (!headerEl || !headerEl.isConnected) {
+			headerEl = document.querySelector('.app-header');
+		}
+		return headerEl;
+	}
+
 	function updateSearchSpace() {
 		if (typeof window === 'undefined' || !wrapperRef) return;
 		const viewport = window.visualViewport;
@@ -125,12 +135,22 @@
 		const offsetTop = viewport?.offsetTop ?? 0;
 		const top = anchor.getBoundingClientRect().top - offsetTop;
 		wrapperRef.style.setProperty('--search-top', `${Math.round(top)}px`);
-		const header = document.querySelector('.app-header');
+		const header = currentHeader();
 		const headerBottom = header ? header.getBoundingClientRect().bottom - offsetTop : 0;
 		wrapperRef.style.setProperty(
 			'--search-block-top',
 			`${Math.max(0, Math.round(headerBottom))}px`
 		);
+	}
+
+	// Scroll/resize fire far more often than layout changes; one measurement per
+	// frame keeps the panel in sync without forcing layout on every event.
+	function scheduleSearchSpace() {
+		if (searchSpaceFrame) return;
+		searchSpaceFrame = window.requestAnimationFrame(() => {
+			searchSpaceFrame = 0;
+			updateSearchSpace();
+		});
 	}
 
 	function handleFocusOut(event) {
@@ -217,8 +237,8 @@
 	 */
 	$effect(() => {
 		if (typeof window === 'undefined' || !searchOpen) return;
-		const sync = () => updateSearchSpace();
-		sync();
+		const sync = () => scheduleSearchSpace();
+		updateSearchSpace();
 		window.addEventListener('resize', sync);
 		window.addEventListener('scroll', sync, { passive: true });
 		window.visualViewport?.addEventListener('resize', sync);
@@ -228,6 +248,10 @@
 			window.removeEventListener('scroll', sync);
 			window.visualViewport?.removeEventListener('resize', sync);
 			window.visualViewport?.removeEventListener('scroll', sync);
+			if (searchSpaceFrame) {
+				window.cancelAnimationFrame(searchSpaceFrame);
+				searchSpaceFrame = 0;
+			}
 		};
 	});
 

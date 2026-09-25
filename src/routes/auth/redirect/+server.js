@@ -1,13 +1,14 @@
 import { redirect } from '@sveltejs/kit';
 import {
 	createSessionForUser,
-	getClientIdFromRequest,
 	setSessionCookie,
 	upsertGoogleUser,
 	verifyGoogleCredential,
 } from '$lib/server/auth';
-import { backfillUserIdentity, getClientKey, logApiEvent } from '$lib/server/storage';
+import { backfillUserIdentity, logApiEvent } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { readJsonBody } from '$lib/server/requestBody';
+import { resolveRequestContext } from '$lib/server/apiContext';
 import { isRedirect } from '@sveltejs/kit';
 
 const REDIRECT_AUTH_RATE_LIMIT = 10;
@@ -25,9 +26,7 @@ const home = (query = '') => (query ? `/?${query}` : '/');
  * when testing the native flow against a local dev server).
  */
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -50,7 +49,7 @@ export async function POST({ request, cookies }) {
 		let credential = null;
 		const contentType = request.headers.get('content-type') || '';
 		if (contentType.includes('application/json')) {
-			const body = await request.json().catch(() => ({}));
+			const body = await readJsonBody(request);
 			credential = body?.credential;
 		} else {
 			const body = await request.text().catch(() => '');
@@ -114,9 +113,7 @@ export async function POST({ request, cookies }) {
 
 /** Fallback for GET callbacks (e.g. credential in the query string). */
 export async function GET({ url, request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {

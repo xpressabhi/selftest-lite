@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import { parseRequestBody } from '$lib/server/quizValidation';
+import { parseRequestBody } from '$lib/server/requestBody';
 import { query } from '$lib/server/storage';
 import { isPgliteUrl } from '$lib/server/testDb';
 

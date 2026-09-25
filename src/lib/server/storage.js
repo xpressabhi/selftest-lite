@@ -3,11 +3,7 @@ import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { createPglitePool, isPgliteUrl } from './testDb.js';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
-import {
-	DUE_SUBSCRIPTION_PARAMS,
-	DUE_SUBSCRIPTIONS_SQL,
-	parseReminderHour,
-} from '$lib/shared/reminders';
+import { parseReminderHour } from '$lib/shared/reminders';
 import { sanitizeHintedIndexes } from './hint.js';
 
 let poolInstance = null;
@@ -1408,30 +1404,6 @@ export async function archivePushSubscription(endpoint) {
 		[endpoint]
 	);
 	return (result.rowCount || 0) > 0;
-}
-
-/**
- * Subscriptions due for a reminder right now. The rule (chosen hour or smart
- * windows, minimum gap, subscriber timezone) lives once in
- * `$lib/shared/reminders` and is shared with the hourly sender.
- */
-export async function listDuePushSubscriptions() {
-	await ensureStorageSchema();
-	const result = await query(DUE_SUBSCRIPTIONS_SQL, DUE_SUBSCRIPTION_PARAMS);
-	return result.rows;
-}
-
-export async function markPushSubscriptionSent(id, { error = null, disable = false } = {}) {
-	await ensureStorageSchema();
-	await query(
-		`UPDATE push_subscription
-		 SET last_sent_at = CASE WHEN $2::text IS NULL THEN NOW() ELSE last_sent_at END,
-			last_error = $2,
-			enabled = CASE WHEN $3 THEN FALSE ELSE enabled END,
-			updated_at = NOW()
-		 WHERE id = $1`,
-		[id, error ? String(error).slice(0, 300) : null, disable]
-	);
 }
 
 export async function archiveOldRateLimitEvents() {

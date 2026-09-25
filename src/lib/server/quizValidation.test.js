@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-	InvalidRequestBodyError,
-	RequestBodyTooLargeError,
 	answerMatchesOption,
 	inspectGeneratedPaper,
-	parseRequestBody,
 	repairGeneratedPaper,
 	sanitizePreviousTestIds,
 	validateGenerateRequest,
@@ -13,31 +10,6 @@ import {
 } from './quizValidation';
 import { buildMatchingQuestion } from './matchingBuilder';
 import { buildAssertionReasoningQuestion } from './assertionReasoning';
-
-function jsonRequest(body) {
-	return { text: () => Promise.resolve(body) };
-}
-
-describe('parseRequestBody', () => {
-	it('parses a valid JSON body', async () => {
-		await expect(parseRequestBody(jsonRequest('{"a":1}'))).resolves.toEqual({
-			a: 1,
-		});
-	});
-
-	it('rejects invalid JSON', async () => {
-		await expect(parseRequestBody(jsonRequest('{not json'))).rejects.toBeInstanceOf(
-			InvalidRequestBodyError
-		);
-	});
-
-	it('rejects bodies over 2MB', async () => {
-		const oversized = 'x'.repeat(2 * 1024 * 1024 + 1);
-		await expect(parseRequestBody(jsonRequest(oversized))).rejects.toBeInstanceOf(
-			RequestBodyTooLargeError
-		);
-	});
-});
 
 describe('validateGenerateRequest', () => {
 	const base = {

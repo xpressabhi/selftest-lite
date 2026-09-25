@@ -1,17 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { isAdminConfigured, isAdminRequest } from '$lib/server/adminAuth';
+import { rateLimited } from '$lib/server/apiResponse';
+import { requireAdmin } from '$lib/server/adminAuth';
 import { ensureStorageSchema, query } from '$lib/server/storage';
 import { getExamPattern } from '$lib/server/examPattern';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { readJsonBody } from '$lib/server/requestBody';
 
 const PATTERNS_RATE_LIMIT = 30;
-
-async function requireAdmin(request) {
-	if (!isAdminConfigured() || !isAdminRequest(request)) {
-		return json({ error: 'Unauthorized', code: 'ADMIN_UNAUTHORIZED' }, { status: 401 });
-	}
-	return null;
-}
 
 async function checkRateLimit(request) {
 	const rateLimit = await rateLimiter(request, {
@@ -19,21 +14,14 @@ async function checkRateLimit(request) {
 		limit: PATTERNS_RATE_LIMIT,
 	});
 	if (rateLimit.limited) {
-		return json(
-			{
-				error: 'Rate limit exceeded. Please try again later.',
-				code: 'RATE_LIMIT_EXCEEDED',
-				resetTime: new Date(rateLimit.resetTime).toISOString(),
-			},
-			{ status: 429 }
-		);
+		return rateLimited(rateLimit);
 	}
 	return null;
 }
 
 /** Admin-only view of every cached exam pattern and its freshness. */
 export async function GET({ request }) {
-	const unauthorized = await requireAdmin(request);
+	const unauthorized = requireAdmin(request);
 	if (unauthorized) {
 		return unauthorized;
 	}
@@ -79,7 +67,7 @@ export async function GET({ request }) {
 
 /** Rediscovers one stored pattern from its original target (admin only). */
 export async function POST({ request }) {
-	const unauthorized = await requireAdmin(request);
+	const unauthorized = requireAdmin(request);
 	if (unauthorized) {
 		return unauthorized;
 	}
@@ -88,7 +76,7 @@ export async function POST({ request }) {
 		if (limited) {
 			return limited;
 		}
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const patternKey = typeof body?.patternKey === 'string' ? body.patternKey.trim() : '';
 		if (!patternKey) {
 			return json({ error: 'patternKey is required', code: 'PATTERN_KEY_REQUIRED' }, { status: 400 });

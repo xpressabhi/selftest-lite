@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { parseRequestBody } from '$lib/server/quizValidation';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
+import { parseRequestBody } from '$lib/server/requestBody';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { logApiEvent } from '$lib/server/storage';
 import {
 	ADMIN_COOKIE_NAME,
 	ADMIN_SESSION_TTL_MS,
@@ -13,8 +14,7 @@ import {
 const LOGIN_RATE_LIMIT = 5;
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
+	const { startedAt, clientKey } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {

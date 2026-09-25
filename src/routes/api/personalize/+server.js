@@ -3,14 +3,15 @@ import { env } from '$env/dynamic/private';
 import { TypeSafeClient } from '@typesafe-ai/sdk';
 import * as z from 'zod';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { logApiEvent } from '$lib/server/storage';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	parseRequestBody,
-} from '$lib/server/quizValidation';
-import { API_LIMIT_ERROR_CODE, classifyApiError } from '$lib/shared/apiLimitError';
+} from '$lib/server/requestBody';
+import { classifyApiError } from '$lib/shared/apiLimitError';
 import {
 	PERSONALIZE_PAGES,
 	buildPersonalizeQuestions,
@@ -35,10 +36,7 @@ function withTimeout(promise, timeoutMs) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	let body;
 	try {
@@ -65,10 +63,7 @@ export async function POST({ request, cookies }) {
 		windowMs: PERSONALIZE_RATE_WINDOW_MS,
 	});
 	if (rateLimit.limited) {
-		return json(
-			{ error: 'Rate limit exceeded. Please try again later.', code: API_LIMIT_ERROR_CODE },
-			{ status: 429 }
-		);
+		return rateLimited(rateLimit);
 	}
 
 	const apiKey = env.TYPESAFE_API_KEY;

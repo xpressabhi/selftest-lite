@@ -6,7 +6,6 @@
 //
 // Shape: { thread: [{ role: 'user', text }], plan, provenance }.
 
-import * as z from 'zod';
 import { normalizePlan } from '$lib/server/intentParse';
 import { MAX_INTENT_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 
@@ -19,14 +18,6 @@ const MAX_FIELD_LIST = 8;
 const MAX_ROUND = 10;
 
 const PARSE_MODES = new Set(['preview', 'turn']);
-
-// Loose on purpose: sanitizeIntentCapture() is the authority, this only keeps
-// absurd payloads from reaching it.
-export const intentCaptureSchema = z.object({
-	thread: z.array(z.unknown()).max(50).optional().default([]),
-	plan: z.unknown().optional(),
-	provenance: z.unknown().optional(),
-});
 
 function asRecord(value) {
 	return value && typeof value === 'object' && !Array.isArray(value) ? value : {};

@@ -2,38 +2,23 @@ import { json } from '@sveltejs/kit';
 import {
 	getStateForIdentity,
 	upsertStateForIdentity,
-	getClientKey,
 	logApiEvent,
 } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
+import { readJsonBody } from '$lib/server/requestBody';
 import {
 	MAX_STATE_KEYS_PER_REQUEST,
 	isSyncedStateKey,
 	validateStateValue,
 } from '$lib/shared/userState';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
 const STATE_GET_RATE_LIMIT = 900;
 const STATE_POST_RATE_LIMIT = 300;
 
-function rateLimitedResponse(rateLimit) {
-	return json(
-		{
-			error: 'Rate limit exceeded. Please try again later.',
-			code: API_LIMIT_ERROR_CODE,
-			resetTime: new Date(rateLimit.resetTime).toISOString(),
-			remaining: rateLimit.remaining,
-		},
-		{ status: 429 }
-	);
-}
-
 export async function GET({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -51,7 +36,7 @@ export async function GET({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				userId: user?.id || null,
 			});
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
@@ -105,10 +90,7 @@ export async function GET({ request, cookies }) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -126,7 +108,7 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				userId: user?.id || null,
 			});
-			return rateLimitedResponse(rateLimit);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
@@ -144,7 +126,7 @@ export async function POST({ request, cookies }) {
 			);
 		}
 
-		const body = await request.json().catch(() => ({}));
+		const body = await readJsonBody(request);
 		const rawStorage =
 			body?.storage && typeof body.storage === 'object' && !Array.isArray(body.storage)
 				? body.storage

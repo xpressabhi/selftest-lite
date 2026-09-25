@@ -11,7 +11,7 @@ import {
 	saveExplanation,
 	touchExplanation,
 } from '$lib/server/explanationCache';
-import { parseRequestBody } from '$lib/server/quizValidation';
+import { parseRequestBody } from '$lib/server/requestBody';
 import { explanationSchema } from '$lib/server/quizSchema';
 import { parseJsonResponse } from '$lib/server/jsonResponse';
 import {

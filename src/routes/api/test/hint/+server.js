@@ -2,18 +2,17 @@ import { json } from '@sveltejs/kit';
 import * as z from 'zod';
 import {
 	getMyAttemptForIdentity,
-	getClientKey,
 	getTestRecordById,
 	logApiEvent,
 } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	parseRequestBody,
-} from '$lib/server/quizValidation';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+} from '$lib/server/requestBody';
 import { pickElimination } from '$lib/server/hint';
 
 // Abuse control only; the per-test hint cap (3) is enforced at submit time
@@ -27,10 +26,7 @@ const requestSchema = z.object({
 });
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	let body;
 	try {
@@ -61,10 +57,7 @@ export async function POST({ request, cookies }) {
 		windowMs: HINT_RATE_WINDOW_MS,
 	});
 	if (rateLimit.limited) {
-		return json(
-			{ error: 'Rate limit exceeded. Please try again later.', code: API_LIMIT_ERROR_CODE },
-			{ status: 429 }
-		);
+		return rateLimited(rateLimit);
 	}
 
 	const testRecord = await getTestRecordById(testId);

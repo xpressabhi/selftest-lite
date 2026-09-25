@@ -5,7 +5,6 @@ import {
 	MAX_PREVIOUS_TESTS,
 	MAX_QUESTION_TEXT_LENGTH,
 	MAX_QUESTIONS,
-	MAX_REQUEST_BODY_BYTES,
 	MAX_SELECTED_TOPICS,
 	MAX_SYLLABUS_FOCUS,
 	MAX_TEST_QUESTIONS,
@@ -23,39 +22,6 @@ import { MATCHING_PAIR_COUNT, parseCombination } from './matchingBuilder';
 import { AR_OPTIONS, optionsForLanguage } from './assertionReasoning';
 
 const MATH_SEGMENT_PATTERN = /(\$\$?)([\s\S]*?)\1/g;
-
-export class RequestBodyTooLargeError extends Error {
-	constructor() {
-		super('Request body exceeds the maximum allowed size');
-		this.name = 'RequestBodyTooLargeError';
-		this.code = 'REQUEST_TOO_LARGE';
-	}
-}
-
-export class InvalidRequestBodyError extends Error {
-	constructor() {
-		super('Request body must be valid JSON');
-		this.name = 'InvalidRequestBodyError';
-		this.code = 'INVALID_REQUEST_BODY';
-	}
-}
-
-/**
- * Reads and parses the JSON request body while enforcing a size cap on the
- * raw text before parsing, so callers cannot force a large parse on the
- * server.
- */
-export async function parseRequestBody(request) {
-	const rawBody = await request.text();
-	if (rawBody.length > MAX_REQUEST_BODY_BYTES) {
-		throw new RequestBodyTooLargeError();
-	}
-	try {
-		return JSON.parse(rawBody);
-	} catch {
-		throw new InvalidRequestBodyError();
-	}
-}
 
 function validateMathSyntax(value, label) {
 	for (const match of String(value ?? '').matchAll(MATH_SEGMENT_PATTERN)) {

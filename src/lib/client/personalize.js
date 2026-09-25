@@ -70,8 +70,3 @@ export async function requestPersonalize(page, state = {}, options = {}) {
 		window.clearTimeout(timeoutId);
 	}
 }
-
-export function resetPersonalizeBudget() {
-	lastAtByPage = new Map();
-	callsByPage = new Map();
-}

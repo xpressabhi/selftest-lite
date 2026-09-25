@@ -444,8 +444,8 @@
 									bind:value={draft.preferences.language}
 								>
 									<option value="">{$t('profileWizardLanguageDefault')}</option>
-									<option value="english">English</option>
-									<option value="hindi">हिन्दी</option>
+									<option value="english">{$t('englishLabel')}</option>
+									<option value="hindi">{$t('hindiLabel')}</option>
 								</select>
 							</div>
 							<div class="col-12 col-sm-6">

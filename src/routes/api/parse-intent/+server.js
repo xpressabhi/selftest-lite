@@ -2,16 +2,17 @@ import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { TypeSafeClient } from '@typesafe-ai/sdk';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { getStateForIdentity, logApiEvent } from '$lib/server/storage';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
 import { PROFILE_STATE_KEY, parseProfileStateValue } from '$lib/shared/userProfile';
 import { buildStudentContext } from '$lib/server/profile';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	parseRequestBody,
-} from '$lib/server/quizValidation';
-import { API_LIMIT_ERROR_CODE, classifyApiError } from '$lib/shared/apiLimitError';
+} from '$lib/server/requestBody';
+import { classifyApiError } from '$lib/shared/apiLimitError';
 import { MAX_INTENT_CHARS } from '$lib/shared/inputLimits';
 import {
 	INTENT_MODEL,
@@ -94,10 +95,7 @@ function withTimeout(promise, timeoutMs) {
 }
 
 export async function POST({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		let body;
@@ -159,14 +157,7 @@ export async function POST({ request, cookies }) {
 			windowMs: PARSE_RATE_WINDOW_MS,
 		});
 		if (rateLimit.limited) {
-			return json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: API_LIMIT_ERROR_CODE,
-					remaining: rateLimit.remaining,
-				},
-				{ status: 429 }
-			);
+			return rateLimited(rateLimit);
 		}
 
 		const apiKey = env.TYPESAFE_API_KEY;

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { hasPremiumAccess } from '$lib/server/premium';
 import { getAuthenticatedUser } from '$lib/server/auth';
 import { rateLimiter } from '$lib/server/rateLimiter';
+import { rateLimited } from '$lib/server/apiResponse';
 
 /** Access state for the premium surfaces (admin, entitlement, or denied). */
 export async function GET({ request, cookies }) {
@@ -11,13 +12,7 @@ export async function GET({ request, cookies }) {
 			limit: 60,
 		});
 		if (rateLimit.limited) {
-			return json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: 'RATE_LIMIT_EXCEEDED',
-				},
-				{ status: 429 }
-			);
+			return rateLimited(rateLimit);
 		}
 
 		const user = await getAuthenticatedUser(cookies);

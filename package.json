@@ -17,6 +17,7 @@
 		"format:check": "prettier --check .",
 		"check": "svelte-kit sync && vite build",
 		"test": "vitest run",
+		"locales:unused": "node scripts/check-unused-locale-keys.mjs",
 		"telemetry:report": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/telemetry-report.mjs",
 		"telemetry:backfill": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-metadata.mjs",
 		"telemetry:backfill-visits": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-visits.mjs",
@@ -27,6 +28,7 @@
 		"cap:open": "cap open android",
 		"apk:debug": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug",
 		"apk:release": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleRelease",
+		"assets:android": "node scripts/generate-android-assets.mjs",
 		"verify:vercel": "npm run build && node scripts/verify-vercel.mjs"
 	},
 	"dependencies": {
@@ -62,7 +64,6 @@
 		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.70.2",
 		"@tailwindcss/postcss": "^4.3.3",
-		"autoprefixer": "^10.5.4",
 		"eslint": "^10.8.1",
 		"eslint-config-prettier": "10.1.8",
 		"eslint-plugin-svelte": "^3.22.0",

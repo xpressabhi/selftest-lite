@@ -238,9 +238,6 @@ select {
 	.btn-sm {
 		@apply min-h-11 px-3 py-1.5 text-sm;
 	}
-	.btn-lg {
-		@apply min-h-12 px-5 text-base;
-	}
 	.btn-primary {
 		@apply bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600;
 	}
@@ -278,9 +275,6 @@ select {
 	.alert {
 		@apply rounded-surface border p-3 text-sm;
 	}
-	.alert-info {
-		@apply border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100;
-	}
 	.alert-warning {
 		@apply border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100;
 	}
@@ -300,23 +294,11 @@ select {
 	.text-bg-success {
 		@apply bg-emerald-700 text-white;
 	}
-	.bg-warning {
-		@apply bg-amber-400;
-	}
 	.text-bg-warning {
 		@apply bg-amber-400 text-slate-950;
 	}
-	.text-bg-primary {
-		@apply bg-brand-600 text-white;
-	}
 	.progress {
 		@apply h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700;
-	}
-	.progress-bar {
-		@apply h-full bg-brand-600 transition-all;
-	}
-	.spinner-border {
-		@apply inline-block size-8 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600;
 	}
 
 	/* AI Thinking Dots — replaces traditional spinner for an AI-native feel */
@@ -351,23 +333,6 @@ select {
 	.btn:active:not(:disabled),
 	button:active:not(:disabled):not(.no-press) {
 		animation: scale-press 0.15s ease-out;
-	}
-
-	/* Card hover lift */
-	.card-lift {
-		@apply transition-transform duration-200 ease-out;
-	}
-	.card-lift:hover {
-		transform: translateY(-2px);
-	}
-	.card-lift:active {
-		transform: translateY(0);
-	}
-
-	/* Tap ripple for mobile — legacy-compatible */
-	.tap-target {
-		-webkit-tap-highlight-color: transparent;
-		touch-action: manipulation;
 	}
 
 	/* Surfaces: one card recipe for the whole app (padding grows on
@@ -407,16 +372,9 @@ select {
 	/* Type scale: one ladder for the app. Page titles are 1.5rem on phones
 	   and 1.875rem from tablet up; section titles 1.125/1.25rem. Headings
 	   balance to avoid widows. */
-	.text-display,
 	.text-page,
 	.text-section {
 		text-wrap: balance;
-	}
-	.text-display {
-		font-size: 1.75rem;
-		font-weight: 700;
-		line-height: 1.15;
-		letter-spacing: -0.01em;
 	}
 	.text-page {
 		margin: 0;
@@ -431,22 +389,9 @@ select {
 		font-weight: 700;
 		line-height: 1.3;
 	}
-	.text-body {
-		font-size: 0.95rem;
-		line-height: 1.55;
-	}
-	.text-meta {
-		font-size: 0.8rem;
-	}
-	.text-micro {
-		font-size: 0.72rem;
-	}
 	@media (min-width: 768px) {
 		.panel {
 			padding: 1.5rem;
-		}
-		.text-display {
-			font-size: 2.25rem;
 		}
 		.text-page {
 			font-size: 1.875rem;
@@ -454,15 +399,6 @@ select {
 		.text-section {
 			font-size: 1.25rem;
 		}
-	}
-	.list-group {
-		@apply overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700;
-	}
-	.list-group-item {
-		@apply block border-b border-slate-200 bg-[var(--surface)] p-3 last:border-b-0 dark:border-slate-700;
-	}
-	.list-group-item-action {
-		@apply transition hover:bg-slate-50 dark:hover:bg-slate-800;
 	}
 	.visually-hidden {
 		@apply sr-only;
@@ -500,23 +436,11 @@ select {
 	.text-center {
 		@apply text-center;
 	}
-	.text-start {
-		@apply text-left;
-	}
-	.text-uppercase {
-		@apply uppercase;
-	}
-	.text-primary {
-		@apply text-brand-600 dark:text-brand-500;
-	}
 	.text-success {
 		@apply text-emerald-600 dark:text-emerald-400;
 	}
 	.text-danger {
 		@apply text-red-600 dark:text-red-400;
-	}
-	.text-dark {
-		@apply text-slate-950;
 	}
 	.text-truncate {
 		@apply truncate;
@@ -550,9 +474,6 @@ select {
 	}
 	.display-6 {
 		@apply text-4xl leading-tight;
-	}
-	.lh-base {
-		@apply leading-normal;
 	}
 	/* Spacing is Tailwind's 4px scale, and only that. The old Bootstrap
 	   aliases that lived here (mt-3 → 1rem, p-3 → 1rem, py-5 → 2.5rem …)
@@ -594,10 +515,8 @@ select {
  * break every row that uses them. Defining them here, after Tailwind's
  * own utilities, restores the intended 1-col (mobile) / 2-col (md+) layout. */
 @layer utilities {
-	/* The explicit `.app-container` avoids Tailwind's responsive `.container`
-	   utility. The compatibility alias resolves to the same geometry while
-	   existing shared components migrate. */
-	.container,
+	/* Every route root, the header inner row, and the footer inner row use
+	   this shell. It avoids Tailwind's responsive `.container` utility. */
 	.app-container {
 		box-sizing: border-box;
 		width: 100%;
@@ -606,13 +525,11 @@ select {
 		padding-inline: max(16px, var(--sal)) max(16px, var(--sar));
 	}
 	@media (min-width: 640px) {
-		.container,
 		.app-container {
 			padding-inline: max(24px, var(--sal)) max(24px, var(--sar));
 		}
 	}
 	@media (min-width: 1024px) {
-		.container,
 		.app-container {
 			padding-inline: max(32px, var(--sal)) max(32px, var(--sar));
 		}
@@ -632,13 +549,11 @@ select {
 	@media (min-width: 768px) {
 		.col-md-3,
 		.col-md-4,
-		.col-md-6,
-		.col-md-7 {
+		.col-md-6 {
 			grid-column: span 1 / span 1;
 		}
 	}
 	@media (min-width: 1024px) {
-		.col-lg-4,
 		.col-lg-6 {
 			grid-column: span 1 / span 1;
 		}

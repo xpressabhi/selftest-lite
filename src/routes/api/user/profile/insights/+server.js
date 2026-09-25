@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
-import { getClientKey, getStateForIdentity, logApiEvent } from '$lib/server/storage';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { getStateForIdentity, logApiEvent } from '$lib/server/storage';
 import { rateLimiter } from '$lib/server/rateLimiter';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { resolveRequestContext } from '$lib/server/apiContext';
+import { rateLimited } from '$lib/server/apiResponse';
 import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
 import {
 	buildTailoredSummary,
@@ -14,10 +14,7 @@ import {
 const INSIGHTS_RATE_LIMIT = 30;
 
 export async function GET({ request, cookies }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
-	const user = await getAuthenticatedUser(cookies);
-	const clientId = getClientIdFromRequest(request);
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -25,15 +22,7 @@ export async function GET({ request, cookies }) {
 			limit: INSIGHTS_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: API_LIMIT_ERROR_CODE,
-					resetTime: new Date(rateLimit.resetTime).toISOString(),
-					remaining: rateLimit.remaining,
-				},
-				{ status: 429 }
-			);
+			return rateLimited(rateLimit);
 		}
 
 		if (!user?.id && !clientId) {
