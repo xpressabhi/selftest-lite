@@ -4,13 +4,10 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
 	import { track } from '$lib/client/telemetry';
-	import AnimatedHeight from '$lib/client/AnimatedHeight.svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
 	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
-	import QuestionMatching from '$lib/client/QuestionMatching.svelte';
-	import QuestionAssertionReasoning from '$lib/client/QuestionAssertionReasoning.svelte';
 	import ReviewSheet from '$lib/client/ReviewSheet.svelte';
 	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
@@ -47,6 +44,8 @@
 	import { requestPersonalize } from '$lib/client/personalize';
 	import { parseChallengeParams } from '$lib/client/challenge';
 	import { computeAttemptMarks } from '$lib/shared/marks';
+	import TestBottomBar from '$lib/client/TestBottomBar.svelte';
+	import TestQuestionCard from '$lib/client/TestQuestionCard.svelte';
 	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
 	import { drawTestCard } from '$lib/client/testCard';
 	import { shareCard } from '$lib/client/shareCardFlow';
@@ -687,10 +686,6 @@
 		return wrong.length === 2 ? wrong : [];
 	}
 
-	function isEliminated(optionIndex) {
-		return (eliminated[currentQuestionIndex] || []).includes(optionIndex);
-	}
-
 	async function useHint() {
 		const index = currentQuestionIndex;
 		if (!canUseHint || eliminated[index]) {
@@ -975,206 +970,45 @@
 			{/if}
 
 			<main class="test-main">
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="test-card-frame"
-					bind:this={questionCardHost}
-					ontouchstart={handleSwipeStart}
-					ontouchend={handleSwipeEnd}
-				>
-					<div class="test-card-head">
-						<span class="test-question-no">
-							{$t('question')}
-							{currentQuestionIndex + 1}
-							{$t('of')}
-							{totalQuestions}
-						</span>
-						{#if questionFormatLabel}
-							<span class="test-format-chip">{questionFormatLabel}</span>
-						{/if}
-						<div class="test-card-tools">
-							<span class="hint-btn">
-								<button
-									class="test-hint"
-									class:ready={canUseHint}
-									class:used={eliminated[currentQuestionIndex]}
-									type="button"
-									disabled={!canUseHint}
-									aria-label={eliminated[currentQuestionIndex]
-										? $t('hintUsed')
-										: $t('hintFiftyFifty')}
-									title={canUseHint ? $t('hintFiftyFifty') : $t('hintUnlockSoon')}
-									onclick={useHint}
-								>
-									<span aria-hidden="true">50-50</span>
-									<span class="visually-hidden">
-										{eliminated[currentQuestionIndex] ? $t('hintUsed') : $t('hintFiftyFifty')}
-									</span>
-								</button>
-								{#if showHintSoon && !eliminated[currentQuestionIndex]}
-									<span class="hint-charge" aria-hidden="true">
-										<span style={`width: ${Math.round(hintCharge * 100)}%`}></span>
-									</span>
-								{/if}
-							</span>
-							<button
-								class="test-flag"
-							class:active={flagged.includes(currentQuestionIndex)}
-							type="button"
-							aria-pressed={flagged.includes(currentQuestionIndex)}
-							aria-label={flagged.includes(currentQuestionIndex)
-								? $t('flaggedQuestions')
-								: $t('flagForReview')}
-							onclick={() => toggleFlag(currentQuestionIndex)}
-						>
-							<Icon name="flag" size={18} />
-							<span
-								>{flagged.includes(currentQuestionIndex)
-									? $t('flaggedQuestions')
-									: $t('flagForReview')}</span
-							>
-						</button>
-						{#if showHintSoon}
-							<span class="hint-soon" role="status">{$t('hintUnlockSoon')}</span>
-						{/if}
-						</div>
-					</div>
-					<AnimatedHeight
-						class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
-						estimatedHeight={questionCardEstimate}
-					>
-						{#key currentQuestionIndex}
-							<div
-								class="question-content"
-								class:question-content-forward={navigationDirection === 'forward'}
-								class:question-content-backward={navigationDirection === 'backward'}
-							>
-								{#if currentSection}
-									<div class="test-section-banner">
-										<span class="test-section-label">
-											{$t('sectionLabel', {
-												index: currentSectionPosition,
-												total: paperSections.length,
-											})}
-										</span>
-										<span class="test-section-name">{currentSection.name}</span>
-										{#if currentSection.marksPerQuestion}
-											<span class="test-section-marks">
-												{$t('marksEachLabel', {
-													count: currentSection.marksPerQuestion,
-												})}{#if suggestedSectionMinutes}
-													&middot;
-													{$t('sectionMinutesLabel', {
-														minutes: suggestedSectionMinutes,
-													})}{/if}
-											</span>
-										{/if}
-									</div>
-									{#if sectionFirstQuestion && currentSection.instructions}
-										<p class="test-section-instructions">
-											{currentSection.instructions}
-										</p>
-									{/if}
-								{/if}
-								<h2
-									class="test-question-text"
-									class:visually-hidden={!question.question}
-									bind:this={questionHeading}
-									tabindex="-1"
-								>
-									{#if question.question}
-										<MarkdownContent content={question.question} />
-									{:else}
-										{$t('question')}
-										{currentQuestionIndex + 1}
-										{$t('of')}
-										{totalQuestions}
-									{/if}
-								</h2>
-								{#if question.format === 'matching'}
-									<QuestionMatching {question} />
-								{:else if question.format === 'assertion-reasoning'}
-									<QuestionAssertionReasoning {question} />
-								{/if}
-								<div class="d-grid gap-2">
-									{#each question.options || [] as option, optionIndex (optionIndex)}
-										<button
-											class="test-option"
-											class:selected={answers[currentQuestionIndex] ===
-												option}
-											class:eliminated={isEliminated(optionIndex)}
-											type="button"
-											aria-pressed={answers[currentQuestionIndex] === option}
-											aria-disabled={isEliminated(optionIndex)}
-											disabled={isEliminated(optionIndex)}
-											onclick={() => setAnswer(currentQuestionIndex, option)}
-										>
-											<span class="test-option-letter" aria-hidden="true">
-												{String.fromCharCode(65 + optionIndex)}
-											</span>
-											<span class="test-option-text">
-												<MarkdownContent content={option} links="text" />
-											</span>
-											{#if answers[currentQuestionIndex] === option}
-												<span class="test-option-check" aria-hidden="true">
-													<Icon name="check" size={16} />
-												</span>
-											{/if}
-										</button>
-									{/each}
-								</div>
-							</div>
-						{/key}
-					</AnimatedHeight>
-				</div>
+				<TestQuestionCard
+					bind:host={questionCardHost}
+					bind:heading={questionHeading}
+					{question}
+					questionIndex={currentQuestionIndex}
+					{totalQuestions}
+					{navigationDirection}
+					{questionFormatLabel}
+					{currentSection}
+					{currentSectionPosition}
+					sectionCount={paperSections.length}
+					{sectionFirstQuestion}
+					{suggestedSectionMinutes}
+					estimatedHeight={questionCardEstimate}
+					selectedAnswer={answers[currentQuestionIndex]}
+					eliminatedOptions={eliminated[currentQuestionIndex]}
+					flagActive={flagged.includes(currentQuestionIndex)}
+					{canUseHint}
+					{showHintSoon}
+					{hintCharge}
+					onAnswer={(option) => setAnswer(currentQuestionIndex, option)}
+					onFlag={() => toggleFlag(currentQuestionIndex)}
+					onHint={useHint}
+					onSwipeStart={handleSwipeStart}
+					onSwipeEnd={handleSwipeEnd}
+				/>
 			</main>
 
-			<footer class="test-bottom-bar">
-				<div class="test-bottom-inner">
-					<button
-						class="test-progress-pill"
-						type="button"
-						aria-label={$t('questionsHeading')}
-						onclick={() => (showReviewSheet = true)}
-					>
-						<span class="pill-fill" style={`width: ${positionPercent}%`}></span>
-						<span class="pill-label">{answeredCount}/{totalQuestions}</span>
-					</button>
-					{#if flaggedCount > 0}
-						<span
-							class="test-flag-badge"
-							aria-label={`${$t('flaggedQuestions')}: ${flaggedCount}`}
-						>
-							<Icon name="flag" size={14} />
-							{flaggedCount}
-						</span>
-					{/if}
-					<div class="test-nav-actions">
-						<button
-							class="btn btn-outline-secondary"
-							type="button"
-							disabled={currentQuestionIndex === 0}
-							onclick={previousQuestion}
-						>
-							{$t('tourPrevious')}
-						</button>
-						{#if currentQuestionIndex === totalQuestions - 1}
-							<button
-								class="btn btn-success"
-								type="button"
-								disabled={submitting}
-								onclick={() => (showReviewSheet = true)}
-							>
-								{submitting ? $t('submittingAnswers') : $t('submitTest')}
-							</button>
-						{:else}
-							<button class="btn btn-primary" type="button" onclick={nextQuestion}>
-								{$t('tourNext')}
-							</button>
-						{/if}
-					</div>
-				</div>
-			</footer>
+			<TestBottomBar
+				{positionPercent}
+				{answeredCount}
+				{totalQuestions}
+				{flaggedCount}
+				currentQuestionIndex={currentQuestionIndex}
+				{submitting}
+				onOpenReview={() => (showReviewSheet = true)}
+				onPrevious={previousQuestion}
+				onNext={nextQuestion}
+			/>
 		{/if}
 
 		{#if showReviewSheet}
@@ -1540,396 +1374,6 @@
 		flex: 1 1 auto;
 	}
 
-	.test-card-head {
-		display: flex;
-		flex-wrap: wrap;
-		row-gap: 8px;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-		margin-bottom: 10px;
-	}
-
-	.test-card-tools {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-
-	.test-format-chip {
-		margin-right: auto;
-		padding: 2px 8px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--brand-text) 10%, transparent);
-		color: var(--brand-text);
-		font-size: 0.68rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		text-transform: uppercase;
-		white-space: nowrap;
-	}
-
-	.hint-btn {
-		position: relative;
-		display: inline-flex;
-	}
-
-	.hint-charge {
-		position: absolute;
-		left: 12px;
-		right: 12px;
-		bottom: 7px;
-		height: 2px;
-		border-radius: 2px;
-		background: color-mix(in srgb, var(--text-muted) 25%, transparent);
-		overflow: hidden;
-		pointer-events: none;
-	}
-
-	.hint-charge > span {
-		display: block;
-		height: 100%;
-		border-radius: 2px;
-		background: var(--brand-text);
-		transition: width 1s linear;
-	}
-
-	:global(html.data-saver) .hint-charge > span,
-	:global(html.reduce-motion) .hint-charge > span {
-		transition: none;
-	}
-
-	.test-hint {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		gap: 6px;
-		padding: 0 12px;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface);
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 700;
-		opacity: 0.65;
-	}
-
-	.test-hint.ready {
-		border-color: var(--brand-text);
-		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
-		color: var(--brand-text);
-		opacity: 1;
-	}
-
-	.test-hint.used {
-		border-color: var(--line);
-		background: var(--surface-muted);
-		opacity: 0.7;
-	}
-
-	.hint-soon {
-		font-size: 0.72rem;
-		color: var(--text-muted);
-		white-space: nowrap;
-	}
-
-	/* Phones: the teaser text is the first thing to go when the question
-	   header runs out of room; the state is still exposed on the hint
-	   button itself. */
-	@media (max-width: 639.98px) {
-		.hint-soon {
-			display: none;
-		}
-	}
-
-	.test-section-banner {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 4px 8px;
-		padding-bottom: 8px;
-		margin-bottom: 10px;
-		border-bottom: 1px solid var(--line);
-	}
-
-	.test-section-label {
-		font-size: 0.7rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-	}
-
-	.test-section-name {
-		font-size: 0.85rem;
-		font-weight: 700;
-	}
-
-	.test-section-marks {
-		font-size: 0.72rem;
-		color: var(--text-muted);
-	}
-
-	.test-section-instructions {
-		margin: 0 0 10px;
-		font-size: 0.78rem;
-		color: var(--text-muted);
-	}
-
-	.test-question-no {
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 600;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.test-flag {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		gap: 6px;
-		padding: 0 12px;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface);
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 600;
-	}
-
-	.test-flag.active {
-		border-color: var(--warn);
-		background: color-mix(in srgb, var(--warn) 12%, transparent);
-		color: var(--warn);
-	}
-
-	.test-flag:hover,
-	.test-flag:focus-visible {
-		border-color: var(--warn);
-	}
-
-	:global(.test-card) {
-		width: 100%;
-	}
-
-	.test-question-text {
-		margin: 0 0 14px;
-		font-size: 1.05rem;
-		font-weight: 600;
-		line-height: 1.5;
-	}
-
-	.test-option {
-		position: relative;
-		display: flex;
-		min-height: 52px;
-		align-items: center;
-		gap: 12px;
-		padding: 8px 12px;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-surface);
-		background: var(--surface);
-		color: var(--text);
-		font-size: 0.95rem;
-		font-weight: 500;
-		text-align: left;
-		transition:
-			border-color 150ms ease,
-			background 150ms ease;
-	}
-
-	.test-option:hover,
-	.test-option:focus-visible {
-		border-color: var(--color-brand-500);
-	}
-
-	.test-option.selected {
-		border-color: var(--brand-text);
-		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
-	}
-
-	.test-option.eliminated {
-		cursor: not-allowed;
-		opacity: 0.55;
-		transform: scale(0.985);
-		transition:
-			border-color 150ms ease,
-			background 150ms ease,
-			opacity var(--motion-base) var(--ease-out),
-			transform var(--motion-base) var(--ease-commit);
-	}
-
-	/* Spring strike: the line sweeps across the label as the hint lands. */
-	.test-option.eliminated .test-option-text {
-		position: relative;
-	}
-
-	.test-option.eliminated .test-option-text::after {
-		position: absolute;
-		top: 50%;
-		left: 0;
-		width: 100%;
-		height: 1.5px;
-		border-radius: 999px;
-		background: currentColor;
-		opacity: 0.75;
-		content: '';
-		transform: scaleX(0);
-		transform-origin: left center;
-		animation: eliminate-strike var(--motion-slow) var(--ease-commit) forwards;
-	}
-
-	@keyframes eliminate-strike {
-		to {
-			transform: scaleX(1);
-		}
-	}
-
-	.test-option.eliminated .test-option-letter {
-		position: relative;
-		color: transparent;
-	}
-
-	.test-option.eliminated .test-option-letter::before,
-	.test-option.eliminated .test-option-letter::after {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 14px;
-		height: 1.5px;
-		border-radius: 999px;
-		background: var(--text-muted);
-		content: '';
-		transform: translate(-50%, -50%) scaleX(0) rotate(45deg);
-		animation: eliminate-cross-a var(--motion-fast) var(--ease-commit) 90ms forwards;
-	}
-
-	.test-option.eliminated .test-option-letter::after {
-		transform: translate(-50%, -50%) scaleX(0) rotate(-45deg);
-		animation-name: eliminate-cross-b;
-		animation-delay: 130ms;
-	}
-
-	@keyframes eliminate-cross-a {
-		to {
-			transform: translate(-50%, -50%) scaleX(1) rotate(45deg);
-		}
-	}
-
-	@keyframes eliminate-cross-b {
-		to {
-			transform: translate(-50%, -50%) scaleX(1) rotate(-45deg);
-		}
-	}
-
-	.test-option-letter {
-		display: grid;
-		width: 32px;
-		height: 32px;
-		flex: 0 0 auto;
-		place-items: center;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface-muted);
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 700;
-	}
-
-	.test-option.selected .test-option-letter {
-		border-color: var(--brand-text);
-		background: var(--color-brand-600);
-		color: var(--on-brand);
-	}
-
-	.test-option-text {
-		flex: 1 1 auto;
-		min-width: 0;
-		overflow-wrap: anywhere;
-	}
-
-	.test-option-check {
-		display: grid;
-		width: 28px;
-		height: 28px;
-		flex: 0 0 auto;
-		place-items: center;
-		border-radius: 999px;
-		background: var(--color-brand-600);
-		color: var(--on-brand);
-	}
-
-	.test-bottom-bar {
-		position: sticky;
-		bottom: 0;
-		z-index: var(--z-bottom-nav);
-		padding: 8px 0 calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
-		border-top: 1px solid var(--line);
-		background: var(--surface);
-	}
-
-	.test-bottom-inner {
-		display: flex;
-		flex-wrap: wrap;
-		row-gap: 8px;
-		max-width: 860px;
-		align-items: center;
-		gap: 10px;
-		margin: 0 auto;
-	}
-
-	.test-progress-pill {
-		position: relative;
-		display: grid;
-		min-width: 92px;
-		min-height: 48px;
-		overflow: hidden;
-		place-items: center;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface-muted);
-		color: var(--text);
-		font-size: 0.85rem;
-		font-weight: 700;
-	}
-
-	.pill-fill {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
-		transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1);
-	}
-
-	.pill-label {
-		position: relative;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.test-flag-badge {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		gap: 4px;
-		padding: 0 12px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--warn) 14%, transparent);
-		color: var(--warn);
-		font-size: 0.8rem;
-		font-weight: 700;
-	}
-
-	.test-nav-actions {
-		display: flex;
-		gap: 8px;
-		margin-left: auto;
-	}
-
-	.test-nav-actions .btn {
-		min-height: 48px;
-	}
-
 	.exit-backdrop {
 		position: fixed;
 		inset: 0;
@@ -1950,57 +1394,14 @@
 		box-shadow: var(--shadow-2);
 	}
 
-	.question-content-forward {
-		animation: question-content-forward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-	}
-
-	.question-content-backward {
-		animation: question-content-backward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-	}
-
-	@keyframes question-content-forward {
-		from {
-			opacity: 0;
-			transform: translate3d(16px, 0, 0);
-		}
-		to {
-			opacity: 1;
-			transform: translate3d(0, 0, 0);
-		}
-	}
-
-	@keyframes question-content-backward {
-		from {
-			opacity: 0;
-			transform: translate3d(-16px, 0, 0);
-		}
-		to {
-			opacity: 1;
-			transform: translate3d(0, 0, 0);
-		}
-	}
-
 	@media (min-width: 640px) {
 		.test-exit-label {
 			display: inline;
 		}
 	}
 
-	@media (max-width: 439.98px) {
-		.test-flag span:last-child {
-			display: none;
-		}
-
-		.test-flag {
-			min-width: 44px;
-			justify-content: center;
-			padding: 0 10px;
-		}
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.test-progress-fill,
-		.pill-fill {
+		.test-progress-fill {
 			transition: none;
 		}
 	}
