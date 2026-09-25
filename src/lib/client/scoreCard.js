@@ -2,7 +2,15 @@
 // text helpers. System fonts only so Hindi shaping works without webfont
 // loading; the card uses one high-contrast theme regardless of app theme.
 
-import { CARD_HEIGHT, CARD_WIDTH } from './cardKit.js';
+import {
+	CARD_HEIGHT,
+	CARD_PALETTE,
+	CARD_WIDTH,
+	cardFont,
+	drawCardBackground,
+	drawCardFooter,
+	drawCardLogo,
+} from './cardKit.js';
 
 // Re-exported for existing consumers; the kit is the single source.
 export { CARD_HEIGHT, CARD_WIDTH };
@@ -58,78 +66,61 @@ export function wrapCardText(text, maxChars, maxLines) {
 }
 
 /**
- * Paints the card. `data`: { topic, score, total, pct, timeLabel, brand,
- * challenge, link }. Draws nothing when the context is unavailable.
+ * Paints the score card in the light share-card family. `data`: { topic,
+ * score, total, pct, timeLabel, challenge, link }. Draws nothing when the
+ * context is unavailable.
  */
-export function drawScoreCard(canvas, data = {}) {
+export function drawScoreCard(canvas, data = {}, logo = null) {
 	const context = canvas?.getContext?.('2d');
 	if (!context) {
 		return false;
 	}
-	const { topic = '', score = 0, total = 0, pct = 0, timeLabel = '', brand = 'selftest', challenge = '', link = '' } = data;
+	const { topic = '', score = 0, total = 0, pct = 0, timeLabel = '', challenge = '', link = '' } = data;
 	context.save();
 	context.clearRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
-
-	const background = context.createLinearGradient(0, 0, 0, CARD_HEIGHT);
-	background.addColorStop(0, '#1e1b4b');
-	background.addColorStop(0.55, '#312e81');
-	background.addColorStop(1, '#0f766e');
-	context.fillStyle = background;
-	context.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
-
-	context.textAlign = 'center';
-	context.fillStyle = 'rgba(255,255,255,0.85)';
-	context.font = '600 44px system-ui, sans-serif';
-	context.fillText(brand, CARD_WIDTH / 2, 150);
+	drawCardBackground(context);
+	drawCardLogo(context, logo, { x: CARD_WIDTH / 2 - 44, y: 80, size: 88 });
 
 	// Score hero ring.
 	const centerX = CARD_WIDTH / 2;
-	const centerY = 560;
+	const centerY = 640;
 	const radius = 220;
-	context.lineWidth = 34;
-	context.strokeStyle = 'rgba(255,255,255,0.22)';
+	context.lineWidth = 36;
+	context.strokeStyle = CARD_PALETTE.brand100;
 	context.beginPath();
 	context.arc(centerX, centerY, radius, 0, Math.PI * 2);
 	context.stroke();
-	context.strokeStyle = '#fbbf24';
+	context.strokeStyle = CARD_PALETTE.brand600;
 	context.lineCap = 'round';
 	context.beginPath();
 	context.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, Math.max(0, pct / 100)));
 	context.stroke();
-	context.fillStyle = '#ffffff';
-	context.font = '800 150px system-ui, sans-serif';
+	context.textAlign = 'center';
+	context.fillStyle = CARD_PALETTE.text;
+	context.font = cardFont(150, 800);
 	context.fillText(`${Math.round(pct)}%`, centerX, centerY + 55);
 
-	context.font = '600 54px system-ui, sans-serif';
-	context.fillStyle = 'rgba(255,255,255,0.95)';
-	context.fillText(`${score} / ${total}`, centerX, centerY + 300);
+	context.font = cardFont(56, 800);
+	context.fillText(`${score} / ${total}`, centerX, centerY + 310);
 	if (timeLabel) {
-		context.font = '500 40px system-ui, sans-serif';
-		context.fillStyle = 'rgba(255,255,255,0.75)';
-		context.fillText(timeLabel, centerX, centerY + 370);
+		context.font = cardFont(40, 500);
+		context.fillStyle = CARD_PALETTE.textMuted;
+		context.fillText(timeLabel, centerX, centerY + 380);
 	}
 
-	const lines = wrapCardText(topic, 30, 3);
-	context.font = '700 64px system-ui, sans-serif';
-	context.fillStyle = '#ffffff';
+	const lines = wrapCardText(topic, 22, 3);
+	context.font = cardFont(72, 800);
+	context.fillStyle = CARD_PALETTE.text;
 	lines.forEach((line, index) => {
-		context.fillText(line, centerX, 1050 + index * 84);
+		context.fillText(line, centerX, 1220 + index * 88);
 	});
 
 	if (challenge) {
-		context.font = '600 46px system-ui, sans-serif';
-		context.fillStyle = '#fde68a';
-		context.fillText(stripCardText(challenge).slice(0, 60), centerX, 1420);
+		context.font = cardFont(46, 800);
+		context.fillStyle = CARD_PALETTE.brand600;
+		context.fillText(stripCardText(challenge).slice(0, 60), centerX, 1560);
 	}
-	if (link) {
-		context.font = '500 36px system-ui, sans-serif';
-		context.fillStyle = 'rgba(255,255,255,0.8)';
-		context.fillText(stripCardText(link).slice(0, 64), centerX, 1560);
-	}
-
-	context.font = '500 34px system-ui, sans-serif';
-	context.fillStyle = 'rgba(255,255,255,0.6)';
-	context.fillText('Made with selftest', centerX, CARD_HEIGHT - 90);
+	drawCardFooter(context, link);
 	context.restore();
 	return true;
 }
