@@ -39,7 +39,7 @@
 	{@html contactJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="contact-wrap">
 		<header class="contact-hero">
 			<h1 class="contact-title">{$t('contactHeroTitle')}</h1>
@@ -165,7 +165,7 @@
 
 	.contact-title {
 		margin: 0 0 0.35rem;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
 	}
@@ -187,7 +187,7 @@
 		display: grid;
 		gap: 0.5rem;
 		align-content: start;
-		padding: 1.25rem;
+		padding: 1rem;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
 		background: var(--surface);
@@ -222,7 +222,7 @@
 	.contact-help {
 		display: grid;
 		gap: 1.25rem;
-		padding: 1.25rem;
+		padding: 1rem;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
 		background: var(--surface);
@@ -310,7 +310,7 @@
 
 	@media (min-width: 768px) {
 		.contact-title {
-			font-size: 2.25rem;
+			font-size: 1.875rem;
 		}
 
 		.contact-grid {

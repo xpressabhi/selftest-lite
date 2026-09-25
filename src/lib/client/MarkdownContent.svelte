@@ -211,7 +211,7 @@
 		max-width: 100%;
 		overflow-x: auto;
 		padding: 0.75rem;
-		border-radius: 0.5rem;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted, #f8f9fa);
 	}
 
@@ -230,7 +230,7 @@
 		overflow-x: auto;
 		padding: 0.75rem;
 		border: 1px solid var(--line);
-		border-radius: 0.5rem;
+		border-radius: var(--radius-control);
 		background: var(--surface);
 	}
 
@@ -245,7 +245,7 @@
 		min-height: 44px;
 		padding: 10px 12px;
 		border: 1px dashed var(--line);
-		border-radius: 0.5rem;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted, #f8f9fa);
 		color: var(--text);
 		font-size: 0.85rem;

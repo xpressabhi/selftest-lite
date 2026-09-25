@@ -14,7 +14,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="mx-auto text-center" style="max-width: 560px;">
 		<p class="display-6 fw-bold mb-1">{page.status}</p>
 		<h1 class="h3 fw-bold">

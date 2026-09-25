@@ -46,7 +46,7 @@
 	{@html postJsonLd}
 </svelte:head>
 
-<article class="container py-4 py-md-5">
+<article class="app-container py-4 py-md-5">
 	<div class="post-wrap">
 		<nav class="post-back" aria-label={$t('backToBlog')}>
 			<a class="post-back-link" href={localizedPath('/blog', $activeLanguage)}>
@@ -169,7 +169,7 @@
 
 	.post-title {
 		margin: 0;
-		font-size: 1.8rem;
+		font-size: 1.5rem;
 		line-height: 1.2;
 		font-weight: 700;
 	}
@@ -295,7 +295,7 @@
 
 	@media (min-width: 768px) {
 		.post-title {
-			font-size: 2.1rem;
+			font-size: 1.875rem;
 		}
 
 		.post-points {

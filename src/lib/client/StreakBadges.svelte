@@ -163,7 +163,7 @@
 	}
 
 	.streak-badge.earned .streak-badge-star {
-		color: #d97706;
+		color: var(--warn);
 	}
 
 	.streak-badge-meta {
@@ -198,14 +198,6 @@
 	}
 
 	.streak-badge-dots span.on {
-		background: #d97706;
-	}
-
-	:global(:root.dark) .streak-badge.earned .streak-badge-star {
-		color: #fcd34d;
-	}
-
-	:global(:root.dark) .streak-badge-dots span.on {
-		background: #fcd34d;
+		background: var(--warn);
 	}
 </style>

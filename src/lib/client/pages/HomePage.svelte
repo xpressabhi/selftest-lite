@@ -1450,10 +1450,7 @@
 		: 'Generate objective quiz practice and full-length exam papers for Indian exams with AI. UPSC, SSC, Banking, Railways, NEET, JEE. Hindi and English.'}
 />
 
-<section
-	class="container py-4 py-md-5"
-	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px))); padding-left: calc(var(--page-gutter) + var(--sal, env(safe-area-inset-left, 0px))); padding-right: calc(var(--page-gutter) + var(--sar, env(safe-area-inset-right, 0px)));"
->
+<section class="app-container py-4 py-md-5">
 	<div class="home-wrap">
 		<h1 class="home-kicker">{$t('homeH1')}</h1>
 
@@ -1517,7 +1514,7 @@
 					<span class="small text-muted">{$t('examSectionsLoading')}</span>
 				{:else if examSections.length > 0}
 					<button
-						class="section-chip"
+						class="chip"
 						class:active={!selectedExamSection}
 						type="button"
 						onclick={() => (selectedExamSection = '')}
@@ -1526,7 +1523,7 @@
 					</button>
 					{#each examSections as section (section.id)}
 						<button
-							class="section-chip"
+							class="chip"
 							class:active={selectedExamSection === section.id}
 							type="button"
 							onclick={() => (selectedExamSection = section.id)}
@@ -1727,17 +1724,17 @@
 		flex-direction: column;
 		gap: 10px;
 		height: clamp(440px, 68dvh, 720px);
-		padding: 14px;
+		padding: 1rem;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+		box-shadow: var(--shadow-1);
 	}
 
 	@media (max-width: 480px) {
 		.planner-panel {
 			height: clamp(300px, calc(min(var(--vvh, 100dvh), 100dvh) * 0.62), 560px);
-			padding: 10px;
+			padding: 0.75rem;
 		}
 	}
 
@@ -1851,20 +1848,8 @@
 		gap: 8px;
 	}
 
-	.section-chip {
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface);
-		padding: 6px 12px;
-		font-size: 0.8rem;
-		font-weight: 600;
-	}
-
-	.section-chip.active {
-		border-color: var(--color-brand-600);
-		background: var(--color-brand-100);
-		color: var(--color-brand-700);
-	}
+	/* Section chips use the shared `.chip` primitive (44px target, token
+	   active state that also works in dark mode). */
 
 	.manual-section {
 		margin-top: 16px;
@@ -1898,7 +1883,7 @@
 		margin-top: 10px;
 		padding: 10px 12px;
 		border: 1px solid color-mix(in srgb, var(--color-brand-600) 30%, transparent);
-		border-radius: 12px;
+		border-radius: var(--radius-surface);
 		background: color-mix(in srgb, var(--color-brand-600) 8%, transparent);
 		color: var(--text);
 	}
@@ -1915,8 +1900,12 @@
 	}
 
 	.tailored-edit {
+		display: inline-flex;
 		flex: 0 0 auto;
-		padding: 8px 0 8px 8px;
+		align-items: center;
+		min-height: 44px;
+		margin-left: 4px;
+		padding: 0 4px;
 		color: var(--brand-text);
 		font-size: 0.8rem;
 		font-weight: 700;

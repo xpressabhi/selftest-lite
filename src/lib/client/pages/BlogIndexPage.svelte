@@ -65,7 +65,7 @@
 	{@html blogJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="blog-wrap">
 		<header class="blog-hero">
 			<h1 class="blog-title">{$t('blogHeroTitle')}</h1>
@@ -150,7 +150,7 @@
 
 	.blog-title {
 		margin: 0 0 0.35rem;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
 	}
@@ -283,7 +283,7 @@
 
 	@media (min-width: 768px) {
 		.blog-title {
-			font-size: 2.25rem;
+			font-size: 1.875rem;
 		}
 
 		.blog-grid {
