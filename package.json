@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node scripts/check-build-mode.mjs",
 		"preview": "vite preview",
 		"start": "vite preview",
 		"lint": "eslint .",
@@ -15,7 +15,7 @@
 		"hooks:install": "git config core.hooksPath .githooks && echo hooks installed",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "svelte-kit sync && vite build",
+		"check": "svelte-kit sync && vite build && node scripts/check-build-mode.mjs",
 		"test": "vitest run",
 		"locales:unused": "node scripts/check-unused-locale-keys.mjs",
 		"telemetry:report": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/telemetry-report.mjs",

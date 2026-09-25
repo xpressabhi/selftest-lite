@@ -1,6 +1,6 @@
 {
 	"framework": "sveltekit",
-	"buildCommand": "vite build",
+	"buildCommand": "npm run build",
 	"outputDirectory": ".svelte-kit/output",
 	"headers": [
 		{

@@ -2,8 +2,16 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({ mode }) => {
-	if (mode === 'production' && !process.env.NODE_ENV) {
+export default defineConfig(({ command }) => {
+	// A production bundle must not inherit NODE_ENV=development from the
+	// environment (a hosting dashboard variable, a wrapper script, ...): Vite
+	// derives import.meta.env.DEV/PROD from it, so a dev compile keeps DEV-only
+	// code and strips every `import.meta.env.PROD` block — including the /sw.js
+	// registration in +layout.svelte — and the deployed app never gets a
+	// service worker. Setting NODE_ENV here is Vite's supported override point
+	// and runs before DEV/PROD are resolved; scripts/check-build-mode.mjs fails
+	// the build if a dev-mode bundle ever slips through again.
+	if (command === 'build') {
 		process.env.NODE_ENV = 'production';
 	}
 
