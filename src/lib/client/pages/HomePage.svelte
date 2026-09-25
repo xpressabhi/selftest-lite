@@ -36,7 +36,7 @@
 	import { hydrateHistoryFromServer } from '$lib/client/sync';
 	import { STORAGE_KEYS } from '$lib/client/constants';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
-	import { getStreak } from '$lib/client/learning';
+	import { getStats, getStreak } from '$lib/client/learning';
 	import ChatThread from '$lib/client/ChatThread.svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import PlannerComposer from '$lib/client/PlannerComposer.svelte';
@@ -58,7 +58,7 @@
 	} from '$lib/client/plannerState';
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
 	import QuickStart from '$lib/client/QuickStart.svelte';
-	import StreakHeatmap from '$lib/client/StreakHeatmap.svelte';
+	import StreakCard from '$lib/client/StreakCard.svelte';
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
 	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
@@ -158,6 +158,8 @@
 	let isOffline = $state(false);
 	let unsubmittedTest = $state(null);
 	let streak = $state(null);
+	let stats = $state(null);
+	let historyCount = $state(0);
 	// Set the moment the user touches the recent-tests list. The async
 	// server refresh must not swap rows under an in-flight tap (it opened
 	// the wrong test); when touched, the local list stays put.
@@ -269,9 +271,13 @@
 		void hydrateHistoryFromServer().then((changed) => {
 			if (changed) {
 				paintRecent();
+				stats = getStats(getHistory());
+				historyCount = getHistory().length;
 			}
 		});
 		streak = getStreak();
+		stats = getStats(historyEntries);
+		historyCount = historyEntries.length;
 		// Central personalization (fail-open, once per load): Jev picks one
 		// entry point to promote; hides stay behind existing toggles/links.
 		void requestPersonalize('home', {
@@ -1573,7 +1579,12 @@
 		{/if}
 
 		{#if showStreakCard}
-			<StreakHeatmap {streak} locale={$activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN'} />
+			<StreakCard
+				{streak}
+				{stats}
+				{historyCount}
+				locale={$activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN'}
+			/>
 		{/if}
 
 		<QuickStart
