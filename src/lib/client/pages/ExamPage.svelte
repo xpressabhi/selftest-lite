@@ -169,8 +169,6 @@
 
 <style>
 	.practice-wrap {
-		max-width: 56rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 1.75rem;
 	}

@@ -45,7 +45,7 @@
 	<div class="faq-wrap">
 		<header class="faq-hero">
 			<h1 class="faq-title">{$t('faqHeroTitle')}</h1>
-			<p class="faq-subtitle">{$t('faqHeroBody')}</p>
+			<p class="faq-subtitle measure mx-auto">{$t('faqHeroBody')}</p>
 		</header>
 
 		<nav class="faq-nav" aria-label={$t('faq')}>
@@ -74,8 +74,6 @@
 
 <style>
 	.faq-wrap {
-		max-width: 52rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 1.5rem;
 	}

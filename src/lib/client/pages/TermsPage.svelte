@@ -20,7 +20,7 @@
 	<div class="legal-wrap">
 		<header class="legal-hero">
 			<h1 class="legal-title">{$t('termsHeroTitle')}</h1>
-			<p class="legal-lead">{$t('termsHeroBody')}</p>
+			<p class="legal-lead measure">{$t('termsHeroBody')}</p>
 		</header>
 		<div class="legal-grid">
 			<article class="legal-card">
@@ -37,8 +37,6 @@
 
 <style>
 	.legal-wrap {
-		max-width: 46rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 1.5rem;
 	}
@@ -84,6 +82,7 @@
 	}
 
 	.legal-card-body {
+		max-width: 68ch;
 		margin: 0;
 		color: var(--text-muted);
 		line-height: 1.65;

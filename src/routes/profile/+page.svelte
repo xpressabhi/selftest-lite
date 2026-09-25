@@ -255,7 +255,7 @@
 </svelte:head>
 
 <section class="container py-4 py-md-5">
-	<div class="mx-auto profile-wrap">
+	<div class="profile-wrap">
 		<h1 class="h3 fw-bold mb-3">{$t('profilePageTitle')}</h1>
 
 		{#if !$user}
@@ -638,10 +638,6 @@
 </section>
 
 <style>
-	.profile-wrap {
-		max-width: 640px;
-	}
-
 	.chip-grid {
 		display: flex;
 		flex-wrap: wrap;

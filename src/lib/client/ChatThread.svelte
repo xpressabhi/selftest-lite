@@ -313,7 +313,7 @@
 	}
 
 	.chat-bubble {
-		max-width: 86%;
+		max-width: min(86%, 72ch);
 		padding: 10px 14px;
 		border-radius: var(--radius-overlay);
 		font-size: 0.9rem;

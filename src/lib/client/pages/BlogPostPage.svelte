@@ -63,13 +63,13 @@
 				<span class="post-meta-text">{$t(post.readTimeKey)}</span>
 			</div>
 			<h1 class="post-title">{$t(post.titleKey)}</h1>
-			<p class="post-excerpt">{$t(post.excerptKey)}</p>
+			<p class="post-excerpt measure">{$t(post.excerptKey)}</p>
 			<p class="post-date">{formattedDate}</p>
 		</header>
 
 		<section class="post-points">
 			<h2 class="post-points-title">{$t('blogKeyPointsTitle')}</h2>
-			<ul class="post-list">
+			<ul class="post-list measure">
 				{#each post.pointKeys as pointKey (pointKey)}
 					<li class="post-point">
 						<span class="post-check" aria-hidden="true">
@@ -82,7 +82,7 @@
 		</section>
 
 		{#if post.bodyKeys?.length}
-			<div class="post-body">
+			<div class="post-body measure">
 				{#each post.bodyKeys as bodyKey (bodyKey)}
 					<p>{$t(bodyKey)}</p>
 				{/each}
@@ -117,8 +117,6 @@
 
 <style>
 	.post-wrap {
-		max-width: 46rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 1.5rem;
 	}

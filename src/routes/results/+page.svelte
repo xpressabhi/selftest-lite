@@ -1553,7 +1553,6 @@
 		--hero-muted: var(--text-muted);
 		position: relative;
 		overflow: hidden;
-		max-width: 860px;
 		padding: 18px;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
@@ -1747,7 +1746,6 @@
 
 	.hero-links {
 		display: flex;
-		max-width: 860px;
 		flex-wrap: wrap;
 		justify-content: center;
 		gap: 2px;
@@ -1775,7 +1773,6 @@
 
 	.hero-utility {
 		display: flex;
-		max-width: 860px;
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
@@ -1826,7 +1823,6 @@
 	}
 
 	.result-retake {
-		max-width: 860px;
 		margin-top: 10px;
 	}
 
@@ -1845,7 +1841,6 @@
 	}
 
 	.result-footer {
-		max-width: 860px;
 		margin-top: 18px;
 	}
 
@@ -1963,7 +1958,6 @@
 	}
 
 	.challenge-card {
-		max-width: 860px;
 		border-color: color-mix(in srgb, var(--color-brand-600) 35%, transparent);
 	}
 
@@ -2065,7 +2059,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
-		max-width: 860px;
 	}
 
 	.filter-chip {

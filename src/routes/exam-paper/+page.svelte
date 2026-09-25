@@ -374,12 +374,6 @@
 </section>
 
 <style>
-	.exam-paper-form,
-	.exam-paper-pattern,
-	.exam-paper-gate {
-		max-width: 720px;
-	}
-
 	.tab-row {
 		display: flex;
 		flex-wrap: wrap;

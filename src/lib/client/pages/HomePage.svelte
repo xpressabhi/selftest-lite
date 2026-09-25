@@ -1452,9 +1452,9 @@
 
 <section
 	class="container py-4 py-md-5"
-	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px))); padding-left: calc(1rem + var(--sal, env(safe-area-inset-left, 0px))); padding-right: calc(1rem + var(--sar, env(safe-area-inset-right, 0px)));"
+	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px))); padding-left: calc(var(--page-gutter) + var(--sal, env(safe-area-inset-left, 0px))); padding-right: calc(var(--page-gutter) + var(--sar, env(safe-area-inset-right, 0px)));"
 >
-	<div class="mx-auto home-wrap">
+	<div class="home-wrap">
 		<h1 class="home-kicker">{$t('homeH1')}</h1>
 
 		{#snippet planCard()}
@@ -1699,10 +1699,6 @@
 {/if}
 
 <style>
-	.home-wrap {
-		max-width: 720px;
-	}
-
 	.home-kicker {
 		font-size: 1.15rem;
 		font-weight: 700;

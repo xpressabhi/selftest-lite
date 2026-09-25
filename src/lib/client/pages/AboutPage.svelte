@@ -187,8 +187,6 @@
 
 <style>
 	.about-wrap {
-		max-width: 64rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 2.25rem;
 	}

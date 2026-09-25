@@ -877,9 +877,9 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 14px;
-		max-width: 1320px;
+		max-width: var(--page-max);
 		margin: 0 auto;
-		padding: 6px 20px;
+		padding: 6px var(--page-gutter);
 	}
 
 	.brand-link {
@@ -968,7 +968,7 @@
 	.mobile-menu {
 		display: grid;
 		gap: 2px;
-		padding: 8px 20px 14px;
+		padding: 8px var(--page-gutter) 14px;
 		border-top: 1px solid var(--line);
 		background: var(--surface);
 	}
@@ -1059,9 +1059,9 @@
 	.footer-inner {
 		display: grid;
 		gap: 12px;
-		max-width: 920px;
+		max-width: var(--page-max);
 		margin: 0 auto;
-		padding: 28px;
+		padding: 28px var(--page-gutter);
 	}
 
 	.footer-tagline {
@@ -1314,10 +1314,6 @@
 	}
 
 	@media (min-width: 768px) {
-		.header-inner {
-			padding-inline: 28px;
-		}
-
 		.desktop-nav,
 		.desktop-only,
 		.data-saver-control {
@@ -1354,10 +1350,6 @@
 	}
 
 	@media (max-width: 575.98px) {
-		.header-inner {
-			padding-inline: 12px;
-		}
-
 		.pwa-install-hint {
 			align-items: flex-start;
 			flex-direction: column;

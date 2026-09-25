@@ -172,8 +172,6 @@
 
 <style>
 	.practice-hub {
-		max-width: 64rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 1.25rem;
 	}

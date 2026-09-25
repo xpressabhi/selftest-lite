@@ -167,6 +167,7 @@
 	}
 
 	.faq-answer p {
+		max-width: 68ch;
 		margin: 0;
 		color: var(--text-muted);
 		line-height: 1.65;
