@@ -14,7 +14,12 @@ const ACHIEVEMENTS = [
 	{ id: 'five_topics' },
 	{ id: 'streak_3' },
 	{ id: 'streak_7' },
+	{ id: 'streak_30' },
+	{ id: 'streak_100' },
 ];
+
+/** Streak badge milestones, in days; keys derive from `achievement_streak_<n>_*`. */
+export const STREAK_MILESTONES = [3, 7, 30, 100];
 
 function dateKey(date) {
 	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -96,12 +101,17 @@ export function getStats(history) {
 	const perfectScoreCount = completed.filter(
 		(entry) => Number(entry.score) === Number(entry.totalQuestions || entry.questions?.length)
 	).length;
+	const bestScore = completed.reduce((best, entry) => {
+		const value = accuracy(entry);
+		return value === null ? best : Math.max(best, value);
+	}, 0);
 
 	return {
 		totalTests,
 		totalQuestions,
 		totalScore,
 		averageScore: totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0,
+		bestScore,
 		totalTime,
 		uniqueTopics: topics.size,
 		perfectScoreCount,
@@ -254,6 +264,47 @@ export function buildStreakGrid(
 	return { weeks: grid, monthLabels };
 }
 
+/**
+ * Builds the rolling 7-day practice strip: the last seven device-local days
+ * ending on `today`, oldest first. Pure and deterministic for a given
+ * `today`/`locale`, so the strip is unit-testable without a DOM.
+ *
+ * Returns seven cells `{ date, quizCount, level, active, isToday, weekdayLabel }`
+ * where `level` is 0 (no test), 1 (one), 2 (two) or 3 (three or more).
+ * Malformed, out-of-window and non-positive entries are ignored.
+ */
+export function buildStreakWeek(streakHistory = [], { today = new Date(), locale = 'en' } = {}) {
+	const counts = new Map();
+	for (const entry of Array.isArray(streakHistory) ? streakHistory : []) {
+		const date = typeof entry?.date === 'string' ? entry.date : null;
+		const count = Number(entry?.quizCount);
+		if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(count) || count <= 0) {
+			continue;
+		}
+		counts.set(date, Math.max(counts.get(date) || 0, count));
+	}
+
+	const anchor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+	const todayKey = dateKey(anchor);
+	const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+	const days = [];
+	for (let offset = -6; offset <= 0; offset += 1) {
+		const date = new Date(anchor);
+		date.setDate(anchor.getDate() + offset);
+		const key = dateKey(date);
+		const quizCount = counts.get(key) || 0;
+		days.push({
+			date: key,
+			quizCount,
+			level: quizCount >= 3 ? 3 : quizCount,
+			active: quizCount > 0,
+			isToday: key === todayKey,
+			weekdayLabel: weekdayFormatter.format(date),
+		});
+	}
+	return days;
+}
+
 export function unlockAchievements(history, streak = getStreak()) {
 	const stats = getStats(history);
 	const unlockedIds = readJson(ACHIEVEMENTS_KEY, []);
@@ -267,6 +318,8 @@ export function unlockAchievements(history, streak = getStreak()) {
 		five_topics: stats.uniqueTopics >= 5,
 		streak_3: Number(streak.longestStreak || 0) >= 3,
 		streak_7: Number(streak.longestStreak || 0) >= 7,
+		streak_30: Number(streak.longestStreak || 0) >= 30,
+		streak_100: Number(streak.longestStreak || 0) >= 100,
 	};
 	const newlyUnlocked = ACHIEVEMENTS.filter(
 		(item) => checks[item.id] && !safeUnlockedIds.includes(item.id)
