@@ -204,12 +204,12 @@ Each migration task must:
 
 **Verification**
 
-- [ ] `npm run lint`
-- [ ] `npm run check`
-- [ ] `npm run test`
-- [ ] `npm run test:e2e`
-- [ ] `npm run verify:vercel`
-- [ ] Search/bench screenshots and DOM measurements for representative routes.
+- [x] `npm run lint`
+- [x] `npm run check`
+- [x] `npm run test`
+- [x] `npm run test:e2e`
+- [x] `npm run verify:vercel`
+- [x] Search/bench screenshots and DOM measurements for representative routes.
 
 **Dependencies:** Tasks 3–6
 **Files likely touched:** None unless verification exposes a defect
@@ -219,16 +219,16 @@ Each migration task must:
 
 **Acceptance criteria**
 
-- [ ] Commit contains the implementation, E2E contract, docs, and task plan only.
-- [ ] Two clean-tree full E2E artifacts are byte-identical and report `gitDirty: false`.
-- [ ] `git status` is clean and the remote branch contains the commit.
+- [x] Commit contains the implementation, E2E contract, docs, and task plan only.
+- [x] Two clean-tree full E2E artifacts are byte-identical and report `gitDirty: false`.
+- [x] `git status` is clean and the remote branch contains the commit.
 
 **Verification**
 
-- [ ] `git diff --check`
-- [ ] `cmp` the two clean-tree artifact copies.
-- [ ] `git status --short --branch`
-- [ ] `git rev-parse HEAD` matches `git rev-parse origin/design/coherence-pass` after push.
+- [x] `git diff --check`
+- [x] `cmp` the two clean-tree artifact copies.
+- [x] `git status --short --branch`
+- [x] `git rev-parse HEAD` matches `git rev-parse origin/design/coherence-pass` after push.
 
 **Dependencies:** Task 7
 **Files likely touched:** `tasks/plan-shared-layout.md`, `tasks/todo-shared-layout.md` with final checkboxes
