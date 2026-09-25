@@ -12,4 +12,4 @@ Plan: `tasks/plan-shared-layout.md`
 - [x] 7. Restore shared horizontal safe-area ownership
 - [x] 8. Harden route inventory, direct-root checks, active test, seeded states, and authenticated admin coverage
 - [x] 9. Run lint, check, unit, full E2E/artifact, Vercel, and Search/bench verification
-- [ ] 10. Commit, prove clean-tree artifact repeatability, and push `design/coherence-pass`
+- [x] 10. Commit, prove clean-tree artifact repeatability, and push `design/coherence-pass`

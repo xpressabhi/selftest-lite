@@ -198,9 +198,9 @@ Each migration task must:
 
 **Acceptance criteria**
 
-- [ ] Lint, production check, 599+ unit tests, full E2E suite, and Vercel verification pass.
-- [ ] The E2E artifact contains the new shell evidence and no failed tests.
-- [ ] Manual desktop checks show aligned header/page/footer edges without crowding or overflow.
+- [x] Lint, production check, 599+ unit tests, full E2E suite, and Vercel verification pass.
+- [x] The E2E artifact contains the new shell evidence and no failed tests.
+- [x] Manual desktop checks show aligned header/page/footer edges without crowding or overflow.
 
 **Verification**
 
