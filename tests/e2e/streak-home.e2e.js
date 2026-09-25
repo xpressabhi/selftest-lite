@@ -89,7 +89,7 @@ test('home shows the streak card with grid, count and explainer', async ({ page 
 	await expect(page.locator('.streak-cell.today')).toHaveCount(1);
 	await expect(page.locator('.streak-meta')).toContainText('Best: 5');
 	await expect(page.locator('.streak-explainer')).toContainText(
-		'A streak counts days you practice in a row'
+		'A streak counts days you take at least one test'
 	);
 	const horizontalOverflow = await page.evaluate(
 		() => document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -121,7 +121,9 @@ test('a brand-new visitor sees the empty-state streak card with the explainer', 
 	await expect(page.locator('.streak-current-value')).toHaveText('0');
 	await expect(page.locator('.streak-cell.active')).toHaveCount(0);
 	await expect(page.locator('.streak-empty')).toContainText('Practice today to start your streak');
-	await expect(page.locator('.streak-explainer')).toContainText('A streak counts days you practice');
+	await expect(page.locator('.streak-explainer')).toContainText(
+		'A streak counts days you take at least one test'
+	);
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
@@ -136,7 +138,7 @@ test('hindi home shows the hindi streak explainer', async ({ page }, testInfo) =
 	await page.goto('/hi');
 
 	await expect(page.locator('.streak-card')).toBeVisible();
-	await expect(page.locator('.streak-explainer')).toContainText('लगातार अभ्यास');
+	await expect(page.locator('.streak-explainer')).toContainText('कम से कम एक टेस्ट');
 	await expect(page.locator('.streak-current-value')).toHaveText('2');
 
 	expect(errors).toEqual([]);
