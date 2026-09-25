@@ -217,10 +217,10 @@
 			</div>
 
 			{#if mode === 'board'}
-				<div class="row g-2">
+				<div class="row g-3">
 					<div class="col-6 col-md-3">
 						<label class="form-label small" for="exam-board">{$t('examPaperBoard')}</label>
-						<select id="exam-board" class="form-select form-select-sm" bind:value={board}>
+						<select id="exam-board" class="form-select" bind:value={board}>
 							{#each BOARDS as option (option)}
 								<option value={option}>{option}</option>
 							{/each}
@@ -230,7 +230,7 @@
 						<label class="form-label small" for="exam-class">{$t('examPaperClass')}</label>
 						<select
 							id="exam-class"
-							class="form-select form-select-sm"
+							class="form-select"
 							bind:value={classLevel}
 						>
 							{#each CLASS_LEVELS as option (option)}
@@ -242,7 +242,7 @@
 						<label class="form-label small" for="exam-subject">{$t('examPaperSubject')}</label>
 						<input
 							id="exam-subject"
-							class="form-control form-control-sm"
+							class="form-control"
 							type="text"
 							maxlength="80"
 							bind:value={subject}
@@ -250,14 +250,14 @@
 					</div>
 				</div>
 			{:else}
-				<div class="row g-2">
+				<div class="row g-3">
 					<div class="col-12 col-md-6">
 						<label class="form-label small" for="exam-paper-name">
 							{$t('examPaperName')}
 						</label>
 						<input
 							id="exam-paper-name"
-							class="form-control form-control-sm"
+							class="form-control"
 							type="text"
 							maxlength="120"
 							placeholder={$t('examPaperNamePlaceholder')}
@@ -267,14 +267,14 @@
 				</div>
 			{/if}
 
-			<div class="row g-2 mt-1">
+			<div class="row g-3 mt-3">
 				<div class="col-12 col-md-6">
 					<label class="form-label small" for="exam-school">
 						{$t('examPaperSchool')}
 					</label>
 					<input
 						id="exam-school"
-						class="form-control form-control-sm"
+						class="form-control"
 						type="text"
 						maxlength="120"
 						bind:value={school}

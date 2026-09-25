@@ -1529,7 +1529,7 @@
 						<label class="d-inline-flex align-items-center gap-2">
 							<span class="small text-muted">{$t('reminderTimeLabel')}</span>
 							<select
-								class="form-select form-select-sm w-auto"
+								class="form-select w-auto"
 								value={reminderHour === null ? '' : String(reminderHour)}
 								disabled={reminderBusy}
 								onchange={changeReminderTime}
