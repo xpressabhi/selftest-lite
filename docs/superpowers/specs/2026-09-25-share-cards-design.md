@@ -20,11 +20,12 @@ Scope: streak, test and score share cards plus a shared canvas/share kit. No QR 
 - `canvasToFile(canvas, filename)` → `File | null` (PNG via `toBlob`).
 - `shareCardText(caption, url)` — pure: trims, appends the URL on its own line; if the caption already contains the URL, returns it unchanged.
 - `cardFilename(kind)` — `selftest-streak.png`, `selftest-test.png`, `selftest-score.png`.
-- `shareCardFile(file, { title, text, url })` → `'shared' | 'downloaded' | 'failed'`:
+- `shareCardFile(file, { title, text, url })` → `'shared' | 'downloaded' | 'cancelled' | 'failed'`:
   - `navigator.canShare?.({ files: [file] }) && navigator.share` → share `{ files, title, text: shareCardText(text, url) }`;
   - otherwise download the PNG and return `'downloaded'`;
-  - missing blob/file or thrown share → `'failed'`.
-- Callers toast on `'downloaded'` (card-saved message) and `'failed'`; a successful native share stays silent.
+  - user dismissing the native sheet (`AbortError`) → `'cancelled'`;
+  - missing blob/file or any other throw → `'failed'`.
+- Callers toast on `'downloaded'` (card-saved message) and `'failed'`; `'shared'` and `'cancelled'` stay silent.
 - Renderers stay synchronous and take a pre-loaded logo:
   - `streakCard.js` — `drawStreakCard(canvas, data, logo)`
   - `testCard.js` — `drawTestCard(canvas, data, logo)`
@@ -54,7 +55,7 @@ All cards end with the URL line in brand-600 and a quiet "Made with selftest" fo
 
 ## 6. Copy and telemetry
 
-- New EN+HI keys: `shareStreakText` ("I'm on a {count}-day test streak on selftest.in"), `shareTestText` ("I'm attempting \"{topic}\" on selftest.in"), `streakCardSaved`, `testCardSaved`, `cardShareFailed`. Existing results copy unchanged.
+- New EN+HI keys: `shareStreakText` ("I'm on a {count}-day test streak on selftest.in"), `shareTestText` ("I'm attempting \"{topic}\" on selftest.in"), `shareTestKicker` ("Practice paper"), `shareTestCta` ("Think you can ace this paper?"), `shareTestCtaSub` ("Open the link to attempt the same questions"), `streakCardSaved`, `testCardSaved`, `cardShareFailed`. Test-card chips reuse existing difficulty and language labels. Existing results copy unchanged.
 - Telemetry allowlist: add `streak:share` in the same commit as its emit. `test:share` and `results:share*` are reused as-is.
 
 ## 7. Tests
