@@ -43,6 +43,15 @@
 	import { parseChallengeParams } from '$lib/client/challenge';
 	import { computeAttemptMarks } from '$lib/shared/marks';
 	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
+	import {
+		CARD_HEIGHT,
+		CARD_WIDTH,
+		canvasToFile,
+		cardFilename,
+		loadCardLogo,
+		shareCardFile,
+	} from '$lib/client/cardKit';
+	import { drawTestCard } from '$lib/client/testCard';
 
 	let questionPaper = $state(null);
 	let challenge = $state(null);
@@ -548,16 +557,44 @@
 
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
-		if (navigator.share) {
-			await navigator.share({
+		try {
+			const canvas = document.createElement('canvas');
+			canvas.width = CARD_WIDTH;
+			canvas.height = CARD_HEIGHT;
+			const logo = await loadCardLogo();
+			const drawn = drawTestCard(
+				canvas,
+				{
+					kicker: $t('shareTestKicker'),
+					topic: questionPaper.topic || '',
+					chips: [
+						`${totalQuestions} ${$t('questions')}`,
+						$t(testDifficulty) || testDifficulty,
+						testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel'),
+					],
+					cta: $t('shareTestCta'),
+					ctaSub: $t('shareTestCtaSub'),
+					url,
+				},
+				logo
+			);
+			if (!drawn) {
+				throw new Error('card');
+			}
+			const file = await canvasToFile(canvas, cardFilename('test'));
+			const result = await shareCardFile(file, {
 				title,
-				text: title,
+				text: $t('shareTestText', { topic: questionPaper.topic || '' }),
 				url,
 			});
-			return;
+			if (result === 'downloaded') {
+				showToast($t('testCardSaved'), 'success');
+			} else if (result === 'failed') {
+				showToast($t('cardShareFailed'), 'warning');
+			}
+		} catch {
+			showToast($t('cardShareFailed'), 'warning');
 		}
-		await navigator.clipboard.writeText(url);
-		showToast($t('shareLinkCopied'), 'success');
 	}
 
 	function nextQuestion() {

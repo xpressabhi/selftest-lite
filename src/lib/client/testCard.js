@@ -63,22 +63,25 @@ export function drawTestCard(canvas, data = {}, logo = null) {
 	ctx.fillText(String(kicker).toUpperCase(), CARD_WIDTH / 2, 330);
 
 	const topicLines = wrapCardText(topic, 20, 3);
-	ctx.font = cardFont(84, 800);
+	ctx.font = cardFont(88, 800);
 	ctx.fillStyle = CARD_PALETTE.text;
 	topicLines.forEach((line, index) => {
-		ctx.fillText(line, CARD_WIDTH / 2, 500 + index * 104);
+		ctx.fillText(line, CARD_WIDTH / 2, 580 + index * 110);
 	});
 
-	let y = 500 + Math.max(0, topicLines.length - 1) * 104 + 96;
-	y = drawChips(ctx, chips, y) + 130;
+	// Shorter topics leave more air before the CTA; long ones keep their
+	// distance so the CTA never crowds the URL line.
+	const ctaGap = topicLines.length >= 3 ? 240 : 480;
+	let y = 580 + Math.max(0, topicLines.length - 1) * 110 + 120;
+	y = drawChips(ctx, chips, y) + ctaGap;
 
 	ctx.textAlign = 'center';
-	ctx.font = cardFont(56, 800);
+	ctx.font = cardFont(64, 800);
 	ctx.fillStyle = CARD_PALETTE.brand600;
 	ctx.fillText(cta, CARD_WIDTH / 2, y);
-	ctx.font = cardFont(38, 500);
+	ctx.font = cardFont(40, 500);
 	ctx.fillStyle = CARD_PALETTE.textMuted;
-	ctx.fillText(ctaSub, CARD_WIDTH / 2, y + 76);
+	ctx.fillText(ctaSub, CARD_WIDTH / 2, y + 88);
 
 	drawCardFooter(ctx, url);
 	return true;
