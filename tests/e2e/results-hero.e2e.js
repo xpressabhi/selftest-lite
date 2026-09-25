@@ -172,7 +172,11 @@ test('share sheet routes link and card sharing, and dismisses cleanly', async ({
 		Object.defineProperty(navigator, 'share', {
 			configurable: true,
 			value: async (data) => {
-				window.__shareCalls.push(data?.files?.length ? 'card' : 'link');
+				window.__shareCalls.push({
+					kind: data?.files?.length ? 'card' : 'link',
+					text: data?.text || '',
+					url: data?.url || '',
+				});
 			},
 		});
 		Object.defineProperty(navigator, 'canShare', {
@@ -180,8 +184,10 @@ test('share sheet routes link and card sharing, and dismisses cleanly', async ({
 			value: () => true,
 		});
 	});
-	await seedHistory(page, [attempt({ id: 'e2e-share' })]);
-	await page.goto('/results?id=e2e-share');
+	// A numeric id is the stored-paper case where the card carries the
+	// challenge URL; local history resolves it without a server call.
+	await seedHistory(page, [attempt({ id: 4242 })]);
+	await page.goto('/results?id=4242');
 
 	const shareButton = page.locator('.hero-share');
 	const sheet = page.locator('.hero-share-sheet');
@@ -200,8 +206,12 @@ test('share sheet routes link and card sharing, and dismisses cleanly', async ({
 
 	// The card share draws the canvas first, so poll instead of asserting once.
 	await expect
-		.poll(() => page.evaluate(() => window.__shareCalls))
+		.poll(() => page.evaluate(() => window.__shareCalls.map((call) => call.kind)))
 		.toEqual(['link', 'card']);
+	const cardShare = await page.evaluate(() =>
+		window.__shareCalls.find((call) => call.kind === 'card')
+	);
+	expect(cardShare.text).toContain('/test?id=4242');
 
 	// Escape closes and returns focus to the trigger.
 	await shareButton.click();

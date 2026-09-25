@@ -38,7 +38,15 @@
 		compareScores,
 		parseChallengeParams,
 	} from '$lib/client/challenge';
-	import { CARD_HEIGHT, CARD_WIDTH, drawScoreCard } from '$lib/client/scoreCard';
+	import { drawScoreCard } from '$lib/client/scoreCard';
+	import {
+		CARD_HEIGHT,
+		CARD_WIDTH,
+		canvasToFile,
+		cardFilename,
+		loadCardLogo,
+		shareCardFile,
+	} from '$lib/client/cardKit';
 	import {
 		clearAttemptResult,
 		clearDraftAnswers,
@@ -715,48 +723,49 @@
 			canvas.width = CARD_WIDTH;
 			canvas.height = CARD_HEIGHT;
 			const numericId = /^\d+$/.test(String(questionPaper.id));
-			const drawn = drawScoreCard(canvas, {
-				topic: questionPaper.topic || '',
-				score: questionPaper.score ?? 0,
-				total: questionPaper.totalQuestions ?? totalQuestions,
-				pct: percentage,
-				timeLabel: `${$t('timeSpent')}: ${formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}`,
-				brand: 'selftest.in',
-				challenge: $t('challengeCta', {
+			// The card prints a clean, short link; the share text keeps the
+			// full challenge URL with score and name.
+			const displayLink = numericId
+				? `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`
+				: '';
+			const logo = await loadCardLogo();
+			const drawn = drawScoreCard(
+				canvas,
+				{
+					topic: questionPaper.topic || '',
 					score: questionPaper.score ?? 0,
 					total: questionPaper.totalQuestions ?? totalQuestions,
-				}),
-				link: numericId ? challengeShareUrl() : '',
-			});
+					pct: percentage,
+					timeLabel: `${$t('timeSpent')}: ${formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}`,
+					challenge: $t('challengeCta', {
+						score: questionPaper.score ?? 0,
+						total: questionPaper.totalQuestions ?? totalQuestions,
+					}),
+					link: displayLink,
+				},
+				logo
+			);
 			if (!drawn) {
 				throw new Error('card');
 			}
-			const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-			if (!blob) {
-				throw new Error('card');
+			const file = await canvasToFile(canvas, cardFilename('score'));
+			const result = await shareCardFile(file, {
+				title: questionPaper.topic,
+				text: $t('shareResultText', {
+					score: questionPaper.score ?? 0,
+					total: questionPaper.totalQuestions ?? totalQuestions,
+					percentage,
+					topic: questionPaper.topic,
+				}),
+				url: numericId ? challengeShareUrl() : '',
+			});
+			if (result === 'downloaded') {
+				showToast($t('cardSaved'), 'success');
+			} else if (result === 'failed') {
+				showToast($t('cardShareFailed'), 'warning');
 			}
-			const file = new File([blob], 'selftest-score.png', { type: 'image/png' });
-			if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-				await navigator.share({
-					files: [file],
-					title: questionPaper.topic,
-					text: $t('shareResultText', {
-						score: questionPaper.score ?? 0,
-						total: questionPaper.totalQuestions ?? totalQuestions,
-						percentage,
-						topic: questionPaper.topic,
-					}),
-				});
-				return;
-			}
-			const anchor = document.createElement('a');
-			anchor.href = URL.createObjectURL(blob);
-			anchor.download = 'selftest-score.png';
-			anchor.click();
-			window.setTimeout(() => URL.revokeObjectURL(anchor.href), 5000);
-			showToast($t('cardSaved'), 'success');
 		} catch {
-			showToast($t('failedToLoadResult'), 'warning');
+			showToast($t('cardShareFailed'), 'warning');
 		}
 	}
 
