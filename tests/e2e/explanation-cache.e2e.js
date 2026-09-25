@@ -1,27 +1,11 @@
 import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { neon } from '@neondatabase/serverless';
+import { connectOrSkip, sqlClient } from './testDb.js';
 
 // Explanation cache suite: proves /api/explain serves a stored explanation
-// from the database without calling the model. Real dev server + local DB;
-// skipped when DATABASE_URL is unavailable. No Gemini calls.
+// from the database without calling the model. Seeded through the dev server's
+// test database bridge. No Gemini calls.
 // Spec: docs/superpowers/specs/2026-09-24-engagement-and-exam-engine-design.md
-
-// Vite precedence: .env.local overrides .env, and a pre-set process env wins.
-// loadEnvFile never overwrites an existing variable, so load the override
-// first and stop once DATABASE_URL is present.
-for (const file of ['.env.local', '.env']) {
-	try {
-		process.loadEnvFile(file);
-	} catch {
-		// The file is optional; contributors without one skip this suite.
-	}
-	if (process.env.DATABASE_URL) {
-		break;
-	}
-}
-
-const databaseUrl = process.env.DATABASE_URL || '';
 
 function normalizeText(value) {
 	return String(value ?? '')
@@ -56,14 +40,8 @@ const seed = {
 test('serves a seeded explanation from the database cache without generating', async ({
 	request,
 }, testInfo) => {
-	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
-
-	const sql = neon(databaseUrl);
-	try {
-		await sql`SELECT 1 AS ok`;
-	} catch {
-		test.skip(true, 'Database is not reachable from the test runner');
-	}
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
 
 	// The first storage touch runs ensureStorageSchema on the dev server.
 	await request.get('/api/test?id=1');

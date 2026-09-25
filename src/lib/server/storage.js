@@ -1,6 +1,7 @@
 import { Pool } from '@neondatabase/serverless';
 import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
+import { createPglitePool, isPgliteUrl } from './testDb.js';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
 import {
 	DUE_SUBSCRIPTION_PARAMS,
@@ -10,6 +11,7 @@ import {
 import { sanitizeHintedIndexes } from './hint.js';
 
 let poolInstance = null;
+let poolPromise = null;
 let schemaReadyPromise = null;
 
 function normalizeExamId(value) {
@@ -21,18 +23,26 @@ function normalizeExamId(value) {
 }
 
 function getPool() {
-	if (!poolInstance) {
+	if (!poolPromise) {
 		const connectionString = env.DATABASE_URL;
 		if (!connectionString) {
-			throw new Error('DATABASE_URL is not configured');
+			return Promise.reject(new Error('DATABASE_URL is not configured'));
 		}
-		poolInstance = new Pool({ connectionString });
+		poolPromise = (
+			isPgliteUrl(connectionString)
+				? createPglitePool()
+				: Promise.resolve(new Pool({ connectionString }))
+		).then((pool) => {
+			poolInstance = pool;
+			return pool;
+		});
 	}
-	return poolInstance;
+	return poolPromise;
 }
 
 export async function query(text, params = []) {
-	return getPool().query(text, params);
+	const pool = await getPool();
+	return pool.query(text, params);
 }
 
 export function getPoolStats() {

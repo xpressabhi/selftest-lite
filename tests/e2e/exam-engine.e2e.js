@@ -1,24 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { expect, request as playwrightRequest, test } from '@playwright/test';
-import { neon } from '@neondatabase/serverless';
+import { connectOrSkip, sqlClient, TEST_ORIGIN } from './testDb.js';
 
 // Exam engine: a discovered pattern is served from cache, and a generated
 // pattern-based paper renders section headers on the test page and a
-// per-section breakdown on the results page. Real dev server + local DB;
-// skipped when DATABASE_URL is unavailable. No model calls.
-
-// Vite precedence: .env.local overrides .env. loadEnvFile never overwrites an
-// existing variable, so loading .env.local first gives it the final word while
-// .env still supplies the remaining keys (admin credentials, etc.).
-for (const file of ['.env.local', '.env']) {
-	try {
-		process.loadEnvFile(file);
-	} catch {
-		// The file is optional; contributors without one skip this suite.
-	}
-}
-
-const databaseUrl = process.env.DATABASE_URL || '';
+// per-section breakdown on the results page. Seeded through the dev server's
+// test database bridge. No model calls.
 
 async function collectErrors(page) {
 	const errors = [];
@@ -59,14 +46,6 @@ async function pressAndHold(page, locator, holdMs = 1100) {
 	await page.mouse.up();
 }
 
-async function connectOrSkip(sql) {
-	try {
-		await sql`SELECT 1 AS ok`;
-	} catch {
-		test.skip(true, 'Database is not reachable from the test runner');
-	}
-}
-
 const seededPattern = {
 	examName: 'E2E Pattern Exam',
 	board: null,
@@ -103,9 +82,8 @@ test('free exam flow offers cached sections and sends sectionFocus', async ({
 	page,
 	request,
 }, testInfo) => {
-	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
 	const errors = await collectErrors(page);
-	const sql = neon(databaseUrl);
+	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 	await request.get('/api/test?id=1');
 
@@ -223,10 +201,10 @@ test('premium exam papers are gated for anonymous users', async ({ page, request
 
 test('admin grants premium access and the signed-in user can use it', async ({ request }) => {
 	test.skip(
-		!databaseUrl || !process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD,
-		'Admin credentials or database are not configured'
+		!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD,
+		'Admin credentials are not configured'
 	);
-	const sql = neon(databaseUrl);
+	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 	await request.get('/api/test?id=1');
 
@@ -254,7 +232,7 @@ test('admin grants premium access and the signed-in user can use it', async ({ r
 	expect(login.status()).toBe(200);
 
 	const userContext = await playwrightRequest.newContext({
-		baseURL: 'http://localhost:5173',
+		baseURL: TEST_ORIGIN,
 		extraHTTPHeaders: { Cookie: `selftest_session=${token}` },
 	});
 	try {
@@ -283,8 +261,7 @@ test('admin grants premium access and the signed-in user can use it', async ({ r
 });
 
 test('serves a cached exam pattern without a model call', async ({ request }, testInfo) => {
-	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
-	const sql = neon(databaseUrl);
+	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 
 	// The first storage touch runs ensureStorageSchema on the dev server.
@@ -332,10 +309,10 @@ test('serves a cached exam pattern without a model call', async ({ request }, te
 
 test('pattern paper renders section headers and a per-section breakdown', async ({
 	page,
+	request,
 }, testInfo) => {
-	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
 	const errors = await collectErrors(page);
-	const sql = neon(databaseUrl);
+	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 
 	const paper = {

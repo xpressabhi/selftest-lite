@@ -268,7 +268,7 @@ test('the streak share button sends one PNG with the direct URL in the text', as
 	expect(call.name).toBe('selftest-streak.png');
 	expect(call.type).toBe('image/png');
 	expect(call.text).toContain("I'm on a 4-day test streak");
-	expect(call.text).toContain('http://localhost:5173');
+	expect(call.text).toContain(new URL(page.url()).origin);
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {

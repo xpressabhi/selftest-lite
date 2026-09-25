@@ -144,7 +144,7 @@ test('the wired app beacons a device:profile on unload', async ({ page }, testIn
 	// app.localhost resolves to loopback but is not treated as localhost by the
 	// telemetry client, so the real queue → beacon path runs while the route
 	// above keeps the batch out of the database.
-	await page.goto('http://app.localhost:5173/');
+	await page.goto('http://app.localhost:5174/');
 	await expect(page.locator('.planner-panel')).toBeVisible();
 	// The panel is SSR-visible before Svelte hydrates, and the flush listener is
 	// registered on mount; wait for hydration before firing pagehide.

@@ -1,23 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { neon } from '@neondatabase/serverless';
+import { connectOrSkip, sqlClient } from './testDb.js';
 
 // Social test stats: visitor / in-progress / submission counters, public
 // scores, the owner-only view, and challenge params surviving submission.
-// Real dev server + local DB; skipped when DATABASE_URL is unavailable.
-
-// Vite precedence: .env.local overrides .env, and a pre-set process env wins.
-for (const file of ['.env.local', '.env']) {
-	try {
-		process.loadEnvFile(file);
-	} catch {
-		// The file is optional; contributors without one skip this suite.
-	}
-	if (process.env.DATABASE_URL) {
-		break;
-	}
-}
-
-const databaseUrl = process.env.DATABASE_URL || '';
+// Seeded through the dev server's test database bridge.
 
 async function collectErrors(page) {
 	const errors = [];
@@ -52,14 +38,6 @@ async function pressAndHold(page, locator, holdMs = 1100) {
 	await page.mouse.down();
 	await page.waitForTimeout(holdMs);
 	await page.mouse.up();
-}
-
-async function connectOrSkip(sql) {
-	try {
-		await sql`SELECT 1 AS ok`;
-	} catch {
-		test.skip(true, 'Database is not reachable from the test runner');
-	}
 }
 
 async function seedTest(sql, questionCount = 2) {
@@ -103,10 +81,10 @@ async function answerFirstAndSubmit(page, expectedUrl) {
 test('visitors, in-progress and submissions across two visitors', async ({
 	browser,
 	page,
+	request,
 }, testInfo) => {
-	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
 	const errors = await collectErrors(page);
-	const sql = neon(databaseUrl);
+	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 	const testId = await seedTest(sql, 2);
 
@@ -186,10 +164,10 @@ test('visitors, in-progress and submissions across two visitors', async ({
 
 test('challenge name and params survive submission to the results page', async ({
 	page,
+	request,
 }, testInfo) => {
-	test.skip(!databaseUrl, 'DATABASE_URL is not configured');
 	const errors = await collectErrors(page);
-	const sql = neon(databaseUrl);
+	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 	const testId = await seedTest(sql, 2);
 

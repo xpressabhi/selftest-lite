@@ -7,25 +7,25 @@ import { promisify } from 'node:util';
 import { neon } from '@neondatabase/serverless';
 import webpush from 'web-push';
 import { REMINDER_HOURS } from '../../src/lib/shared/reminders.js';
+import { isPgliteUrl, testDatabaseUrl } from './testDb.js';
 import { PUSH_TEST_KEYS } from './pushTestKeys.js';
 
 // Web push end-to-end suite. Run it with `npm run test:e2e:push` (see
 // docs/reminders.md): it drives the real opt-in UI in headed Chrome, delivers
 // real pushes through FCM and runs the hourly sender. It needs Chrome, network
-// access and DATABASE_URL (env or .env.local).
+// access and TEST_DATABASE_URL pointing at a real Postgres database (a Neon
+// branch). It never uses DATABASE_URL: the sender runs in a separate process
+// and must see the same subscription row the preview server wrote.
 //
 // The default `npm run test:e2e` config excludes this file because the suite
 // cannot run headless and talks to external services.
 
 const runCommand = promisify(execFile);
 
-if (!process.env.DATABASE_URL) {
-	try {
-		process.loadEnvFile('.env.local');
-	} catch {
-		// Left missing on purpose; beforeAll reports it with a clear message.
-	}
-}
+// The in-process PGlite default cannot be shared across processes (preview
+// server, sender script), so this suite requires a real test database.
+const pushDatabase = testDatabaseUrl();
+const hasPushDatabase = !isPgliteUrl(pushDatabase);
 
 // The reminder row renders after the first completed test.
 const seedHistory = [
@@ -107,7 +107,10 @@ function dueTimezone(now = new Date()) {
 test.describe.configure({ mode: 'serial' });
 
 test.describe('daily reminder web push', () => {
-	test.skip(!process.env.E2E_PUSH, 'run via npm run test:e2e:push');
+	test.skip(
+		!process.env.E2E_PUSH || !hasPushDatabase,
+		'run via npm run test:e2e:push with TEST_DATABASE_URL set to a real Postgres database'
+	);
 
 	let context;
 	let page;
@@ -117,8 +120,8 @@ test.describe('daily reminder web push', () => {
 	const reminderRequests = [];
 
 	test.beforeAll(async () => {
-		expect(process.env.DATABASE_URL, 'DATABASE_URL via env or .env.local').toBeTruthy();
-		sql = neon(process.env.DATABASE_URL);
+		expect(pushDatabase, 'TEST_DATABASE_URL via env or .env.local').toBeTruthy();
+		sql = neon(pushDatabase);
 
 		// The Push API is disabled in incognito, so this suite needs a
 		// persistent profile rather than Playwright's default context.
@@ -181,7 +184,7 @@ test.describe('daily reminder web push', () => {
 		const { stdout } = await runCommand('npm', ['run', 'reminders:send'], {
 			env: {
 				...process.env,
-				DATABASE_URL: process.env.DATABASE_URL,
+				DATABASE_URL: pushDatabase,
 				VAPID_PUBLIC_KEY: PUSH_TEST_KEYS.publicKey,
 				VAPID_PRIVATE_KEY: PUSH_TEST_KEYS.privateKey,
 				VAPID_SUBJECT: 'mailto:hello@selftest.in',

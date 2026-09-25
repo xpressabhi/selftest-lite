@@ -6,6 +6,7 @@
 - Highly prefer E2E tests as the sole testing mechanism. Use them to verify complex features work. At the end of E2E tests, produce a verifiable and repeatable artifact.
 - If you must test a system in isolation, FIRST write all the ways it could fail, THEN write the code.
 - E2E artifact: `npm run test:e2e` writes `test-results/e2e-artifact.json` via `tests/e2e/artifactReporter.js` — per-test status plus attached evidence, stamped with the git SHA and dirty flag; byte-identical across runs on a clean tree.
+- E2E never touches `DATABASE_URL`: the Playwright webServer runs the app on port 5174 with `TEST_DATABASE_URL` (in-memory PGlite by default) and specs seed through the dev-only `/api/test/db` bridge (`tests/e2e/testDb.js`). The opt-in push suite requires a real `TEST_DATABASE_URL` (e.g. a Neon branch) because its sender runs in a separate process.
 
 Welcome, Agent! This guide is designed to help you quickly understand the **Selftest-lite** codebase and contribute effectively.
 

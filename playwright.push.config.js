@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { isPgliteUrl, testDatabaseUrl } from './tests/e2e/testDb.js';
 import { PUSH_TEST_KEYS } from './tests/e2e/pushTestKeys.js';
 
 // Opt-in web push end-to-end suite (npm run test:e2e:push).
@@ -12,7 +13,13 @@ import { PUSH_TEST_KEYS } from './tests/e2e/pushTestKeys.js';
 // The keys live in tests/e2e/pushTestKeys.js rather than being generated here:
 // Playwright re-evaluates the config in every worker, so generated keys would
 // not match the key the preview server was started with.
+//
+// The suite needs a real Postgres database in TEST_DATABASE_URL because the
+// sender runs as a separate process; the in-process PGlite default cannot be
+// shared. Without it the spec skips. DATABASE_URL (production) is never used.
 process.env.E2E_PUSH = '1';
+const pushDatabase = testDatabaseUrl();
+const pushDatabaseUrl = isPgliteUrl(pushDatabase) ? '' : pushDatabase;
 
 export default defineConfig({
 	testDir: 'tests/e2e',
@@ -37,6 +44,6 @@ export default defineConfig({
 		url: 'http://localhost:4173',
 		reuseExistingServer: false,
 		timeout: 240_000,
-		env: { PUBLIC_VAPID_KEY: PUSH_TEST_KEYS.publicKey },
+		env: { PUBLIC_VAPID_KEY: PUSH_TEST_KEYS.publicKey, DATABASE_URL: pushDatabaseUrl },
 	},
 });

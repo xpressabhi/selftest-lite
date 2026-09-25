@@ -75,7 +75,7 @@ test('test page share sends one PNG with the direct test URL in the text', async
 	expect(call.type).toBe('image/png');
 	expect(call.text).toContain('/test?id=e2e-share-test');
 	expect(call.text).toContain('Chemical Reactions and Equations');
-	expect(call.text).toContain('http://localhost:5173');
+	expect(call.text).toContain(new URL(page.url()).origin);
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
