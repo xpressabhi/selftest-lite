@@ -20,10 +20,15 @@ to avoid overlap (`max-width: 767.98px`).
 
 ## Widths
 
+- Shared shell: `.app-container` is a `1120px` border-box maximum for every route root,
+  the header inner row, and the footer inner row. It uses 16px gutters below 640px, 24px
+  from 640px, and 32px from 1024px, leaving 1056px of desktop content.
+- `.container` is a compatibility alias with the same geometry. New route code uses
+  `.app-container`; page-level `max-w-*` utilities do not replace the shared shell.
 - Reading/prose: `40rem` (~65–75ch). Headings balance with `text-wrap: balance`.
-- App content: `720px` (test flow, exam-paper, stats) or `860px` (results).
-- Marketing pages: `container` (`max-w-7xl`) for the page, narrower text columns inside.
-- Admin: `1120px`.
+- Focused app columns: `720px` for home, exam-paper, and stats; up to `860px` for the test
+  and results task surfaces. These live inside the shared shell.
+- Broad page compositions such as About and blog index fill the shell's usable content area.
 
 ## Spacing
 
@@ -66,9 +71,7 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
 
 ## Safe areas
 
-`app.html` sets `viewport-fit=cover`. Sticky/fixed chrome uses `--sat` / `--sab`
-(`.app-header`, connection banner, bottom nav, test header/bottom bar, toasts, install
-hint). Pages must not add their own top safe-area padding.
+`app.html` sets `viewport-fit=cover`. `.app-container` uses the larger of its responsive gutter and `--sal` / `--sar`, so page, header, and footer content clear landscape side cutouts. Full-bleed mobile navigation, banners, and install hints apply the same horizontal insets. Sticky/fixed chrome uses `--sat` / `--sab` (`.app-header`, connection banner, bottom nav, test header/bottom bar, toasts, install hint). Pages must not add their own safe-area padding.
 
 ## Components
 
@@ -87,7 +90,10 @@ out of its card. Tables scroll inside a wrapper (`overflow-x-auto`), not the pag
 
 ## Verification
 
-`tests/e2e/design-consistency.e2e.js` walks every public route at 390 / 768 / 1280 plus a
-dark-mode pass and the seeded test/results flows, asserting: no page-level horizontal
-overflow, nothing crossing the viewport edge, no clipped nowrap text, and every control
-≥44px. Screenshots and the measured report land in the run artifacts.
+`tests/e2e/design-consistency.e2e.js` generates its route inventory from every SvelteKit page
+file and walks the non-immersive shell at 390 / 768 / 1024 / 1280 / 1920, plus dark mode,
+active test, seeded test/results/stats, and authenticated admin states when credentials are
+configured. It asserts direct page roots, no nested shells, exact gutters and safe-area
+insets, no page-level horizontal overflow, nothing crossing the viewport edge, no clipped
+nowrap text, and every control ≥44px. Screenshots and the measured report land in the run
+artifacts.

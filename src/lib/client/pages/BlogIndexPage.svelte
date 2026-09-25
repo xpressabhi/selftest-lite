@@ -65,7 +65,7 @@
 	{@html blogJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="blog-wrap">
 		<header class="blog-hero">
 			<h1 class="blog-title">{$t('blogHeroTitle')}</h1>
@@ -140,8 +140,6 @@
 
 <style>
 	.blog-wrap {
-		max-width: 64rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 1.5rem;
 	}

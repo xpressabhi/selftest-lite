@@ -192,7 +192,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section class="container py-4">
+<section class="app-container py-4">
 	<header class="page-head">
 		<div>
 			<h1 class="text-page mb-1">{$t('history')}</h1>

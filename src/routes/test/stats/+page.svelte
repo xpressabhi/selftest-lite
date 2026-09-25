@@ -49,7 +49,7 @@
 	});
 </script>
 
-<section class="container py-4 test-stats-page">
+<section class="app-container py-4 test-stats-page">
 	<h1 class="text-page mb-1">{$t('testStatsTitle')}</h1>
 	<p class="text-muted small mb-4">
 		{$t('testStatsPageSubtitle', { id: testId || '' })}
@@ -116,8 +116,10 @@
 </section>
 
 <style>
-	.test-stats-page {
+	.test-stats-page > * {
+		width: 100%;
 		max-width: 720px;
+		margin-inline: auto;
 	}
 
 	.test-stats-tiles {

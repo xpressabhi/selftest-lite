@@ -81,7 +81,7 @@
 	{@html hubJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="practice-hub">
 		<header class="practice-hub-hero">
 			<h1 class="practice-hub-title">{$t('practiceTitle')}</h1>

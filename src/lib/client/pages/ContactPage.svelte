@@ -39,7 +39,7 @@
 	{@html contactJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="contact-wrap">
 		<header class="contact-hero">
 			<h1 class="contact-title">{$t('contactHeroTitle')}</h1>

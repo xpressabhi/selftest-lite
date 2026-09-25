@@ -348,7 +348,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section class="container py-4">
+<section class="app-container py-4">
 	<div class="mx-auto admin-wrap">
 		<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
 			<h1 class="h3 fw-bold mb-0">{$t('adminStatsTitle')}</h1>
@@ -1453,9 +1453,6 @@
 </section>
 
 <style>
-	.admin-wrap {
-		max-width: 1120px;
-	}
 	.admin-login {
 		max-width: 420px;
 	}

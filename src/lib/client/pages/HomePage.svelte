@@ -1450,10 +1450,7 @@
 		: 'Generate objective quiz practice and full-length exam papers for Indian exams with AI. UPSC, SSC, Banking, Railways, NEET, JEE. Hindi and English.'}
 />
 
-<section
-	class="container py-4 py-md-5"
-	style="padding-top: calc(1.5rem + var(--sat, env(safe-area-inset-top, 0px))); padding-left: calc(1rem + var(--sal, env(safe-area-inset-left, 0px))); padding-right: calc(1rem + var(--sar, env(safe-area-inset-right, 0px)));"
->
+<section class="app-container py-4 py-md-5">
 	<div class="mx-auto home-wrap">
 		<h1 class="home-kicker">{$t('homeH1')}</h1>
 

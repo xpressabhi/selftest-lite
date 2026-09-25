@@ -41,7 +41,7 @@
 	{@html faqJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="faq-wrap">
 		<header class="faq-hero">
 			<h1 class="faq-title">{$t('faqHeroTitle')}</h1>

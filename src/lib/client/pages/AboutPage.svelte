@@ -92,7 +92,7 @@
 	{@html aboutJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="about-wrap">
 		<header class="about-hero">
 			<h1 class="about-title">{$t('aboutHeroTitle')}</h1>
@@ -199,8 +199,6 @@
 
 <style>
 	.about-wrap {
-		max-width: 64rem;
-		margin: 0 auto;
 		display: grid;
 		gap: 2.25rem;
 	}

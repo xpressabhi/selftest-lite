@@ -254,7 +254,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="mx-auto profile-wrap">
 		<h1 class="text-page mb-3">{$t('profilePageTitle')}</h1>
 

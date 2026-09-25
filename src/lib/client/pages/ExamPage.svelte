@@ -68,7 +68,7 @@
 	{@html breadcrumbJsonLd}
 </svelte:head>
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="practice-wrap">
 		<nav class="practice-back" aria-label={$t('practiceAllExams')}>
 			<a class="practice-back-link" href={localizedPath('/practice', $activeLanguage)}>

@@ -16,7 +16,7 @@
 		: 'Terms of service for using selftest.in AI quizzes and exam papers.'}
 />
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="legal-wrap">
 		<header class="legal-hero">
 			<h1 class="legal-title">{$t('termsHeroTitle')}</h1>

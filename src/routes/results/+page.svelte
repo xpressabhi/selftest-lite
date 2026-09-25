@@ -867,7 +867,7 @@
 
 <svelte:window onkeydown={handleShareSheetKeydown} onclick={handleDocumentClick} />
 
-<section class="container py-4">
+<section class="app-container py-4">
 	{#if loading}
 		<div class="py-5 text-center">
 			<div class="thinking-dots" role="status" aria-label={$t('loading')}>

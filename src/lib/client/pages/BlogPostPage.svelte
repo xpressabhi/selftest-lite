@@ -46,7 +46,7 @@
 	{@html postJsonLd}
 </svelte:head>
 
-<article class="container py-4 py-md-5">
+<article class="app-container py-4 py-md-5">
 	<div class="post-wrap">
 		<nav class="post-back" aria-label={$t('backToBlog')}>
 			<a class="post-back-link" href={localizedPath('/blog', $activeLanguage)}>

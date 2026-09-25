@@ -139,12 +139,15 @@ Testing follows the repository's E2E-first rule. The existing `tests/e2e/design-
 
 At desktop widths, the test measures the shared shell marker on the page, header, and footer and asserts:
 
+- the route inventory is generated from every SvelteKit `+page.svelte` file;
+- the measured page shell is a direct child of `main`, with no nested `.app-container` or `.container`;
 - equal left edges within 0.5px;
 - equal right edges within 0.5px;
 - a maximum border-box width of 1120px;
-- horizontal centering when the viewport is wider than the shell.
+- horizontal centering when the viewport is wider than the shell;
+- the 16/24/32px base gutters, plus injected horizontal safe-area insets, are preserved.
 
-For `/test`, the test validates the page shell and documents the intentional absence of global header and footer.
+The matrix covers 390/768/1024/1280/1920px, English/Hindi routes, dynamic fixtures, `/test/stats`, seeded results, and authenticated admin when credentials are configured. The immersive audit separately covers summary and active-question states and documents the intentional absence of global header/footer.
 
 ### Existing guarantees
 

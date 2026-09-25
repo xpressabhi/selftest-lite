@@ -1,3 +1,6 @@
+import { readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { connectOrSkip, sqlClient } from './testDb.js';
 
@@ -8,6 +11,7 @@ import { connectOrSkip, sqlClient } from './testDb.js';
 // "one coherent layout system" promise from silently regressing.
 
 const WIDTHS = [390, 768, 1280];
+const SHELL_WIDTHS = [390, 768, 1024, 1280, 1920];
 
 const ROUTES = [
 	'/',
@@ -24,6 +28,43 @@ const ROUTES = [
 	'/profile',
 	'/exam-paper',
 ];
+
+const ROUTES_DIR = fileURLToPath(new URL('../../src/routes/', import.meta.url));
+const DYNAMIC_ROUTE_FIXTURES = {
+	'[examId]': 'ssc-cgl',
+	'[slug]': 'how-to-study-effectively',
+};
+
+function findRoutePageFiles(directory = ROUTES_DIR) {
+	return readdirSync(directory, { withFileTypes: true })
+		.flatMap((entry) => {
+			const path = join(directory, entry.name);
+			if (entry.isDirectory()) return findRoutePageFiles(path);
+			return entry.name === '+page.svelte' ? [path] : [];
+		})
+		.sort();
+}
+
+function routeUrlForFile(file) {
+	const routeDirectory = relative(ROUTES_DIR, file)
+		.replaceAll('\\', '/')
+		.replace(/\+page\.svelte$/, '');
+	const segments = routeDirectory
+		.split('/')
+		.filter(Boolean)
+		.map((segment) =>
+			segment.startsWith('[') ? DYNAMIC_ROUTE_FIXTURES[segment] || 'layout-probe' : segment
+		);
+	return `/${segments.join('/')}`.replace(/\/$/, '') || '/';
+}
+
+const ROUTE_PAGE_FILES = findRoutePageFiles();
+const SHELL_ROUTES = [
+	...new Set([
+		...ROUTE_PAGE_FILES.map(routeUrlForFile).filter((route) => route !== '/test'),
+		'/blog/not-a-real-layout-probe',
+	]),
+].sort();
 
 async function stubBackend(page) {
 	await page.route(
@@ -164,6 +205,258 @@ function auditLayout() {
 	};
 }
 
+// Shell contract. Direct-child selectors ensure a nested layout component can
+// never hide a missing or malformed route root.
+function auditDesktopShell() {
+	const viewportWidth = window.innerWidth;
+	const round = (value) => Math.round(value * 100) / 100;
+	const box = (element) => {
+		if (!element) return null;
+		const rect = element.getBoundingClientRect();
+		return {
+			left: round(rect.left),
+			right: round(rect.right),
+			width: round(rect.width),
+		};
+	};
+	const page = document.querySelector('main > .app-container, main > .test-shell');
+	const header = document.querySelector('.header-inner');
+	const footer = document.querySelector('.footer-inner');
+	const shells = { page, header, footer };
+	const issues = [];
+
+	const nestedShells = page
+		? [...page.querySelectorAll('.app-container, .container')].map((element) => ({
+				class: String(element.className || '').slice(0, 80),
+			}))
+		: [];
+	if (nestedShells.length > 0) {
+		issues.push({ code: 'nested-shell', elements: nestedShells.slice(0, 4) });
+	}
+
+	for (const [name, element] of Object.entries(shells)) {
+		if (!element) {
+			issues.push({ code: 'missing-shell', shell: name });
+			continue;
+		}
+		if (!element.classList.contains('app-container')) {
+			issues.push({ code: 'missing-shared-class', shell: name });
+		}
+		const width = element.getBoundingClientRect().width;
+		if (width > 1120.5) {
+			issues.push({ code: 'shell-too-wide', shell: name, width: round(width) });
+		}
+	}
+
+	const expectedGutter = viewportWidth >= 1024 ? 32 : viewportWidth >= 640 ? 24 : 16;
+	for (const [name, element] of Object.entries(shells)) {
+		if (!element) continue;
+		const styles = getComputedStyle(element);
+		const paddingLeft = Math.round(Number.parseFloat(styles.paddingLeft) || 0);
+		const paddingRight = Math.round(Number.parseFloat(styles.paddingRight) || 0);
+		if (paddingLeft !== expectedGutter || paddingRight !== expectedGutter) {
+			issues.push({
+				code: 'wrong-gutter',
+				shell: name,
+				expected: expectedGutter,
+				actual: [paddingLeft, paddingRight],
+			});
+		}
+	}
+
+	const pageBox = box(page);
+	if (pageBox) {
+		const expectedWidth = Math.min(viewportWidth, 1120);
+		const expectedLeft = (viewportWidth - expectedWidth) / 2;
+		if (Math.abs(pageBox.left - expectedLeft) > 0.5) {
+			issues.push({
+				code: 'shell-not-centered',
+				shell: 'page',
+				expectedLeft: round(expectedLeft),
+				actualLeft: pageBox.left,
+			});
+		}
+		for (const name of ['header', 'footer']) {
+			const shellBox = box(shells[name]);
+			if (!shellBox) continue;
+			if (Math.abs(shellBox.left - pageBox.left) > 0.5) {
+				issues.push({
+					code: 'left-edge-mismatch',
+					shell: name,
+					pageLeft: pageBox.left,
+					actualLeft: shellBox.left,
+				});
+			}
+			if (Math.abs(shellBox.right - pageBox.right) > 0.5) {
+				issues.push({
+					code: 'right-edge-mismatch',
+					shell: name,
+					pageRight: pageBox.right,
+					actualRight: shellBox.right,
+				});
+			}
+		}
+	}
+
+	return {
+		viewportWidth,
+		expectedGutter,
+		page: pageBox,
+		header: box(header),
+		footer: box(footer),
+		issues,
+	};
+}
+
+function auditImmersiveShell() {
+	const viewportWidth = window.innerWidth;
+	const shell = document.querySelector('main > .test-shell.app-container');
+	const issues = [];
+	if (!shell) {
+		return { viewportWidth, shell: null, issues: [{ code: 'missing-test-shell' }] };
+	}
+	const nestedShells = [...shell.querySelectorAll('.app-container, .container')].map(
+		(element) => ({
+			class: String(element.className || '').slice(0, 80),
+		})
+	);
+	if (nestedShells.length > 0) {
+		issues.push({ code: 'nested-shell', elements: nestedShells.slice(0, 4) });
+	}
+
+	const rect = shell.getBoundingClientRect();
+	const box = {
+		left: Math.round(rect.left * 100) / 100,
+		right: Math.round(rect.right * 100) / 100,
+		width: Math.round(rect.width * 100) / 100,
+	};
+	const expectedWidth = Math.min(viewportWidth, 1120);
+	const expectedLeft = (viewportWidth - expectedWidth) / 2;
+	const expectedGutter = viewportWidth >= 1024 ? 32 : viewportWidth >= 640 ? 24 : 16;
+	const styles = getComputedStyle(shell);
+	const paddingLeft = Math.round(Number.parseFloat(styles.paddingLeft) || 0);
+	const paddingRight = Math.round(Number.parseFloat(styles.paddingRight) || 0);
+
+	if (!shell.classList.contains('app-container')) {
+		issues.push({ code: 'missing-shared-class', shell: 'test' });
+	}
+	if (box.width > 1120.5) {
+		issues.push({ code: 'shell-too-wide', shell: 'test', width: box.width });
+	}
+	if (Math.abs(box.left - expectedLeft) > 0.5) {
+		issues.push({
+			code: 'shell-not-centered',
+			shell: 'test',
+			expectedLeft,
+			actualLeft: box.left,
+		});
+	}
+	if (paddingLeft !== expectedGutter || paddingRight !== expectedGutter) {
+		issues.push({
+			code: 'wrong-gutter',
+			shell: 'test',
+			expected: expectedGutter,
+			actual: [paddingLeft, paddingRight],
+		});
+	}
+	for (const selector of ['.app-header', '.site-footer']) {
+		const chrome = document.querySelector(selector);
+		if (chrome && getComputedStyle(chrome).display !== 'none') {
+			issues.push({ code: 'global-chrome-visible', selector });
+		}
+	}
+
+	return { viewportWidth, expectedGutter, shell: box, issues };
+}
+
+function auditHorizontalSafeArea() {
+	const issues = [];
+	const measurements = {};
+	const inspect = (name, selector, required = true, minimums = [44, 48]) => {
+		const element = document.querySelector(selector);
+		if (!element) {
+			if (required) issues.push({ code: 'missing-safe-area-shell', shell: name });
+			return null;
+		}
+		const styles = getComputedStyle(element);
+		const paddingLeft = Math.round(Number.parseFloat(styles.paddingLeft) || 0);
+		const paddingRight = Math.round(Number.parseFloat(styles.paddingRight) || 0);
+		const rect = element.getBoundingClientRect();
+		measurements[name] = {
+			left: Math.round(rect.left * 100) / 100,
+			right: Math.round(rect.right * 100) / 100,
+			paddingLeft,
+			paddingRight,
+		};
+		if (paddingLeft < minimums[0] || paddingRight < minimums[1]) {
+			issues.push({
+				code: 'unsafe-horizontal-inset',
+				shell: name,
+				expected: minimums,
+				actual: [paddingLeft, paddingRight],
+			});
+		}
+		return { element, rect, paddingLeft, paddingRight };
+	};
+
+	const page = inspect('page', 'main > .app-container, main > .test-shell');
+	const immersive = window.location.pathname === '/test';
+	if (!immersive) {
+		const header = inspect('header', '.header-inner');
+		const footer = inspect('footer', '.footer-inner');
+		inspect('bottom-nav', '.bottom-nav');
+		const brand = document.querySelector('.header-inner .brand-link');
+		if (page && header && brand) {
+			const contentLeft = page.rect.left + page.paddingLeft;
+			const brandLeft = brand.getBoundingClientRect().left;
+			if (Math.abs(contentLeft - brandLeft) > 0.5) {
+				issues.push({
+					code: 'safe-area-content-mismatch',
+					shell: 'header',
+					expectedLeft: contentLeft,
+					actualLeft: brandLeft,
+				});
+			}
+		}
+		if (page && footer) {
+			const footerBrand = document.querySelector('.footer-inner .brand-link');
+			if (footerBrand) {
+				const contentLeft = page.rect.left + page.paddingLeft;
+				const brandLeft = footerBrand.getBoundingClientRect().left;
+				if (Math.abs(contentLeft - brandLeft) > 0.5) {
+					issues.push({
+						code: 'safe-area-content-mismatch',
+						shell: 'footer',
+						expectedLeft: contentLeft,
+						actualLeft: brandLeft,
+					});
+				}
+			}
+		}
+	} else {
+		const exit = document.querySelector('.test-exit');
+		const testHeader = inspect('test-header', '.test-header', Boolean(exit), [0, 0]);
+		if (page && testHeader && exit) {
+			const contentLeft = page.rect.left + page.paddingLeft;
+			const exitLeft = exit.getBoundingClientRect().left;
+			if (Math.abs(contentLeft - exitLeft) > 0.5) {
+				issues.push({
+					code: 'safe-area-content-mismatch',
+					shell: 'test-header',
+					expectedLeft: contentLeft,
+					actualLeft: exitLeft,
+				});
+			}
+		}
+	}
+
+	return {
+		pathname: window.location.pathname,
+		measurements,
+		issues,
+	};
+}
+
 async function settled(page) {
 	await page.evaluate(() => document.fonts?.ready);
 	await page.waitForTimeout(200);
@@ -183,6 +476,114 @@ function failures(report) {
 			entry.smallControls.length > 0
 	);
 }
+
+test('shell route inventory covers every non-immersive SvelteKit page file', () => {
+	const generatedRoutes = [
+		...new Set(ROUTE_PAGE_FILES.map(routeUrlForFile).filter((route) => route !== '/test')),
+	].sort();
+	expect(generatedRoutes).toEqual(
+		SHELL_ROUTES.filter((route) => route !== '/blog/not-a-real-layout-probe')
+	);
+	expect(SHELL_ROUTES).toContain('/test/stats');
+});
+
+test('shared shell and fixed chrome honor horizontal safe areas', async ({ page }, testInfo) => {
+	await page.setViewportSize({ width: 390, height: 900 });
+	await page.addInitScript(() => {
+		const applySafeAreas = () => {
+			document.documentElement.style.setProperty('--sal', '44px');
+			document.documentElement.style.setProperty('--sar', '48px');
+		};
+		if (document.documentElement) applySafeAreas();
+		else document.addEventListener('DOMContentLoaded', applySafeAreas, { once: true });
+	});
+	await freezeMotion(page);
+	await stubBackend(page);
+	const report = [];
+	for (const route of ['/', '/test?id=missing-layout-probe']) {
+		await page.goto(route, { waitUntil: 'load' });
+		await settled(page);
+		report.push({ route, ...(await page.evaluate(auditHorizontalSafeArea)) });
+	}
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(report, null, 2),
+	});
+	expect(
+		report.map((entry) => ({
+			route: entry.route,
+			issueCodes: [...new Set(entry.issues.map((issue) => issue.code))],
+		}))
+	).toEqual([
+		{ route: '/', issueCodes: [] },
+		{ route: '/test?id=missing-layout-probe', issueCodes: [] },
+	]);
+});
+
+test('every non-immersive route uses the 1120px shell at every breakpoint', async ({
+	page,
+}, testInfo) => {
+	test.setTimeout(240000);
+	await freezeMotion(page);
+	await stubBackend(page);
+	const report = [];
+	for (const width of SHELL_WIDTHS) {
+		await page.setViewportSize({ width, height: 900 });
+		for (const route of SHELL_ROUTES) {
+			await page.goto(route, { waitUntil: 'load' });
+			await settled(page);
+			report.push({ route, ...(await page.evaluate(auditDesktopShell)) });
+		}
+	}
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(report, null, 2),
+	});
+	const shellFailures = report
+		.filter((entry) => entry.issues.length > 0)
+		.map((entry) => ({
+			route: entry.route,
+			viewportWidth: entry.viewportWidth,
+			issueCodes: [...new Set(entry.issues.map((issue) => issue.code))],
+		}));
+	expect(shellFailures).toEqual([]);
+});
+
+test('authenticated admin uses the shared desktop shell', async ({ page }, testInfo) => {
+	test.skip(
+		!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD,
+		'Admin credentials are not configured'
+	);
+	await freezeMotion(page);
+	await page.setViewportSize({ width: 1280, height: 900 });
+	for (const pathname of ['/api/admin/device-network', '/api/admin/feature-usage']) {
+		await page.route(
+			(url) => url.pathname === pathname,
+			(route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: '{}',
+				})
+		);
+	}
+	const login = await page.request.post('/api/admin/login', {
+		data: {
+			username: process.env.ADMIN_USERNAME,
+			password: process.env.ADMIN_PASSWORD,
+		},
+	});
+	expect(login.status()).toBe(200);
+	await page.goto('/admin', { waitUntil: 'load' });
+	await page.locator('.tab-bar').waitFor({ state: 'visible' });
+	await settled(page);
+	const report = await page.evaluate(auditDesktopShell);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(report, null, 2),
+	});
+	expect(report.issues).toEqual([]);
+});
 
 for (const width of WIDTHS) {
 	test(`every public route is fluid at ${width}px`, async ({ page }, testInfo) => {
@@ -227,6 +628,9 @@ test('test start, stats and results stay fluid at every width', async ({
 	request,
 }, testInfo) => {
 	await freezeMotion(page);
+	// Ensure the dev-only PGlite adapter creates the application schema before
+	// this focused spec seeds through the test bridge.
+	await page.goto('/', { waitUntil: 'load' });
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 	const questions = Array.from({ length: 2 }, (_, index) => ({
@@ -242,6 +646,8 @@ test('test start, stats and results stay fluid at every width', async ({
 	const testId = rows[0].id;
 
 	const report = [];
+	const immersiveShellReport = [];
+	const stateShellReport = [];
 	for (const width of WIDTHS) {
 		await page.setViewportSize({ width, height: 900 });
 		// First visit: no activity card yet.
@@ -250,6 +656,22 @@ test('test start, stats and results stay fluid at every width', async ({
 		report.push({
 			route: `/test (first visit) @${width}`,
 			...(await page.evaluate(auditLayout)),
+		});
+		immersiveShellReport.push({
+			route: `/test summary @${width}`,
+			...(await page.evaluate(auditImmersiveShell)),
+		});
+
+		await page.locator('.test-summary-card .btn-primary').click();
+		await page.locator('.test-main').waitFor({ state: 'visible' });
+		await settled(page);
+		report.push({
+			route: `/test (active question) @${width}`,
+			...(await page.evaluate(auditLayout)),
+		});
+		immersiveShellReport.push({
+			route: `/test active question @${width}`,
+			...(await page.evaluate(auditImmersiveShell)),
 		});
 
 		// Second visitor sees the activity card next to the summary on desktop
@@ -269,6 +691,10 @@ test('test start, stats and results stay fluid at every width', async ({
 		await visitor.goto(`/test/stats?id=${testId}`, { waitUntil: 'load' });
 		await settled(visitor);
 		report.push({ route: `/test/stats @${width}`, ...(await visitor.evaluate(auditLayout)) });
+		stateShellReport.push({
+			route: `/test/stats @${width}`,
+			...(await visitor.evaluate(auditDesktopShell)),
+		});
 		await visitorContext.close();
 	}
 
@@ -293,10 +719,34 @@ test('test start, stats and results stay fluid at every width', async ({
 	await page.goto('/results?id=layout-probe', { waitUntil: 'load' });
 	await settled(page);
 	report.push({ route: '/results @390', ...(await page.evaluate(auditLayout)) });
+	stateShellReport.push({
+		route: '/results @390',
+		...(await page.evaluate(auditDesktopShell)),
+	});
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify(report, null, 2),
+		body: JSON.stringify(
+			{ layout: report, immersiveShell: immersiveShellReport, stateShell: stateShellReport },
+			null,
+			2
+		),
 	});
 	expect(failures(report)).toEqual([]);
+	expect(
+		immersiveShellReport
+			.filter((entry) => entry.issues.length > 0)
+			.map((entry) => ({
+				route: entry.route,
+				issueCodes: [...new Set(entry.issues.map((issue) => issue.code))],
+			}))
+	).toEqual([]);
+	expect(
+		stateShellReport
+			.filter((entry) => entry.issues.length > 0)
+			.map((entry) => ({
+				route: entry.route,
+				issueCodes: [...new Set(entry.issues.map((issue) => issue.code))],
+			}))
+	).toEqual([]);
 });

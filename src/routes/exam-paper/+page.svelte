@@ -169,7 +169,7 @@
 	}
 </script>
 
-<section class="container py-4 py-md-5 exam-paper-page">
+<section class="app-container py-4 py-md-5 exam-paper-page">
 	<h1 class="text-page mb-1">{$t('examPaperTitle')}</h1>
 	<p class="text-muted small mb-4">{$t('examPaperSubtitle')}</p>
 
@@ -374,10 +374,11 @@
 </section>
 
 <style>
-	/* One page width for the builder; the centered container handles the
-	   margins so the column never hugs the left edge on desktop. */
-	.exam-paper-page {
+	/* The page owns the shared shell; the focused builder is an inner column. */
+	.exam-paper-page > * {
+		width: 100%;
 		max-width: 720px;
+		margin-inline: auto;
 	}
 
 	.tab-row {

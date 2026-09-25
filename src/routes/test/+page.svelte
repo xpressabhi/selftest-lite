@@ -834,7 +834,7 @@
 
 <svelte:window onkeydown={handleTestKeydown} onclick={handleDocumentClick} />
 
-<section class="test-shell">
+<section class="app-container test-shell">
 	<div class="visually-hidden" aria-live="polite">{liveAnnouncement}</div>
 	{#if loading}
 		<div class="py-5 text-center">
@@ -846,7 +846,7 @@
 			<p class="text-muted mt-3">{$t('loading')}</p>
 		</div>
 	{:else if error}
-		<div class="container py-4">
+		<div class="test-error-wrap py-4">
 			<div class="alert alert-danger">{error}</div>
 			<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
 		</div>
@@ -1239,7 +1239,7 @@
 		min-height: 58px;
 		align-items: center;
 		gap: 10px;
-		padding: calc(6px + var(--sat, env(safe-area-inset-top, 0px))) 12px 6px;
+		padding-block: calc(6px + var(--sat, env(safe-area-inset-top, 0px))) 6px;
 		border-bottom: 1px solid var(--line);
 		background: var(--surface);
 	}
@@ -1530,7 +1530,7 @@
 		margin: 0 auto;
 		/* Clear the sticky footer (~64px) plus safe area so focused options and
 		   the last question are never covered. */
-		padding: 16px 12px calc(96px + var(--sab, 0px));
+		padding: 16px 0 calc(96px + var(--sab, 0px));
 		flex: 1 1 auto;
 	}
 
@@ -1857,7 +1857,7 @@
 		position: sticky;
 		bottom: 0;
 		z-index: var(--z-bottom-nav);
-		padding: 8px 12px calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
+		padding: 8px 0 calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		border-top: 1px solid var(--line);
 		background: var(--surface);
 	}
@@ -1975,16 +1975,8 @@
 	}
 
 	@media (min-width: 640px) {
-		.test-header {
-			padding-inline: 20px;
-		}
-
 		.test-exit-label {
 			display: inline;
-		}
-
-		.test-main {
-			padding-inline: 20px;
 		}
 	}
 

@@ -185,13 +185,13 @@
 <style>
 	.toast-lite {
 		position: fixed;
-		right: 16px;
+		right: max(16px, var(--sar));
 		bottom: calc(92px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		z-index: var(--z-toast);
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		max-width: min(360px, calc(100vw - 32px));
+		max-width: min(360px, calc(100vw - max(32px, var(--sal) + var(--sar))));
 		padding: 10px 12px;
 		border: 1px solid var(--line);
 		border-left: 4px solid var(--line);

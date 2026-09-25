@@ -128,6 +128,9 @@ body {
 	   --brand-rgb (white text stays readable). */
 	--brand-text-rgb: 79, 70, 229;
 	--brand-text: #4f46e5;
+	/* One border-box shell for every route, header and footer. Desktop
+	   gutters leave 1056px of usable content inside the 1120px frame. */
+	--layout-shell-width: 1120px;
 	/* Overlay + elevation. Backdrops must stay visible on BOTH themes:
 	   the previous literal rgba(15, 23, 42, 0.55) equals the dark
 	   --surface-muted, so dark-mode modals dimmed nothing. */
@@ -199,9 +202,6 @@ select {
 
 /* Shared application primitives keep the Svelte pages small. */
 @layer components {
-	.container {
-		@apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
-	}
 	.bg-body {
 		background: var(--surface);
 	}
@@ -590,6 +590,30 @@ select {
  * break every row that uses them. Defining them here, after Tailwind's
  * own utilities, restores the intended 1-col (mobile) / 2-col (md+) layout. */
 @layer utilities {
+	/* The explicit `.app-container` avoids Tailwind's responsive `.container`
+	   utility. The compatibility alias resolves to the same geometry while
+	   existing shared components migrate. */
+	.container,
+	.app-container {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: var(--layout-shell-width);
+		margin-inline: auto;
+		padding-inline: max(16px, var(--sal)) max(16px, var(--sar));
+	}
+	@media (min-width: 640px) {
+		.container,
+		.app-container {
+			padding-inline: max(24px, var(--sal)) max(24px, var(--sar));
+		}
+	}
+	@media (min-width: 1024px) {
+		.container,
+		.app-container {
+			padding-inline: max(32px, var(--sal)) max(32px, var(--sar));
+		}
+	}
+
 	.col-6 {
 		grid-column: span 1 / span 1;
 	}

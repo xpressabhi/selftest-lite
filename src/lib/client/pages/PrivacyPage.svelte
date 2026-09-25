@@ -29,7 +29,7 @@
 		: 'How selftest.in handles learning data, local storage and analytics.'}
 />
 
-<section class="container py-4 py-md-5">
+<section class="app-container py-4 py-md-5">
 	<div class="legal-wrap">
 		<header class="legal-hero">
 			<h1 class="legal-title">{$t('privacyHeroTitle')}</h1>
