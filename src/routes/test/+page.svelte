@@ -21,6 +21,7 @@
 	} from '$lib/shared/hint';
 	import { autoAdvance, setAutoAdvance } from '$lib/client/preferences';
 	import { HAPTIC_COMMIT, triggerVibration } from '$lib/client/haptics';
+	import { focusTrap } from '$lib/client/focusTrap';
 	import { keepScreenAwake, stopKeepingScreenAwake } from '$lib/client/screenWake';
 	import {
 		clearDraftAnswers,
@@ -811,6 +812,19 @@
 		leaveTest();
 	}
 
+	// Lock background scrolling while the exit dialog is open; Escape and focus
+	// containment come from the shared focusTrap action on the dialog.
+	$effect(() => {
+		if (!showExitModal) {
+			return;
+		}
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = previousOverflow;
+		};
+	});
+
 	function leaveTest() {
 		track('test:exit');
 		stopKeepingScreenAwake();
@@ -1193,6 +1207,7 @@
 					aria-modal="true"
 					tabindex="-1"
 					aria-label={$t('leaveTestTitle')}
+					use:focusTrap={{ onEscape: () => (showExitModal = false) }}
 				>
 					<h2 class="h5 fw-bold mb-1">{$t('leaveTestTitle')}</h2>
 					<p class="text-muted small mb-3">{$t('leaveTestBody')}</p>

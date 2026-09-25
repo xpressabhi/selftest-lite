@@ -22,7 +22,8 @@
 		settlePreview,
 	} from '$lib/client/previewSettler';
 	import { observeViewportTier } from '$lib/client/viewportTier';
-	import { parseSseBuffer, streamErrorToError } from '$lib/client/sse';
+	import { streamErrorToError } from '$lib/client/sse';
+	import { readGenerationStream } from '$lib/client/generateStream';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
@@ -1143,7 +1144,35 @@
 			// pre-generation errors, proxies that buffer) still work as before.
 			const contentType = response.headers.get('content-type') || '';
 			if (response.ok && contentType.includes('text/event-stream') && response.body) {
-				return await readGenerationStream(response);
+				// Consumes the SSE generation stream, updating progress as it arrives.
+				const stream = await readGenerationStream(response, {
+					onEvent: (event, data) => {
+						if (event === 'progress') {
+							generationProgress = {
+								approved: Number(data?.approved) || 0,
+								requested: Number(data?.requested) || 0,
+								stage: typeof data?.stage === 'string' ? data.stage : null,
+								round: Number(data?.round) || 0,
+								batchIndex: Number(data?.batchIndex) || 0,
+								batchTotal: Number(data?.batchTotal) || 0,
+							};
+						} else if (event === 'done') {
+							generationDone = true;
+							return { stop: true, value: data };
+						} else if (event === 'error') {
+							throw streamErrorToError(data);
+						}
+						return undefined;
+					},
+				});
+				if (!stream.stopped) {
+					throw streamErrorToError({
+						error: $t('failedToGenerateQuiz'),
+						code: 'GENERATION_STREAM_ENDED',
+						status: 500,
+					});
+				}
+				return stream.value;
 			}
 
 			const data = await response.json().catch(() => ({}));
@@ -1172,44 +1201,6 @@
 				generationAbort = null;
 			}
 		}
-	}
-
-	/** Consumes the SSE generation stream, updating progress as it arrives. */
-	async function readGenerationStream(response) {
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = '';
-		for (;;) {
-			const { value, done } = await reader.read();
-			if (done) {
-				break;
-			}
-			buffer += decoder.decode(value, { stream: true });
-			const { events, rest } = parseSseBuffer(buffer);
-			buffer = rest;
-			for (const { event, data } of events) {
-				if (event === 'progress') {
-					generationProgress = {
-						approved: Number(data?.approved) || 0,
-						requested: Number(data?.requested) || 0,
-						stage: typeof data?.stage === 'string' ? data.stage : null,
-						round: Number(data?.round) || 0,
-						batchIndex: Number(data?.batchIndex) || 0,
-						batchTotal: Number(data?.batchTotal) || 0,
-					};
-				} else if (event === 'done') {
-					generationDone = true;
-					return data;
-				} else if (event === 'error') {
-					throw streamErrorToError(data);
-				}
-			}
-		}
-		throw streamErrorToError({
-			error: $t('failedToGenerateQuiz'),
-			code: 'GENERATION_STREAM_ENDED',
-			status: 500,
-		});
 	}
 
 	// The success path navigates straight to /test. Hold the ready state for a

@@ -1,5 +1,15 @@
 <script>
 	import { onMount } from 'svelte';
+	import { ADMIN_UNAUTHORIZED, adminFetch } from '$lib/client/adminApi';
+	import {
+		agentFamily,
+		dayLabel,
+		formatBytes,
+		formatNumber,
+		formatTime,
+		formatValue,
+		hourLabel,
+	} from '$lib/client/formatting';
 	import { t } from '$lib/client/i18n';
 	import { clampInputText, MAX_ADMIN_FIELD_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 
@@ -64,18 +74,19 @@
 		return () => clearInterval(interval);
 	});
 
+	function markUnauthorized() {
+		authed = false;
+	}
+
 	async function loadHealth() {
 		healthLoading = true;
 		try {
-			const response = await fetch(`/api/admin/health?window=${healthWindow}`, {
+			const data = await adminFetch(`/api/admin/health?window=${healthWindow}`, {
 				cache: 'no-store',
+				fallbackError: 'Failed to load health',
+				onUnauthorized: markUnauthorized,
 			});
-			if (response.status === 401) {
-				authed = false;
-				return;
-			}
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Failed to load health');
+			if (data === ADMIN_UNAUTHORIZED) return;
 			health = data;
 		} catch (caughtError) {
 			console.error(caughtError);
@@ -92,15 +103,12 @@
 		if (activeTab !== 'device' && deviceNetwork) return;
 		try {
 			const durationDays = days > 0 ? days : 90;
-			const response = await fetch(`/api/admin/device-network?days=${durationDays}`, {
+			const data = await adminFetch(`/api/admin/device-network?days=${durationDays}`, {
 				cache: 'no-store',
+				fallbackError: 'Failed',
+				onUnauthorized: markUnauthorized,
 			});
-			if (response.status === 401) {
-				authed = false;
-				return;
-			}
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Failed');
+			if (data === ADMIN_UNAUTHORIZED) return;
 			deviceNetwork = data;
 		} catch (caughtError) {
 			console.error(caughtError);
@@ -112,15 +120,12 @@
 		if (activeTab !== 'features' && featureUsage) return;
 		try {
 			const durationDays = days > 0 ? days : 90;
-			const response = await fetch(`/api/admin/feature-usage?days=${durationDays}`, {
+			const data = await adminFetch(`/api/admin/feature-usage?days=${durationDays}`, {
 				cache: 'no-store',
+				fallbackError: 'Failed',
+				onUnauthorized: markUnauthorized,
 			});
-			if (response.status === 401) {
-				authed = false;
-				return;
-			}
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Failed');
+			if (data === ADMIN_UNAUTHORIZED) return;
 			featureUsage = data;
 		} catch (caughtError) {
 			console.error(caughtError);
@@ -132,13 +137,12 @@
 		checking = true;
 		error = '';
 		try {
-			const response = await fetch(`/api/admin/stats?days=${days}`, { cache: 'no-store' });
-			if (response.status === 401) {
-				authed = false;
-				return;
-			}
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Failed to load stats');
+			const data = await adminFetch(`/api/admin/stats?days=${days}`, {
+				cache: 'no-store',
+				fallbackError: 'Failed to load stats',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED) return;
 			authed = true;
 			stats = data;
 		} catch (caughtError) {
@@ -159,13 +163,12 @@
 
 	async function loadPatterns() {
 		try {
-			const response = await fetch('/api/admin/patterns', { cache: 'no-store' });
-			if (response.status === 401) {
-				authed = false;
-				return;
-			}
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Failed');
+			const data = await adminFetch('/api/admin/patterns', {
+				cache: 'no-store',
+				fallbackError: 'Failed',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED) return;
 			examPatterns = data.patterns || [];
 		} catch (caughtError) {
 			console.error(caughtError);
@@ -178,13 +181,12 @@
 		patternBusyKey = patternKey;
 		patternMessage = '';
 		try {
-			const response = await fetch('/api/admin/patterns', {
+			const data = await adminFetch('/api/admin/patterns', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ patternKey }),
+				fallbackError: 'Refresh failed',
 			});
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Refresh failed');
 			patternMessage = `Refreshed ${data.pattern?.examName || patternKey}`;
 			await loadPatterns();
 		} catch (caughtError) {
@@ -196,13 +198,12 @@
 
 	async function loadPremium() {
 		try {
-			const response = await fetch('/api/admin/premium', { cache: 'no-store' });
-			if (response.status === 401) {
-				authed = false;
-				return;
-			}
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Failed');
+			const data = await adminFetch('/api/admin/premium', {
+				cache: 'no-store',
+				fallbackError: 'Failed',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED) return;
 			premiumGrants = data.grants || [];
 		} catch (caughtError) {
 			console.error(caughtError);
@@ -216,7 +217,7 @@
 		premiumBusy = true;
 		premiumMessage = '';
 		try {
-			const response = await fetch('/api/admin/premium', {
+			await adminFetch('/api/admin/premium', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -224,9 +225,8 @@
 					expiresAt: premiumExpiry ? new Date(premiumExpiry).toISOString() : null,
 					notes: premiumNotes.trim() || null,
 				}),
+				fallbackError: 'Grant failed',
 			});
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || 'Grant failed');
 			premiumMessage = `Granted access to ${premiumEmail.trim()}`;
 			premiumEmail = '';
 			premiumExpiry = '';
@@ -262,13 +262,12 @@
 		loggingIn = true;
 		error = '';
 		try {
-			const response = await fetch('/api/admin/login', {
+			await adminFetch('/api/admin/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ username: username.trim(), password }),
+				fallbackError: $t('adminInvalidCredentials'),
 			});
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok) throw new Error(data.error || $t('adminInvalidCredentials'));
 			password = '';
 			await loadAll();
 		} catch (caughtError) {
@@ -290,56 +289,6 @@
 	function onDurationChange() {
 		activeTab = 'overview';
 		void loadAll();
-	}
-
-	function formatTime(value) {
-		if (!value) return '-';
-		return new Date(value).toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit',
-		});
-	}
-
-	function formatNumber(n) {
-		if (n == null) return '0';
-		return Number(n).toLocaleString();
-	}
-
-	function formatBytes(bytes) {
-		if (bytes == null) return '-';
-		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-		let value = Number(bytes);
-		let unit = 0;
-		while (value >= 1024 && unit < units.length - 1) {
-			value /= 1024;
-			unit += 1;
-		}
-		return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
-	}
-
-	function formatValue(value, suffix = '') {
-		if (value == null) return '-';
-		return `${value}${suffix}`;
-	}
-
-	function agentFamily(userAgent) {
-		const ua = userAgent || '';
-		if (/bot|crawler|spider|curl|wget|python-requests/i.test(ua)) return 'Bot';
-		if (/mobi|android|iphone|ipad/i.test(ua)) return 'Mobile';
-		return 'Desktop';
-	}
-
-	function hourLabel(bucket) {
-		return new Date(bucket).toLocaleTimeString(undefined, {
-			hour: '2-digit',
-			minute: '2-digit',
-		});
-	}
-
-	function dayLabel(value) {
-		return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
 </script>
 

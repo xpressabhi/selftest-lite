@@ -5,7 +5,8 @@
 	import { getClientHeaders } from '$lib/client/identity';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import { saveCurrentPaper } from '$lib/client/storage';
-	import { parseSseBuffer, streamErrorToError } from '$lib/client/sse';
+	import { streamErrorToError } from '$lib/client/sse';
+	import { readGenerationStream } from '$lib/client/generateStream';
 	import { loginWithGoogleCredential } from '$lib/client/auth';
 	import { track } from '$lib/client/telemetry';
 
@@ -133,26 +134,16 @@
 				error.code = data.code;
 				throw error;
 			}
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
 			let finalPaper = null;
-			for (;;) {
-				const { value, done } = await reader.read();
-				if (done) {
-					break;
-				}
-				buffer += decoder.decode(value, { stream: true });
-				const { events, rest } = parseSseBuffer(buffer);
-				buffer = rest;
-				for (const event of events) {
-					if (event.event === 'done') {
-						finalPaper = event.data;
-					} else if (event.event === 'error') {
-						throw streamErrorToError(event.data);
+			await readGenerationStream(response, {
+				onEvent: (event, data) => {
+					if (event === 'done') {
+						finalPaper = data;
+					} else if (event === 'error') {
+						throw streamErrorToError(data);
 					}
-				}
-			}
+				},
+			});
 			if (!finalPaper?.id) {
 				throw new Error($t('generationFailed'));
 			}

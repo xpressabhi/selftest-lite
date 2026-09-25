@@ -29,23 +29,14 @@
 		status = 'idle',
 	} = $props();
 
-	let showDifficultyPicker = $state(false);
-	let showFormatPicker = $state(false);
-	let showQuestionsPicker = $state(false);
-	let showLanguagePicker = $state(false);
-	let showExamPicker = $state(false);
+	/** Which spec picker is open: 'difficulty' | 'format' | 'questions' | 'language' | 'exam'. */
+	let openPicker = $state(null);
 	let examPickerQuery = $state('');
 	let cardRef = $state(null);
 
 	let selectedExam = $derived(getIndianExamById(examId));
 
-	const anyPickerOpen = $derived(
-		showDifficultyPicker ||
-			showFormatPicker ||
-			showQuestionsPicker ||
-			showLanguagePicker ||
-			showExamPicker
-	);
+	const anyPickerOpen = $derived(openPicker !== null);
 
 	const filteredPickerExams = $derived.by(() => {
 		const query = examPickerQuery.trim().toLowerCase();
@@ -118,37 +109,33 @@
 
 	function pickDifficulty(d) {
 		oneditchip('difficulty', d);
-		showDifficultyPicker = false;
+		openPicker = null;
 	}
 
 	function pickFormat(f) {
 		oneditchip('testType', f);
-		showFormatPicker = false;
+		openPicker = null;
 	}
 
 	function pickQuestions(n) {
 		// Matches the server cap (1..200) so full-length mocks are selectable.
 		const clamped = Math.max(1, Math.min(200, Number(n) || 10));
 		oneditchip('numQuestions', clamped);
-		showQuestionsPicker = false;
+		openPicker = null;
 	}
 
 	function pickLanguage(l) {
 		oneditchip('language', l);
-		showLanguagePicker = false;
+		openPicker = null;
 	}
 
 	function pickExam(eid) {
 		oneditchip('examId', eid);
-		showExamPicker = false;
+		openPicker = null;
 	}
 
 	function closeAllPickers() {
-		showDifficultyPicker = false;
-		showFormatPicker = false;
-		showQuestionsPicker = false;
-		showLanguagePicker = false;
-		showExamPicker = false;
+		openPicker = null;
 		examPickerQuery = '';
 	}
 
@@ -160,28 +147,15 @@
 		closeAllPickers();
 	}
 
-	function pickerOpen(picker) {
-		if (picker === 'difficulty') return showDifficultyPicker;
-		if (picker === 'format') return showFormatPicker;
-		if (picker === 'questions') return showQuestionsPicker;
-		if (picker === 'language') return showLanguagePicker;
-		if (picker === 'exam') return showExamPicker;
-		return false;
-	}
-
 	/** Parameter tiles toggle their picker; the event keeps plan-edit usage tracked. */
 	function handlePickerClick(picker) {
-		const wasOpen = pickerOpen(picker);
+		const wasOpen = openPicker === picker;
 		closeAllPickers();
 		if (wasOpen) {
 			track('preview:edit-toggle', { open: false });
 			return;
 		}
-		if (picker === 'difficulty') showDifficultyPicker = true;
-		if (picker === 'format') showFormatPicker = true;
-		if (picker === 'questions') showQuestionsPicker = true;
-		if (picker === 'language') showLanguagePicker = true;
-		if (picker === 'exam') showExamPicker = true;
+		openPicker = picker;
 		track('preview:edit-toggle', { open: true });
 	}
 
@@ -427,10 +401,10 @@
 			<div class="preview-specs">
 				<button
 					class="spec-tile"
-					class:active={showQuestionsPicker}
+					class:active={openPicker === 'questions'}
 					class:changed={changedFields.includes('numQuestions')}
 					type="button"
-					aria-expanded={showQuestionsPicker}
+					aria-expanded={openPicker === 'questions'}
 					aria-controls="preview-picker-panel"
 					aria-label={`${$t('previewQuestions')}: ${numQuestions}`}
 					onclick={() => handlePickerClick('questions')}
@@ -452,10 +426,10 @@
 
 				<button
 					class="spec-tile"
-					class:active={showFormatPicker}
+					class:active={openPicker === 'format'}
 					class:changed={changedFields.includes('testType')}
 					type="button"
-					aria-expanded={showFormatPicker}
+					aria-expanded={openPicker === 'format'}
 					aria-controls="preview-picker-panel"
 					aria-label={`${$t('previewFormat')}: ${FORMAT_LABEL[testType] || testType}`}
 					onclick={() => handlePickerClick('format')}
@@ -477,10 +451,10 @@
 
 				<button
 					class="spec-tile"
-					class:active={showDifficultyPicker}
+					class:active={openPicker === 'difficulty'}
 					class:changed={changedFields.includes('difficulty')}
 					type="button"
-					aria-expanded={showDifficultyPicker}
+					aria-expanded={openPicker === 'difficulty'}
 					aria-controls="preview-picker-panel"
 					aria-label={`${$t('previewDifficulty')}: ${DIFFICULTY_LABEL[difficulty] || difficulty}`}
 					onclick={() => handlePickerClick('difficulty')}
@@ -502,10 +476,10 @@
 
 				<button
 					class="spec-tile"
-					class:active={showLanguagePicker}
+					class:active={openPicker === 'language'}
 					class:changed={changedFields.includes('language')}
 					type="button"
-					aria-expanded={showLanguagePicker}
+					aria-expanded={openPicker === 'language'}
 					aria-controls="preview-picker-panel"
 					aria-label={`${$t('previewLanguage')}: ${
 						language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')
@@ -532,10 +506,10 @@
 				{#if isFullExam && selectedExam}
 					<button
 						class="spec-tile spec-tile-exam"
-						class:active={showExamPicker}
+						class:active={openPicker === 'exam'}
 						class:changed={changedFields.includes('examId')}
 						type="button"
-						aria-expanded={showExamPicker}
+						aria-expanded={openPicker === 'exam'}
 						aria-controls="preview-picker-panel"
 						aria-label={`${$t('previewExam')}: ${selectedExam.name}`}
 						onclick={() => handlePickerClick('exam')}
@@ -564,7 +538,7 @@
 
 			{#if anyPickerOpen}
 				<div class="picker-panel" id="preview-picker-panel">
-					{#if showQuestionsPicker}
+					{#if openPicker === 'questions'}
 						<div class="picker-block questions-picker">
 							<div class="picker-stepper">
 								<button
@@ -608,7 +582,7 @@
 						</div>
 					{/if}
 
-					{#if showFormatPicker}
+					{#if openPicker === 'format'}
 						<div class="picker-options format-picker">
 							{#each FORMATS as f (f.value)}
 								<button
@@ -627,7 +601,7 @@
 						</div>
 					{/if}
 
-					{#if showDifficultyPicker}
+					{#if openPicker === 'difficulty'}
 						<div class="picker-options difficulty-picker">
 							{#each DIFFICULTIES as d (d.value)}
 								<button
@@ -646,7 +620,7 @@
 						</div>
 					{/if}
 
-					{#if showLanguagePicker}
+					{#if openPicker === 'language'}
 						<div class="picker-options language-picker">
 							<button
 								class="picker-option"
@@ -675,7 +649,7 @@
 						</div>
 					{/if}
 
-					{#if showExamPicker}
+					{#if openPicker === 'exam'}
 						<div class="picker-block exam-picker">
 							<input
 								class="exam-picker-search"
