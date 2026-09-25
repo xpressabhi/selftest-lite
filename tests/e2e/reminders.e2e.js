@@ -200,12 +200,12 @@ test.describe('daily reminder web push', () => {
 		await page.goto('/results?id=e2e-1');
 		const teaser = page.getByRole('button', { name: 'Daily practice reminder' });
 		await expect(teaser).toBeVisible();
-		// The card is collapsed: the controls only exist after opening it.
-		expect(await reminderToggle(page).isVisible()).toBe(false);
-		await teaser.click();
+		// The controls live in the page footer and are always available; the
+		// hero link jumps to them and focuses the toggle.
 		const toggle = reminderToggle(page);
 		await expect(toggle).toBeVisible();
 		await expect(page.getByLabel('Reminder time')).toBeVisible();
+		await teaser.click();
 		expect(await toggle.evaluate((element) => element === document.activeElement)).toBe(true);
 
 		await page.route(`**${REMINDER_API}`, async (route) => {
@@ -230,7 +230,7 @@ test.describe('daily reminder web push', () => {
 		await testInfo.attach('evidence', {
 			body: JSON.stringify({
 				teaserVisibleAfterFirstTest: true,
-				cardCollapsedByDefault: true,
+				footerControlsVisible: true,
 				toggleStayedOff: true,
 				subscriptionRolledBack: true,
 			}),
