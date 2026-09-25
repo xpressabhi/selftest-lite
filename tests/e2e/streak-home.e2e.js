@@ -225,12 +225,59 @@ test('the reminder row appears only after a completed test', async ({ page }, te
 	await expect(reminder).toContainText('Daily practice reminders');
 	await expect(reminder.locator('input[type="checkbox"]')).not.toBeChecked();
 
-	// Never click the toggle in the default suite: it opens a real permission
-	// prompt. Toggle behaviour is covered by the opt-in push e2e run.
+	// The enabled/save path needs a service worker and real FCM access, so it is
+	// covered by the opt-in push e2e run; this suite only asserts the gate.
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify({ reminderVisible: true, checked: false }, null, 2),
+	});
+});
+
+test('the reminder toggle fails fast instead of hanging in dev', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	const reminderRequests = [];
+	page.on('request', (request) => {
+		if (request.url().includes('/api/reminders/subscribe')) {
+			reminderRequests.push(request.method());
+		}
+	});
+	// Granted so the request-permission step cannot mask the service-worker
+	// wait: with no registration (dev registers /sw.js only in production) the
+	// toggle must resolve instead of awaiting `serviceWorker.ready` forever.
+	await page.context().grantPermissions(['notifications']);
+	await seed(page, {
+		streak: defaultStreak(),
+		history: [completedAttempt('a', 3, 10)],
+	});
+	await page.goto('/');
+
+	const toggle = page.locator('.streak-reminder input[type="checkbox"]');
+	await expect(toggle).not.toBeChecked();
+	// Click the label like a user would: the track/thumb sits above the
+	// visually hidden input, so clicking the input directly is intercepted.
+	await page.locator('.streak-reminder-label').click();
+
+	const toast = page.locator('.toast-lite.warning', {
+		hasText: "Reminders aren't available right now",
+	});
+	await expect(toast).toBeVisible();
+	await expect(toggle).not.toBeChecked();
+	await expect(toggle).toBeEnabled();
+	expect(reminderRequests).toEqual([]);
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				toast: "Reminders aren't available right now",
+				subscribeRequests: reminderRequests.length,
+				toggleRestored: true,
+			},
+			null,
+			2
+		),
 	});
 });
 

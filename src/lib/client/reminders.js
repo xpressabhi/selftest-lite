@@ -25,8 +25,29 @@ export function remindersSupported() {
 	);
 }
 
+const SERVICE_WORKER_READY_TIMEOUT_MS = 2000;
+
+// Resolves the active service worker, or null when there is none. A bare
+// `navigator.serviceWorker.ready` never settles without a registration — dev
+// registers /sw.js only in production (see +layout.svelte), so awaiting it
+// there hangs the toggle forever instead of reporting the missing worker.
 async function getRegistration() {
-	return navigator.serviceWorker.ready;
+	if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+		return null;
+	}
+	const existing = await navigator.serviceWorker.getRegistration();
+	if (existing) {
+		return navigator.serviceWorker.ready;
+	}
+	// Nothing registers in dev, so fail fast. In production a first-load
+	// registration may still be in flight; give it a brief chance.
+	if (import.meta.env.DEV) {
+		return null;
+	}
+	return Promise.race([
+		navigator.serviceWorker.ready,
+		new Promise((resolve) => setTimeout(() => resolve(null), SERVICE_WORKER_READY_TIMEOUT_MS)),
+	]);
 }
 
 // The chosen reminder hour is mirrored locally so the picker renders before the
@@ -81,7 +102,7 @@ export async function setReminderHour(hour) {
 	writeStoredReminderHour(normalized);
 	try {
 		const registration = await getRegistration();
-		const subscription = await registration.pushManager.getSubscription();
+		const subscription = registration ? await registration.pushManager.getSubscription() : null;
 		if (!subscription) {
 			track('reminder:time-set', { hour: normalized });
 			return { ok: true };
@@ -110,6 +131,9 @@ export async function isReminderEnabled() {
 	}
 	try {
 		const registration = await getRegistration();
+		if (!registration) {
+			return false;
+		}
 		const subscription = await registration.pushManager.getSubscription();
 		return Boolean(subscription);
 	} catch {
@@ -126,11 +150,17 @@ export async function enableReminders() {
 		return { ok: false, reason: 'unconfigured' };
 	}
 	try {
+		// Without an active service worker the browser has nowhere to deliver a
+		// push, so resolve the worker before spending a permission prompt on
+		// this device.
+		const registration = await getRegistration();
+		if (!registration) {
+			return { ok: false, reason: 'unconfigured' };
+		}
 		const permission = await Notification.requestPermission();
 		if (permission !== 'granted') {
 			return { ok: false, reason: 'denied' };
 		}
-		const registration = await getRegistration();
 		const subscription = await registration.pushManager.subscribe({
 			userVisibleOnly: true,
 			applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -169,6 +199,9 @@ export async function disableReminders() {
 	}
 	try {
 		const registration = await getRegistration();
+		if (!registration) {
+			return { ok: false, reason: 'unconfigured' };
+		}
 		const subscription = await registration.pushManager.getSubscription();
 		if (subscription) {
 			const removed = await fetch('/api/reminders/subscribe', {

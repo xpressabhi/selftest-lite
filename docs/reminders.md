@@ -54,7 +54,9 @@ after the first completed test.
 3. Redeploy after adding the Vercel variable (env changes apply per
    deployment), then test locally with a production build
    (`npm run build && npm run preview`); `serviceWorker.ready` does not resolve
-   reliably in `npm run dev`.
+   reliably in `npm run dev`. The toggle now fails fast there: with no
+   registration it resolves immediately and reports "Reminders aren't available
+   right now" instead of hanging.
 
 ## Verifying end-to-end
 
@@ -80,7 +82,11 @@ so `push_subscription_archive` grows by one row per run). Evidence lands in
 ## Notes
 
 - Without VAPID keys the send script exits 0 with a message and the client
-  toggle reports "unconfigured" — the feature is inert, not broken.
+  toggle reports "unconfigured" — the feature is inert, not broken. The same
+  outcome covers `npm run dev`, which registers no service worker: the row
+  still renders, but flipping the toggle resolves straight to the unavailable
+  toast rather than awaiting a worker that will never arrive. Real opt-in is
+  tested through the preview build or `npm run test:e2e:push`.
 - iOS requires the PWA to be installed (Add to Home Screen) before Web Push
   works; the toggle is simply hidden where the APIs are missing.
 - Telemetry: `reminder:opt-in` (`enabled: true|false`, plus timezone) and
