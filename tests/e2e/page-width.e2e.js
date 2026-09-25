@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 // Page-width contract: the header, every page's content column, and the footer
-// share one max width (1280px) and one gutter scale, and page-level content
-// fills that column instead of re-centering at its own width.
+// share one 1280px shell (.app-container) and one gutter scale, and page-level
+// content fills that column instead of re-centering at its own width.
 // Spec: docs/superpowers/specs/2026-09-25-consistent-page-width-design.md
 
 const PAGES = [
@@ -35,7 +35,7 @@ async function measure(page, wrapSelector) {
 		};
 		const gutterOf = (el) => (el ? getComputedStyle(el).paddingInlineStart : null);
 		const header = document.querySelector('.header-inner');
-		const container = document.querySelector('main .container');
+		const container = document.querySelector('main > .app-container');
 		const footer = document.querySelector('.footer-inner');
 		const wrap = document.querySelector(wrapSelector);
 		return {

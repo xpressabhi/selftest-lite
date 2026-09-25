@@ -1,4 +1,8 @@
-# Implementation Plan: Shared 1120px Application Shell
+# Implementation Plan: Shared Application Shell
+
+> Revised 2026-09-25 after merge: the shell is **1280px** and page-level inner caps are removed.
+> The `.app-container` primitive and E2E contract below are unchanged; width-specific lines are
+> historical. See `docs/superpowers/specs/2026-09-25-consistent-page-width-design.md`.
 
 ## Overview
 

@@ -1,7 +1,9 @@
 # Shared Desktop Layout Design
 
 **Date:** 2026-09-25  
-**Status:** Approved  
+**Status:** Approved — revised 2026-09-25: the shell width is **1280px** and page-level inner width
+caps are removed (see `2026-09-25-consistent-page-width-design.md`). The shared `.app-container`
+primitive, gutters, safe-area handling, and E2E shell contract in this document still hold.  
 **Scope:** Application-wide page, header, and footer width alignment
 
 ## Context
@@ -37,14 +39,14 @@ Although most pages are fluid and do not overflow, these independent values prod
 
 Use a shared CSS layout primitive rather than a Svelte `PageShell` component or implicit global overrides.
 
-The primitive is a **1120px border-box shell**, including responsive horizontal gutters. It becomes the one page-level width contract used by:
+The primitive is a **1280px border-box shell**, including responsive horizontal gutters. It becomes the one page-level width contract used by:
 
 - every non-immersive page root;
 - the header inner row;
 - the footer inner content;
 - the existing immersive test page's outer container.
 
-Inner content may still use narrower semantic columns. Those columns live inside the common shell and do not redefine its outer edges.
+Page-level content fills the shell column; no page root or page wrapper re-caps its own width. Only prose blocks keep a readable line-length measure, and those measures never re-center the page.
 
 ## Layout Contract
 
@@ -53,14 +55,14 @@ Inner content may still use narrower semantic columns. Those columns live inside
 The shared shell uses:
 
 - `width: 100%`;
-- `max-width: 1120px`;
+- `max-width: var(--layout-shell-width)` (1280px);
 - centered horizontal margins;
 - responsive horizontal padding:
   - `16px` below `640px`;
   - `24px` from `640px`;
   - `32px` from `1024px`.
 
-The maximum includes horizontal padding because the project uses border-box sizing. At desktop, the shell therefore exposes 1056px of usable content between its gutters.
+The maximum includes horizontal padding because the project uses border-box sizing. At desktop, the shell therefore exposes 1216px of usable content between its gutters.
 
 A stable `.app-container` layout marker is added to each shared root. The same class is used by header and footer inner elements. The E2E suite queries this marker without coupling tests to page-specific wrapper names.
 
@@ -76,36 +78,23 @@ Vertical page spacing remains page-local and does not affect the horizontal cont
 
 ## Page Composition
 
-### Shared frame, focused inner content
+Every non-immersive page root uses the shared shell and its content fills the shell column. The
+page-level inner caps that used to make each page a different width (home 720, profile 640, privacy
+and terms 640, blog article 640, exam-paper 720, test stats 720, results 860, admin 1120) are
+removed.
 
-The following retain focused internal columns centered inside the common shell:
+Readability is protected by measures rather than page columns:
 
-- home generator (`720px`);
-- profile (`640px`);
-- privacy and terms (`640px`);
-- blog article prose (`640px`);
-- exam-paper builder (`720px`);
-- test stats (`720px`);
-- test and results task surfaces (up to `860px`);
-- focused forms and practice experiences where their current width supports the interaction.
+- long-form prose (blog article body, legal lead and cards, FAQ answers, About copy, centered hero
+  pitches) keeps a `68ch` line-length measure, left-aligned inside the column or centered where the
+  hero is centered;
+- the immersive `/test` question/task surface keeps its 860px focused column because that page has
+  no header or footer to align with;
+- overlays (modals, install hint), centered empty-state and error messages, and form-field blocks
+  (e.g. the history search input) keep their component widths and are not page columns.
 
-These are inner layout decisions, not page-shell widths.
-
-### Shared frame, broader composition
-
-The following may use most of the shell's usable width while retaining their existing internal grids:
-
-- about;
-- blog index;
-- FAQ;
-- contact;
-- practice hub and representative practice detail;
-- history;
-- bookmarks;
-- admin;
-- error page.
-
-Localized routes and dynamic detail routes inherit the same shell because they render the same shared page components or the same contract.
+Localized routes and dynamic detail routes inherit the same shell because they render the same
+shared page components or the same contract.
 
 ## Header and Footer
 
@@ -117,7 +106,7 @@ The mobile menu remains a viewport-level navigation surface and is not constrain
 
 ## Immersive Exception
 
-`/test` continues to hide the global header and footer. Its outer page container still uses the shared 1120px shell, while its question/task surface retains the existing focused maximum. This preserves the established immersive behavior without introducing a different page-level width.
+`/test` continues to hide the global header and footer. Its outer page container still uses the shared 1280px shell, while its question/task surface retains the existing focused 860px maximum. This preserves the established immersive behavior without introducing a different page-level width.
 
 ## Audit and Migration
 
@@ -129,7 +118,7 @@ The implementation audits all `+page.svelte` files and shared page components fo
 - inline safe-area gutters;
 - header/footer shell values.
 
-Migration changes only shell ownership. Page-local inner maximum widths remain where they serve readability or task focus. Any remaining page-level width is either removed or documented as an explicit exception.
+Migration changes shell ownership. Page-local inner maximum widths are removed; only readability measures, the immersive test surface, and component-level widths remain, and each is documented as an explicit exception.
 
 ## Testing
 
@@ -143,7 +132,7 @@ At desktop widths, the test measures the shared shell marker on the page, header
 - the measured page shell is a direct child of `main`, with no nested `.app-container` or `.container`;
 - equal left edges within 0.5px;
 - equal right edges within 0.5px;
-- a maximum border-box width of 1120px;
+- a maximum border-box width of 1280px;
 - horizontal centering when the viewport is wider than the shell;
 - the 16/24/32px base gutters, plus injected horizontal safe-area insets, are preserved.
 
@@ -169,10 +158,10 @@ Coverage includes every public page type, English and Hindi route variants, one 
 ## Acceptance Criteria
 
 1. Header, page, and footer share identical desktop left and right edges.
-2. The shared shell never exceeds 1120px including gutters.
+2. The shared shell never exceeds 1280px including gutters.
 3. No non-immersive route root defines an independent page-shell maximum.
 4. Home, about, blog, FAQ, contact, utility pages, localized pages, and dynamic pages all participate in the common shell.
-5. Reading and task-focused inner columns remain readable and do not create overflow.
+5. Reading measures and the immersive test column remain readable and do not create overflow.
 6. The immersive test flow retains its existing behavior.
 7. Existing mobile and tablet layout guarantees remain intact.
 8. The E2E layout contract fails when a route omits the shell or misaligns its edges.

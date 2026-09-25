@@ -1,7 +1,9 @@
 # Consistent Page Width — One Column Header-to-Footer (Design)
 
 Date: 2026-09-25
-Status: approved
+Status: approved; implemented on the shared `.app-container` shell (revision: the shell width is
+1280px and page-level inner caps are removed — see also
+`2026-09-25-shared-desktop-layout-design.md`).
 Scope: make the header, every page's container, and the footer share one max width (1280px) and
 one gutter scale; remove page-level inner width caps; keep long-form prose readable and the
 immersive test screen focused. No API, schema, route, or dependency changes.
@@ -32,9 +34,9 @@ horizontally when navigating page to page.
 
 ### Success criteria
 
-- At 1440px and 1280px viewports, `.header-inner`, the page `.container`, and `.footer-inner` have
-  identical `x` and `right` (within 1px) on every page in the E2E set.
-- The page container's edges are identical across pages.
+- At 1440px and 1280px viewports, `.header-inner`, the page `.app-container`, and `.footer-inner`
+  have identical `x` and `right` (within 1px) on every page in the E2E set.
+- The shared shell's edges are identical across pages.
 - At 390px, header, container and footer share the same 16px gutter; no horizontal overflow
   (`document.scrollWidth <= window.innerWidth`).
 - Long-form prose (blog post body, legal lead, FAQ answers, About copy) stays around a 68ch
@@ -46,14 +48,17 @@ horizontally when navigating page to page.
 
 ## 2. Tech stack
 
-SvelteKit 2 / Svelte 5 with the existing Tailwind component layer and scoped CSS. Two CSS custom
-properties carry the layout contract; no new dependencies and no component API changes.
+SvelteKit 2 / Svelte 5 with the existing Tailwind component layer and scoped CSS. One CSS custom
+property (`--layout-shell-width`) feeds the shared `.app-container` primitive defined in
+`2026-09-25-shared-desktop-layout-design.md`; a `.measure` utility carries prose line length. No new
+dependencies and no component API changes.
 
 ## 3. Approach
 
-1. **CSS tokens + aligned shell + dropped page caps (chosen).** One source of truth in
-   `globals.css`; header, `.container`, and footer consume it; page-level `max-width` leftovers are
-   removed. Small diff, easy to verify, no page markup changes.
+1. **Shared `.app-container` shell at 1280px + dropped page caps (chosen).** One source of truth in
+   `globals.css` (`--layout-shell-width`); header, page roots, and footer use the same primitive;
+   page-level `max-width` leftovers are removed. Small diff, easy to verify, no page markup changes
+   beyond the shell class.
 2. A shared `PageContainer.svelte` component wrapping every page. Structurally stronger but a large
    refactor of ~20 pages for no visual gain.
 3. Hardcoding 1280px separately in layout and pages. Rejected: the drift returns with the next new
@@ -61,32 +66,25 @@ properties carry the layout contract; no new dependencies and no component API c
 
 ## 4. Changes
 
-### 4.1 Single source of truth — `src/lib/styles/globals.css`
+### 4.1 Shell width — `src/lib/styles/globals.css`
 
 ```css
 :root {
-  --page-max: 80rem; /* 1280px */
-  --page-gutter: 1rem;
-}
-@media (min-width: 640px) {
-  :root { --page-gutter: 1.5rem; }
-}
-@media (min-width: 1024px) {
-  :root { --page-gutter: 2rem; }
+  --layout-shell-width: 1280px;
 }
 ```
 
-- `.container` becomes `width: 100%; max-width: var(--page-max); margin-inline: auto;
-  padding-inline: var(--page-gutter);` (replaces `@apply ... max-w-7xl px-4 sm:px-6 lg:px-8`).
+- The shared `.app-container` / `.container` primitive (from the shared desktop layout design) uses
+  `max-width: var(--layout-shell-width)` with 16/24/32px gutters, so raising the shell to 1280px is
+  one token change.
 - Add a `.measure` utility: `max-width: 68ch;` for prose blocks.
 
 ### 4.2 Shell — `src/routes/+layout.svelte`
 
-- `.header-inner`: `max-width: var(--page-max)`, `padding: 6px var(--page-gutter)`. Delete the
-  1320px value and the 768px padding override.
-- `.footer-inner`: `max-width: var(--page-max)`, `padding: 28px var(--page-gutter)`. Delete the
-  920px value.
-- `.mobile-menu`: `padding: 8px var(--page-gutter) 14px` so the open menu aligns with the header.
+- `.header-inner` and `.footer-inner` carry the shared `.app-container` class; their local
+  `1320px` / `920px` maxima and local horizontal padding are gone, so their edges come from the
+  same shell.
+- The mobile menu stays a viewport-level surface with 20px gutters.
 
 ### 4.3 Page-level caps removed
 
@@ -109,6 +107,10 @@ Delete the page-column `max-width` (and now-redundant `margin: 0 auto`) from:
   `.result-retake`, `.result-footer`, `.challenge-card`, `.filter-bar` (860px). This supersedes the
   "content max-width 860px to match the page" note in `2026-09-22-results-spotlight-hero-design.md`;
   the page width that the hero now matches is 1280px.
+- `routes/test/stats/+page.svelte` — the `.test-stats-page > *` 720px focused column added by the
+  shared layout pass (the page has the shell header/footer, so it fills the column).
+
+All route roots use the shared `.app-container` class from `2026-09-25-shared-desktop-layout-design.md`.
 
 ### 4.4 Content measures kept (component-level, never re-center the page column)
 
@@ -116,7 +118,8 @@ These cap line length, not the page edge. They are either left-aligned inside th
 proportionally sized:
 
 - Blog post: `.post-excerpt`, `.post-body` → `.measure`; key-point list text likewise.
-- Privacy / Terms: `.legal-lead` → `.measure` (cards stay full column; two-column grid at ≥768px).
+- Privacy / Terms: `.legal-lead` → `.measure`; `.legal-card-body` capped at 68ch (cards themselves
+  stay full column; two-column grid at ≥768px).
 - FAQ: `.faq-subtitle` → `.measure` centered inside the centered hero; FaqAccordion answer
   paragraphs → 68ch.
 - About / Contact / PracticeHub / Exam heroes: existing centered subtitle measures stay.
@@ -137,11 +140,13 @@ proportionally sized:
 
 - New `tests/e2e/page-width.e2e.js`:
   - Pages: `/`, `/about`, `/faq`, `/blog`, `/privacy`, `/terms`, `/practice`, `/contact`, `/hi/about`.
-  - At 1440×900 and 1280×800: for each page, `.header-inner`, `main .container`, `.footer-inner`
-    bounding boxes share the same `x` and `right` (±1px), and the container edges equal the first
-    page's container edges.
+  - At 1440×900 and 1280×800: for each page, `.header-inner`, `main > .app-container`,
+    `.footer-inner` bounding boxes share the same `x` and `right` (±1px), and the shell edges equal
+    the first page's shell edges.
   - At 390×844: computed `padding-inline-start` of all three is 16px; `scrollWidth <= innerWidth`.
   - Attach per-page edge measurements to the artifact as evidence.
+- `tests/e2e/design-consistency.e2e.js` (from the shared layout design) is updated from its 1120px
+  shell constant to 1280px, so both suites enforce the same contract.
 - Full suite: `npm run lint`, `npm run check`, `npm run test`, `npm run test:e2e`
   (writes `test-results/e2e-artifact.json`).
 - Visual pass at 1440px and 390px over the widest pages (`/`, `/results`, `/profile`, `/faq`) to

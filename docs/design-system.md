@@ -20,15 +20,16 @@ to avoid overlap (`max-width: 767.98px`).
 
 ## Widths
 
-- Shared shell: `.app-container` is a `1120px` border-box maximum for every route root,
+- Shared shell: `.app-container` is a `1280px` border-box maximum for every route root,
   the header inner row, and the footer inner row. It uses 16px gutters below 640px, 24px
-  from 640px, and 32px from 1024px, leaving 1056px of desktop content.
+  from 640px, and 32px from 1024px, leaving 1216px of desktop content.
 - `.container` is a compatibility alias with the same geometry. New route code uses
   `.app-container`; page-level `max-w-*` utilities do not replace the shared shell.
-- Reading/prose: `40rem` (~65–75ch). Headings balance with `text-wrap: balance`.
-- Focused app columns: `720px` for home, exam-paper, and stats; up to `860px` for the test
-  and results task surfaces. These live inside the shared shell.
-- Broad page compositions such as About and blog index fill the shell's usable content area.
+- Page content fills the shell column: page-level inner caps are removed. The immersive `/test`
+  question surface keeps its focused `860px` column, and component-level widths (modals,
+  empty-state/error messages, the history search field) stay as they are.
+- Reading/prose: `68ch` via the `.measure` utility, left-aligned inside the column (centered
+  only where the surrounding hero is centered). Headings balance with `text-wrap: balance`.
 
 ## Spacing
 

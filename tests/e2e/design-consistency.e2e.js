@@ -243,7 +243,7 @@ function auditDesktopShell() {
 			issues.push({ code: 'missing-shared-class', shell: name });
 		}
 		const width = element.getBoundingClientRect().width;
-		if (width > 1120.5) {
+		if (width > 1280.5) {
 			issues.push({ code: 'shell-too-wide', shell: name, width: round(width) });
 		}
 	}
@@ -266,7 +266,7 @@ function auditDesktopShell() {
 
 	const pageBox = box(page);
 	if (pageBox) {
-		const expectedWidth = Math.min(viewportWidth, 1120);
+		const expectedWidth = Math.min(viewportWidth, 1280);
 		const expectedLeft = (viewportWidth - expectedWidth) / 2;
 		if (Math.abs(pageBox.left - expectedLeft) > 0.5) {
 			issues.push({
@@ -330,7 +330,7 @@ function auditImmersiveShell() {
 		right: Math.round(rect.right * 100) / 100,
 		width: Math.round(rect.width * 100) / 100,
 	};
-	const expectedWidth = Math.min(viewportWidth, 1120);
+	const expectedWidth = Math.min(viewportWidth, 1280);
 	const expectedLeft = (viewportWidth - expectedWidth) / 2;
 	const expectedGutter = viewportWidth >= 1024 ? 32 : viewportWidth >= 640 ? 24 : 16;
 	const styles = getComputedStyle(shell);
@@ -340,7 +340,7 @@ function auditImmersiveShell() {
 	if (!shell.classList.contains('app-container')) {
 		issues.push({ code: 'missing-shared-class', shell: 'test' });
 	}
-	if (box.width > 1120.5) {
+	if (box.width > 1280.5) {
 		issues.push({ code: 'shell-too-wide', shell: 'test', width: box.width });
 	}
 	if (Math.abs(box.left - expectedLeft) > 0.5) {
@@ -520,7 +520,7 @@ test('shared shell and fixed chrome honor horizontal safe areas', async ({ page 
 	]);
 });
 
-test('every non-immersive route uses the 1120px shell at every breakpoint', async ({
+test('every non-immersive route uses the 1280px shell at every breakpoint', async ({
 	page,
 }, testInfo) => {
 	test.setTimeout(240000);

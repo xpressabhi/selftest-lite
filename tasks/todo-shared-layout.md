@@ -1,4 +1,8 @@
-# Shared 1120px application shell — task list
+# Shared application shell — task list
+
+> Revised 2026-09-25 after merge: the shell width is **1280px** and page-level inner caps are
+> removed (see `docs/superpowers/specs/2026-09-25-consistent-page-width-design.md`). The
+> `.app-container` marker, gutters, and safe-area work below are unchanged.
 
 Spec: `docs/superpowers/specs/2026-09-25-shared-desktop-layout-design.md`
 Plan: `tasks/plan-shared-layout.md`
