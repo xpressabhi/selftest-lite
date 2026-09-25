@@ -2,8 +2,10 @@
 // text helpers. System fonts only so Hindi shaping works without webfont
 // loading; the card uses one high-contrast theme regardless of app theme.
 
-export const CARD_WIDTH = 1080;
-export const CARD_HEIGHT = 1920;
+import { CARD_HEIGHT, CARD_WIDTH } from './cardKit.js';
+
+// Re-exported for existing consumers; the kit is the single source.
+export { CARD_HEIGHT, CARD_WIDTH };
 
 /** Strips markdown/links and collapses whitespace for canvas text. */
 export function stripCardText(value) {
