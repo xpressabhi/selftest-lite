@@ -355,7 +355,7 @@
 	}
 
 	.streak-day.linked::before {
-		background: #f59e0b;
+		background: color-mix(in srgb, var(--warn) 55%, transparent);
 	}
 
 	.streak-ball {
@@ -374,26 +374,29 @@
 		color: var(--text);
 	}
 
+	/* Streak levels: one warn token drives every step, so light and dark
+	   both keep three visibly different levels (the old hardcoded ramp
+	   collapsed levels 1 and 2 into the same colour in dark mode). */
 	.streak-ball.level-1 {
-		border-color: #fcd34d;
-		background: #fcd34d;
-		color: #78350f;
+		border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+		background: color-mix(in srgb, var(--warn) 20%, var(--surface));
+		color: var(--warn);
 	}
 
 	.streak-ball.level-2 {
-		border-color: #f59e0b;
-		background: #f59e0b;
-		color: #78350f;
+		border-color: color-mix(in srgb, var(--warn) 65%, transparent);
+		background: color-mix(in srgb, var(--warn) 40%, var(--surface));
+		color: var(--warn);
 	}
 
 	.streak-ball.level-3 {
-		border-color: #b45309;
-		background: #b45309;
-		color: #fff7ed;
+		border-color: var(--warn-fill);
+		background: var(--warn-fill);
+		color: var(--on-warn);
 	}
 
 	.streak-day.today .streak-ball {
-		outline: 2px solid #d97706;
+		outline: 2px solid var(--warn);
 		outline-offset: 2px;
 	}
 
@@ -402,22 +405,5 @@
 		font-size: 12px;
 		line-height: 1.45;
 		color: var(--text-muted);
-	}
-
-	:global(:root.dark) .streak-ball.level-1,
-	:global(:root.dark) .streak-ball.level-2 {
-		border-color: #fcd34d;
-		background: #fcd34d;
-		color: #78350f;
-	}
-
-	:global(:root.dark) .streak-ball.level-3 {
-		border-color: #f59e0b;
-		background: #f59e0b;
-		color: #78350f;
-	}
-
-	:global(:root.dark) .streak-day.today .streak-ball {
-		outline-color: #fcd34d;
 	}
 </style>

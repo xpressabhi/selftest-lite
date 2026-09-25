@@ -192,14 +192,14 @@
 
 	.practice-title {
 		margin: 0;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
 	}
 
 	.practice-lead {
 		margin: 0;
-		max-width: 44rem;
+		max-width: 40rem;
 		color: var(--text-muted);
 		font-size: 1.05rem;
 		line-height: 1.65;
@@ -321,7 +321,7 @@
 
 	@media (min-width: 768px) {
 		.practice-title {
-			font-size: 2.25rem;
+			font-size: 1.875rem;
 		}
 
 		.practice-pattern {

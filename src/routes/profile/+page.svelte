@@ -256,7 +256,7 @@
 
 <section class="container py-4 py-md-5">
 	<div class="mx-auto profile-wrap">
-		<h1 class="h3 fw-bold mb-3">{$t('profilePageTitle')}</h1>
+		<h1 class="text-page mb-3">{$t('profilePageTitle')}</h1>
 
 		{#if !$user}
 			<div class="panel text-center">

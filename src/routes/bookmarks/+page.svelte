@@ -76,7 +76,7 @@
 <section class="container py-4">
 	<header class="page-head">
 		<div>
-			<h1 class="h2 fw-bold mb-1">{$t('bookmarks')}</h1>
+			<h1 class="text-page mb-1">{$t('bookmarks')}</h1>
 			<p class="text-muted mb-0">{$t('useBookmarksOrChooseMode')}</p>
 		</div>
 		<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
@@ -374,7 +374,7 @@
 		font-weight: 700;
 	}
 
-	@media (min-width: 992px) {
+	@media (min-width: 1024px) {
 		.bookmark-grid {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 			align-items: start;

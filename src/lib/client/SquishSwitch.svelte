@@ -74,7 +74,7 @@
 		height: 20px;
 		border-radius: 999px;
 		background: var(--surface);
-		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
+		box-shadow: var(--shadow-1);
 		transition: transform var(--motion-base) var(--ease-commit);
 	}
 

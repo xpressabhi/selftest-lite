@@ -50,7 +50,7 @@
 </script>
 
 <section class="container py-4 test-stats-page">
-	<h1 class="h4 fw-bold mb-1">{$t('testStatsTitle')}</h1>
+	<h1 class="text-page mb-1">{$t('testStatsTitle')}</h1>
 	<p class="text-muted small mb-4">
 		{$t('testStatsPageSubtitle', { id: testId || '' })}
 	</p>
@@ -82,7 +82,7 @@
 			</p>
 		{/if}
 
-		<h2 class="h6 fw-bold mt-4 mb-2">{$t('testStatsDaily')}</h2>
+		<h2 class="text-section mt-4 mb-2">{$t('testStatsDaily')}</h2>
 		<div class="test-stats-daily" aria-hidden="true">
 			{#each stats.daily as day (day.date)}
 				<div class="test-stats-day" title={`${day.date}: ${day.visits}/${day.submissions}`}>
@@ -94,7 +94,7 @@
 			{/each}
 		</div>
 
-		<h2 class="h6 fw-bold mt-4 mb-2">{$t('testStatsScores')}</h2>
+		<h2 class="text-section mt-4 mb-2">{$t('testStatsScores')}</h2>
 		{#if stats.scores.length}
 			<ul class="test-stats-scores">
 				{#each stats.scores as score (score.createdAt + score.score)}
@@ -109,13 +109,17 @@
 			<p class="text-muted small">{$t('testStatsNoScores')}</p>
 		{/if}
 
-		<a class="d-inline-block mt-4" href={`/test?id=${encodeURIComponent(testId || '')}`}>
+		<a class="btn btn-outline-primary mt-4" href={`/test?id=${encodeURIComponent(testId || '')}`}>
 			{$t('openTest')}
 		</a>
 	{/if}
 </section>
 
 <style>
+	.test-stats-page {
+		max-width: 720px;
+	}
+
 	.test-stats-tiles {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));

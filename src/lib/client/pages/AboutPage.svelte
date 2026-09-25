@@ -200,14 +200,14 @@
 
 	.about-title {
 		margin: 0;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
 	}
 
 	.about-lead {
 		margin: 0;
-		max-width: 46rem;
+		max-width: 40rem;
 		color: var(--text-muted);
 		font-size: 1.1rem;
 		line-height: 1.6;
@@ -264,13 +264,13 @@
 
 	.about-section-title {
 		margin: 0;
-		font-size: 1.3rem;
+		font-size: 1.25rem;
 		font-weight: 700;
 	}
 
 	.about-mission {
 		margin: 0;
-		max-width: 52rem;
+		max-width: 40rem;
 		color: var(--text-muted);
 		line-height: 1.7;
 	}
@@ -420,7 +420,7 @@
 
 	@media (min-width: 768px) {
 		.about-title {
-			font-size: 2.25rem;
+			font-size: 1.875rem;
 		}
 
 		.about-principles {

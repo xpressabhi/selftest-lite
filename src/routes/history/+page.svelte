@@ -195,7 +195,7 @@
 <section class="container py-4">
 	<header class="page-head">
 		<div>
-			<h1 class="h2 fw-bold mb-1">{$t('history')}</h1>
+			<h1 class="text-page mb-1">{$t('history')}</h1>
 			<p class="text-muted mb-0">{$t('recentTests')}</p>
 		</div>
 		<div class="head-actions">
@@ -513,7 +513,7 @@
 	}
 
 	.history-row.is-pending {
-		opacity: 0.6;
+		opacity: 0.75;
 	}
 
 	.history-link {

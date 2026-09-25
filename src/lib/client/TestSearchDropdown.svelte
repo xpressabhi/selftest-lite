@@ -316,7 +316,7 @@
 		bottom: calc(100% + 8px);
 		left: 0;
 		right: 0;
-		z-index: 40;
+		z-index: var(--z-dropdown);
 		/* --search-top is measured by the composer: the real space between the
 		   input and the top of the visible area. The visible top is whichever is
 		   lower: the safe area (status bar / Dynamic Island) or the sticky app
@@ -334,8 +334,8 @@
 		overflow-y: auto;
 		background: var(--surface);
 		border: 1px solid var(--line);
-		border-radius: 16px;
-		box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+		border-radius: var(--radius-overlay);
+		box-shadow: var(--shadow-2);
 		animation: dropdown-in 0.12s ease;
 		overscroll-behavior: contain;
 	}

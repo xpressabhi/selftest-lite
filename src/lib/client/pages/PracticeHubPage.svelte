@@ -172,7 +172,7 @@
 
 <style>
 	.practice-hub {
-		max-width: 64rem;
+		max-width: 56rem;
 		margin: 0 auto;
 		display: grid;
 		gap: 1.25rem;
@@ -184,7 +184,7 @@
 
 	.practice-hub-title {
 		margin: 0 0 0.35rem;
-		font-size: 1.9rem;
+		font-size: 1.5rem;
 		font-weight: 700;
 	}
 

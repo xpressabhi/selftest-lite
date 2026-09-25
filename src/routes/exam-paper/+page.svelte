@@ -169,8 +169,8 @@
 	}
 </script>
 
-<section class="container py-4 exam-paper-page">
-	<h1 class="h4 fw-bold mb-1">{$t('examPaperTitle')}</h1>
+<section class="container py-4 py-md-5 exam-paper-page">
+	<h1 class="text-page mb-1">{$t('examPaperTitle')}</h1>
 	<p class="text-muted small mb-4">{$t('examPaperSubtitle')}</p>
 
 	{#if access === null}
@@ -334,7 +334,7 @@
 
 				<div class="section-picker mt-3" role="radiogroup" aria-label={$t('examPaperPickSection')}>
 					<button
-						class="filter-chip"
+						class="chip"
 						class:active={selectedSection === 'full'}
 						type="button"
 						role="radio"
@@ -345,7 +345,7 @@
 					</button>
 					{#each pattern.sections as section (section.id)}
 						<button
-							class="filter-chip"
+							class="chip"
 							class:active={selectedSection === section.id}
 							type="button"
 							role="radio"
@@ -374,9 +374,9 @@
 </section>
 
 <style>
-	.exam-paper-form,
-	.exam-paper-pattern,
-	.exam-paper-gate {
+	/* One page width for the builder; the centered container handles the
+	   margins so the column never hugs the left edge on desktop. */
+	.exam-paper-page {
 		max-width: 720px;
 	}
 
@@ -416,18 +416,5 @@
 		gap: 8px;
 	}
 
-	.section-picker .filter-chip {
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--surface);
-		padding: 6px 12px;
-		font-size: 0.8rem;
-		font-weight: 600;
-	}
-
-	.section-picker .filter-chip.active {
-		border-color: var(--color-brand-600);
-		background: var(--color-brand-100);
-		color: var(--color-brand-700);
-	}
+	/* Section picker chips use the shared `.chip` primitive. */
 </style>

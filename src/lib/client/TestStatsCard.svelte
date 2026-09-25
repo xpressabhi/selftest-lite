@@ -105,7 +105,7 @@
 
 <style>
 	.test-stats-card {
-		margin-top: 14px;
+		margin-top: 1rem;
 		padding: 14px;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);

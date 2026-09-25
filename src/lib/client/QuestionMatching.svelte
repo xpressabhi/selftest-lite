@@ -71,7 +71,7 @@
 		gap: 6px;
 		min-width: 0;
 		padding: 6px 8px;
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 		background: var(--surface-muted, #f6f8fc);
 	}
 
@@ -81,8 +81,8 @@
 		align-items: center;
 		justify-content: center;
 		height: 22px;
-		border-radius: 6px;
-		background: rgba(13, 27, 62, 0.08);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--text) 8%, transparent);
 		color: var(--text-muted, #4a5268);
 		font-size: 0.72rem;
 		font-weight: 700;

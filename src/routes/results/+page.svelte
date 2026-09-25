@@ -1204,7 +1204,7 @@
 		{/if}
 
 		<div class="row g-3 mb-4">
-			<div class="col-md-6">
+			<div class="col-12">
 				<section class="result-panel bg-body border rounded-3 p-3">
 					<h2 class="h6 fw-bold">{$t('yourProgress')}</h2>
 					<div class="stats-grid">
@@ -1554,11 +1554,11 @@
 		position: relative;
 		overflow: hidden;
 		max-width: 860px;
-		padding: 18px;
+		padding: 1rem;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
 		background: color-mix(in srgb, var(--color-brand-600) 5%, var(--surface));
-		box-shadow: 0 12px 30px -24px rgba(15, 23, 42, 0.4);
+		box-shadow: var(--shadow-1);
 		color: var(--hero-text);
 	}
 
@@ -1619,7 +1619,7 @@
 
 	.hero-share-sheet {
 		position: absolute;
-		z-index: 30;
+		z-index: var(--z-dropdown);
 		top: calc(100% + 8px);
 		right: 0;
 		display: grid;
@@ -1629,7 +1629,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 18px 36px -16px rgba(15, 23, 42, 0.35);
+		box-shadow: var(--shadow-2);
 	}
 
 	.share-sheet-item {
@@ -2261,6 +2261,8 @@
 
 	.review-card-question {
 		flex: 1 1 auto;
+		min-width: 0;
+		overflow-wrap: anywhere;
 		font-weight: 600;
 		line-height: 1.5;
 	}

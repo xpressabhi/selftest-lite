@@ -1462,13 +1462,20 @@
 
 	.tab-bar {
 		display: flex;
+		flex-wrap: nowrap;
 		gap: 0;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: thin;
 		border-bottom: 2px solid var(--line);
 	}
 	.tab-btn {
+		flex: none;
+		min-height: 44px;
 		padding: 10px 18px;
 		font-size: 0.85rem;
 		font-weight: 600;
+		white-space: nowrap;
 		color: var(--text-muted);
 		background: none;
 		border: none;
@@ -1519,7 +1526,7 @@
 	.overview-card {
 		background: var(--surface);
 		border: 1px solid var(--line);
-		border-radius: 0.75rem;
+		border-radius: var(--radius-surface);
 		padding: 12px 8px;
 		min-height: 76px;
 	}
@@ -1613,6 +1620,11 @@
 		.tab-btn {
 			padding: 10px 12px;
 			font-size: 0.78rem;
+		}
+		/* 24 hourly labels cannot sit side by side on a phone; keep the
+		   six-hour marks (00, 06, 12, 18) and drop the rest. */
+		.hour-bar:not(:nth-child(6n + 1)) .hour-bar-label {
+			display: none;
 		}
 	}
 </style>

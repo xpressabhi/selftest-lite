@@ -868,6 +868,10 @@
 	.app-header {
 		position: sticky;
 		top: 0;
+		/* Installed PWA / Capacitor: keep the header content below the
+		   status bar. --sat comes from env() (iOS) or the injected
+		   --safe-area-inset-* (Android WebView). */
+		padding-top: var(--sat, env(safe-area-inset-top, 0px));
 		z-index: var(--z-header);
 	}
 
@@ -940,6 +944,7 @@
 		display: grid;
 		width: 44px;
 		height: 44px;
+		flex: none;
 		place-items: center;
 		border: 0;
 		border-radius: 50%;
@@ -1139,7 +1144,8 @@
 
 	.connection-banner {
 		position: sticky;
-		top: 56px;
+		/* 58px header + its safe-area padding. */
+		top: calc(58px + var(--sat, env(safe-area-inset-top, 0px)));
 		z-index: var(--z-banner);
 		display: flex;
 		min-height: 44px;
@@ -1171,7 +1177,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
 		background: var(--surface);
-		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 	}
 
 	.user-menu-wrap {
@@ -1218,7 +1224,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 	}
 
 	.user-menu-header {
@@ -1263,7 +1269,7 @@
 		height: 100%;
 		padding: 0;
 		border: 0;
-		background: rgba(15, 23, 42, 0.55);
+		background: var(--backdrop);
 	}
 
 	.sign-in-modal {
@@ -1278,7 +1284,7 @@
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+		box-shadow: var(--shadow-2);
 		text-align: center;
 	}
 
@@ -1309,28 +1315,16 @@
 		color: var(--on-brand);
 		font-size: 0.8rem;
 		font-weight: 700;
-		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+		box-shadow: var(--shadow-2);
 		translate: -50% 0;
 	}
 
+	/* Tablet (768–1023) keeps the hamburger: the full nav plus five 44px
+	   actions does not fit at 768–900 without shrinking tap targets. The
+	   full desktop nav returns at 1024 where there is room. */
 	@media (min-width: 768px) {
 		.header-inner {
 			padding-inline: 28px;
-		}
-
-		.desktop-nav,
-		.desktop-only,
-		.data-saver-control {
-			display: inline-flex;
-		}
-
-		.desktop-nav {
-			display: flex;
-		}
-
-		.menu-control,
-		.mobile-menu {
-			display: none;
 		}
 
 		.bottom-nav {
@@ -1350,6 +1344,23 @@
 			bottom: 24px;
 			left: auto;
 			max-width: 440px;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.desktop-nav,
+		.desktop-only,
+		.data-saver-control {
+			display: inline-flex;
+		}
+
+		.desktop-nav {
+			display: flex;
+		}
+
+		.menu-control,
+		.mobile-menu {
+			display: none;
 		}
 	}
 

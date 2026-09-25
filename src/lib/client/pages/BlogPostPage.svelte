@@ -117,7 +117,7 @@
 
 <style>
 	.post-wrap {
-		max-width: 46rem;
+		max-width: 40rem;
 		margin: 0 auto;
 		display: grid;
 		gap: 1.5rem;
@@ -171,7 +171,7 @@
 
 	.post-title {
 		margin: 0;
-		font-size: 1.8rem;
+		font-size: 1.5rem;
 		line-height: 1.2;
 		font-weight: 700;
 	}
@@ -297,7 +297,7 @@
 
 	@media (min-width: 768px) {
 		.post-title {
-			font-size: 2.1rem;
+			font-size: 1.875rem;
 		}
 
 		.post-points {

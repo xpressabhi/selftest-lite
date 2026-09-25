@@ -518,24 +518,24 @@
 	.profile-wizard-overlay {
 		position: fixed;
 		inset: 0;
-		z-index: 2000;
+		z-index: var(--z-modal-backdrop);
 		display: grid;
 		place-items: center;
 		padding: 16px;
-		background: color-mix(in srgb, #0f172a 55%, transparent);
+		background: var(--backdrop);
 	}
 
 	.profile-wizard {
 		position: relative;
 		width: 100%;
 		max-width: 460px;
-		max-height: min(620px, 90vh);
+		max-height: min(620px, 90dvh);
 		overflow-y: auto;
 		padding: 24px 20px 16px;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
-		box-shadow: 0 20px 60px color-mix(in srgb, #0f172a 35%, transparent);
+		box-shadow: var(--shadow-2);
 	}
 
 	.wizard-close {
