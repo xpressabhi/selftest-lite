@@ -287,9 +287,9 @@
 				showManualConfig = true;
 			}
 		});
-		showStreakCard = Boolean(
-			!unsubmittedTest && (streak?.currentStreak > 0 || historyEntries.length > 0)
-		);
+		// Always visible: for a brand-new visitor the empty state and the
+		// explainer are the onboarding ("practice today to start your streak").
+		showStreakCard = streak !== null;
 		if (showStreakCard) {
 			track('streak:view', {
 				streak: streak?.currentStreak || 0,

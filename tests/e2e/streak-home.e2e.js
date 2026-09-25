@@ -110,6 +110,26 @@ test('home shows the streak card with grid, count and explainer', async ({ page 
 	});
 });
 
+test('a brand-new visitor sees the empty-state streak card with the explainer', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	// No seeding: fresh localStorage is exactly the first-visit case.
+	await page.goto('/');
+
+	await expect(page.locator('.streak-card')).toBeVisible();
+	await expect(page.locator('.streak-current-value')).toHaveText('0');
+	await expect(page.locator('.streak-cell.active')).toHaveCount(0);
+	await expect(page.locator('.streak-empty')).toContainText('Practice today to start your streak');
+	await expect(page.locator('.streak-explainer')).toContainText('A streak counts days you practice');
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ emptyStreakCard: true, cells: 56, active: 0 }, null, 2),
+	});
+});
+
 test('hindi home shows the hindi streak explainer', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await seedStreak(page);

@@ -192,6 +192,16 @@ D1 pattern cache ─> D2 sections ─> D3 /exam-paper + gate ─> D4 section pic
   Three consecutive full e2e runs pass after the fix.
 - Unit suites: `marks`, `userState` (streak merge) added; `examPattern` extended — totals 590 unit tests.
 
+### Sanity pass (2026-09-25)
+
+- Live validation in Search against the dev server found one real gap: the streak card was gated to
+  returning users, so a brand-new visitor saw nothing. It now renders for everyone with the empty-state
+  explainer ("Practice today to start your streak"); a fresh-visitor e2e covers it.
+- Live evidence per feature: stats card and dashboard (visitors 2 / in progress 0 / submitted 1,
+  "Ravi 1/2"), section banner ("Section 1 of 2 · 2 marks each · ~15 min"), premium gate, cached section
+  chips ("Full paper / Section A / Section B"), explanation cache hit (`cached: true`, 0.5 s), cached
+  SSC CGL pattern (4 sections, not stale).
+
 ## Follow-up work (2026-09-24, second pass)
 
 Shipped after the four phases, addressing the "remaining things" list:
