@@ -1,12 +1,8 @@
 <script>
 	import { activeLanguage, t } from '$lib/client/i18n';
 	import CtaBanner from '$lib/client/CtaBanner.svelte';
-	import {
-		BLOG_CATEGORIES,
-		BLOG_POSTS_BY_DATE,
-		formatBlogDate,
-		getBlogCategory,
-	} from '$lib/data/blogPosts';
+	import { BLOG_CATEGORIES, BLOG_POSTS_BY_DATE, getBlogCategory } from '$lib/data/blogPosts';
+	import { formatDate as formatLocalizedDate } from '$lib/client/formatting';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
 	import SeoHead from '$lib/client/SeoHead.svelte';
 	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
@@ -37,8 +33,9 @@
 		})
 	);
 
+	// Blog dates are date-only strings; noon avoids a timezone day shift.
 	function formatDate(isoDate) {
-		return formatBlogDate(isoDate, $activeLanguage);
+		return formatLocalizedDate(`${isoDate}T12:00:00`, $activeLanguage, { dateStyle: 'medium' });
 	}
 
 	function categoryLabel(post) {

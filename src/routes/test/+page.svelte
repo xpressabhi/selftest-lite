@@ -13,8 +13,12 @@
 	import QuestionAssertionReasoning from '$lib/client/QuestionAssertionReasoning.svelte';
 	import ReviewSheet from '$lib/client/ReviewSheet.svelte';
 	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
-	import { prewarmRichMarkdown } from '$lib/client/markdownRenderer';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
+	import {
+		HINT_DWELL_SEC,
+		HINT_SKIP_STREAK,
+		MAX_HINTS_PER_TEST as MAX_HINTS,
+	} from '$lib/shared/hint';
 	import { autoAdvance, setAutoAdvance } from '$lib/client/preferences';
 	import { HAPTIC_COMMIT, triggerVibration } from '$lib/client/haptics';
 	import { keepScreenAwake, stopKeepingScreenAwake } from '$lib/client/screenWake';
@@ -43,15 +47,8 @@
 	import { parseChallengeParams } from '$lib/client/challenge';
 	import { computeAttemptMarks } from '$lib/shared/marks';
 	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
-	import {
-		CARD_HEIGHT,
-		CARD_WIDTH,
-		canvasToFile,
-		cardFilename,
-		loadCardLogo,
-		shareCardFile,
-	} from '$lib/client/cardKit';
 	import { drawTestCard } from '$lib/client/testCard';
+	import { shareCard } from '$lib/client/shareCardFlow';
 
 	let questionPaper = $state(null);
 	let challenge = $state(null);
@@ -82,11 +79,6 @@
 	let swipeStartY = null;
 	let testMomentFired = false;
 	let navCount = 0;
-	// 50-50 hint: thresholds mirror src/lib/server/hint.js (client cannot
-	// import $lib/server/*, so the numbers are duplicated, not derived).
-	const HINT_DWELL_SEC = 45;
-	const HINT_SKIP_STREAK = 2;
-	const MAX_HINTS = 3;
 	let eliminated = $state({});
 	let hintUnlocked = $state({});
 	let hintLoading = $state(false);
@@ -231,7 +223,24 @@
 		const toWarm = [current, next, previous]
 			.filter(Boolean)
 			.flatMap((q) => [q.question, ...(q.options || [])]);
-		prewarmRichMarkdown(toWarm.map(prepareMathTextForRendering));
+		const values = toWarm.map(prepareMathTextForRendering);
+		// Keep the markdown pipeline off the initial bundle: warm it during idle
+		// time, and let MarkdownContent's own dynamic import cover the first
+		// render if it happens sooner.
+		const schedule =
+			typeof window.requestIdleCallback === 'function'
+				? window.requestIdleCallback.bind(window)
+				: (callback) => window.setTimeout(callback, 1500);
+		const cancel =
+			typeof window.cancelIdleCallback === 'function'
+				? window.cancelIdleCallback.bind(window)
+				: window.clearTimeout.bind(window);
+		const idleId = schedule(() => {
+			import('$lib/client/markdownRenderer').then(({ prewarmRichMarkdown }) => {
+				prewarmRichMarkdown(values);
+			});
+		});
+		return () => cancel(idleId);
 	});
 
 	onMount(async () => {
@@ -557,44 +566,26 @@
 
 		const url = `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`;
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
-		try {
-			const canvas = document.createElement('canvas');
-			canvas.width = CARD_WIDTH;
-			canvas.height = CARD_HEIGHT;
-			const logo = await loadCardLogo();
-			const drawn = drawTestCard(
-				canvas,
-				{
-					kicker: $t('shareTestKicker'),
-					topic: questionPaper.topic || '',
-					chips: [
-						`${totalQuestions} ${$t('questions')}`,
-						$t(testDifficulty) || testDifficulty,
-						testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel'),
-					],
-					cta: $t('shareTestCta'),
-					ctaSub: $t('shareTestCtaSub'),
-					url,
-				},
-				logo
-			);
-			if (!drawn) {
-				throw new Error('card');
-			}
-			const file = await canvasToFile(canvas, cardFilename('test'));
-			const result = await shareCardFile(file, {
-				title,
-				text: $t('shareTestText', { topic: questionPaper.topic || '' }),
+		await shareCard({
+			draw: drawTestCard,
+			card: {
+				kicker: $t('shareTestKicker'),
+				topic: questionPaper.topic || '',
+				chips: [
+					`${totalQuestions} ${$t('questions')}`,
+					$t(testDifficulty) || testDifficulty,
+					testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel'),
+				],
+				cta: $t('shareTestCta'),
+				ctaSub: $t('shareTestCtaSub'),
 				url,
-			});
-			if (result === 'downloaded') {
-				showToast($t('testCardSaved'), 'success');
-			} else if (result === 'failed') {
-				showToast($t('cardShareFailed'), 'warning');
-			}
-		} catch {
-			showToast($t('cardShareFailed'), 'warning');
-		}
+			},
+			kind: 'test',
+			title,
+			text: $t('shareTestText', { topic: questionPaper.topic || '' }),
+			url,
+			savedToastKey: 'testCardSaved',
+		});
 	}
 
 	function nextQuestion() {

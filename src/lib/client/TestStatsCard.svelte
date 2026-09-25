@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { getClientHeaders } from '$lib/client/identity';
 	import { activeLanguage, t } from '$lib/client/i18n';
+	import { formatDate } from '$lib/client/formatting';
 
 	let { testId } = $props();
 
@@ -23,15 +24,6 @@
 	});
 
 	const topScores = $derived((stats?.scores || []).slice(0, 5));
-	const locale = $derived($activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN');
-	const dateFormatter = $derived(
-		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
-	);
-
-	function formatDate(value) {
-		const date = new Date(value);
-		return Number.isNaN(date.getTime()) ? '' : dateFormatter.format(date);
-	}
 
 	onMount(() => {
 		let canceled = false;
@@ -91,7 +83,12 @@
 					<li class="test-stats-score-row" class:mine={score.isMine}>
 						<span class="test-stats-score-name">{score.name || $t('someoneLabel')}</span>
 						<span class="test-stats-score-value">{score.score}/{score.total}</span>
-						<span class="test-stats-score-date">{formatDate(score.createdAt)}</span>
+						<span class="test-stats-score-date"
+							>{formatDate(score.createdAt, $activeLanguage, {
+								day: 'numeric',
+								month: 'short',
+							})}</span
+						>
 					</li>
 				{/each}
 			</ul>

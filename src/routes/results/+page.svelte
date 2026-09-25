@@ -35,14 +35,7 @@
 	import { requestPersonalize } from '$lib/client/personalize';
 	import { buildChallengeUrl, compareScores, parseChallengeParams } from '$lib/client/challenge';
 	import { drawScoreCard } from '$lib/client/scoreCard';
-	import {
-		CARD_HEIGHT,
-		CARD_WIDTH,
-		canvasToFile,
-		cardFilename,
-		loadCardLogo,
-		shareCardFile,
-	} from '$lib/client/cardKit';
+	import { shareCard } from '$lib/client/shareCardFlow';
 	import {
 		clearAttemptResult,
 		clearDraftAnswers,
@@ -710,60 +703,42 @@
 		showToast($t('shareLinkCopied'), 'success');
 	}
 
-	async function shareCard() {
+	async function shareResultCard() {
 		if (!questionPaper) {
 			return;
 		}
 		track('results:share-card');
-		try {
-			const canvas = document.createElement('canvas');
-			canvas.width = CARD_WIDTH;
-			canvas.height = CARD_HEIGHT;
-			const numericId = /^\d+$/.test(String(questionPaper.id));
-			// The card prints a clean, short link; the share text keeps the
-			// full challenge URL with score and name.
-			const displayLink = numericId
-				? `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`
-				: '';
-			const logo = await loadCardLogo();
-			const drawn = drawScoreCard(
-				canvas,
-				{
-					topic: questionPaper.topic || '',
+		const numericId = /^\d+$/.test(String(questionPaper.id));
+		// The card prints a clean, short link; the share text keeps the
+		// full challenge URL with score and name.
+		const displayLink = numericId
+			? `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`
+			: '';
+		await shareCard({
+			draw: drawScoreCard,
+			card: {
+				topic: questionPaper.topic || '',
+				score: questionPaper.score ?? 0,
+				total: questionPaper.totalQuestions ?? totalQuestions,
+				pct: percentage,
+				timeLabel: `${$t('timeSpent')}: ${formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}`,
+				challenge: $t('challengeCta', {
 					score: questionPaper.score ?? 0,
 					total: questionPaper.totalQuestions ?? totalQuestions,
-					pct: percentage,
-					timeLabel: `${$t('timeSpent')}: ${formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}`,
-					challenge: $t('challengeCta', {
-						score: questionPaper.score ?? 0,
-						total: questionPaper.totalQuestions ?? totalQuestions,
-					}),
-					link: displayLink,
-				},
-				logo
-			);
-			if (!drawn) {
-				throw new Error('card');
-			}
-			const file = await canvasToFile(canvas, cardFilename('score'));
-			const result = await shareCardFile(file, {
-				title: questionPaper.topic,
-				text: $t('shareResultText', {
-					score: questionPaper.score ?? 0,
-					total: questionPaper.totalQuestions ?? totalQuestions,
-					percentage,
-					topic: questionPaper.topic,
 				}),
-				url: numericId ? challengeShareUrl() : '',
-			});
-			if (result === 'downloaded') {
-				showToast($t('cardSaved'), 'success');
-			} else if (result === 'failed') {
-				showToast($t('cardShareFailed'), 'warning');
-			}
-		} catch {
-			showToast($t('cardShareFailed'), 'warning');
-		}
+				link: displayLink,
+			},
+			kind: 'score',
+			title: questionPaper.topic,
+			text: $t('shareResultText', {
+				score: questionPaper.score ?? 0,
+				total: questionPaper.totalQuestions ?? totalQuestions,
+				percentage,
+				topic: questionPaper.topic,
+			}),
+			url: numericId ? challengeShareUrl() : '',
+			savedToastKey: 'cardSaved',
+		});
 	}
 
 	async function toggleShareSheet() {
@@ -807,7 +782,7 @@
 			await shareResult();
 			return;
 		}
-		await shareCard();
+		await shareResultCard();
 	}
 
 	function printResult() {

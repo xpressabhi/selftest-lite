@@ -4,6 +4,7 @@
 	import { t } from '$lib/client/i18n';
 	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
 	import { language } from '$lib/client/preferences';
+	import { formatDate, localeFor } from '$lib/client/formatting';
 	import FuseButton from '$lib/client/FuseButton.svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import { track, trackDebounced } from '$lib/client/telemetry';
@@ -33,17 +34,10 @@
 	let stats = $derived(getStats(history));
 	let reviewQueue = $derived(buildReviewQueue(history));
 
-	const localeTag = $derived($language === 'hindi' ? 'hi-IN' : 'en-IN');
 	// Rows read "2 hours ago" (full timestamp stays available in the title);
 	// anything older than a week falls back to a short date.
 	const relativeFormatter = $derived(
-		new Intl.RelativeTimeFormat(localeTag, { numeric: 'always' })
-	);
-	const shortDateFormatter = $derived(
-		new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'short' })
-	);
-	const fullDateFormatter = $derived(
-		new Intl.DateTimeFormat(localeTag, { dateStyle: 'medium', timeStyle: 'short' })
+		new Intl.RelativeTimeFormat(localeFor($language), { numeric: 'always' })
 	);
 
 	function relativeTimestamp(timestamp) {
@@ -53,7 +47,7 @@
 		if (hours < 24) return relativeFormatter.format(-hours, 'hour');
 		const days = Math.round(hours / 24);
 		if (days < 7) return relativeFormatter.format(-days, 'day');
-		return shortDateFormatter.format(timestamp);
+		return formatDate(timestamp, $language, { day: 'numeric', month: 'short' });
 	}
 
 	function dayBucket(timestamp) {
@@ -291,7 +285,10 @@
 								? `/results?id=${entry.id}`
 								: `/test?id=${entry.id}`}
 							title={entry.timestamp
-								? fullDateFormatter.format(new Date(entry.timestamp))
+								? formatDate(entry.timestamp, $language, {
+										dateStyle: 'medium',
+										timeStyle: 'short',
+									})
 								: undefined}
 							onclick={() =>
 								track('history:open-test', {
