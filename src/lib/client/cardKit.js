@@ -109,13 +109,14 @@ export function loadCardLogo() {
 	return logoPromise;
 }
 
-function roundedRectPath(ctx, x, y, size, radius) {
+export function roundedRectPath(ctx, x, y, width, height, radius) {
+	const r = Math.min(radius, width / 2, height / 2);
 	ctx.beginPath();
-	ctx.moveTo(x + radius, y);
-	ctx.arcTo(x + size, y, x + size, y + size, radius);
-	ctx.arcTo(x + size, y + size, x, y + size, radius);
-	ctx.arcTo(x, y + size, x, y, radius);
-	ctx.arcTo(x, y, x + size, y, radius);
+	ctx.moveTo(x + r, y);
+	ctx.arcTo(x + width, y, x + width, y + height, r);
+	ctx.arcTo(x + width, y + height, x, y + height, r);
+	ctx.arcTo(x, y + height, x, y, r);
+	ctx.arcTo(x, y, x + width, y, r);
 	ctx.closePath();
 }
 
@@ -126,12 +127,12 @@ export function drawCardLogo(ctx, logo, { x = 0, y = 0, size = 84 } = {}) {
 	}
 	const radius = size * 0.22;
 	ctx.save();
-	roundedRectPath(ctx, x, y, size, radius);
+	roundedRectPath(ctx, x, y, size, size, radius);
 	ctx.clip();
 	ctx.drawImage(logo, x, y, size, size);
 	ctx.restore();
 	ctx.save();
-	roundedRectPath(ctx, x, y, size, radius);
+	roundedRectPath(ctx, x, y, size, size, radius);
 	ctx.strokeStyle = CARD_PALETTE.line;
 	ctx.lineWidth = 2;
 	ctx.stroke();
