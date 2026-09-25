@@ -1,7 +1,18 @@
 <script>
 	import Icon from '$lib/client/Icon.svelte';
 	import { t } from '$lib/client/i18n';
-	import { buildStreakWeek } from '$lib/client/learning';
+	import { buildStreakWeek, STREAK_MILESTONES } from '$lib/client/learning';
+	import {
+		CARD_HEIGHT,
+		CARD_WIDTH,
+		canvasToFile,
+		cardFilename,
+		loadCardLogo,
+		shareCardFile,
+	} from '$lib/client/cardKit';
+	import { drawStreakCard } from '$lib/client/streakCard';
+	import { track } from '$lib/client/telemetry';
+	import { showToast } from '$lib/client/toast';
 	import StreakBadges from '$lib/client/StreakBadges.svelte';
 	import StreakReminderRow from '$lib/client/StreakReminderRow.svelte';
 
@@ -26,6 +37,79 @@
 	);
 
 	const dateFormatter = $derived(new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }));
+
+	// Badge copy for the share image; the carousel keeps its own markup.
+	const shareBadges = $derived(
+		STREAK_MILESTONES.map((days) => ({
+			days,
+			earned: longestStreak >= days,
+			meta:
+				longestStreak >= days
+					? $t('streakBadgeDays', { count: days })
+					: $t('streakBadgeProgress', {
+							current: Math.min(currentStreak, days),
+							target: days,
+						}),
+			title: $t(`achievement_streak_${days}_title`),
+		}))
+	);
+
+	let sharing = $state(false);
+
+	async function shareStreak() {
+		if (sharing) {
+			return;
+		}
+		sharing = true;
+		try {
+			track('streak:share');
+			const origin = typeof window !== 'undefined' ? window.location.origin : '';
+			const canvas = document.createElement('canvas');
+			canvas.width = CARD_WIDTH;
+			canvas.height = CARD_HEIGHT;
+			const logo = await loadCardLogo();
+			const drawn = drawStreakCard(
+				canvas,
+				{
+					headline: $t('streakHeadline', { count: currentStreak }),
+					subtitle,
+					week,
+					stats: {
+						tests: testsTaken,
+						accuracy: accuracyValue,
+						best: bestValue,
+						max: longestStreak,
+					},
+					labels: {
+						tests: $t('streakStatTests'),
+						accuracy: $t('streakStatAccuracy'),
+						best: $t('streakStatBest'),
+						max: $t('streakStatMax'),
+					},
+					badges: shareBadges,
+					url: origin,
+				},
+				logo
+			);
+			if (!drawn) {
+				throw new Error('card');
+			}
+			const file = await canvasToFile(canvas, cardFilename('streak'));
+			const result = await shareCardFile(file, {
+				title: $t('streakHeadline', { count: currentStreak }),
+				text: $t('shareStreakText', { count: currentStreak }),
+				url: origin,
+			});
+			if (result === 'downloaded') {
+				showToast($t('streakCardSaved'), 'success');
+			} else if (result === 'failed') {
+				showToast($t('cardShareFailed'), 'warning');
+			}
+		} catch {
+			showToast($t('cardShareFailed'), 'warning');
+		}
+		sharing = false;
+	}
 
 	function dayLabel(day) {
 		const count =
@@ -63,7 +147,20 @@
 			<p class="streak-title">{$t('streakHeadline', { count: currentStreak })}</p>
 			<p class="streak-sub" class:streak-empty={currentStreak === 0}>{subtitle}</p>
 		</div>
-		<span class="streak-flame" aria-hidden="true"><Icon name="flame" size={26} /></span>
+		<div class="streak-head-actions">
+			<span class="streak-flame" aria-hidden="true"><Icon name="flame" size={26} /></span>
+			{#if currentStreak >= 1}
+				<button
+					class="streak-share"
+					type="button"
+					aria-label={$t('share')}
+					disabled={sharing}
+					onclick={shareStreak}
+				>
+					<Icon name="share" size={18} />
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<div class="streak-week" aria-label={$t('streakWeekLabel')}>
@@ -176,10 +273,40 @@
 		color: var(--brand-text);
 	}
 
+	.streak-head-actions {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		flex-shrink: 0;
+	}
+
 	.streak-flame {
 		display: flex;
-		flex-shrink: 0;
 		color: var(--warn);
+	}
+
+	.streak-share {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: none;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+
+	.streak-share:hover:not(:disabled) {
+		background: var(--surface-muted);
+		color: var(--brand-text);
+	}
+
+	.streak-share:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 
 	.streak-week {

@@ -162,6 +162,7 @@ test('a brand-new visitor sees the empty-state card with no reminder row', async
 	await expect(page.locator('.streak-badge')).toHaveCount(4);
 	await expect(page.locator('.streak-badge.earned')).toHaveCount(0);
 	await expect(page.locator('.streak-reminder')).toHaveCount(0);
+	await expect(page.locator('.streak-share')).toHaveCount(0);
 	await expect(page.locator('.streak-explainer')).toContainText('at least one test');
 
 	expect(errors).toEqual([]);
@@ -230,6 +231,74 @@ test('the reminder row appears only after a completed test', async ({ page }, te
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify({ reminderVisible: true, checked: false }, null, 2),
+	});
+});
+
+test('the streak share button sends one PNG with the direct URL in the text', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.addInitScript(() => {
+		window.__shareCalls = [];
+		Object.defineProperty(navigator, 'share', {
+			configurable: true,
+			value: async (data) => {
+				window.__shareCalls.push({
+					files: data?.files?.length || 0,
+					name: data?.files?.[0]?.name || '',
+					type: data?.files?.[0]?.type || '',
+					text: data?.text || '',
+				});
+			},
+		});
+		Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+	});
+	await seed(page, {
+		streak: defaultStreak(),
+		history: [completedAttempt('a', 3, 10)],
+	});
+	await page.goto('/');
+
+	await expect(page.locator('.streak-share')).toBeVisible();
+	await page.locator('.streak-share').click();
+	await expect.poll(() => page.evaluate(() => window.__shareCalls.length)).toBe(1);
+
+	const call = await page.evaluate(() => window.__shareCalls[0]);
+	expect(call.files).toBe(1);
+	expect(call.name).toBe('selftest-streak.png');
+	expect(call.type).toBe('image/png');
+	expect(call.text).toContain("I'm on a 4-day test streak");
+	expect(call.text).toContain('http://localhost:5173');
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(call, null, 2),
+	});
+});
+
+test('without native share the streak card downloads and toasts', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+		Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+	});
+	await seed(page, {
+		streak: defaultStreak(),
+		history: [completedAttempt('a', 3, 10)],
+	});
+	await page.goto('/');
+
+	const downloadPromise = page.waitForEvent('download');
+	await page.locator('.streak-share').click();
+	const download = await downloadPromise;
+	expect(download.suggestedFilename()).toBe('selftest-streak.png');
+	await expect(page.locator('.toast-lite')).toContainText('Streak card downloaded');
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ fallback: download.suggestedFilename() }, null, 2),
 	});
 });
 

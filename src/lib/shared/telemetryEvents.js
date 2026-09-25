@@ -27,6 +27,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'home:manual-expand',
 	'home:resume-test',
 	'streak:view',
+	'streak:share',
 
 	// Generation
 	'generate:start',
