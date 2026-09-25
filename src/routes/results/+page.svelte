@@ -33,11 +33,7 @@
 	import { showToast } from '$lib/client/toast';
 	import { user } from '$lib/client/auth';
 	import { requestPersonalize } from '$lib/client/personalize';
-	import {
-		buildChallengeUrl,
-		compareScores,
-		parseChallengeParams,
-	} from '$lib/client/challenge';
+	import { buildChallengeUrl, compareScores, parseChallengeParams } from '$lib/client/challenge';
 	import { drawScoreCard } from '$lib/client/scoreCard';
 	import {
 		CARD_HEIGHT,
@@ -339,7 +335,8 @@
 				const total = questionPaper.questions.length;
 				const wrong = questionPaper.questions.filter(
 					(question, index) =>
-						(question.correct ?? questionPaper.userAnswers?.[index] === question.answer) === false
+						(question.correct ??
+							questionPaper.userAnswers?.[index] === question.answer) === false
 				).length;
 				void requestPersonalize('results', {
 					scorePct: total > 0 ? Math.round(((total - wrong) / total) * 100) : 0,
@@ -972,7 +969,11 @@
 						</div>
 					</div>
 					<p class="hero-meta">
-						{formatDuration(questionPaper.timeTaken || 0, $t('minuteShort'), $t('hourShort'))}
+						{formatDuration(
+							questionPaper.timeTaken || 0,
+							$t('minuteShort'),
+							$t('hourShort')
+						)}
 						&middot;
 						{$t('questionsCountFormat', {
 							count: questionPaper.totalQuestions ?? totalQuestions,
@@ -1019,7 +1020,12 @@
 
 		<div class="hero-utility no-print">
 			<button class="utility-link" type="button" onclick={printResult}>{$t('print')}</button>
-			<button bind:this={retakeTrigger} class="utility-link" type="button" onclick={requestRetake}>
+			<button
+				bind:this={retakeTrigger}
+				class="utility-link"
+				type="button"
+				onclick={requestRetake}
+			>
 				{$t('retakeTest')}
 			</button>
 			<span class="utility-id">{$t('testId')}: {questionPaper.id}</span>
@@ -1032,7 +1038,11 @@
 				</span>
 			{/if}
 			{#if remindersSupported() && historyCount >= 1 && !reminderEnabled}
-				<button class="utility-link reminder-link" type="button" onclick={revealReminderSettings}>
+				<button
+					class="utility-link reminder-link"
+					type="button"
+					onclick={revealReminderSettings}
+				>
 					<span class="reminder-link-icon" aria-hidden="true">
 						<svg
 							viewBox="0 0 24 24"
@@ -1082,7 +1092,6 @@
 			</div>
 		{/if}
 
-
 		{#if challengeOutcome}
 			<section class="challenge-card bg-body border rounded-3 p-3 mb-4" aria-live="polite">
 				<p class="fw-bold mb-1">
@@ -1097,14 +1106,11 @@
 								: 'challengeDraw'
 					)}
 					<span class="text-muted small">
-						({questionPaper.score ?? 0}/{questionPaper.totalQuestions ?? totalQuestions})
+						({questionPaper.score ?? 0}/{questionPaper.totalQuestions ??
+							totalQuestions})
 					</span>
 				</p>
-				<button
-					class="btn btn-sm btn-warning"
-					type="button"
-					onclick={shareResult}
-				>
+				<button class="btn btn-sm btn-warning" type="button" onclick={shareResult}>
 					{$t('challengeBack')}
 				</button>
 			</section>
@@ -1137,7 +1143,9 @@
 					{#each sectionBreakdown as section (section.id)}
 						<li class="section-breakdown-row">
 							<span class="section-breakdown-name">{section.name}</span>
-							<span class="section-breakdown-score">{section.correct}/{section.total}</span>
+							<span class="section-breakdown-score"
+								>{section.correct}/{section.total}</span
+							>
 						</li>
 					{/each}
 				</ul>
@@ -1238,19 +1246,19 @@
 			<div class="row g-3 mb-4">
 				{#if !resultsHide.includes('achievements')}
 					<section class="col-lg-6">
-					<div class="result-panel bg-body border rounded-3 p-3">
-						<h2 class="h6 fw-bold">{$t('achievements')}</h2>
-						<div class="d-flex flex-wrap gap-2">
-							{#each achievements
-								.filter((item) => item.unlocked)
-								.slice(0, 6) as achievement (achievement.id)}
-								<span class="badge text-bg-success achievement-badge"
-									>{$t(`achievement_${achievement.id}_title`)}</span
-								>
-							{/each}
+						<div class="result-panel bg-body border rounded-3 p-3">
+							<h2 class="h6 fw-bold">{$t('achievements')}</h2>
+							<div class="d-flex flex-wrap gap-2">
+								{#each achievements
+									.filter((item) => item.unlocked)
+									.slice(0, 6) as achievement (achievement.id)}
+									<span class="badge text-bg-success achievement-badge"
+										>{$t(`achievement_${achievement.id}_title`)}</span
+									>
+								{/each}
+							</div>
 						</div>
-					</div>
-				</section>
+					</section>
 				{/if}
 				<section class="col-lg-6">
 					<div class="result-panel bg-body border rounded-3 p-3">
@@ -1591,8 +1599,8 @@
 	.hero-share {
 		position: relative;
 		display: grid;
-		width: 34px;
-		height: 34px;
+		width: 44px;
+		height: 44px;
 		place-items: center;
 		border: 1px solid var(--line);
 		border-radius: 999px;

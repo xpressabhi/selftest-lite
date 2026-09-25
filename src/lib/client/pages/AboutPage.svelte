@@ -102,8 +102,12 @@
 				<span class="about-badge">{$t('aboutBadgePrivacy')}</span>
 			</div>
 			<div class="about-actions">
-				<a class="btn btn-primary" href={localizedPath('/', $activeLanguage)}>{$t('aboutCtaButton')}</a>
-				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
+				<a class="btn btn-primary" href={localizedPath('/', $activeLanguage)}
+					>{$t('aboutCtaButton')}</a
+				>
+				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}
+					>{$t('contactQuickHelpFaq')}</a
+				>
 			</div>
 		</header>
 
@@ -115,7 +119,9 @@
 			<ul class="about-principles">
 				{#each whyItWorks as point, index (point.titleKey)}
 					<li class="about-principle">
-						<span class="principle-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+						<span class="principle-number" aria-hidden="true"
+							>{String(index + 1).padStart(2, '0')}</span
+						>
 						<p class="about-principle-title">{$t(point.titleKey)}</p>
 						<p class="about-card-body">{$t(point.bodyKey)}</p>
 					</li>
@@ -176,12 +182,18 @@
 		<section class="about-section">
 			<div class="about-faq-head">
 				<h2 class="about-section-title">{$t('aboutFaqTeaserTitle')}</h2>
-				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}>{$t('contactQuickHelpFaq')}</a>
+				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}
+					>{$t('contactQuickHelpFaq')}</a
+				>
 			</div>
 			<FaqAccordion items={teaserItems} />
 		</section>
 
-		<CtaBanner titleKey="aboutCtaTitle" bodyKey="aboutCtaBody" href={localizedPath('/', $activeLanguage)} />
+		<CtaBanner
+			titleKey="aboutCtaTitle"
+			bodyKey="aboutCtaBody"
+			href={localizedPath('/', $activeLanguage)}
+		/>
 	</div>
 </section>
 
@@ -434,7 +446,11 @@
 		.about-values {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+	}
 
+	/* The numbered steps carry a big number plus copy; three columns only
+	   fit once the page is desktop width. */
+	@media (min-width: 1024px) {
 		.about-steps {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
