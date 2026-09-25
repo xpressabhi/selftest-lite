@@ -968,6 +968,7 @@
 	"streakBadgePrev": "Previous badge",
 	"streakBadgeNext": "Next badge",
 	"streakBadgeProgress": "{current}/{target} days",
+	"streakBadgeDays": "{count} days",
 	"streakReminderTitle": "Stay tuned",
 	"streakReminderBody": "Daily practice reminders",
 	"streakFreezes": "Freezes",

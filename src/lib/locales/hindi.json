@@ -968,6 +968,7 @@
 	"streakBadgePrev": "पिछला बैज",
 	"streakBadgeNext": "अगला बैज",
 	"streakBadgeProgress": "{current}/{target} दिन",
+	"streakBadgeDays": "{count} दिन",
 	"streakReminderTitle": "जुड़े रहें",
 	"streakReminderBody": "रोज़ाना अभ्यास रिमाइंडर",
 	"streakFreezes": "फ़्रीज़",
