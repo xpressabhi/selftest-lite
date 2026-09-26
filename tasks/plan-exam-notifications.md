@@ -21,6 +21,13 @@ searchable `/exams` hub that deep-links into practice papers.
   `enabled: false` — their lists need a rendering/PDF transport.
 - Model calls retry transient Gemini 5xx/429 spikes; link checks fall back
   from HEAD to a body-cancelled GET (legacy .aspx servers).
+- Model quota policy: `EXAM_SYNC_MODEL=gemini-flash-latest` (5 RPM / 20 RPD on
+  this key's tier) is paced at one call per 15s with a per-run call budget
+  (default 16, under the daily limit); if the primary is unavailable or
+  quota-blocked twice in a run, the rest of the run goes straight to
+  `gemini-flash-lite-latest` (set `EXAM_SYNC_FALLBACK_MODEL=` to disable).
+  Verified live: 7/7 sources, 9 model calls, 7 fallbacks on a day the flash
+  quota was already spent by testing.
 
 ## Task List
 
@@ -86,8 +93,10 @@ searchable `/exams` hub that deep-links into practice papers.
    skips quietly until they exist.
 2. Trigger **Exam notifications sync** once via `workflow_dispatch` (it
    creates the tables through the shared schema statements).
-3. Optional: set the repository variable `EXAM_SYNC_MODEL` to try a stronger
-   Gemini tier.
+3. The repository variable `EXAM_SYNC_MODEL` is set to `gemini-flash-latest`,
+   which has a 5 RPM / 20 RPD quota — the pipeline paces calls and falls back
+   to flash-lite when it is blocked, so leave it alone unless you upgrade the
+   quota.
 
 ## Deliberately deferred (backlog)
 

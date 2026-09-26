@@ -385,6 +385,27 @@ describe('withRetries', () => {
 		).rejects.toThrow('rate limit');
 		expect(calls).toBe(2);
 	});
+
+	it('hands the error to the sleep callback so callers can pace by failure kind', async () => {
+		const waits = [];
+		await expect(
+			withRetries(
+				async () => {
+					throw new Error('429 rate limit');
+				},
+				{
+					attempts: 2,
+					baseDelayMs: 100,
+					sleep: async (info) => {
+						waits.push(info);
+					}
+				}
+			)
+		).rejects.toThrow('rate limit');
+		expect(waits).toHaveLength(1);
+		expect(waits[0].delayMs).toBe(100);
+		expect(waits[0].error.message).toContain('429');
+	});
 });
 
 describe('runSourceDiscovery', () => {

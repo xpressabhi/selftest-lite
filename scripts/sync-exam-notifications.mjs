@@ -14,7 +14,12 @@
 //   npm run exams:sync -- --dry-run --dump-extraction=/tmp/extracted   # raw model output per source
 //
 // Env: DATABASE_URL (required unless --dry-run), GEMINI_API_KEY (required
-// unless --extraction-file), EXAM_SYNC_MODEL (default gemini-flash-lite-latest).
+// unless --extraction-file), EXAM_SYNC_MODEL (default gemini-flash-lite-latest;
+// gemini-flash-latest needs the pacing below), EXAM_SYNC_FALLBACK_MODEL
+// (default gemini-flash-lite-latest; set empty to fail instead of falling
+// back), EXAM_SYNC_MODEL_INTERVAL_MS (default 15000 — keeps calls under the
+// 5 RPM tier limit), EXAM_SYNC_MAX_MODEL_CALLS (default 16 — daily-call
+// budget guard).
 
 import { readFileSync, appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,6 +62,81 @@ const LINK_CHECK_TIMEOUT_MS = 12000;
 const POLITE_DELAY_MS = 1200;
 const MAX_PAGE_CHARS = 60000;
 const DEFAULT_MODEL = 'gemini-flash-lite-latest';
+// gemini-flash-latest allows 5 requests/minute and 20/day on this key's tier.
+// Every model call is paced and hard-stopped at the per-run budget so a bad
+// day of retries can never eat the quota a full sync needs (7 sources, plus
+// one weekly discovery call). When the primary model is capacity-blocked
+// (503/UNAVAILABLE), the fallback keeps the run useful; set
+// EXAM_SYNC_FALLBACK_MODEL='' to disable it and take hard failures instead.
+const FALLBACK_MODEL =
+	process.env.EXAM_SYNC_FALLBACK_MODEL === undefined
+		? 'gemini-flash-lite-latest'
+		: process.env.EXAM_SYNC_FALLBACK_MODEL;
+const MODEL_MIN_INTERVAL_MS = Math.max(0, Number(process.env.EXAM_SYNC_MODEL_INTERVAL_MS) || 15000);
+const MODEL_CALL_BUDGET = Math.max(1, Number(process.env.EXAM_SYNC_MAX_MODEL_CALLS) || 16);
+
+let modelCallsMade = 0;
+let fallbackCallsMade = 0;
+let primaryFailureCount = 0;
+let lastModelCallAt = 0;
+
+// Once the primary model fails twice in a run (capacity or quota), stop
+// spending daily calls on it: the rest of the run goes straight to the
+// fallback. On a healthy day all sources use the primary as configured.
+const PRIMARY_FAILURE_BREAKER = 2;
+
+async function pacedModelCall(operation) {
+	modelCallsMade += 1;
+	if (modelCallsMade > MODEL_CALL_BUDGET) {
+		throw new Error(`model call budget exhausted (${MODEL_CALL_BUDGET} per run)`);
+	}
+	const waitMs = lastModelCallAt + MODEL_MIN_INTERVAL_MS - Date.now();
+	if (waitMs > 0) {
+		await delay(waitMs);
+	}
+	lastModelCallAt = Date.now();
+	return operation();
+}
+
+// Rate limits need a full minute window; capacity spikes just need backoff.
+function modelRetrySleep({ delayMs, error }) {
+	const message = String(error?.message || '');
+	return delay(/\b429\b/.test(message) ? 65000 : delayMs);
+}
+
+function isModelUnavailable(error) {
+	return /\b(429|503)\b|UNAVAILABLE|high demand|quota/i.test(String(error?.message || ''));
+}
+
+async function generateWithRetries(modelId, contents, config) {
+	return withRetries(
+		() => pacedModelCall(() => ai.models.generateContent({ model: modelId, contents, config })),
+		{ attempts: 2, baseDelayMs: 20000, sleep: modelRetrySleep }
+	);
+}
+
+/** Primary model first; an unavailable or quota-exhausted primary falls back once. */
+async function generateModelContent(contents, config) {
+	const useFallbackOnly =
+		FALLBACK_MODEL &&
+		FALLBACK_MODEL !== model &&
+		primaryFailureCount >= PRIMARY_FAILURE_BREAKER;
+	if (!useFallbackOnly) {
+		try {
+			return await generateWithRetries(model, contents, config);
+		} catch (error) {
+			if (!FALLBACK_MODEL || FALLBACK_MODEL === model || !isModelUnavailable(error)) {
+				throw error;
+			}
+			primaryFailureCount += 2;
+			console.log(
+				`${model} unavailable (${String(error?.message || '').slice(0, 80)}); using ${FALLBACK_MODEL}`
+			);
+		}
+	}
+	fallbackCallsMade += 1;
+	return generateWithRetries(FALLBACK_MODEL, contents, config);
+}
 
 // Identifies the tracker while staying compatible with government WAFs that
 // reject non-browser agents outright (see the source registry notes).
@@ -422,19 +502,11 @@ async function extractSourceItems(source, pageText) {
 	if (extractionFixture) {
 		return extractionFixture;
 	}
-	const response = await withRetries(
-		() =>
-			ai.models.generateContent({
-				model,
-				contents: buildExtractionPrompt({ source, pageText, todayIso }),
-				config: {
-					responseMimeType: 'application/json',
-					responseJsonSchema: z.toJSONSchema(examNotificationExtractionSchema),
-					temperature: 0.1
-				}
-			}),
-		{ attempts: 3, baseDelayMs: 2000, sleep: delay }
-	);
+	const response = await generateModelContent(buildExtractionPrompt({ source, pageText, todayIso }), {
+		responseMimeType: 'application/json',
+		responseJsonSchema: z.toJSONSchema(examNotificationExtractionSchema),
+		temperature: 0.1
+	});
 	const parsed = parseJsonResponse(response.text);
 	const validated = examNotificationExtractionSchema.safeParse(parsed);
 	if (validated.success) {
@@ -448,15 +520,9 @@ async function extractSourceItems(source, pageText) {
 }
 
 async function suggestSources(knownHosts) {
-	const response = await withRetries(
-		() =>
-			ai.models.generateContent({
-				model,
-				contents: buildDiscoveryPrompt({ knownHosts, todayIso }),
-				config: { tools: [{ googleSearch: {} }] }
-			}),
-		{ attempts: 3, baseDelayMs: 2000, sleep: delay }
-	);
+	const response = await generateModelContent(buildDiscoveryPrompt({ knownHosts, todayIso }), {
+		tools: [{ googleSearch: {} }]
+	});
 	let suggestions = [];
 	try {
 		const parsed = parseJsonResponse(response.text);
@@ -490,7 +556,18 @@ async function main() {
 			knownHosts
 		});
 		console.log(
-			JSON.stringify({ mode: 'discovery', model, startedAt: todayIso, ...report }, null, 2)
+			JSON.stringify(
+				{
+					mode: 'discovery',
+					model,
+					modelCalls: modelCallsMade,
+					fallbackCalls: fallbackCallsMade,
+					startedAt: todayIso,
+					...report
+				},
+				null,
+				2
+			)
 		);
 		return 0;
 	}
@@ -533,6 +610,8 @@ async function main() {
 	const output = {
 		mode: 'sync',
 		model,
+		modelCalls: modelCallsMade,
+		fallbackCalls: fallbackCallsMade,
 		dryRun: options.dryRun,
 		startedAt: startedAt.toISOString(),
 		finishedAt: finishedAt.toISOString(),

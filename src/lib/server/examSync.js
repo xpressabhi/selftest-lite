@@ -37,7 +37,8 @@ function defaultShouldRetry(error) {
 /**
  * Retries transient provider failures (Gemini 503/429 spikes are common) with
  * linear backoff. Non-transient errors (bad request, schema mismatch) are
- * rethrown on the first attempt.
+ * rethrown on the first attempt. `sleep` receives `{ delayMs, attempt, error }`
+ * so callers can wait longer for rate limits than for capacity spikes.
  */
 export async function withRetries(
 	operation,
@@ -45,7 +46,7 @@ export async function withRetries(
 		attempts = 3,
 		baseDelayMs = 1500,
 		shouldRetry = defaultShouldRetry,
-		sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+		sleep = ({ delayMs }) => new Promise((resolve) => setTimeout(resolve, delayMs))
 	} = {}
 ) {
 	let lastError;
@@ -57,7 +58,7 @@ export async function withRetries(
 			if (attempt >= attempts || !shouldRetry(error)) {
 				throw error;
 			}
-			await sleep(baseDelayMs * attempt);
+			await sleep({ delayMs: baseDelayMs * attempt, attempt, error });
 		}
 	}
 	throw lastError;
