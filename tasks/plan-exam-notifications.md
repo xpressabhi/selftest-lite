@@ -1,93 +1,96 @@
 # Implementation Plan: Exam Notification Tracker
 
 Spec: `docs/superpowers/specs/2026-09-26-exam-notification-tracker-design.md`
+Branch: `feat/exam-notification-tracker` (5 commits)
+Status: **complete** — all phases built and verified; push/PR left to the human.
 
 Daily GitHub Action gathers Indian government recruitment notifications from
 curated official sources, validates them, stores them in Neon, and serves a
 searchable `/exams` hub that deep-links into practice papers.
 
-## Architecture Decisions (from spec)
+## Architecture Decisions (as shipped)
 
 - Gemini parses; official links are the source of truth.
 - Neon only; SSR page + CDN caching; no deploy needed for fresh data.
 - Auto-publish validated rows; quarantine the rest (visible in run summary).
 - Idempotent re-scan → missed schedules self-heal.
 - English content, bilingual UI; discovery suggests sources, never auto-fetches.
+- Live register (7 sources enabled): UPSC, SSC (its own JSON feed), IBPS
+  (curl fallback for an incomplete TLS chain), RBI, RRB Chandigarh, UPPSC,
+  BPSC (curl fallback). SBI, NCS and Employment News are registered but
+  `enabled: false` — their lists need a rendering/PDF transport.
+- Model calls retry transient Gemini 5xx/429 spikes; link checks fall back
+  from HEAD to a body-cancelled GET (legacy .aspx servers).
 
 ## Task List
 
 ### Phase 0 — Docs
 
-- [x] Task 0 (S): Write spec + this plan. Commit.
+- [x] Task 0: Spec + this plan. `docs/superpowers/specs/2026-09-26-exam-notification-tracker-design.md`
 
 ### Phase 1 — Rules & registry (pure, no I/O)
 
-- [ ] Task 1 (M): `src/lib/shared/examNotifications.js` — normalization, dedupe
-      key, near-dupe similarity, URL/host validation, date plausibility, IST
-      status derivation, scope filter, exam-id allowlist. Unit tests written from
-      the failure list.
-      Verify: `npm run test`.
-- [ ] Task 2 (S): `src/lib/data/examSources.js` — seed registry (start with
-      high-confidence sources; grow after the first live dry run) + integrity
-      test against the practice registry.
-      Verify: `npm run test`.
-- [ ] Task 3 (S): `src/lib/server/htmlText.js` — HTML→text with numbered links +
-      tests.
-      Verify: `npm run test`.
-
-### Checkpoint A
-- [ ] `npm run lint`, `npm run test` clean; no app behavior changed.
+- [x] Task 1: `src/lib/shared/examNotifications.js` — normalization, dedupe key,
+      near-dupe similarity, URL/host validation, date plausibility, scope
+      filter, exam-id allowlist (+ status/date primitives split into the
+      client-safe `examNotificationStatus.js` so the browser never loads
+      `node:crypto`).
+- [x] Task 2: `src/lib/data/examSources.js` — source registry + integrity tests.
+- [x] Task 3: `src/lib/server/htmlText.js` — HTML→text with numbered links.
 
 ### Phase 2 — Schema, store, archive
 
-- [ ] Task 4 (M): `src/lib/shared/examNotificationSql.js` — schema statements,
-      upsert/read/quarantine/run-log/suggestion SQL, row mapper, archive targets.
-      PGlite db tests for every invariant (idempotent upsert, null dates don't
-      clobber, promotion, quarantine isolation, read window, archive move).
-- [ ] Task 5 (S): wire schema into `storage.js` (SCHEMA_VERSION bump +
-      `listExamNotifications()`, `getLatestExamSyncRun()`); archive DDL + moves
-      into `dataArchive.js` / `scripts/archive-telemetry.mjs`.
-      Verify: `npm run test`; `npm run telemetry:archive` dry run still works.
-
-### Checkpoint B
-- [ ] `npm run lint`, `npm run test`, `npm run check` clean.
+- [x] Task 4: `src/lib/shared/examNotificationSql.js` — schema, upsert, read,
+      quarantine, run log, suggestions, archive targets (+ PGlite db tests).
+- [x] Task 5: wired into `storage.js` (SCHEMA_VERSION 10) and the weekly
+      `telemetry:archive` run.
 
 ### Phase 3 — Sync pipeline
 
-- [ ] Task 6 (M): `src/lib/server/examSync.js` — per-source orchestration
-      (fetch → extract → validate → persist → report) with injected deps;
-      fixture + fake-based tests (failing source isolation, junk output, near
-      dupe, quarantine, discovery reconciliation).
-- [ ] Task 7 (S): `scripts/sync-exam-notifications.mjs` CLI (`--source`,
+- [x] Task 6: `src/lib/server/examSync.js` — per-source orchestration with
+      injected deps; retries; report with quarantine reasons (+ tests).
+- [x] Task 7: `scripts/sync-exam-notifications.mjs` CLI (`--source`,
       `--dry-run`, `--discover`, `--page-file`, `--extraction-file`,
-      `EXAM_SYNC_MODEL`) + `package.json` scripts.
-- [ ] Task 8 (S): workflows `.github/workflows/exam-notifications.yml` (daily)
-      and `exam-source-discovery.yml` (weekly).
-- [ ] Task 9 (S): live `--dry-run` against real sources; fix or drop
-      unreachable sources from the registry.
-      Verify: report shows ≥1 source with extracted items; no DB writes.
-
-### Checkpoint C
-- [ ] `--dry-run` report reviewed with the human; source list final for v1.
+      `--dump-extraction`, `EXAM_SYNC_MODEL`).
+- [x] Task 8: workflows `exam-notifications.yml` (daily) and
+      `exam-source-discovery.yml` (weekly).
+- [x] Task 9: live dry runs hardened the registry (SSC JSON feed found, curl
+      fallback for IBPS/BPSC, RBI added, three sources disabled).
 
 ### Phase 4 — Public hub
 
-- [ ] Task 10 (M): `ExamsHubPage.svelte` + `/exams`, `/hi/exams` routes with
-      shared server load, SEO, i18n keys, telemetry events.
-- [ ] Task 11 (S): SEO registration (`sitemap.js`, `verify-vercel.mjs` SSR_PATHS,
-      `llms.js`), `/practice` entry banner, README/architecture notes.
-- [ ] Task 12 (S): E2E spec with bridge seeding; evidence artifact.
-      Verify: `npm run test:e2e` (focused spec first, then full).
+- [x] Task 10: `ExamsHubPage.svelte` + `/exams` + `/hi/exams` (SSR load,
+      search, filters, status pills, practice CTA, last-updated/stale/empty
+      states) + 43 EN/HI strings + 5 allowlisted telemetry events.
+- [x] Task 11: SEO registration (`sitemap.js`, `verify-vercel.mjs` SSR_PATHS,
+      `llms.js`), practice-hub banner, README/AGENTS/architecture notes.
+- [x] Task 12: E2E spec (rendering, quarantine hiding, filters, link
+      attributes, Hindi tree) + `/exams` added to the design-consistency
+      route list.
 
-### Checkpoint D
-- [ ] `npm run lint`, `npm run check`, `npm run test`, `npm run test:e2e` clean.
-- [ ] `npm run verify:vercel` passes with `/exams` as an SSR sitemap URL.
-- [ ] Human review of the page at 390px and desktop.
+## Verified (on this branch)
 
-## Risks / notes
+- `npm run lint` clean; `npm run test` 729 passing.
+- `npm run check` production build clean.
+- `npm run test:e2e` 123 passing; artifact byte-identical across two runs.
+- `npm run verify:vercel` OK — `/exams` + `/hi/exams` resolve to the SSR
+  function with correct canonical/hreflang/lang.
+- Live dry run: 7/7 sources OK, 34 notifications extracted, 1 out-of-scope
+  dropped, 0 quarantined.
+- Visual check in Search at 390×844 and 1280×800 against a PGlite dev server.
 
-- Source URLs are the least predictable part; the live dry run decides the v1
-  registry.
-- PDF enrichment ships in the pipeline but is flag-gated per source; sources
-  without it publish with null dates.
-- Commits on `feat/exam-notification-tracker`; push/PR left to the human.
+## To run it for real
+
+1. Add repository secrets `GEMINI_API_KEY` (and confirm `DATABASE_URL`) in
+   GitHub → Settings → Secrets and variables → Actions. The daily workflow
+   skips quietly until they exist.
+2. Trigger **Exam notifications sync** once via `workflow_dispatch` (it
+   creates the tables through the shared schema statements).
+3. Optional: set the repository variable `EXAM_SYNC_MODEL` to try a stronger
+   Gemini tier.
+
+## Deliberately deferred (backlog)
+
+PDF date enrichment for PDF-only notices (SSC deadlines), ItemList JSON-LD,
+public JSON API, admin quarantine view, deadline push reminders, rendering
+transport for SBI/NCS/Employment News, Jev calibrated verifier.

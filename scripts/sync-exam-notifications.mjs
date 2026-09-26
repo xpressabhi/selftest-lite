@@ -342,13 +342,15 @@ const apiKey = process.env.GEMINI_API_KEY;
 const model = process.env.EXAM_SYNC_MODEL || DEFAULT_MODEL;
 const todayIso = todayInIst();
 
+// Same quiet-skip contract as the reminder sender: an unconfigured feature
+// must not leave a failed workflow sitting in the Actions tab every day.
 if (!databaseUrl && !options.dryRun) {
-	console.error('DATABASE_URL is not set. Run via `npm run exams:sync` or export it first.');
-	process.exit(1);
+	console.log('DATABASE_URL is not configured; skipping exam notification sync.');
+	process.exit(0);
 }
 if (!apiKey && !options.extractionFile) {
-	console.error('GEMINI_API_KEY is not set.');
-	process.exit(1);
+	console.log('GEMINI_API_KEY is not configured; skipping exam notification sync.');
+	process.exit(0);
 }
 if ((options.pageFile || options.extractionFile) && options.sources.length !== 1) {
 	console.error('--page-file/--extraction-file require exactly one --source=<id>.');
