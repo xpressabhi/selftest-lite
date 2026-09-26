@@ -283,6 +283,12 @@ test('jev relevance badges a soft match and the interrupt fires once', async ({ 
 		});
 	});
 
+	// Interrupts are suppressed during quiet hours (21:00-07:00); pin the page
+	// clock to midday so the toast assertion holds at any hour of the day.
+	const midday = new Date();
+	midday.setHours(12, 0, 0, 0);
+	await page.clock.setFixedTime(midday);
+
 	await page.goto('/');
 	await expect(page.locator('.notifications-badge')).toHaveText('1', { timeout: 10000 });
 	await expect(page.locator('.toast-lite')).toContainText('Soft match update', { timeout: 8000 });
