@@ -19,8 +19,8 @@ searchable `/exams` hub that deep-links into practice papers.
   (curl fallback for an incomplete TLS chain), RBI, AIIMS, JIPMER (curl
   fallback), Kerala PSC, UPPSC, BPSC (curl fallback). Local-only because
   GitHub's US runners cannot open a TCP connection to them (upstream even
-  through curl): UPSC, RRB Chandigarh, ESIC, TNPSC — fetch with
-  `npm run exams:sync -- --source=upsc,rrb-chandigarh,esic,tnpsc`. SBI, NCS
+  through curl): UPSC, RRB Chandigarh, ESIC, TNPSC, DSSSB — fetch with
+  `npm run exams:sync -- --source=upsc,rrb-chandigarh,esic,tnpsc,dsssb`. SBI, NCS
   and Employment News are registered but `enabled: false` pending a
   rendering/PDF transport.
 - Health coverage: AIIMS/JIPMER/ESIC recruit pharmacist, nursing and

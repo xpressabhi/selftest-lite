@@ -186,6 +186,21 @@ export const EXAM_SOURCES = [
 		enabled: true
 	},
 	{
+		id: 'dsssb',
+		org: 'Delhi Subordinate Services Selection Board (DSSSB)',
+		category: 'state-govt',
+		state: 'Delhi',
+		listingUrls: ['https://dsssb.delhi.gov.in/dsssb-vacancies'],
+		allowedHosts: ['dsssb.delhi.gov.in'],
+		examIds: ['dsssb-tgt-pgt'],
+		linkHint:
+			'Current vacancy advertisements; combined exams regularly include Pharmacist and other Delhi government hospital posts.',
+		enrichPdfs: false,
+		transport: 'fetch',
+		// GitHub runners cannot connect to dsssb.delhi.gov.in; local-only.
+		enabled: false
+	},
+	{
 		id: 'rrb-chandigarh',
 		org: 'Railway Recruitment Board (Chandigarh)',
 		category: 'railways',
