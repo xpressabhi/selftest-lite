@@ -9,6 +9,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 - **Paper formats**: multiple-choice, true/false, coding, speed challenge, **match the columns**, and **assertion-reasoning** (both available in quiz practice and full-exam papers).
 - **Explanations**: per-question explanations on demand.
 - **Exam support**: syllabus-focused practice for Indian exams, with reusable full-exam papers to avoid repetition.
+- **Exam notifications**: a daily GitHub Action tracks official recruitment notifications (UPSC, SSC, RRB, IBPS, RBI, state PSCs) from their own sites and serves them on a searchable `/exams` hub that links straight into practice.
 - **Local-first history**: tests and answers cached in the browser; generated papers persisted to PostgreSQL.
 - **Personalized tests**: a learner profile (class, exam target, subjects, preferences, focus topics) plus behavior-driven weak-topic detection tailors difficulty and content per user — with a visible override, opt-out, and full transparency.
 - **Markdown + math rendering**: KaTeX math, physics/chemistry symbols (Ω, μ, CO₂), and diagrams.
@@ -72,6 +73,7 @@ npm run preview  # preview the production build
 npm run lint     # ESLint static checks
 npm run check    # SvelteKit sync + production build (use before pushing)
 npm run test     # vitest unit tests
+npm run exams:sync  # fetch, extract and store exam notifications (needs DATABASE_URL + GEMINI_API_KEY)
 ```
 
 ## API Endpoints

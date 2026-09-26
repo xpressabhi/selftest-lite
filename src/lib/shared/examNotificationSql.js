@@ -3,7 +3,7 @@
 // which talks to Neon directly like the reminder/archive scripts. Keeping the
 // statements here means the PGlite tests pin exactly what production runs.
 
-import { deriveNotificationStatus } from './examNotifications.js';
+import { deriveNotificationStatus } from './examNotificationStatus.js';
 
 export const EXAM_NOTIFICATION_SCHEMA_STATEMENTS = [
 	`CREATE TABLE IF NOT EXISTS exam_notification (

@@ -10,6 +10,11 @@ import { SITE_ORIGIN } from './seo.js';
 const CORE_PAGES = [
 	{ path: '/', label: 'AI quiz generator', note: 'generate a custom practice paper in seconds' },
 	{ path: '/practice', label: 'Practice hub', note: 'all supported exams with syllabus and pattern' },
+	{
+		path: '/exams',
+		label: 'Exam & job notifications',
+		note: 'daily recruitment notifications from official sources with apply dates and links'
+	},
 	{ path: '/blog', label: 'Blog', note: 'study tips, exam guides and science explainers' },
 	{ path: '/faq', label: 'FAQ', note: 'how generation, scoring and privacy work' },
 	{ path: '/about', label: 'About selftest.in', note: 'why it exists and how it works' },

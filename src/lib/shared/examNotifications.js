@@ -9,22 +9,24 @@
 
 import { createHash } from 'node:crypto';
 import { HUB_CATEGORIES, OBJECTIVE_ONLY_EXAMS } from '../data/indianExams.js';
+import { addDays, parseIsoDate } from './examNotificationStatus.js';
+
+export {
+	CLOSING_SOON_DAYS,
+	NOTIFICATION_STATUS,
+	addDays,
+	deriveNotificationStatus,
+	parseIsoDate,
+	todayInIst
+} from './examNotificationStatus.js';
 
 export const KNOWN_EXAM_IDS = new Set(OBJECTIVE_ONLY_EXAMS.map((exam) => exam.id));
 export const KNOWN_CATEGORY_IDS = new Set(HUB_CATEGORIES.map((category) => category.id));
 
-export const CLOSING_SOON_DAYS = 7;
 export const NEAR_DUPLICATE_THRESHOLD = 0.85;
 export const MIN_EXTRACTION_CONFIDENCE = 0.5;
 export const TITLE_MAX_CHARS = 240;
 export const STATE_MAX_CHARS = 60;
-
-export const NOTIFICATION_STATUS = Object.freeze({
-	UPCOMING: 'upcoming',
-	OPEN: 'open',
-	CLOSING_SOON: 'closing_soon',
-	CLOSED: 'closed'
-});
 
 // Not recruitment notifications: tracked separately by the source sites, out
 // of scope for this feature, and prone to confusing the "apply by" story.
@@ -50,7 +52,6 @@ const TRACKING_PARAMS = new Set([
 	'mc_eid'
 ]);
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const PUBLISHED_MAX_AGE_DAYS = 730;
 const DATE_MAX_FUTURE_DAYS = 1095;
 const DATE_ORDER_GRACE_DAYS = 30;
@@ -216,28 +217,6 @@ export function isOfficialHost(host) {
 	);
 }
 
-/** Strict YYYY-MM-DD; null for anything else, including rolled-over days. */
-export function parseIsoDate(value) {
-	if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-		return null;
-	}
-	const [year, month, day] = value.split('-').map(Number);
-	const date = new Date(Date.UTC(year, month - 1, day));
-	const roundTrip = date.toISOString().slice(0, 10);
-	return roundTrip === value ? value : null;
-}
-
-export function addDays(isoDate, days) {
-	const [year, month, day] = isoDate.split('-').map(Number);
-	const date = new Date(Date.UTC(year, month - 1, day + days));
-	return date.toISOString().slice(0, 10);
-}
-
-/** Today's date in IST (the audience's day, not the UTC day). */
-export function todayInIst(now = new Date()) {
-	return new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
-}
-
 /**
  * Parses and sanity-checks the four dates. Invalid values become null with a
  * problem code recorded, so one bad date can never poison the whole row.
@@ -314,29 +293,6 @@ export function validateNotificationDates(input, todayIso) {
 	}
 
 	return result;
-}
-
-/**
- * Read-time status from the dates alone (never stored), so rows cannot go
- * stale waiting for a cron: open → closing_soon (≤7 days) → closed; with no
- * application window, an upcoming or passed exam date decides, else upcoming.
- */
-export function deriveNotificationStatus({ applyEnd = null, examDate = null } = {}, todayIso) {
-	const end = parseIsoDate(applyEnd);
-	if (end) {
-		if (end < todayIso) {
-			return NOTIFICATION_STATUS.CLOSED;
-		}
-		if (end <= addDays(todayIso, CLOSING_SOON_DAYS)) {
-			return NOTIFICATION_STATUS.CLOSING_SOON;
-		}
-		return NOTIFICATION_STATUS.OPEN;
-	}
-	const exam = parseIsoDate(examDate);
-	if (exam && exam < todayIso) {
-		return NOTIFICATION_STATUS.CLOSED;
-	}
-	return NOTIFICATION_STATUS.UPCOMING;
 }
 
 /** Model-suggested exam id, accepted only when the registry knows it. */

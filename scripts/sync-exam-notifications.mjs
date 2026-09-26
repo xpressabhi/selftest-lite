@@ -37,7 +37,7 @@ import {
 	withRetries
 } from '../src/lib/server/examSync.js';
 import { parseJsonResponse } from '../src/lib/server/jsonResponse.js';
-import { todayInIst } from '../src/lib/shared/examNotifications.js';
+import { todayInIst } from '../src/lib/shared/examNotificationStatus.js';
 import {
 	examNotificationExtractionSchema
 } from '../src/lib/shared/examNotificationSchema.js';

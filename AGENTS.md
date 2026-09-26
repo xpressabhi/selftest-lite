@@ -36,6 +36,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 | `npm run telemetry:report -- --days=30` | Read-only DB telemetry snapshot (funnel, API hotspots, data quality) |
 | `npm run telemetry:archive` | Dry-run archive old telemetry rows (`--apply` to move them) |
 | `npm run eval:content` | Generate sample papers and report content-quality metrics |
+| `npm run exams:sync` | Daily exam-notification sync: official listing pages → validated rows in Neon (also `-- --dry-run`, `--discover`) |
 | `npm run build`   | Production build                                     |
 | `npm run preview` | Preview the production build                         |
 | `gh pr view`      | View or create pull requests with GitHub CLI         |

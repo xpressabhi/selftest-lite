@@ -9,7 +9,7 @@ import {
 	READ_PUBLISHED_NOTIFICATIONS_SQL,
 	toNotificationItem
 } from '$lib/shared/examNotificationSql';
-import { addDays, todayInIst } from '$lib/shared/examNotifications';
+import { addDays, todayInIst } from '$lib/shared/examNotificationStatus';
 import { parseReminderHour } from '$lib/shared/reminders';
 import { sanitizeHintedIndexes } from './hint.js';
 

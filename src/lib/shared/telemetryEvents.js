@@ -14,6 +14,13 @@ export const TELEMETRY_EVENTS = new Set([
 	'page:view',
 	'scroll:depth',
 
+	// Exam notification hub
+	'exams:view',
+	'exams:search',
+	'exams:filter',
+	'exams:notice-open',
+	'exams:practice-click',
+
 	// Home / smart intent input
 	'intent:parse',
 	'intent:parsed',
