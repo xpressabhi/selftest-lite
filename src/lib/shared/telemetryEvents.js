@@ -134,6 +134,13 @@ export const TELEMETRY_EVENTS = new Set([
 	'nudge:dismissed',
 	'nudge:suppressed',
 
+	// In-app exam update inbox
+	'notifications:view',
+	'notifications:item-open',
+	'notifications:practice-click',
+	'notifications:badge-shown',
+	'notifications:all-read',
+
 	// Native shell / interaction quality
 	'app:open',
 	'app:deep-link',

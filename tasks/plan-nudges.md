@@ -1,7 +1,7 @@
 # Implementation Plan: Nudge Engine
 
 Spec: `docs/superpowers/specs/2026-09-26-nudge-engine-design.md`
-Status: phases 1-3 built and verified
+Status: phases 1-4 built and verified
 
 One fail-open policy layer decides when to prompt a learner: in-page share/push
 nudges, and in-app notifications for new and relevant exam updates. Jev judges
@@ -64,18 +64,18 @@ copy, placement, and the holdout. Everything ships dark behind `NUDGE_ENABLED`.
 
 ### Phase 4 — Feed API + notification inbox
 
-- [ ] Task 8 (S): `GET /api/exam-notifications` mirroring the `/exams` loader
+- [x] Task 8 (S): `GET /api/exam-notifications` mirroring the `/exams` loader
       (cache header, empty-not-500, `firstSeenAt`/`publishedAt`, bounded).
       Verify: e2e seed via `/api/test/db` returns rows.
-- [ ] Task 9 (M): `src/lib/client/notifications.js` + tests: interest matching
+- [x] Task 9 (M): `src/lib/client/notifications.js` + tests: interest matching
       (tier 0 bookmarked/practiced, soft), seen ledger keys, `closing_soon`
       transition once, badge count. Verify: `npm run test`.
-- [ ] Task 10 (M): `NotificationsBell.svelte` + `NotificationsPanel.svelte` +
+- [x] Task 10 (M): `NotificationsBell.svelte` + `NotificationsPanel.svelte` +
       header wiring + EN/HI keys + telemetry events.
       Verify: `npm run test`, `npm run test:e2e`.
 
 ### Checkpoint D
-- [ ] Badge → panel → item open → seen suppression covered by e2e.
+- [x] Badge → panel → item open → seen suppression covered by e2e.
 
 ### Phase 5 — Jev relevance + interrupt toast
 

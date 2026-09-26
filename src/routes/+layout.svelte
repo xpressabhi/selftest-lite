@@ -15,6 +15,7 @@
 		themePreference,
 	} from '$lib/client/preferences';
 	import { STORAGE_KEYS } from '$lib/client/constants';
+	import NotificationsBell from '$lib/client/NotificationsBell.svelte';
 	import { initDeepLinks } from '$lib/client/deepLink';
 	import { startDeviceProfileTracking } from '$lib/client/deviceProfile';
 	import { focusTrap } from '$lib/client/focusTrap';
@@ -534,6 +535,7 @@
 					>
 						<Icon name={$themePreference === 'dark' ? 'sun' : 'moon'} />
 					</button>
+					<NotificationsBell />
 					<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
 						<Icon name="clock" />
 					</a>
