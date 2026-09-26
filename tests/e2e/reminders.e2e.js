@@ -6,7 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { neon } from '@neondatabase/serverless';
 import webpush from 'web-push';
-import { REMINDER_HOURS } from '../../src/lib/shared/reminders.js';
+import { REMINDER_DEFAULT_HOUR, REMINDER_QUIET_HOUR } from '../../src/lib/shared/reminders.js';
 import { isPgliteUrl, testDatabaseUrl } from './testDb.js';
 import { PUSH_TEST_KEYS } from './pushTestKeys.js';
 
@@ -90,11 +90,11 @@ function readStoredHour(page) {
 	});
 }
 
-// A fixed-offset timezone whose local hour is a reminder hour right now, so the
-// sender script treats smart-default rows as due no matter when the suite runs.
-function dueTimezone(now = new Date()) {
+// A fixed-offset timezone whose local hour is exactly `hour` right now, so a
+// row's due state is deterministic no matter when the suite runs.
+function timezoneWithLocalHour(hour, now = new Date()) {
 	const utcHour = now.getUTCHours();
-	let offset = (7 - utcHour + 24) % 24;
+	let offset = (hour - utcHour + 24) % 24;
 	if (offset > 14) {
 		offset -= 24;
 	}
@@ -338,8 +338,8 @@ test.describe('daily reminder web push', () => {
 			"SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Etc/GMT0')::int AS hour"
 		);
 
-		// Matching hour: the reminder is delivered even though the smart
-		// windows would not match.
+		// Matching hour: the reminder is delivered at the chosen hour itself,
+		// even though the smart default window would not line up.
 		await sql.query(
 			`UPDATE push_subscription
 			 SET timezone = 'Etc/GMT0', reminder_hour = $2, last_sent_at = NULL
@@ -355,8 +355,8 @@ test.describe('daily reminder web push', () => {
 			})
 			.toContain('Daily 5 is ready');
 
-		// Adjacent hour: nothing is due, proving the default windows no longer
-		// apply once a time is chosen. (Runs within the same hour window; a
+		// Next hour: nothing is due yet — the catch-up window only opens once
+		// the chosen hour has arrived. (Runs within the same hour window; a
 		// tick exactly between the two runs is the only flake source.)
 		await sql.query(
 			`UPDATE push_subscription
@@ -378,16 +378,53 @@ test.describe('daily reminder web push', () => {
 		});
 	});
 
-	test('the smart default windows still send', async () => {
+	test('a chosen hour already passed catches up instead of being skipped', async () => {
 		const testInfo = test.info();
 		const subscription = await readSubscription(page);
 		expect(subscription).toBeTruthy();
-		const timezone = dueTimezone();
+		// The suite runs at any hour, so pick a timezone whose local clock sits
+		// at 14:00 and a chosen hour of 9:00: the slot has passed and the quiet
+		// hour has not arrived, so the sender must deliver a catch-up reminder.
+		const timezone = timezoneWithLocalHour(14);
 		const [{ hour }] = await sql.query(
 			'SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE $1)::int AS hour',
 			[timezone]
 		);
-		expect(REMINDER_HOURS, `timezone ${timezone} must land in a reminder hour`).toContain(hour);
+		expect(hour, `timezone ${timezone} must land at 14:00 local`).toBe(14);
+		await sql.query(
+			`UPDATE push_subscription
+			 SET timezone = $2, reminder_hour = 9, last_sent_at = NULL
+			 WHERE endpoint = $1`,
+			[subscription.endpoint, timezone]
+		);
+		const senderOutput = await runSender();
+		expect(senderOutput).toMatch(/1 due, 1 sent, 0 failed, 0 disabled/);
+		await expect
+			.poll(async () => (await readNotifications(page)).map((note) => note.title), {
+				timeout: 25_000,
+				message: 'caught-up notification should appear',
+			})
+			.toContain('Daily 5 is ready');
+
+		await testInfo.attach('evidence', {
+			body: JSON.stringify({ timezone, chosenHour: 9, senderOutput }),
+			contentType: 'application/json',
+		});
+	});
+
+	test('the smart default window still sends', async () => {
+		const testInfo = test.info();
+		const subscription = await readSubscription(page);
+		expect(subscription).toBeTruthy();
+		const timezone = timezoneWithLocalHour(REMINDER_DEFAULT_HOUR);
+		const [{ hour }] = await sql.query(
+			'SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE $1)::int AS hour',
+			[timezone]
+		);
+		expect(hour, `timezone ${timezone} must land at the default hour`).toBe(REMINDER_DEFAULT_HOUR);
+		expect(REMINDER_QUIET_HOUR, 'the default hour must sit before the quiet hour').toBeGreaterThan(
+			REMINDER_DEFAULT_HOUR
+		);
 		await sql.query(
 			`UPDATE push_subscription
 			 SET timezone = $2, reminder_hour = NULL, last_sent_at = NULL

@@ -3,8 +3,9 @@ import {
 	DEFAULT_REMINDER_TIMEZONE,
 	DUE_SUBSCRIPTION_PARAMS,
 	DUE_SUBSCRIPTIONS_SQL,
-	REMINDER_HOURS,
+	REMINDER_DEFAULT_HOUR,
 	REMINDER_MIN_GAP_HOURS,
+	REMINDER_QUIET_HOUR,
 	parseReminderHour,
 } from './reminders';
 
@@ -52,25 +53,30 @@ describe('parseReminderHour', () => {
 });
 
 describe('scheduling constants', () => {
-	it('keeps the morning/evening windows and the minimum send gap', () => {
-		expect(REMINDER_HOURS).toEqual([7, 8, 20, 21]);
+	it('keeps the catch-up window bounds and the minimum send gap', () => {
+		expect(REMINDER_DEFAULT_HOUR).toBe(7);
+		expect(REMINDER_QUIET_HOUR).toBe(22);
 		expect(REMINDER_MIN_GAP_HOURS).toBe(20);
 		expect(DEFAULT_REMINDER_TIMEZONE).toBe('Asia/Kolkata');
 	});
 
 	it('pairs the SQL placeholders with exactly the exported params', () => {
 		expect(DUE_SUBSCRIPTION_PARAMS).toEqual([
-			REMINDER_HOURS,
+			REMINDER_DEFAULT_HOUR,
 			REMINDER_MIN_GAP_HOURS,
 			DEFAULT_REMINDER_TIMEZONE,
+			REMINDER_QUIET_HOUR,
 		]);
-		for (const placeholder of ['$1', '$2', '$3']) {
+		for (const placeholder of ['$1', '$2', '$3', '$4']) {
 			expect(DUE_SUBSCRIPTIONS_SQL).toContain(placeholder);
 		}
-		expect(DUE_SUBSCRIPTIONS_SQL).not.toMatch(/\$4\b/);
-		// The due-window contract the sender and the query must agree on.
+		expect(DUE_SUBSCRIPTIONS_SQL).not.toMatch(/\$5\b/);
+		// The due-window contract the sender and the query must agree on: a
+		// subscription is due from its slot (chosen hour, or the smart default)
+		// until the quiet hour, subject to the minimum gap.
 		expect(DUE_SUBSCRIPTIONS_SQL).toContain('enabled = TRUE');
-		expect(DUE_SUBSCRIPTIONS_SQL).toContain('reminder_hour IS NULL');
+		expect(DUE_SUBSCRIPTIONS_SQL).toContain('COALESCE(reminder_hour, $1::int)');
 		expect(DUE_SUBSCRIPTIONS_SQL).toContain('last_sent_at');
+		expect(DUE_SUBSCRIPTIONS_SQL).toContain('local_minute');
 	});
 });

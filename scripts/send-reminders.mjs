@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Sends due daily practice reminders via Web Push.
 //
-// Run hourly (the reminders GitHub Action does). A subscription is due when it
-// is enabled, has not been sent in the last REMINDER_MIN_GAP_HOURS, and the
-// subscriber's local hour matches their chosen hour — or one of REMINDER_HOURS
-// when they have not chosen one (src/lib/shared/reminders.js, shared with the
-// in-app due query in src/lib/server/storage.js).
+// Run hourly (the reminders GitHub Action does; GitHub schedules are
+// best-effort, so runs arrive late, in bursts, or not at all for an hour). A
+// subscription is due when it is enabled, has not been sent in the last
+// REMINDER_MIN_GAP_HOURS, and the subscriber's local time is inside the
+// catch-up window that opens at their chosen hour — or at the smart default
+// hour when they have not chosen one — and closes at the quiet hour
+// (src/lib/shared/reminders.js).
 //
 // Requires DATABASE_URL and VAPID keys. When VAPID keys are absent the script
 // exits 0 with a message so the scheduled workflow is not noisy before setup.
@@ -30,8 +32,9 @@ if (!publicKey || !privateKey) {
 
 const sql = neon(databaseUrl);
 
-// The due rule (chosen hour or smart windows, minimum gap, timezone) lives in
-// src/lib/shared/reminders.js and is shared with the in-app due query.
+// The due rule (chosen hour or the smart default, catch-up window, minimum
+// gap, timezone) lives in src/lib/shared/reminders.js; its PGlite test pins the
+// same statement the sender runs.
 const dueSubscriptions = await sql.query(DUE_SUBSCRIPTIONS_SQL, DUE_SUBSCRIPTION_PARAMS);
 
 let sent = 0;

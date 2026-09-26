@@ -1,8 +1,11 @@
 # Daily practice reminders (Web Push)
 
 A daily practice reminder at the subscriber's chosen local hour (10 AM, 5 PM,
-…), or in the smart morning (7–8am) / evening (8–9pm) windows when they have not
-chosen one, at most once per 20 hours. The opt-in is offered on the results page
+…), or from the smart default of 7 AM when they have not chosen one, at most
+once per 20 hours and never after the quiet hour (10 PM local). Delivery
+catches up: GitHub schedules are best-effort (this repo has measured ~6 runs a
+day, not 24), so a run landing hours after the chosen time still delivers that
+day's reminder instead of skipping it. The opt-in is offered on the results page
 after the first completed test.
 
 ## How it flows
@@ -22,13 +25,15 @@ after the first completed test.
    mis-map once a new source column lands after `archived_at`.
 3. `.github/workflows/reminders.yml` runs hourly and calls
    `npm run reminders:send`, which selects due subscriptions and sends through
-   `src/lib/server/push.js`. The whole due rule — chosen hour or smart windows,
-   the 20-hour gap, the timezone fallback — is one SQL statement in
-   `src/lib/shared/reminders.js`, executed by both the sender and the in-app
-   query (`src/lib/server/storage.js: listDuePushSubscriptions`). Because the
-   workflow is hourly, "10 AM" delivers within 10:00–10:59 local. 404/410
-   endpoints are disabled (kept in the table), other failures record
-   `last_error`.
+   `src/lib/server/push.js`. The whole due rule — chosen hour or the smart
+   default, the catch-up window, the 20-hour gap, the timezone fallback — is one
+   SQL statement in `src/lib/shared/reminders.js`, executed by the sender (and
+   pinned by its PGlite test). The rule is a catch-up window in the subscriber's
+   timezone: due from their slot (chosen hour, or the 7 AM smart default) until
+   the quiet hour (10 PM), subject to the 20-hour gap. Scheduled runs are
+   best-effort, so a run at, say, 2 PM still delivers a 7 AM reminder instead of
+   waiting for tomorrow. 404/410 endpoints are disabled (kept in the table),
+   other failures record `last_error`.
 4. The service worker handler (`static/push-handler.js`) is injected into the
    Workbox worker via `workbox.importScripts` and opens `/?daily=1`, which
    auto-starts the Daily 5 (`src/routes/+page.svelte`).

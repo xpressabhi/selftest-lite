@@ -1,8 +1,10 @@
 // Daily practice reminders via Web Push.
 //
 // The opt-in is explicit and only offered after a user has finished at least
-// two tests. Notification copy is streak-aware and sent at 7-8am / 8-9pm
-// local time (see scripts/send-reminders.mjs), max once per 20 hours.
+// two tests. Notification copy is streak-aware and delivered any time from
+// 7am local (chosen hour, or the 7am smart default) until 10pm, catching up
+// when a scheduled run is late (see scripts/send-reminders.mjs), max once per
+// 20 hours.
 
 import { env } from '$env/dynamic/public';
 import { parseReminderHour } from '$lib/shared/reminders';
@@ -85,7 +87,8 @@ export function getReminderHour() {
 }
 
 /**
- * Changes the daily reminder time (null = smart morning/evening windows).
+ * Changes the daily reminder time (null = smart default, the catch-up window
+ * from 7am).
  * While reminders are off this only updates the local mirror; enabling applies
  * it. With a live subscription the server row is patched, and a failed patch
  * restores the previous selection.
