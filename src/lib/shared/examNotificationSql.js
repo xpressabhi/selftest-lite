@@ -145,15 +145,16 @@ export const INSERT_SYNC_RUN_SQL = `
 	RETURNING id
 `;
 
-// The public "last updated" stamp only trusts runs that actually produced
-// data; a fully failed run must not claim freshness.
+// The public "last updated" stamp only trusts runs that actually synced
+// notifications (discovery-only runs have no sources) and produced data;
+// a fully failed run must not claim freshness.
 export const READ_LATEST_SYNC_RUN_SQL = `
 	SELECT
 		id, started_at, finished_at, status,
 		sources_total, sources_ok, sources_failed,
 		items_new, items_updated, items_quarantined, discovery_suggestions
 	FROM exam_sync_run
-	WHERE status IN ('ok', 'partial')
+	WHERE status IN ('ok', 'partial') AND sources_total > 0
 	ORDER BY id DESC
 	LIMIT 1
 `;
@@ -175,6 +176,15 @@ export const READ_PENDING_SOURCE_SUGGESTIONS_SQL = `
 	FROM exam_source_suggestion
 	WHERE status = 'pending'
 	ORDER BY first_seen_at ASC, id ASC
+`;
+
+// Recent rows for one source: every dedupe key (quarantined ones included, so
+// they can heal) plus published titles and keys for near-duplicate checks and
+// the reachability skip.
+export const LOOKUP_SOURCE_NOTIFICATIONS_SQL = `
+	SELECT dedupe_key, title, review_status
+	FROM exam_notification
+	WHERE source_id = $1 AND last_seen_at > NOW() - INTERVAL '120 days'
 `;
 
 export const MARK_SOURCE_SUGGESTIONS_ADDED_SQL = `

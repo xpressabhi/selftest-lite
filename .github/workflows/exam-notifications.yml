@@ -1,0 +1,58 @@
+name: Exam notifications sync
+
+on:
+  schedule:
+    # Daily at 02:15 UTC (07:45 IST). GitHub schedules are best-effort; the
+    # sync re-scans every listing page, so a late or skipped run self-heals.
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Fetch and extract without writing to the database
+        type: boolean
+        default: false
+      sources:
+        description: Comma-separated source ids (default: all enabled)
+        type: string
+        default: ''
+
+concurrency:
+  group: exam-notifications
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync exam notifications
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EXAM_SYNC_MODEL: ${{ vars.EXAM_SYNC_MODEL }}
+          INPUT_DRY_RUN: ${{ inputs.dry-run }}
+          INPUT_SOURCES: ${{ inputs.sources }}
+        run: |
+          ARGS=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ -n "$INPUT_SOURCES" ]; then ARGS="$ARGS --source=$INPUT_SOURCES"; fi
+          npm run exams:sync -- $ARGS 2>&1 | tee exam-sync-report.json
+
+      - name: Upload run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-sync-report
+          path: exam-sync-report.json

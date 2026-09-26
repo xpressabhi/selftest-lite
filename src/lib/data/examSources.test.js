@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+	enabledExamSources,
 	EXAM_SOURCES,
 	examSourceIds,
-	getExamSource
+	getExamSource,
+	insecureFetchHosts
 } from './examSources';
 import {
 	isUrlOnAllowedHosts,
@@ -56,7 +58,16 @@ describe('EXAM_SOURCES registry integrity', () => {
 			expect(source.state === null || typeof source.state === 'string').toBe(true);
 			expect(typeof source.linkHint).toBe('string');
 			expect(typeof source.enrichPdfs).toBe('boolean');
+			expect(['fetch', 'curl-insecure']).toContain(source.transport);
+			expect(typeof source.enabled).toBe('boolean');
 		}
+	});
+
+	it('exposes enabled sources and the insecure-transport hosts', () => {
+		expect(enabledExamSources().length).toBeGreaterThan(0);
+		expect(enabledExamSources().every((source) => source.enabled)).toBe(true);
+		expect(enabledExamSources().map((source) => source.id)).not.toContain('ncs');
+		expect(insecureFetchHosts()).toEqual(['ibps.in', 'bpsc.bihar.gov.in']);
 	});
 
 	it('looks sources up by id and returns null for strangers', () => {

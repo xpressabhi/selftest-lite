@@ -290,6 +290,19 @@ describe('sync runs', () => {
 			0,
 			JSON.stringify([])
 		]);
+		// A discovery-only run has no sources and must not move the stamp.
+		await db.query(INSERT_SYNC_RUN_SQL, [
+			new Date(),
+			'ok',
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			4,
+			JSON.stringify([])
+		]);
 		const { rows } = await db.query(READ_LATEST_SYNC_RUN_SQL);
 		expect(rows).toHaveLength(1);
 		expect(rows[0].status).toBe('partial');

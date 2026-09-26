@@ -1,0 +1,42 @@
+name: Exam source discovery
+
+on:
+  schedule:
+    # Mondays at 03:00 UTC (08:30 IST).
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: exam-source-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Discover candidate sources
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EXAM_SYNC_MODEL: ${{ vars.EXAM_SYNC_MODEL }}
+        run: npm run exams:discover 2>&1 | tee exam-discovery-report.json
+
+      - name: Upload discovery report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-discovery-report
+          path: exam-discovery-report.json
