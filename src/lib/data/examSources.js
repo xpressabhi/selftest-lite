@@ -112,6 +112,74 @@ export const EXAM_SOURCES = [
 		enabled: true
 	},
 	{
+		id: 'aiims',
+		org: 'All India Institute of Medical Sciences (AIIMS)',
+		category: 'health',
+		state: null,
+		listingUrls: ['https://www.aiims.edu/index.php/en/notices/recruitment/aiims-recruitment'],
+		allowedHosts: ['aiims.edu'],
+		examIds: [],
+		linkHint:
+			'Dated recruitment notices for posts such as Pharmacist, Nursing Officer and Technician, each with a PDF or detail link.',
+		enrichPdfs: false,
+		transport: 'fetch',
+		enabled: true
+	},
+	{
+		id: 'esic',
+		org: "Employees' State Insurance Corporation (ESIC)",
+		category: 'health',
+		state: null,
+		listingUrls: ['https://esic.gov.in/recruitments'],
+		allowedHosts: ['esic.gov.in'],
+		examIds: ['esic-udc', 'esic-sso'],
+		linkHint:
+			'A language-selection overlay precedes the page; the recruitment notices are listed below it.',
+		enrichPdfs: false,
+		transport: 'fetch',
+		enabled: true
+	},
+	{
+		id: 'jipmer',
+		org: 'Jawaharlal Institute of Postgraduate Medical Education & Research (JIPMER)',
+		category: 'health',
+		state: null,
+		listingUrls: ['https://jipmer.edu.in/announcements'],
+		allowedHosts: ['jipmer.edu.in'],
+		examIds: [],
+		linkHint: 'Announcements mix academics and recruitment; keep only recruitment notices.',
+		enrichPdfs: false,
+		// Incomplete TLS chain (same class as BPSC): Node cannot verify the leaf.
+		transport: 'curl-insecure',
+		enabled: true
+	},
+	{
+		id: 'tnpsc',
+		org: 'Tamil Nadu Public Service Commission',
+		category: 'state-govt',
+		state: 'Tamil Nadu',
+		listingUrls: ['https://www.tnpsc.gov.in/'],
+		allowedHosts: ['tnpsc.gov.in'],
+		examIds: ['tnpsc-group-1-prelims', 'tnpsc-group-2', 'tnpsc-group-4'],
+		linkHint: '',
+		enrichPdfs: false,
+		transport: 'fetch',
+		enabled: true
+	},
+	{
+		id: 'kerala-psc',
+		org: 'Kerala Public Service Commission',
+		category: 'state-govt',
+		state: 'Kerala',
+		listingUrls: ['https://www.keralapsc.gov.in/notifications'],
+		allowedHosts: ['keralapsc.gov.in'],
+		examIds: ['kerala-psc-degree-level', 'kerala-psc-10th-level'],
+		linkHint: '',
+		enrichPdfs: false,
+		transport: 'fetch',
+		enabled: true
+	},
+	{
 		id: 'rrb-chandigarh',
 		org: 'Railway Recruitment Board (Chandigarh)',
 		category: 'railways',

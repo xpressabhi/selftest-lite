@@ -1599,6 +1599,25 @@ export const HUB_CATEGORIES = [
 			'Law Entrance',
 		],
 	},
+	{
+		// Notification-only category: no practice exams map to it yet, so it
+		// never renders on the practice hub (empty groups are filtered), but
+		// health-sector recruitment notifications (pharmacist, nursing,
+		// technician posts) get their own filter on /exams.
+		id: 'health',
+		labelKey: 'practiceCategoryHealth',
+		searchTerms: [
+			'health',
+			'hospital',
+			'pharmacy',
+			'pharmacist',
+			'nursing',
+			'स्वास्थ्य',
+			'अस्पताल',
+			'फार्मेसी',
+		],
+		streams: [],
+	},
 ];
 
 export function getHubCategory(exam) {

@@ -3,12 +3,15 @@
 // the script re-validates the parsed response with the same shapes before the
 // tolerant normalizer takes over.
 
+import { HUB_CATEGORIES } from '../data/indianExams.js';
 import { z } from 'zod';
 
 const isoDate = z
 	.string()
 	.nullable()
 	.describe('Date in YYYY-MM-DD when the page clearly states it for this notification, else null');
+
+const CATEGORY_IDS = HUB_CATEGORIES.map((category) => category.id).join(', ');
 
 export const extractedNotificationSchema = z.object({
 	title: z.string().describe('Verbatim headline exactly as printed on the page'),
@@ -26,9 +29,7 @@ export const extractedNotificationSchema = z.object({
 	category: z
 		.string()
 		.nullable()
-		.describe(
-			'One of: civil-services, ssc-central, banking, railways, police-defence, state-govt, teaching; else null'
-		),
+		.describe(`One of: ${CATEGORY_IDS}; else null`),
 	state: z.string().nullable().describe('Indian state for state-level recruitment, else null'),
 	examId: z.string().nullable().describe('Known practice exam id from the prompt list, only when clearly matching'),
 	confidence: z.number().min(0).max(1).nullable().describe('Your 0-1 certainty that every filled field is correct')
