@@ -83,7 +83,7 @@ async function seed(page, { streak = null, history = null } = {}) {
 	);
 }
 
-test('home shows the streak card with stats, graded week and headline', async ({
+test('home shows the streak card with a graded week and headline', async ({
 	page,
 }, testInfo) => {
 	const errors = await collectErrors(page);
@@ -102,11 +102,9 @@ test('home shows the streak card with stats, graded week and headline', async ({
 	await expect(page.locator('.streak-title')).toHaveText('4-day test streak');
 	await expect(page.locator('.streak-sub')).toContainText("You're on a roll");
 
-	const stats = page.locator('.streak-stat-value');
-	await expect(stats.nth(0)).toHaveText('3');
-	await expect(stats.nth(1)).toHaveText('59%');
-	await expect(stats.nth(2)).toHaveText('90%');
-	await expect(stats.nth(3)).toHaveText('12');
+	// Lifetime stats live on the history page; the home card is streak-only.
+	await expect(page.locator('.streak-stat')).toHaveCount(0);
+	await expect(page.locator('.stat-strip')).toHaveCount(0);
 
 	await expect(page.locator('.streak-day')).toHaveCount(7);
 	await expect(page.locator('.streak-ball.level-1')).toHaveCount(4);
@@ -127,7 +125,6 @@ test('home shows the streak card with stats, graded week and headline', async ({
 		body: JSON.stringify(
 			{
 				title: await page.locator('.streak-title').textContent(),
-				stats: await stats.allTextContents(),
 				level1: await page.locator('.streak-ball.level-1').count(),
 				level2: await page.locator('.streak-ball.level-2').count(),
 				level3: await page.locator('.streak-ball.level-3').count(),
@@ -150,12 +147,6 @@ test('a brand-new visitor sees the empty-state card with no reminder row', async
 	await expect(page.locator('.streak-title')).toHaveText('0-day test streak');
 	await expect(page.locator('.streak-sub')).toHaveClass(/streak-empty/);
 	await expect(page.locator('.streak-sub')).toContainText('Practice today to start your streak');
-
-	const stats = page.locator('.streak-stat-value');
-	await expect(stats.nth(0)).toHaveText('0');
-	await expect(stats.nth(1)).toHaveText('-');
-	await expect(stats.nth(2)).toHaveText('-');
-	await expect(stats.nth(3)).toHaveText('0');
 
 	await expect(page.locator('.streak-ball')).toHaveCount(7);
 	await expect(page.locator('.streak-day.active')).toHaveCount(0);
@@ -358,7 +349,6 @@ test('hindi home shows hindi streak copy and weekday labels', async ({ page }, t
 	await expect(page.locator('.streak-title')).toContainText('टेस्ट स्ट्रीक');
 	await expect(page.locator('.streak-explainer')).toContainText('कम से कम एक टेस्ट');
 	await expect(page.locator('.streak-weekdays span').first()).toHaveText(/[\u0900-\u097F]/);
-	await expect(page.locator('.streak-stat-label').first()).toHaveText('टेस्ट');
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
@@ -374,7 +364,7 @@ test('hindi home shows hindi streak copy and weekday labels', async ({ page }, t
 	});
 });
 
-test('results page no longer renders the streak panel', async ({ page }, testInfo) => {
+test('results page renders no streak or lifetime-stats panel', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await seed(page, {
 		streak: defaultStreak(),
@@ -386,10 +376,12 @@ test('results page no longer renders the streak panel', async ({ page }, testInf
 	await expect(page.locator('.week-strip')).toHaveCount(0);
 	await expect(page.locator('.streak-card')).toHaveCount(0);
 	await expect(page.getByText('Day Streak')).toHaveCount(0);
+	await expect(page.locator('.stats-grid')).toHaveCount(0);
+	await expect(page.locator('.stat-strip')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify({ streakPanels: 0, weekStrips: 0 }, null, 2),
+		body: JSON.stringify({ streakPanels: 0, weekStrips: 0, statsPanels: 0 }, null, 2),
 	});
 });

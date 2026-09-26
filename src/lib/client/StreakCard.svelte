@@ -128,25 +128,6 @@
 </script>
 
 <section class="streak-card" aria-label={$t('streaks')}>
-	<div class="streak-stats">
-		<div class="streak-stat">
-			<span class="streak-stat-value">{testsTaken}</span>
-			<span class="streak-stat-label">{$t('streakStatTests')}</span>
-		</div>
-		<div class="streak-stat">
-			<span class="streak-stat-value">{accuracyValue}</span>
-			<span class="streak-stat-label">{$t('streakStatAccuracy')}</span>
-		</div>
-		<div class="streak-stat">
-			<span class="streak-stat-value">{bestValue}</span>
-			<span class="streak-stat-label">{$t('streakStatBest')}</span>
-		</div>
-		<div class="streak-stat">
-			<span class="streak-stat-value">{longestStreak}</span>
-			<span class="streak-stat-label">{$t('streakStatMax')}</span>
-		</div>
-	</div>
-
 	<div class="streak-head">
 		<div>
 			<p class="streak-title">{$t('streakHeadline', { count: currentStreak })}</p>
@@ -218,44 +199,12 @@
 		background: var(--surface);
 	}
 
-	.streak-stats {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 6px;
-		padding-bottom: 10px;
-		border-bottom: 1px solid var(--line);
-	}
-
-	.streak-stat {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		min-width: 0;
-		text-align: center;
-	}
-
-	.streak-stat-value {
-		font-size: 15px;
-		font-weight: 700;
-		line-height: 1.2;
-		color: var(--text);
-	}
-
-	.streak-stat-label {
-		font-size: 9px;
-		font-weight: 600;
-		letter-spacing: 0.03em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-		white-space: nowrap;
-	}
-
 	.streak-head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 10px;
-		padding: 10px 0 8px;
+		padding: 0 0 8px;
 	}
 
 	.streak-title {

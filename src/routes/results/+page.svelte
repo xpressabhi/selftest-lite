@@ -14,7 +14,6 @@
 		buildTopicMasteryItems,
 		formatDuration,
 		getAchievements,
-		getStats,
 		getStreak,
 	} from '$lib/client/learning';
 	import NudgeCard from '$lib/client/NudgeCard.svelte';
@@ -65,7 +64,6 @@
 	let error = $state('');
 	let loadingExplanation = $state({});
 	let explanationError = $state({});
-	let stats = $state(null);
 	let achievements = $state([]);
 	let topicMastery = $state([]);
 	let reviewQueue = $state({ today: [], upcoming: [] });
@@ -390,7 +388,6 @@
 
 	function refreshLearningPanels() {
 		const history = getHistory();
-		stats = getStats(history);
 		achievements = getAchievements();
 		topicMastery = buildTopicMasteryItems(history);
 		reviewQueue = buildReviewQueue(history);
@@ -1328,37 +1325,6 @@
 			<p class="auto-explain-note small text-muted no-print">{$t('autoExplainDataSaver')}</p>
 		{/if}
 
-		<div class="row g-3 mb-4">
-			<div class="col-12">
-				<section class="result-panel bg-body border rounded-3 p-3">
-					<h2 class="h6 fw-bold">{$t('yourProgress')}</h2>
-					<div class="stats-grid">
-						<div>
-							<strong>{stats?.totalTests || 0}</strong><span>{$t('quizzes')}</span>
-						</div>
-						<div>
-							<strong>{stats?.averageScore || 0}%</strong><span>{$t('avgScore')}</span
-							>
-						</div>
-						<div>
-							<strong>{stats?.totalQuestions || 0}</strong><span
-								>{$t('questionsHeading')}</span
-							>
-						</div>
-						<div>
-							<strong
-								>{formatDuration(
-									stats?.totalTime || 0,
-									$t('minuteShort'),
-									$t('hourShort')
-								)}</strong
-							><span>{$t('timeSpent')}</span>
-						</div>
-					</div>
-				</section>
-			</div>
-		</div>
-
 		{#if achievements.some((item) => item.unlocked) || topicMastery.length > 0}
 			<div class="row g-3 mb-4">
 				{#if !resultsHide.includes('achievements')}
@@ -1822,31 +1788,6 @@
 
 	.result-panel {
 		height: 100%;
-	}
-
-	.stats-grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 10px;
-	}
-
-	.stats-grid div {
-		display: flex;
-		min-height: 64px;
-		align-items: center;
-		flex-direction: column;
-		justify-content: center;
-		border-radius: var(--radius-control);
-		background: var(--surface-muted);
-	}
-
-	.stats-grid strong {
-		font-size: 1.1rem;
-	}
-
-	.stats-grid span {
-		color: var(--text-muted);
-		font-size: 0.75rem;
 	}
 
 	.achievement-badge {
