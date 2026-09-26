@@ -242,3 +242,19 @@ test('data saver keeps the hero static and disables auto-explain', async ({ page
 	await expect(page.locator('.score-ring')).toHaveClass(/settled/);
 	expect(errors).toEqual([]);
 });
+
+test('results page leaves out the topic mastery and review queue panels', async ({ page }) => {
+	const errors = await collectErrors(page);
+	// Two attempts on one topic would have fed both panels: mastery (topic
+	// grouping) and the review queue (latest accuracy 67% is due today).
+	await seedHistory(page, [
+		attempt({ id: 'e2e-declutter', correctCount: 2, total: 3, timestamp: 10 }),
+		attempt({ id: 'e2e-declutter-prev', correctCount: 1, total: 3, timestamp: 1 }),
+	]);
+	await page.goto('/results?id=e2e-declutter');
+
+	await expect(page.locator('.result-hero-card')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Topic Mastery' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Review Queue' })).toHaveCount(0);
+	expect(errors).toEqual([]);
+});

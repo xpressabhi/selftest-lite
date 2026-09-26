@@ -9,9 +9,7 @@
 	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
 	import { track } from '$lib/client/telemetry';
 	import {
-		buildReviewQueue,
 		buildScoreComparison,
-		buildTopicMasteryItems,
 		formatDuration,
 		getAchievements,
 		getStreak,
@@ -65,8 +63,6 @@
 	let loadingExplanation = $state({});
 	let explanationError = $state({});
 	let achievements = $state([]);
-	let topicMastery = $state([]);
-	let reviewQueue = $state({ today: [], upcoming: [] });
 	let bookmarkedQuestionKeys = $state([]);
 	let displayedPercentage = $state(0);
 	let scoreSettled = $state(false);
@@ -389,8 +385,6 @@
 	function refreshLearningPanels() {
 		const history = getHistory();
 		achievements = getAchievements();
-		topicMastery = buildTopicMasteryItems(history);
-		reviewQueue = buildReviewQueue(history);
 		comparison = questionPaper
 			? buildScoreComparison(history, questionPaper.id, percentage)
 			: null;
@@ -720,18 +714,6 @@
 			showToast($t('reminderFailed'), 'warning');
 		}
 		reminderBusy = false;
-	}
-
-	function reviewHref(item) {
-		const params = new URLSearchParams({
-			mode: 'quiz-practice',
-			topic: item.topic,
-			difficulty: item.difficulty,
-			testType: item.testType,
-			numQuestions: String(item.numQuestions),
-			paperLanguage: item.paperLanguage,
-		});
-		return `/?${params.toString()}`;
 	}
 
 	async function fetchExplanation(index, question) {
@@ -1325,57 +1307,23 @@
 			<p class="auto-explain-note small text-muted no-print">{$t('autoExplainDataSaver')}</p>
 		{/if}
 
-		{#if achievements.some((item) => item.unlocked) || topicMastery.length > 0}
+		{#if achievements.some((item) => item.unlocked) && !resultsHide.includes('achievements')}
 			<div class="row g-3 mb-4">
-				{#if !resultsHide.includes('achievements')}
-					<section class="col-lg-6">
-						<div class="result-panel bg-body border rounded-3 p-3">
-							<h2 class="h6 fw-bold">{$t('achievements')}</h2>
-							<div class="d-flex flex-wrap gap-2">
-								{#each achievements
-									.filter((item) => item.unlocked)
-									.slice(0, 6) as achievement (achievement.id)}
-									<span class="badge text-bg-success achievement-badge"
-										>{$t(`achievement_${achievement.id}_title`)}</span
-									>
-								{/each}
-							</div>
-						</div>
-					</section>
-				{/if}
 				<section class="col-lg-6">
 					<div class="result-panel bg-body border rounded-3 p-3">
-						<h2 class="h6 fw-bold">{$t('topicMasteryTitle')}</h2>
-						{#each topicMastery as item (item.id)}
-							<div class="d-flex justify-content-between gap-3 border-bottom py-2">
-								<span class="text-truncate">{item.topic}</span>
-								<span
-									class={item.status === 'strong'
-										? 'text-success'
-										: 'text-warning'}
+						<h2 class="h6 fw-bold">{$t('achievements')}</h2>
+						<div class="d-flex flex-wrap gap-2">
+							{#each achievements
+								.filter((item) => item.unlocked)
+								.slice(0, 6) as achievement (achievement.id)}
+								<span class="badge text-bg-success achievement-badge"
+									>{$t(`achievement_${achievement.id}_title`)}</span
 								>
-									{item.latestAccuracy}%
-								</span>
-							</div>
-						{/each}
+							{/each}
+						</div>
 					</div>
 				</section>
 			</div>
-		{/if}
-
-		{#if (reviewQueue.today.length > 0 || reviewQueue.upcoming.length > 0) && !resultsHide.includes('review-queue')}
-			<section class="bg-body border rounded-3 p-3 mb-4">
-				<h2 class="h6 fw-bold">{$t('reviewQueueTitle')}</h2>
-				<p class="text-muted small">{$t('reviewQueueBody')}</p>
-				<div class="d-grid gap-2">
-					{#each [...reviewQueue.today, ...reviewQueue.upcoming].slice(0, 4) as item (item.id)}
-						<a class="review-item" href={reviewHref(item)}>
-							<span>{item.topic}</span>
-							<strong>{item.accuracy}%</strong>
-						</a>
-					{/each}
-				</div>
-			</section>
 		{/if}
 
 		{#if filteredQuestions.length === 0}
@@ -1794,19 +1742,6 @@
 		min-height: 32px;
 		display: inline-flex;
 		align-items: center;
-	}
-
-	.review-item {
-		display: flex;
-		min-height: 44px;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 8px 10px;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-control);
-		color: inherit;
-		text-decoration: none;
 	}
 
 	.section-breakdown-list {
