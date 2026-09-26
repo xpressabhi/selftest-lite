@@ -3,6 +3,13 @@ import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { createPglitePool, isPgliteUrl } from './testDb.js';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
+import {
+	EXAM_NOTIFICATION_SCHEMA_STATEMENTS,
+	READ_LATEST_SYNC_RUN_SQL,
+	READ_PUBLISHED_NOTIFICATIONS_SQL,
+	toNotificationItem
+} from '$lib/shared/examNotificationSql';
+import { addDays, todayInIst } from '$lib/shared/examNotifications';
 import { parseReminderHour } from '$lib/shared/reminders';
 import { sanitizeHintedIndexes } from './hint.js';
 
@@ -79,7 +86,7 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -517,6 +524,13 @@ export async function ensureStorageSchema() {
 		// the primary percentage. NULL marks mean "not a marks paper".
 		await query(`ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS marks NUMERIC`);
 		await query(`ALTER TABLE ai_test_attempts ADD COLUMN IF NOT EXISTS total_marks NUMERIC`);
+
+		// Exam notification tracker: written by the daily exam-notifications
+		// GitHub Action, read by the public /exams hub. Created before the
+		// archive tables below because those copy this table's layout.
+		for (const statement of EXAM_NOTIFICATION_SCHEMA_STATEMENTS) {
+			await query(statement);
+		}
 
 		// Archive tables preserve anything that leaves a hot table; nothing
 		// is ever dropped (see src/lib/shared/dataArchive.js).
@@ -1198,6 +1212,40 @@ export async function listTestRecords({
 	);
 
 	return result.rows;
+}
+
+/**
+ * Published exam notifications for the /exams hub: the last year of notices
+ * plus anything whose application or exam window is still near. Status is
+ * derived from the dates at read time, so the list stays fresh without a cron.
+ */
+export async function listExamNotifications({ limit = 500, windowDays = 365 } = {}) {
+	await ensureStorageSchema();
+
+	const today = todayInIst();
+	const cappedLimit = Math.min(Math.max(Number(limit) || 500, 1), 1000);
+	const since = addDays(today, -Math.max(Number(windowDays) || 365, 1));
+	const result = await query(READ_PUBLISHED_NOTIFICATIONS_SQL, [since, cappedLimit]);
+	return result.rows.map((row) => toNotificationItem(row, today));
+}
+
+/** Latest run that actually produced data; failed runs never claim freshness. */
+export async function getLatestExamSyncRun() {
+	await ensureStorageSchema();
+
+	const result = await query(READ_LATEST_SYNC_RUN_SQL);
+	const row = result.rows[0];
+	if (!row) {
+		return null;
+	}
+	return {
+		id: Number(row.id),
+		finishedAt: row.finished_at ? new Date(row.finished_at).toISOString() : null,
+		status: row.status,
+		sourcesTotal: Number(row.sources_total),
+		sourcesFailed: Number(row.sources_failed),
+		itemsNew: Number(row.items_new)
+	};
 }
 
 export async function getRecentQuestionsForTopic({ topic, language, limit = 30 } = {}) {
