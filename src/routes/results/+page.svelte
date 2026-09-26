@@ -15,7 +15,19 @@
 		formatDuration,
 		getAchievements,
 		getStats,
+		getStreak,
 	} from '$lib/client/learning';
+	import NudgeCard from '$lib/client/NudgeCard.svelte';
+	import {
+		buildNudgeState,
+		getSessionBudget,
+		markMomentDismissed,
+		markMomentShown,
+		markShareUsed,
+		momentSuppression,
+		readNudgeLedger,
+	} from '$lib/client/nudge';
+	import { eligibleNudgeKinds } from '$lib/shared/nudgePolicy';
 	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
 	import ResultReviewList from '$lib/client/ResultReviewList.svelte';
 	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
@@ -98,6 +110,15 @@
 	let showRetakeConfirm = $state(false);
 	let retakeTrigger = $state();
 	let retakeConfirmButton = $state();
+	let nudgeKind = $state(null);
+	let nudgeParams = $state({});
+	let nudgeDismissed = $state(false);
+	let shareSheetEverOpened = $state(false);
+	let resultsOpenedAt = $state(0);
+	let nudgeTimer = null;
+	let pendingNudge = null;
+
+	const RESULTS_NUDGE_DWELL_MS = 5000;
 
 	let challengeOutcome = $derived(
 		challenge && questionPaper?.userAnswers
@@ -252,6 +273,7 @@
 	});
 
 	onMount(async () => {
+		resultsOpenedAt = Date.now();
 		try {
 			autoExplainEnabled = window.localStorage.getItem(AUTO_EXPLAIN_KEY) === 'true';
 		} catch {
@@ -322,6 +344,8 @@
 			loading = false;
 			// Central focus (fail-open, once): expand the Jev-picked panel and
 			// collapse low-value ones; the full review list stays available.
+			// The nudge slice rides the same call: no extra request, and
+			// ineligible moments are filtered out before any tokens are spent.
 			if (questionPaper?.questions?.length) {
 				const total = questionPaper.questions.length;
 				const wrong = questionPaper.questions.filter(
@@ -329,17 +353,25 @@
 						(question.correct ??
 							questionPaper.userAnswers?.[index] === question.answer) === false
 				).length;
+				const nudgeState = buildResultsNudgeState();
+				const nudgeEligible =
+					!nudgeDismissed && nudgeState && eligibleNudgeKinds(nudgeState).length > 0;
 				void requestPersonalize('results', {
 					scorePct: total > 0 ? Math.round(((total - wrong) / total) * 100) : 0,
 					wrongCount: wrong,
 					total,
+					...(nudgeEligible ? { nudge: nudgeState } : {}),
 				}).then((decision) => {
-					if (!decision?.applied) return;
-					if (decision.action === 'fix_mistakes' && wrong > 0) {
-						filter = 'incorrect';
+					if (decision?.applied) {
+						if (decision.action === 'fix_mistakes' && wrong > 0) {
+							filter = 'incorrect';
+						}
+						if (Array.isArray(decision.hide) && decision.hide.length > 0) {
+							resultsHide = decision.hide;
+						}
 					}
-					if (Array.isArray(decision.hide) && decision.hide.length > 0) {
-						resultsHide = decision.hide;
+					if (nudgeEligible) {
+						queueResultsNudge(decision?.nudge, nudgeState);
 					}
 				});
 			}
@@ -351,6 +383,9 @@
 
 	onDestroy(() => {
 		autoExplainCanceled = true;
+		if (typeof window !== 'undefined') {
+			window.clearTimeout(nudgeTimer);
+		}
 	});
 
 	function refreshLearningPanels() {
@@ -372,6 +407,99 @@
 
 	function questionKey(question) {
 		return `${questionTextFor(question)}::${question.answer}`;
+	}
+
+	function reminderStateForNudge() {
+		if (reminderEnabled) {
+			return 'on';
+		}
+		if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+			return 'denied';
+		}
+		return remindersSupported() ? 'off' : 'unsupported';
+	}
+
+	function buildResultsNudgeState() {
+		const total = questionPaper?.totalQuestions || questionPaper?.questions?.length || 0;
+		return buildNudgeState({
+			page: 'results',
+			history: getHistory(),
+			streak: getStreak(),
+			lastResult: total > 0 ? { score: questionPaper?.score ?? 0, totalQuestions: total } : null,
+			bestBeaten: comparison?.state === 'best',
+			reminderState: reminderStateForNudge(),
+			shareSheetOpenedThisResult: shareSheetEverOpened,
+			secondsOnPage: resultsOpenedAt ? Math.round((Date.now() - resultsOpenedAt) / 1000) : 0,
+			isDataSaver: $isDataSaverActive,
+			locale: $language === 'hindi' ? 'hi' : 'en',
+		});
+	}
+
+	// The decision arrives with the page load; the card waits out the dwell so
+	// it never competes with reading the score.
+	function queueResultsNudge(nudge, state) {
+		if (!nudge || nudgeDismissed || pendingNudge || nudgeKind) {
+			return;
+		}
+		const kind = nudge.kind;
+		if (!kind) {
+			if (nudge.suppressed) {
+				track('nudge:suppressed', { page: 'results', reason: nudge.suppressed });
+			}
+			return;
+		}
+		const reason = momentSuppression({
+			kind,
+			ledger: readNudgeLedger(),
+			now: Date.now(),
+			session: getSessionBudget(),
+		});
+		if (reason) {
+			track('nudge:suppressed', { page: 'results', kind, reason });
+			return;
+		}
+		pendingNudge = {
+			kind,
+			confidence: nudge.confidence,
+			cohort: state.distinctTestDays >= 2 ? 'repeat' : 'new',
+			params:
+				kind === 'challenge_friend'
+					? {
+							score: questionPaper?.score ?? 0,
+							total: questionPaper?.totalQuestions ?? totalQuestions,
+						}
+					: {},
+		};
+		window.clearTimeout(nudgeTimer);
+		nudgeTimer = window.setTimeout(() => {
+			if (!pendingNudge || nudgeDismissed) {
+				return;
+			}
+			nudgeKind = pendingNudge.kind;
+			nudgeParams = pendingNudge.params;
+			track('nudge:shown', {
+				page: 'results',
+				kind: pendingNudge.kind,
+				confidence: pendingNudge.confidence,
+				cohort: pendingNudge.cohort,
+			});
+			markMomentShown(pendingNudge.kind);
+		}, RESULTS_NUDGE_DWELL_MS);
+	}
+
+	function handleNudgeSelect(kind) {
+		track('nudge:clicked', { page: 'results', kind });
+		markShareUsed();
+		nudgeKind = null;
+		void shareResult({ source: 'nudge' });
+	}
+
+	function handleNudgeDismiss(kind) {
+		track('nudge:dismissed', { page: 'results', kind });
+		markMomentDismissed(kind);
+		pendingNudge = null;
+		nudgeDismissed = true;
+		nudgeKind = null;
 	}
 
 	function toggleBookmark(question) {
@@ -679,8 +807,10 @@
 		return `${window.location.origin}${buildChallengeUrl(base, questionPaper.score ?? 0, name)}`;
 	}
 
-	async function shareResult() {
-		track('results:share');
+	async function shareResult({ source = 'button' } = {}) {
+		track('results:share', { source });
+		shareSheetEverOpened = true;
+		markShareUsed();
 		const url = challengeShareUrl();
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
 		const text = $t('shareResultText', {
@@ -706,6 +836,8 @@
 			return;
 		}
 		track('results:share-card');
+		shareSheetEverOpened = true;
+		markShareUsed();
 		const numericId = /^\d+$/.test(String(questionPaper.id));
 		// The card prints a clean, short link; the share text keeps the
 		// full challenge URL with score and name.
@@ -742,6 +874,7 @@
 	async function toggleShareSheet() {
 		shareSheetOpen = !shareSheetOpen;
 		if (shareSheetOpen) {
+			shareSheetEverOpened = true;
 			await tick();
 			shareSheetFirstItem?.focus({ preventScroll: true });
 		}
@@ -1037,6 +1170,15 @@
 			{/if}
 		</div>
 
+		{#if nudgeKind}
+			<NudgeCard
+				kind={nudgeKind}
+				params={nudgeParams}
+				onselect={handleNudgeSelect}
+				ondismiss={handleNudgeDismiss}
+			/>
+		{/if}
+
 		{#if showRetakeConfirm}
 			<div
 				class="retake-confirm result-retake no-print"
@@ -1083,7 +1225,7 @@
 							totalQuestions})
 					</span>
 				</p>
-				<button class="btn btn-sm btn-warning" type="button" onclick={shareResult}>
+				<button class="btn btn-sm btn-warning" type="button" onclick={() => shareResult()}>
 					{$t('challengeBack')}
 				</button>
 			</section>

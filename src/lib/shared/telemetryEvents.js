@@ -128,6 +128,12 @@ export const TELEMETRY_EVENTS = new Set([
 	'reminder:opt-in',
 	'reminder:time-set',
 
+	// Nudge engine (fail-open; suppression reasons are machine codes)
+	'nudge:shown',
+	'nudge:clicked',
+	'nudge:dismissed',
+	'nudge:suppressed',
+
 	// Native shell / interaction quality
 	'app:open',
 	'app:deep-link',

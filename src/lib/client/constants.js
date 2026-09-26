@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
 	HIDDEN_HISTORY: 'selftest_hidden_history',
 	PLANNER_DRAFT: 'selftest_planner_draft',
 	REMINDER_HOUR: 'selftest_reminder_hour',
+	NUDGE_LEDGER: 'selftest_nudge_ledger',
 };
 
 export const LOCAL_STORAGE_CHANGE_EVENT = 'selftest-local-change';
