@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       sources:
-        description: Comma-separated source ids (default: all enabled)
+        description: 'Comma-separated source ids (default: all enabled)'
         type: string
         default: ''
 
