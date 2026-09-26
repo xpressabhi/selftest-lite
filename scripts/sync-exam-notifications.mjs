@@ -284,8 +284,12 @@ async function fetchListingBody(source, url) {
 	let lastError = null;
 	for (let attempt = 1; attempt <= 2; attempt += 1) {
 		try {
-			if (source.transport === 'curl-insecure') {
-				return { body: await curl(url, ['-k', '-L']), finalUrl: url, contentType: '' };
+			if (source.transport === 'curl-insecure' || source.transport === 'curl') {
+				const args = ['-L', '--connect-timeout', '30'];
+				if (source.transport === 'curl-insecure') {
+					args.unshift('-k');
+				}
+				return { body: await curl(url, args, 45), finalUrl: url, contentType: '' };
 			}
 			const response = await fetchWithTimeout(url, { timeoutMs: FETCH_TIMEOUT_MS });
 			if (!response.ok) {

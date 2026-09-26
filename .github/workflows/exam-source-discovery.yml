@@ -32,7 +32,9 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EXAM_SYNC_MODEL: ${{ vars.EXAM_SYNC_MODEL }}
-        run: npm run exams:discover 2>&1 | tee exam-discovery-report.json
+        run: |
+          set -o pipefail
+          npm run exams:discover 2>&1 | tee exam-discovery-report.json
 
       - name: Upload discovery report
         if: always()

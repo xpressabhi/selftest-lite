@@ -36,7 +36,9 @@ export const EXAM_SOURCES = [
 		],
 		linkHint: '',
 		enrichPdfs: true,
-		transport: 'fetch',
+		// GitHub's US runners cannot establish a TCP connection to this host
+		// with Node's fetch; curl (verified TLS, longer connect timeout) can.
+		transport: 'curl',
 		enabled: true
 	},
 	{
@@ -129,7 +131,8 @@ export const EXAM_SOURCES = [
 		linkHint:
 			'Notices are grouped under "Recruitment (CENs)" by CEN number (e.g. 03/2026). Each CEN carries links labelled Notification, Application (Special Notice), Exam Schedule and more; report the latest Notice/Notification link per CEN as that CEN’s notification.',
 		enrichPdfs: false,
-		transport: 'fetch',
+		// Same reachability problem as UPSC from GitHub's US runners.
+		transport: 'curl',
 		enabled: true
 	},
 	{

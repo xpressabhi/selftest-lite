@@ -45,6 +45,7 @@ jobs:
           INPUT_DRY_RUN: ${{ inputs.dry-run }}
           INPUT_SOURCES: ${{ inputs.sources }}
         run: |
+          set -o pipefail
           ARGS=""
           if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           if [ -n "$INPUT_SOURCES" ]; then ARGS="$ARGS --source=$INPUT_SOURCES"; fi

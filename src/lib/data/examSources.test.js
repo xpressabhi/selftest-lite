@@ -58,7 +58,7 @@ describe('EXAM_SOURCES registry integrity', () => {
 			expect(source.state === null || typeof source.state === 'string').toBe(true);
 			expect(typeof source.linkHint).toBe('string');
 			expect(typeof source.enrichPdfs).toBe('boolean');
-			expect(['fetch', 'curl-insecure']).toContain(source.transport);
+			expect(['fetch', 'curl', 'curl-insecure']).toContain(source.transport);
 			expect(typeof source.enabled).toBe('boolean');
 		}
 	});
