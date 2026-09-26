@@ -898,8 +898,8 @@
 	}
 
 	function printResult() {
-		window.print();
 		track('results:print');
+		goto(`/print?t=${encodeURIComponent(questionPaper?.id ?? '')}`);
 	}
 
 	function practiceMoreHref() {

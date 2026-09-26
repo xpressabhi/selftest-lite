@@ -252,6 +252,8 @@
 	"startTest": "टेस्ट शुरू करें",
 	"questionsCountFormat": "{count} प्रश्न",
 	"print": "प्रिंट",
+	"printBack": "परिणाम पर वापस",
+	"printLoading": "पेपर लोड हो रहा है…",
 	"close": "बंद करें",
 	"cancel": "रद्द करें",
 	"deleting": "हटा रहे हैं…",

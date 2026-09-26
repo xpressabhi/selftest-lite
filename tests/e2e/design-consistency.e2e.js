@@ -61,9 +61,13 @@ function routeUrlForFile(file) {
 }
 
 const ROUTE_PAGE_FILES = findRoutePageFiles();
+// Routes that intentionally render without the shared app shell.
+const IMMERSIVE_ROUTES = ['/test', '/print'];
 const SHELL_ROUTES = [
 	...new Set([
-		...ROUTE_PAGE_FILES.map(routeUrlForFile).filter((route) => route !== '/test'),
+		...ROUTE_PAGE_FILES.map(routeUrlForFile).filter(
+			(route) => !IMMERSIVE_ROUTES.includes(route)
+		),
 		'/blog/not-a-real-layout-probe',
 	]),
 ].sort();
@@ -485,7 +489,11 @@ function failures(report) {
 
 test('shell route inventory covers every non-immersive SvelteKit page file', () => {
 	const generatedRoutes = [
-		...new Set(ROUTE_PAGE_FILES.map(routeUrlForFile).filter((route) => route !== '/test')),
+		...new Set(
+			ROUTE_PAGE_FILES.map(routeUrlForFile).filter(
+				(route) => !IMMERSIVE_ROUTES.includes(route)
+			)
+		),
 	].sort();
 	expect(generatedRoutes).toEqual(
 		SHELL_ROUTES.filter((route) => route !== '/blog/not-a-real-layout-probe')

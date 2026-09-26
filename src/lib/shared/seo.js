@@ -7,7 +7,7 @@ export const SITE_ORIGIN = 'https://www.selftest.in';
 // App-shell pages that must never be indexed. They stay out of the sitemap,
 // carry `robots: noindex` in their own head and must not emit a canonical or
 // og:url pointing crawlers at them.
-export const NOINDEX_PREFIXES = ['/test', '/results', '/history', '/bookmarks', '/profile', '/admin', '/exam-paper'];
+export const NOINDEX_PREFIXES = ['/test', '/print', '/results', '/history', '/bookmarks', '/profile', '/admin', '/exam-paper'];
 
 export const HINDI_PREFIX = '/hi';
 

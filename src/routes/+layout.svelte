@@ -242,7 +242,10 @@
 	});
 
 	let activePath = $derived(page.url.pathname);
-	let isImmersive = $derived(page.url.pathname === '/test');
+	// Chrome-free routes: the test runner and the printable paper.
+	let isImmersive = $derived(
+		page.url.pathname === '/test' || page.url.pathname === '/print'
+	);
 
 	// Indexable pages get their language from the URL in +layout.js. App-shell
 	// pages have no language in the URL, so follow the saved preference there.

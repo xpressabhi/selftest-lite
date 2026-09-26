@@ -258,3 +258,24 @@ test('results page leaves out the topic mastery and review queue panels', async 
 	await expect(page.getByRole('heading', { name: 'Review Queue' })).toHaveCount(0);
 	expect(errors).toEqual([]);
 });
+
+test('print opens a clean, chrome-free paper page', async ({ page }) => {
+	const errors = await collectErrors(page);
+	await seedHistory(page, [attempt({ id: 'e2e-print', correctCount: 2, total: 3 })]);
+	await page.goto('/results?id=e2e-print');
+
+	await page.locator('.hero-utility').getByRole('button', { name: 'Print' }).click();
+	await expect(page).toHaveURL(/\/print\?t=e2e-print$/);
+
+	// The paper renders as the taker saw it: stems and options, no score or
+	// answers, and no app chrome around it.
+	await expect(page.locator('.print-paper')).toBeVisible();
+	await expect(page.locator('.print-question')).toHaveCount(3);
+	await expect(page.locator('.print-question').first()).toContainText('Q1');
+	await expect(page.locator('.print-question').first()).toContainText('A1');
+	await expect(page.locator('.print-question').first()).toContainText('B1');
+	await expect(page.locator('.app-header')).toHaveCount(0);
+	await expect(page.locator('.bottom-nav')).toHaveCount(0);
+	await expect(page.locator('.print-btn')).toBeVisible();
+	expect(errors).toEqual([]);
+});

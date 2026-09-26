@@ -252,6 +252,8 @@
 	"startTest": "Start Test",
 	"questionsCountFormat": "{count} Questions",
 	"print": "Print",
+	"printBack": "Back to results",
+	"printLoading": "Loading paper…",
 	"close": "Close",
 	"cancel": "Cancel",
 	"deleting": "Deleting…",
