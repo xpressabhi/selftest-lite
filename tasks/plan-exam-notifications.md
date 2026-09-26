@@ -15,10 +15,18 @@ searchable `/exams` hub that deep-links into practice papers.
 - Auto-publish validated rows; quarantine the rest (visible in run summary).
 - Idempotent re-scan → missed schedules self-heal.
 - English content, bilingual UI; discovery suggests sources, never auto-fetches.
-- Live register (7 sources enabled): UPSC, SSC (its own JSON feed), IBPS
-  (curl fallback for an incomplete TLS chain), RBI, RRB Chandigarh, UPPSC,
-  BPSC (curl fallback). SBI, NCS and Employment News are registered but
-  `enabled: false` — their lists need a rendering/PDF transport.
+- Live register (8 sources enabled for CI): SSC (its own JSON feed), IBPS
+  (curl fallback for an incomplete TLS chain), RBI, AIIMS, JIPMER (curl
+  fallback), Kerala PSC, UPPSC, BPSC (curl fallback). Local-only because
+  GitHub's US runners cannot open a TCP connection to them (upstream even
+  through curl): UPSC, RRB Chandigarh, ESIC, TNPSC — fetch with
+  `npm run exams:sync -- --source=upsc,rrb-chandigarh,esic,tnpsc`. SBI, NCS
+  and Employment News are registered but `enabled: false` pending a
+  rendering/PDF transport.
+- Health coverage: AIIMS/JIPMER/ESIC recruit pharmacist, nursing and
+  technician posts, and Kerala PSC/TNPSC/RRB run pharmacist batches — the
+  tracker lists them with a notification-only `health` category
+  (filterable on `/exams`) even though no practice exam maps to them yet.
 - Model calls retry transient Gemini 5xx/429 spikes; link checks fall back
   from HEAD to a body-cancelled GET (legacy .aspx servers).
 - Model quota policy: `EXAM_SYNC_MODEL=gemini-flash-latest` (5 RPM / 20 RPD on

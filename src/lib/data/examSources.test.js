@@ -67,7 +67,7 @@ describe('EXAM_SOURCES registry integrity', () => {
 		expect(enabledExamSources().length).toBeGreaterThan(0);
 		expect(enabledExamSources().every((source) => source.enabled)).toBe(true);
 		expect(enabledExamSources().map((source) => source.id)).not.toContain('ncs');
-		expect(insecureFetchHosts()).toEqual(['ibps.in', 'bpsc.bihar.gov.in']);
+		expect(insecureFetchHosts()).toEqual(['ibps.in', 'jipmer.edu.in', 'bpsc.bihar.gov.in']);
 	});
 
 	it('looks sources up by id and returns null for strangers', () => {

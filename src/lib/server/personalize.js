@@ -16,6 +16,7 @@ export const PERSONALIZE_PAGES = [
 	'practice',
 	'test-moment',
 	'onboarding',
+	'notifications',
 ];
 
 function choiceCriteria(options) {
