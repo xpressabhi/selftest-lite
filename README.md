@@ -10,6 +10,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 - **Explanations**: per-question explanations on demand.
 - **Exam support**: syllabus-focused practice for Indian exams, with reusable full-exam papers to avoid repetition.
 - **Exam notifications**: a daily GitHub Action tracks official recruitment notifications (UPSC, SSC, RRB, IBPS, RBI, state PSCs) from their own sites and serves them on a searchable `/exams` hub that links straight into practice.
+- **Nudges & exam update inbox**: a fail-open nudge engine (Jev-judged moments, code-owned caps) offers sharing and daily reminders at the right time, and a header bell badges fresh updates for the exams you follow.
 - **Local-first history**: tests and answers cached in the browser; generated papers persisted to PostgreSQL.
 - **Personalized tests**: a learner profile (class, exam target, subjects, preferences, focus topics) plus behavior-driven weak-topic detection tailors difficulty and content per user — with a visible override, opt-out, and full transparency.
 - **Markdown + math rendering**: KaTeX math, physics/chemistry symbols (Ω, μ, CO₂), and diagrams.
@@ -63,6 +64,7 @@ Open the URL printed by Vite (normally <http://localhost:5173>).
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | No       | Enable the admin dashboard (`/admin`) and API stats                                                                                                                                |
 | `ADMIN_SESSION_SECRET`              | No       | Stable secret for admin sessions; if unset, sessions are derived from the admin credentials                                                                                        |
 | `PUBLIC_GOOGLE_CLIENT_ID`           | No       | Google OAuth 2.0 Web client ID for Google Sign-In. Enables accounts, server-saved test history and per-user activity tracking (anonymous `client_id` tracking works without it)    |
+| `NUDGE_ENABLED`                     | No       | Set to `true` to activate the nudge engine (in-page share/reminder asks + notification ranking). Unset keeps it dark; the nudge ledger and inbox badges still work.                |
 
 ## Scripts
 
@@ -92,6 +94,7 @@ npm run exams:sync  # fetch, extract and store exam notifications (needs DATABAS
 | `/api/user/state`                        | GET/POST        | Pull/push synced bookmarks, quiz presets & user profile for the current identity                                                                                                                                                                 |
 | `/api/user/profile`                      | GET/POST/DELETE | Read/save/reset the learner profile (class, exam target, subjects, preferences, focus topics)                                                                                                                                                    |
 | `/api/user/profile/insights`             | GET             | Computed learner signals: weak/strong topics, accuracy, suggested difficulty                                                                                                                                                                     |
+| `/api/exam-notifications`                | GET             | Public, CDN-cached feed of published exam notifications for the in-app bell (bounded; an outage returns an empty feed, never an error)                                                                                                          |
 | `/api/admin/login` / `/api/admin/logout` | POST            | Admin session management                                                                                                                                                                                                                         |
 | `/api/admin/stats`                       | GET             | Usage analytics (admin only)                                                                                                                                                                                                                     |
 | `/api/admin/health`                      | GET             | Live health metrics: requests/sec, latency p90/p99, error rate, CPU, memory, DB latency/connections (admin only; CPU/memory are per serverless instance)                                                                                         |

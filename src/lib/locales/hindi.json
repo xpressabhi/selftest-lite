@@ -881,6 +881,7 @@
 	"notificationsEmptyBody": "प्रैक्टिस हब पर परीक्षा फ़ॉलो करें, उसके आधिकारिक नोटिस यहाँ दिखेंगे।",
 	"notificationsBrowseAll": "सभी अपडेट देखें",
 	"notificationsPracticeCta": "इस परीक्षा की तैयारी करें",
+	"notificationsToastAction": "देखें",
 	"examsHubBannerTitle": "नई परीक्षा सूचनाएँ",
 	"examsHubBannerBody": "नई भर्ती सूचनाएँ, तिथियाँ और आधिकारिक लिंक - रोज़ाना अपडेट।",
 	"practiceMinutes": "{count} मिनट",

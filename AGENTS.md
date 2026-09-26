@@ -189,6 +189,7 @@ Required for local development (see `.env.example`):
 Optional:
 
 - `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET`: Enable the admin dashboard and `/api/admin/*` stats.
+- `NUDGE_ENABLED`: Set to `true` to activate the nudge engine (in-page asks + notification ranking). Unset keeps it dark.
 
 ---
 

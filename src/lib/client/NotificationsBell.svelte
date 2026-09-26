@@ -10,20 +10,34 @@
 	import { getBookmarkedExamIds, getHistory } from '$lib/client/storage';
 	import {
 		buildFeedView,
+		buildNotificationCandidates,
 		fetchNotificationFeed,
 		interestsFrom,
 		selectBadges
 	} from '$lib/client/notifications';
-	import { markNotificationSeen, readNudgeLedger, writeNudgeLedger } from '$lib/client/nudge';
+	import {
+		buildNotificationState,
+		getSessionBudget,
+		interruptSuppression,
+		markInterruptShown,
+		markNotificationSeen,
+		readNudgeLedger,
+		requestNudgeDecision,
+		writeNudgeLedger
+	} from '$lib/client/nudge';
+	import { isDataSaverActive } from '$lib/client/preferences';
+	import { showToastWithAction } from '$lib/client/toast';
 	import { NOTIFICATION_STATUS, todayInIst } from '$lib/shared/examNotificationStatus';
 	import { localizedPath } from '$lib/shared/seo';
 
 	let feed = $state([]);
 	let rows = $state([]);
 	let badges = $state([]);
+	let relevantIds = $state([]);
 	let unavailable = $state(false);
 	let open = $state(false);
 	let badgeTracked = false;
+	let ranked = false;
 	let wrapEl = $state();
 
 	onMount(() => {
@@ -38,6 +52,86 @@
 		feed = result.items;
 		unavailable = result.unavailable;
 		refreshBadges();
+		void rankCandidates();
+	}
+
+	/**
+	 * One Jev ranking call per page session: hard matches already badge, so
+	 * only when soft candidates exist. Fail-open: no ranking, tier-0 only.
+	 */
+	async function rankCandidates() {
+		if (ranked || feed.length === 0) {
+			return;
+		}
+		ranked = true;
+		const interests = interestsNow();
+		const candidates = buildNotificationCandidates(feed, {
+			now: Date.now(),
+			todayIso: todayInIst(),
+			bookmarkedExamIds: interests.bookmarkedExamIds,
+			practicedExamIds: interests.practicedExamIds
+		});
+		if (candidates.length === 0) {
+			return;
+		}
+		const ranking = await requestNudgeDecision(
+			buildNotificationState({
+				candidates,
+				topics: interests.topics,
+				hourLocal: new Date().getHours(),
+				isDataSaver: $isDataSaverActive,
+				locale: $activeLanguage === 'hindi' ? 'hi' : 'en'
+			})
+		);
+		if (!ranking) {
+			return;
+		}
+		const softIds = Array.isArray(ranking.relevantIds) ? ranking.relevantIds.map(String) : [];
+		if (ranking.pickedId && !softIds.includes(String(ranking.pickedId))) {
+			softIds.push(String(ranking.pickedId));
+		}
+		relevantIds = softIds;
+		refreshBadges();
+		if (ranking.pickedId) {
+			maybeToast(String(ranking.pickedId));
+		}
+	}
+
+	/** The interrupt: one per session and 24h, quiet hours respected. */
+	function maybeToast(pickedId) {
+		if (open) {
+			return;
+		}
+		const item = feed.find((row) => String(row.id) === pickedId);
+		if (!item) {
+			return;
+		}
+		const reason = interruptSuppression({
+			ledger: readNudgeLedger(),
+			now: Date.now(),
+			hourLocal: new Date().getHours(),
+			session: getSessionBudget()
+		});
+		if (reason) {
+			return;
+		}
+		markInterruptShown();
+		track('notification:toast-shown', { id: pickedId });
+		showToastWithAction(String(item.title).slice(0, 90), {
+			actionLabel: $t('notificationsToastAction'),
+			durationMs: 8000,
+			onAction: () => {
+				track('notification:toast-click', { id: pickedId });
+				if (!open) {
+					togglePanel();
+				}
+			},
+			onDismiss: (dismissReason) => {
+				if (dismissReason !== 'action') {
+					track('notification:toast-dismiss', { id: pickedId, reason: dismissReason });
+				}
+			}
+		});
 	}
 
 	function interestsNow() {
@@ -52,7 +146,8 @@
 			ledger: readNudgeLedger(),
 			now: Date.now(),
 			todayIso: todayInIst(),
-			...interestsNow()
+			...interestsNow(),
+			relevantIds
 		});
 		if (badges.length > 0 && !badgeTracked) {
 			badgeTracked = true;
@@ -81,7 +176,8 @@
 			ledger,
 			now: Date.now(),
 			todayIso: todayInIst(),
-			...interestsNow()
+			...interestsNow(),
+			relevantIds
 		});
 	}
 

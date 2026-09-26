@@ -171,6 +171,17 @@ describe('buildNudgeQuestions', () => {
 			MAX_NOTIFICATION_CANDIDATES
 		);
 	});
+
+	it('puts learner topics into the soft-relevance instructions', () => {
+		const questions = buildNudgeQuestions(
+			baseState({
+				page: 'notifications',
+				topics: ['SSC CGL quantitative aptitude'],
+				candidates: [candidate({ id: '102', match: 'category' })]
+			})
+		);
+		expect(questions.nudge_relevance_102.instructions).toContain('SSC CGL quantitative aptitude');
+	});
 });
 
 describe('deriveNudge', () => {
@@ -391,6 +402,16 @@ describe('sanitizeNudgeState', () => {
 			'notifications'
 		);
 		expect(state.candidates.map((item) => item.id)).toEqual(['101', '103']);
+	});
+
+	it('clamps learner topics and survives junk', () => {
+		const state = sanitizeNudgeState(
+			{ topics: ['a'.repeat(200), 'b', 'c', 'd', 'e', 'f', 'g'] },
+			'notifications'
+		);
+		expect(state.topics).toHaveLength(5);
+		expect(state.topics[0].length).toBeLessThanOrEqual(80);
+		expect(sanitizeNudgeState({ topics: 'junk' }, 'notifications').topics).toEqual([]);
 	});
 });
 

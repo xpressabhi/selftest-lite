@@ -112,7 +112,11 @@ const nudgeStateSchema = z.object({
 			isDataSaver: z.boolean().catch(false)
 		})
 		.catch({ secondsOnPage: 0, interactionCount: 0, hourLocal: 0, isDataSaver: false }),
-	locale: z.enum(['en', 'hi']).catch('en')
+	locale: z.enum(['en', 'hi']).catch('en'),
+	topics: z
+		.array(z.string().transform((value) => value.slice(0, 80)))
+		.catch([])
+		.transform((list) => list.slice(0, 5))
 });
 
 function sanitizeCandidates(raw) {
@@ -206,9 +210,11 @@ function notificationInstructions() {
 	].join(' ');
 }
 
-function relevanceInstructions(candidate) {
+function relevanceInstructions(candidate, topics = []) {
 	const where = candidate.state ? `${candidate.state} state` : 'national';
-	return `How relevant is this update to this learner? Candidate: ${candidate.org} — ${candidate.title} (${candidate.category || 'uncategorised'}, ${where}, status ${candidate.status}).`;
+	const practice =
+		topics.length > 0 ? ` Learner's recent practice topics: ${topics.join('; ')}.` : '';
+	return `How relevant is this update to this learner? Candidate: ${candidate.org} — ${candidate.title} (${candidate.category || 'uncategorised'}, ${where}, status ${candidate.status}).${practice}`;
 }
 
 function buildNotificationQuestions(state) {
@@ -234,7 +240,7 @@ function buildNotificationQuestions(state) {
 		}
 		questions[`nudge_relevance_${candidate.id}`] = {
 			type: 'score',
-			instructions: relevanceInstructions(candidate),
+			instructions: relevanceInstructions(candidate, state.topics),
 			criteria: [
 				'Unrelated to this learner; surfacing it would be noise',
 				'Worth seeing; same broad area as the learner follows',

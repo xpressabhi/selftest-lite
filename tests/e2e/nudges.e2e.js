@@ -171,9 +171,11 @@ test('challenge nudge rides the personalize call, waits for the dwell and shares
 	await page.goto('/results?id=e2e-nudge');
 	await expect(page.locator('.nudge-card')).toBeVisible({ timeout: 9000 });
 
-	// The nudge slice piggybacked the existing focus call.
-	expect(requests).toHaveLength(1);
-	expect(requests[0].state.nudge).toMatchObject({
+	// The nudge slice piggybacked the results focus call (the inbox bell also
+	// ranks on its own page key; only the results request carries the slice).
+	const resultsRequests = requests.filter((body) => body?.page === 'results');
+	expect(resultsRequests).toHaveLength(1);
+	expect(resultsRequests[0].state.nudge).toMatchObject({
 		page: 'results',
 		testsTotal: 1,
 		distinctTestDays: 1
@@ -194,7 +196,7 @@ test('challenge nudge rides the personalize call, waits for the dwell and shares
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify({ kind: 'challenge_friend', title: 'Beat my 2/3', ledger }, null, 2)
+		body: JSON.stringify({ kind: 'challenge_friend', title: 'Beat my 2/3' }, null, 2)
 	});
 	expect(errors).toEqual([]);
 });

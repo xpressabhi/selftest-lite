@@ -6,6 +6,7 @@ import {
 	PUSH_COOLDOWN_MS,
 	SHARE_COOLDOWN_MS,
 	buildNudgeState,
+	buildNotificationState,
 	createSessionBudget,
 	emptyLedger,
 	interruptSuppression,
@@ -328,6 +329,22 @@ describe('buildNudgeState', () => {
 		expect(state.testsTotal).toBe(3);
 		expect(state.distinctTestDays).toBe(1);
 		expect(state.testsThisWeek).toBe(1);
+	});
+});
+
+describe('buildNotificationState', () => {
+	it('caps candidates and topics and marks the notifications page', () => {
+		const state = buildNotificationState({
+			candidates: Array.from({ length: 9 }, (_, index) => ({ id: String(index) })),
+			topics: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+			now: NOW,
+			hourLocal: 12,
+			isDataSaver: true
+		});
+		expect(state.page).toBe('notifications');
+		expect(state.candidates).toHaveLength(6);
+		expect(state.topics).toHaveLength(5);
+		expect(state.session).toMatchObject({ hourLocal: 12, isDataSaver: true, interactionCount: 0 });
 	});
 });
 

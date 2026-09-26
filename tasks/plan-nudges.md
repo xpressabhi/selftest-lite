@@ -1,7 +1,7 @@
 # Implementation Plan: Nudge Engine
 
 Spec: `docs/superpowers/specs/2026-09-26-nudge-engine-design.md`
-Status: phases 1-4 built and verified
+Status: complete (phases 1-6 built and verified)
 
 One fail-open policy layer decides when to prompt a learner: in-page share/push
 nudges, and in-app notifications for new and relevant exam updates. Jev judges
@@ -79,22 +79,22 @@ copy, placement, and the holdout. Everything ships dark behind `NUDGE_ENABLED`.
 
 ### Phase 5 — Jev relevance + interrupt toast
 
-- [ ] Task 11 (M): notification questions + derivation in `nudges.js`
+- [x] Task 11 (M): notification questions + derivation in `nudges.js`
       (`nudge_notify_item`, `nudge_relevance_<id>` gates) with tests.
-- [ ] Task 12 (M): client ranking piggyback + `showToastWithAction` interrupt,
+- [x] Task 12 (M): client ranking piggyback + `showToastWithAction` interrupt,
       shared budget with `NudgeCard`, quiet hours. Verify: `npm run test`.
-- [ ] Task 13 (M): `tests/e2e/notifications.e2e.js` full contract (ranking
+- [x] Task 13 (M): `tests/e2e/notifications.e2e.js` full contract (ranking
       stubbed, suppress/apply paths, HI chrome).
       Verify: `npm run test:e2e`.
 
 ### Checkpoint E
-- [ ] `npm run test:e2e` artifact byte-identical across two runs.
+- [x] `npm run test:e2e` artifact byte-identical across two runs.
 
 ### Phase 6 — Docs and verification
 
-- [ ] Task 14 (S): README feature/endpoint notes, `docs/architecture.md` rows,
+- [x] Task 14 (S): README feature/endpoint notes, `docs/architecture.md` rows,
       AGENTS command table if a script was added.
-- [ ] Task 15 (S): `npm run verify:vercel`; full checklist `lint` / `check` /
+- [x] Task 15 (S): `npm run verify:vercel`; full checklist `lint` / `check` /
       `test` / `test:e2e`.
 
 ## Verification (per task and at checkpoints)

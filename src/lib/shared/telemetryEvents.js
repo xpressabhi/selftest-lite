@@ -140,6 +140,9 @@ export const TELEMETRY_EVENTS = new Set([
 	'notifications:practice-click',
 	'notifications:badge-shown',
 	'notifications:all-read',
+	'notification:toast-shown',
+	'notification:toast-click',
+	'notification:toast-dismiss',
 
 	// Native shell / interaction quality
 	'app:open',

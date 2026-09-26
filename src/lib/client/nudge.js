@@ -8,7 +8,7 @@
 
 import { STORAGE_KEYS } from './constants.js';
 import { requestPersonalize } from './personalize.js';
-import { nudgeKindGroup } from '$lib/shared/nudgePolicy.js';
+import { MAX_NOTIFICATION_CANDIDATES, nudgeKindGroup } from '$lib/shared/nudgePolicy.js';
 
 export const NUDGE_LEDGER_VERSION = 1;
 
@@ -261,6 +261,35 @@ export function buildNudgeState({
 		session: {
 			secondsOnPage: Number(secondsOnPage) || 0,
 			interactionCount: Number(interactionCount) || 0,
+			hourLocal,
+			isDataSaver: isDataSaver === true
+		},
+		locale
+	};
+}
+
+// ---- Notification ranking state ---------------------------------------------
+
+/** State slice for the notification ranking call ('notifications' page). */
+export function buildNotificationState({
+	candidates = [],
+	topics = [],
+	now = Date.now(),
+	secondsOnPage = 0,
+	hourLocal = new Date(now).getHours(),
+	isDataSaver = false,
+	locale = 'en'
+} = {}) {
+	return {
+		page: 'notifications',
+		candidates: (Array.isArray(candidates) ? candidates : []).slice(0, MAX_NOTIFICATION_CANDIDATES),
+		topics: (Array.isArray(topics) ? topics : [])
+			.map((topic) => String(topic ?? '').slice(0, 80))
+			.filter(Boolean)
+			.slice(0, 5),
+		session: {
+			secondsOnPage: Number(secondsOnPage) || 0,
+			interactionCount: 0,
 			hourLocal,
 			isDataSaver: isDataSaver === true
 		},

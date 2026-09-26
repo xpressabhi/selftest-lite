@@ -881,6 +881,7 @@
 	"notificationsEmptyBody": "Follow an exam on the practice hub and its official notices will show up here.",
 	"notificationsBrowseAll": "Browse all notifications",
 	"notificationsPracticeCta": "Practice for this exam",
+	"notificationsToastAction": "View",
 	"examsHubBannerTitle": "Latest exam notifications",
 	"examsHubBannerBody": "New recruitment notices with dates and official links - updated daily.",
 	"practiceMinutes": "{count} min",

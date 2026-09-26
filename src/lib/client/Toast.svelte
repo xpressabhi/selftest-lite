@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import { t } from '$lib/client/i18n';
-	import { dismissToast, runToastAction } from '$lib/client/toast';
+	import { dismissToast, runToastAction, runToastDismiss } from '$lib/client/toast';
 
 	let { entry } = $props();
 
@@ -31,6 +31,16 @@
 	function clearTimer() {
 		window.clearTimeout(timer);
 		timer = null;
+	}
+
+	let dismissNotified = false;
+
+	function notifyDismiss(reason) {
+		if (dismissNotified) {
+			return;
+		}
+		dismissNotified = true;
+		runToastDismiss(entry, reason);
 	}
 
 	function startTimer(ms) {
@@ -63,6 +73,7 @@
 		if (leaving) {
 			return;
 		}
+		notifyDismiss(reason);
 		if (reason === 'swipe') {
 			leaving = true;
 			paused = false;

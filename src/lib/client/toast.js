@@ -14,7 +14,7 @@ export function showToast(message, type = 'info', durationMs = 3000) {
  */
 export function showToastWithAction(
 	message,
-	{ type = 'info', actionLabel = null, onAction = null, durationMs = 4500 } = {}
+	{ type = 'info', actionLabel = null, onAction = null, onDismiss = null, durationMs = 4500 } = {}
 ) {
 	return publish({
 		message,
@@ -22,6 +22,7 @@ export function showToastWithAction(
 		durationMs,
 		actionLabel: typeof actionLabel === 'string' && actionLabel ? actionLabel : null,
 		onAction: typeof onAction === 'function' ? onAction : null,
+		onDismiss: typeof onDismiss === 'function' ? onDismiss : null,
 	});
 }
 
@@ -44,6 +45,19 @@ export function runToastAction(entry) {
 		entry.onAction();
 	} catch {
 		// Actions are best-effort; a failed undo must not break the UI.
+	}
+	return true;
+}
+
+/** Notifies an entry's onDismiss hook once per toast; best-effort. */
+export function runToastDismiss(entry, reason = 'dismiss') {
+	if (typeof entry?.onDismiss !== 'function') {
+		return false;
+	}
+	try {
+		entry.onDismiss(reason);
+	} catch {
+		// Dismiss hooks are best-effort; telemetry must never block the UI.
 	}
 	return true;
 }

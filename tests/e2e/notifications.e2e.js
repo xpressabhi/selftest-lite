@@ -40,7 +40,7 @@ function isoDaysFromToday(days) {
 }
 
 async function seedNotification(sql, row) {
-	await sql`
+	const rows = await sql`
 		INSERT INTO exam_notification (
 			dedupe_key, source_id, org, title, category, state, exam_id,
 			notification_url, apply_url, published_at, apply_end, exam_date,
@@ -66,7 +66,9 @@ async function seedNotification(sql, row) {
 			review_status = EXCLUDED.review_status,
 			failure_reason = EXCLUDED.failure_reason,
 			first_seen_at = EXCLUDED.first_seen_at
+		RETURNING id
 	`;
+	return Number(rows[0]?.id);
 }
 
 async function seedFeed(request) {
@@ -234,6 +236,67 @@ test('hindi chrome renders in the inbox', async ({ page, request }) => {
 	await expect(page.locator('.notifications-item', { hasText: 'RBI Grade B' })).toContainText(
 		'इस परीक्षा की तैयारी करें'
 	);
+
+	expect(errors).toEqual([]);
+});
+
+test('jev relevance badges a soft match and the interrupt fires once', async ({ page, request }) => {
+	const errors = await collectErrors(page);
+	await request.get('/api/exam-notifications');
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	const id = await seedNotification(sql, {
+		dedupeKey: 'nudge-e2e-soft',
+		sourceId: 'e2e',
+		org: 'State Public Service Commission',
+		title: 'Soft match update for practice topics',
+		category: 'state-govt',
+		notificationUrl: 'https://example.gov.in/soft',
+		publishedAt: isoDaysFromToday(0)
+	});
+	await seedBookmarks(page, []);
+
+	let rankingCalls = 0;
+	await page.route('**/api/personalize', async (route) => {
+		const body = route.request().postDataJSON();
+		if (body?.page === 'notifications') {
+			rankingCalls += 1;
+			await route.fulfill({
+				json: {
+					applied: false,
+					action: null,
+					hide: [],
+					promote: [],
+					nudge: {
+						kind: 'notify',
+						pickedId: String(id),
+						relevance: { [String(id)]: 2 },
+						relevantIds: [String(id)],
+						suppressed: null
+					}
+				}
+			});
+			return;
+		}
+		await route.fulfill({
+			json: { applied: false, action: null, hide: [], promote: [], nudge: null }
+		});
+	});
+
+	await page.goto('/');
+	await expect(page.locator('.notifications-badge')).toHaveText('1', { timeout: 10000 });
+	await expect(page.locator('.toast-lite')).toContainText('Soft match update', { timeout: 8000 });
+	expect(rankingCalls).toBe(1);
+
+	await page.locator('.toast-lite .toast-action').click();
+	await expect(page.locator('.notifications-panel')).toBeVisible();
+	await expect(page.locator('.notifications-item', { hasText: 'Soft match update' })).toBeVisible();
+	await expect(page.locator('.notifications-badge')).toHaveCount(0);
+
+	// The interrupt budget (24h) is spent: a reload stays quiet.
+	await page.reload();
+	await page.waitForTimeout(1500);
+	await expect(page.locator('.toast-lite')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });

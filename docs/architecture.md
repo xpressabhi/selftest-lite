@@ -37,6 +37,11 @@ Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 | `src/lib/shared/examNotificationSql.js` | Tracker schema and queries shared by `ensureStorageSchema`, the archive run and the sync script (PGlite-pinned) |
 | `src/lib/data/examSources.js`      | Curated official source registry: listing URLs, allowed hosts, exam mappings, transports |
 | `scripts/sync-exam-notifications.mjs` | CLI the daily/weekly Actions run (Neon + Gemini + per-source curl fallback) |
+| `src/lib/server/nudges.js`         | Pure nudge policy engine: eligibility, Jev question builders, deterministic derivation, holdout hash |
+| `src/lib/shared/nudgePolicy.js`    | Client-safe nudge constants and eligibility shared by the engine and the browser pre-filter |
+| `src/lib/client/nudge.js`          | Browser ledger: cooldowns, dismiss backoff, session/interrupt budgets, state slices |
+| `src/lib/client/notifications.js`  | Exam update feed matching: interest tiers, badge classification, Jev candidate payload |
+| `src/routes/api/exam-notifications/+server.js` | Public CDN-cached feed for the in-app notification bell |
 
 ## Key Decisions
 
@@ -48,6 +53,7 @@ Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 - **PWA caching**: route chunks are cached at runtime after first use (see `vite.config.js`), keeping the install-time cache small on slow networks.
 - **Admin session secret**: if `ADMIN_SESSION_SECRET` is unset, sessions are derived from the credentials so rotating the password invalidates all sessions.
 - **Notifications are link-first and quarantine-gated**: the daily GitHub Action extracts facts with Gemini from official listing pages, publishes only rows that pass host/date/dedupe/link validation, and quarantines the rest for review; `/exams` is SSR with short CDN caching, and every card links to its official notice (and to practice when the row maps to a registry exam).
+- **Nudges are fail-open and code-capped**: Jev judges the moment (and soft notification relevance) inside the existing `/api/personalize` call; deterministic code owns cohort gates, cooldowns, dismiss backoff, quiet hours, the shared interrupt budget, and a server-side 10% holdout. `NUDGE_ENABLED` must be `true` for questions to be built; anything uncertain means silence, never a broken prompt. The in-app inbox badges only fresh, unseen, relevant updates (`first_seen_at`-keyed, never `last_seen_at`).
 
 ## Testing
 

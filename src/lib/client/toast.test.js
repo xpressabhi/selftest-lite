@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import {
 	dismissToast,
 	runToastAction,
+	runToastDismiss,
 	showToast,
 	showToastWithAction,
 	toast,
@@ -69,5 +70,21 @@ describe('toast store', () => {
 		showToast('Any');
 		dismissToast();
 		expect(get(toast)).toBeNull();
+	});
+
+	it('runs the dismiss callback with its reason and swallows errors', () => {
+		const onDismiss = vi.fn();
+		showToastWithAction('Update', { onDismiss });
+		expect(runToastDismiss(get(toast), 'timeout')).toBe(true);
+		expect(onDismiss).toHaveBeenCalledWith('timeout');
+
+		showToastWithAction('Update', {
+			onDismiss: () => {
+				throw new Error('dismiss failed');
+			},
+		});
+		expect(() => runToastDismiss(get(toast), 'close')).not.toThrow();
+		expect(runToastDismiss({ onDismiss: 'nope' }, 'close')).toBe(false);
+		expect(runToastDismiss(null, 'close')).toBe(false);
 	});
 });
