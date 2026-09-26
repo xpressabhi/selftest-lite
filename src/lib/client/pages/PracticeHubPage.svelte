@@ -88,6 +88,16 @@
 			<p class="practice-hub-sub">{$t('practiceHeroBody')}</p>
 		</header>
 
+		<a class="practice-alerts" href={localizedPath('/exams', $activeLanguage)}>
+			<span class="practice-alerts-copy">
+				<strong>{$t('examsHubBannerTitle')}</strong>
+				<span>{$t('examsHubBannerBody')}</span>
+			</span>
+			<span class="practice-card-chevron" aria-hidden="true">
+				<Icon name="chevron-right" size={18} />
+			</span>
+		</a>
+
 		<div class="practice-search">
 			<span class="practice-search-icon" aria-hidden="true">
 				<Icon name="search" size={18} />
@@ -190,6 +200,34 @@
 		margin: 0 auto;
 		max-width: 40rem;
 		color: var(--text-muted);
+	}
+
+	.practice-alerts {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.85rem 1rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-surface);
+		background: var(--surface);
+		color: inherit;
+		text-decoration: none;
+		min-height: 44px;
+	}
+
+	.practice-alerts:hover {
+		border-color: var(--brand-text);
+	}
+
+	.practice-alerts-copy {
+		display: grid;
+		gap: 0.15rem;
+	}
+
+	.practice-alerts-copy span {
+		color: var(--text-muted);
+		font-size: 0.88rem;
 	}
 
 	.practice-search {

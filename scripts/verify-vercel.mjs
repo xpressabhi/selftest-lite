@@ -13,7 +13,7 @@ import path from 'node:path';
 const OUT = process.env.VERCEL_OUTPUT_DIR ?? '.vercel/output';
 const STATIC = path.join(OUT, 'static');
 const ORIGIN = 'https://www.selftest.in';
-const SSR_PATHS = new Set(['/', '/hi']);
+const SSR_PATHS = new Set(['/', '/hi', '/exams', '/hi/exams']);
 
 const failures = [];
 const check = (ok, message) => {

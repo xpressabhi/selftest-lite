@@ -24,6 +24,8 @@
 		"telemetry:archive": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/archive-telemetry.mjs",
 		"reminders:send": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/send-reminders.mjs",
 		"eval:content": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/eval-content.mjs",
+		"exams:sync": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs",
+		"exams:discover": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs --discover",
 		"cap:sync": "cap sync android",
 		"cap:open": "cap open android",
 		"apk:debug": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug",

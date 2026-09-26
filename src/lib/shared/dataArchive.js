@@ -21,4 +21,6 @@ export const ARCHIVE_TABLE_STATEMENTS = [
 	`CREATE TABLE IF NOT EXISTS push_subscription_archive (LIKE push_subscription INCLUDING DEFAULTS)`,
 	`ALTER TABLE push_subscription_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 	`ALTER TABLE push_subscription_archive ADD COLUMN IF NOT EXISTS reminder_hour SMALLINT`,
+	`CREATE TABLE IF NOT EXISTS exam_notification_archive (LIKE exam_notification INCLUDING DEFAULTS)`,
+	`ALTER TABLE exam_notification_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 ];

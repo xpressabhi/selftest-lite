@@ -11,6 +11,11 @@
 
 import { neon } from '@neondatabase/serverless';
 import { ARCHIVE_TABLE_STATEMENTS } from '../src/lib/shared/dataArchive.js';
+import {
+	buildArchiveMoveSql,
+	EXAM_NOTIFICATION_ARCHIVE_TARGETS,
+	EXAM_NOTIFICATION_SCHEMA_STATEMENTS
+} from '../src/lib/shared/examNotificationSql.js';
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
@@ -36,26 +41,48 @@ if (!databaseUrl) {
 
 const sql = neon(databaseUrl);
 
+// The tracker's hot table must exist before its archive table copies the
+// column layout; a fresh database may never have run the app yet.
+for (const statement of EXAM_NOTIFICATION_SCHEMA_STATEMENTS) {
+	await sql.query(statement);
+}
+
 // Archive tables must exist before any move; CREATE ... IF NOT EXISTS is safe.
 for (const statement of ARCHIVE_TABLE_STATEMENTS) {
 	await sql.query(statement);
 }
 
 const targets = [
-	{ table: 'feature_events', archive: 'feature_events_archive', days: featureDays },
-	{ table: 'api_request_events', archive: 'api_request_events_archive', days: apiDays },
+	{
+		table: 'feature_events',
+		archive: 'feature_events_archive',
+		ageColumn: 'created_at',
+		filter: '',
+		days: featureDays
+	},
+	{
+		table: 'api_request_events',
+		archive: 'api_request_events_archive',
+		ageColumn: 'created_at',
+		filter: '',
+		days: apiDays
+	},
 	{
 		table: 'api_rate_limit_events',
 		archive: 'api_rate_limit_events_archive',
-		days: rateLimitDays,
+		ageColumn: 'created_at',
+		filter: '',
+		days: rateLimitDays
 	},
+	...EXAM_NOTIFICATION_ARCHIVE_TARGETS
 ];
 
 const pending = [];
 for (const target of targets) {
 	const result = await sql.query(`
 		SELECT COUNT(*)::int AS n FROM ${target.table}
-		WHERE created_at < NOW() - ${target.days}::int * INTERVAL '1 day'
+		WHERE ${target.ageColumn} < NOW() - ${target.days}::int * INTERVAL '1 day'
+			${target.filter || ''}
 	`);
 	pending.push({ ...target, count: result[0].n });
 }
@@ -71,21 +98,7 @@ if (!apply) {
 }
 
 async function archiveBatch(target) {
-	const result = await sql.query(`
-		WITH moved AS (
-			DELETE FROM ${target.table}
-			WHERE id IN (
-				SELECT id FROM ${target.table}
-				WHERE created_at < NOW() - ${target.days}::int * INTERVAL '1 day'
-				ORDER BY id
-				LIMIT ${batchSize}
-			)
-			RETURNING *
-		)
-		INSERT INTO ${target.archive}
-		SELECT *, NOW() FROM moved
-		RETURNING id
-	`);
+	const result = await sql.query(buildArchiveMoveSql(target, batchSize));
 	return result.length;
 }
 
