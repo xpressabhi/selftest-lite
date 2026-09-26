@@ -5,7 +5,8 @@ Status: approved (brainstorm; all sections reviewed)
 Scope: daily tracking of Indian government recruitment notifications from official
 sources, stored in Neon, surfaced on a searchable /exams hub that deep-links into
 practice papers. No per-notification pages, no push reminders, no results/admit
-cards, no private-sector jobs in v1.
+cards, no private-sector jobs in v1. In-app notification delivery is owned by
+the nudge engine (`2026-09-26-nudge-engine-design.md`).
 
 ## 1. Decisions
 
@@ -168,5 +169,7 @@ Nothing is deleted: rows older than 180 days and unseen for 90 days move to
 
 ## Out of scope / backlog
 
-ItemList JSON-LD, public JSON API, admin quarantine view, deadline push reminders,
-offline SW tuning for /exams, Jev calibrated verifier, auto-added sources.
+ItemList JSON-LD (the public JSON API is now built for the nudge engine's in-app
+notifications — see `2026-09-26-nudge-engine-design.md`), admin quarantine view,
+deadline push reminders, offline SW tuning for /exams, Jev calibrated verifier,
+auto-added sources.
