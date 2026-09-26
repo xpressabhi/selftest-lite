@@ -39,7 +39,10 @@ export const EXAM_SOURCES = [
 		// GitHub's US runners cannot establish a TCP connection to this host
 		// with Node's fetch; curl (verified TLS, longer connect timeout) can.
 		transport: 'curl',
-		enabled: true
+		// Not reachable from GitHub runners at all (TCP connect times out on
+		// both fetch stacks). Fetch it locally with
+		// `npm run exams:sync -- --source=upsc`.
+		enabled: false
 	},
 	{
 		id: 'ssc',
@@ -137,7 +140,9 @@ export const EXAM_SOURCES = [
 			'A language-selection overlay precedes the page; the recruitment notices are listed below it.',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: true
+		// GitHub runners cannot connect to esic.gov.in (verified: fetch
+		// UND_ERR_CONNECT_TIMEOUT, curl connect timeout). Local-only.
+		enabled: false
 	},
 	{
 		id: 'jipmer',
@@ -164,7 +169,8 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: true
+		// GitHub runners cannot connect to tnpsc.gov.in; local-only.
+		enabled: false
 	},
 	{
 		id: 'kerala-psc',
@@ -199,9 +205,10 @@ export const EXAM_SOURCES = [
 		linkHint:
 			'Notices are grouped under "Recruitment (CENs)" by CEN number (e.g. 03/2026). Each CEN carries links labelled Notification, Application (Special Notice), Exam Schedule and more; report the latest Notice/Notification link per CEN as that CEN’s notification.',
 		enrichPdfs: false,
-		// Same reachability problem as UPSC from GitHub's US runners.
+		// Same reachability problem as UPSC from GitHub's US runners;
+		// local-only (`--source=rrb-chandigarh`).
 		transport: 'curl',
-		enabled: true
+		enabled: false
 	},
 	{
 		id: 'uppsc',
