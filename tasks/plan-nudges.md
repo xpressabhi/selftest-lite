@@ -1,7 +1,7 @@
 # Implementation Plan: Nudge Engine
 
 Spec: `docs/superpowers/specs/2026-09-26-nudge-engine-design.md`
-Status: in progress
+Status: phases 1-3 built and verified
 
 One fail-open policy layer decides when to prompt a learner: in-page share/push
 nudges, and in-app notifications for new and relevant exam updates. Jev judges
@@ -24,43 +24,43 @@ copy, placement, and the holdout. Everything ships dark behind `NUDGE_ENABLED`.
 
 ### Phase 1 — Pure engine + route field
 
-- [ ] Task 1 (M): `src/lib/server/nudges.js` + failure-list tests first:
+- [x] Task 1 (M): `src/lib/server/nudges.js` + failure-list tests first:
       kinds/pages eligibility, criteria filtering, thresholds, `wait`/`nothing`,
       clamped state, holdout determinism, notification candidate caps,
       quarantine/closed never ranked, `first_seen_at` seen keys.
       Verify: `npm run test`.
-- [ ] Task 2 (S): wire `/api/personalize` — zod nudge slice, `NUDGE_ENABLED`,
+- [x] Task 2 (S): wire `/api/personalize` — zod nudge slice, `NUDGE_ENABLED`,
       question merge, `nudge` field, `metadata.nudgeHoldout`.
       Verify: `npm run test`; route fails open with flag off.
 
 ### Checkpoint A
-- [ ] `npm run lint`, `npm run test` clean.
+- [x] `npm run lint`, `npm run test` clean.
 
 ### Phase 2 — Client ledger + results share nudge
 
-- [ ] Task 3 (S): `src/lib/client/nudge.js` + tests: ledger read/write,
+- [x] Task 3 (S): `src/lib/client/nudge.js` + tests: ledger read/write,
       cooldowns, dismiss escalation, session/interrupt budget, state builder,
       decision application. Verify: `npm run test`.
-- [ ] Task 4 (S): telemetry allowlist entries + `NudgeCard.svelte` + EN/HI keys.
+- [x] Task 4 (S): telemetry allowlist entries + `NudgeCard.svelte` + EN/HI keys.
       Verify: `npm run test` (allowlist test), `npm run lint`.
-- [ ] Task 5 (M): results page integration (share/challenge kinds, dwell gate,
+- [x] Task 5 (M): results page integration (share/challenge kinds, dwell gate,
       `source: 'nudge'` props) + `tests/e2e/nudges.e2e.js` with stubbed
       `/api/personalize`.
       Verify: `npm run test:e2e`.
 
 ### Checkpoint B
-- [ ] Share nudge show → click → dismiss → backoff all covered by e2e.
+- [x] Share nudge show → click → dismiss → backoff all covered by e2e.
 
 ### Phase 3 — Home share/push nudge
 
-- [ ] Task 6 (M): home integration (`share_streak`, `enable_reminders`), push
+- [x] Task 6 (M): home integration (`share_streak`, `enable_reminders`), push
       CTA calls `enableReminders()` with outcome telemetry, denied → off.
       Verify: `npm run test`; e2e extension.
-- [ ] Task 7 (S): e2e coverage for suppression rules (caps, denied, holdout
+- [x] Task 7 (S): e2e coverage for suppression rules (caps, denied, holdout
       response) and the interrupt budget.
 
 ### Checkpoint C
-- [ ] Full nudge poll e2e green; artifact byte-stable.
+- [x] Full nudge poll e2e green; artifact byte-stable.
 
 ### Phase 4 — Feed API + notification inbox
 

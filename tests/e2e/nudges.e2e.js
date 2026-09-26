@@ -8,6 +8,7 @@ import { expect, test } from '@playwright/test';
 const HISTORY_KEY = 'selftest_history';
 const LEDGER_KEY = 'selftest_nudge_ledger';
 const LANGUAGE_KEY = 'selftest_language';
+const STREAK_KEY = 'selftest_streak';
 
 async function collectErrors(page) {
 	const errors = [];
@@ -109,6 +110,53 @@ function readLedger(page) {
 	return page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) || 'null'), LEDGER_KEY);
 }
 
+function dayKey(offset) {
+	const date = new Date();
+	date.setDate(date.getDate() + offset);
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+		date.getDate()
+	).padStart(2, '0')}`;
+}
+
+function repeatStreak() {
+	return {
+		currentStreak: 4,
+		longestStreak: 12,
+		lastActiveDate: dayKey(0),
+		freezesRemaining: 1,
+		streakHistory: [
+			{ date: dayKey(-3), quizCount: 1 },
+			{ date: dayKey(-2), quizCount: 2 },
+			{ date: dayKey(-1), quizCount: 1 },
+			{ date: dayKey(0), quizCount: 1 }
+		],
+		totalQuizDays: 11
+	};
+}
+
+/** Two practice days plus a streak: the repeat cohort on home. */
+async function seedHome(page, { streak = repeatStreak(), history = null } = {}) {
+	await page.addInitScript(
+		({ streakKey, historyKey, streakValue, historyValue }) => {
+			window.localStorage.setItem(streakKey, JSON.stringify(streakValue));
+			if (historyValue) {
+				window.localStorage.setItem(historyKey, JSON.stringify(historyValue));
+			}
+		},
+		{
+			streakKey: STREAK_KEY,
+			historyKey: HISTORY_KEY,
+			streakValue: streak,
+			historyValue:
+				history ??
+				[
+					{ id: 'e2e-home-1', topic: 'Day one', timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000 },
+					{ id: 'e2e-home-2', topic: 'Day two', timestamp: Date.now() - 60 * 60 * 1000 }
+				]
+		}
+	);
+}
+
 const CHALLENGE_NUDGE = { kind: 'challenge_friend', confidence: 'high', suppressed: null };
 
 test('challenge nudge rides the personalize call, waits for the dwell and shares', async ({
@@ -198,6 +246,62 @@ test('hindi learners get the hindi nudge copy', async ({ page }) => {
 	await expect(page.locator('.nudge-card')).toBeVisible({ timeout: 9000 });
 	await expect(page.locator('.nudge-title')).toContainText('मेरा 2/3');
 	await expect(page.locator('.nudge-card .btn')).toContainText('दोस्त को चुनौती दें');
+
+	expect(errors).toEqual([]);
+});
+
+test('home offers the push ask to a repeat learner and backs off when it fails', async ({
+	page
+}) => {
+	const errors = await collectErrors(page);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedHome(page);
+	await stubPersonalize(page, { kind: 'enable_reminders', confidence: 'high', suppressed: null });
+
+	await page.goto('/');
+	await expect(page.locator('.nudge-card')).toBeVisible({ timeout: 8000 });
+	await expect(page.locator('.nudge-title')).toHaveText('Keep the 4-day streak going');
+	await expect(page.locator('.nudge-card .btn')).toHaveText('Turn on reminders');
+
+	// Dev has no service worker/VAPID key: the flow reports unconfigured and
+	// the ledger backs off instead of asking again.
+	await page.locator('.nudge-card .btn').click();
+	await expect(page.locator('.toast-lite')).toContainText("Reminders aren't available right now");
+	const ledger = await readLedger(page);
+	expect(ledger.dismissals.push).toBe(1);
+
+	expect(errors).toEqual([]);
+});
+
+test('home streak nudge shares the existing streak card', async ({ page }) => {
+	const errors = await collectErrors(page);
+	await seedHome(page);
+	await stubShare(page);
+	await stubPersonalize(page, { kind: 'share_streak', confidence: 'high', suppressed: null });
+
+	await page.goto('/');
+	await expect(page.locator('.nudge-card')).toBeVisible({ timeout: 8000 });
+	await expect(page.locator('.nudge-title')).toHaveText('Share your 4-day streak');
+
+	await page.locator('.nudge-card .btn').click();
+	await expect.poll(() => page.evaluate(() => window.__shareCalls.length)).toBe(1);
+	const call = await page.evaluate(() => window.__shareCalls[0]);
+	expect(call.text).toContain('4-day test streak');
+	const ledger = await readLedger(page);
+	expect(ledger.shareUsedAt).toBeGreaterThan(0);
+
+	expect(errors).toEqual([]);
+});
+
+test('a holdout response leaves home silent', async ({ page }) => {
+	const errors = await collectErrors(page);
+	await seedHome(page);
+	await stubPersonalize(page, null);
+
+	await page.goto('/');
+	await expect(page.locator('.streak-card')).toBeVisible();
+	await page.waitForTimeout(4000);
+	await expect(page.locator('.nudge-card')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });

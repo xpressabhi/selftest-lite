@@ -15,6 +15,7 @@
 	import { showToast } from '$lib/client/toast';
 	import StreakBadges from '$lib/client/StreakBadges.svelte';
 	import StreakReminderRow from '$lib/client/StreakReminderRow.svelte';
+	import { markShareUsed } from '$lib/client/nudge';
 
 	let { streak = null, stats = null, historyCount = 0, locale = 'en' } = $props();
 
@@ -56,13 +57,14 @@
 
 	let sharing = $state(false);
 
-	async function shareStreak() {
+	/** Exported so the home nudge can trigger the exact same share flow. */
+	export async function shareStreak(source = 'button') {
 		if (sharing) {
 			return;
 		}
 		sharing = true;
 		try {
-			track('streak:share');
+			track('streak:share', { source });
 			const origin = typeof window !== 'undefined' ? window.location.origin : '';
 			const canvas = document.createElement('canvas');
 			canvas.width = CARD_WIDTH;
@@ -100,6 +102,9 @@
 				text: $t('shareStreakText', { count: currentStreak }),
 				url: origin,
 			});
+			if (result === 'shared' || result === 'downloaded') {
+				markShareUsed();
+			}
 			if (result === 'downloaded') {
 				showToast($t('streakCardSaved'), 'success');
 			} else if (result === 'failed') {
@@ -155,7 +160,7 @@
 					type="button"
 					aria-label={$t('share')}
 					disabled={sharing}
-					onclick={shareStreak}
+					onclick={() => shareStreak()}
 				>
 					<Icon name="share" size={18} />
 				</button>

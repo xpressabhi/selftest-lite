@@ -1,6 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
-	import { onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { activeLanguage, localizedApiError, t } from '$lib/client/i18n';
 	import { isDataSaverActive } from '$lib/client/preferences';
 	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
@@ -60,6 +60,18 @@
 	import PreviewCard from '$lib/client/PreviewCard.svelte';
 	import QuickStart from '$lib/client/QuickStart.svelte';
 	import StreakCard from '$lib/client/StreakCard.svelte';
+	import NudgeCard from '$lib/client/NudgeCard.svelte';
+	import {
+		buildNudgeState,
+		getSessionBudget,
+		markMomentDismissed,
+		markMomentShown,
+		momentSuppression,
+		readNudgeLedger,
+	} from '$lib/client/nudge';
+	import { eligibleNudgeKinds } from '$lib/shared/nudgePolicy';
+	import { enableReminders, isReminderEnabled, remindersSupported } from '$lib/client/reminders';
+	import { showToast } from '$lib/client/toast';
 	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
 	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
 	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
@@ -166,6 +178,16 @@
 	// the wrong test); when touched, the local list stays put.
 	let recentListTouched = false;
 	let showStreakCard = $state(false);
+	let streakCardRef = $state();
+	let nudgeKind = $state(null);
+	let nudgeParams = $state({});
+	let nudgeDismissed = $state(false);
+	let reminderOn = $state(false);
+	let homeOpenedAt = $state(0);
+	let nudgeTimer = null;
+	let pendingNudge = null;
+
+	const HOME_NUDGE_DWELL_MS = 2000;
 	let difficultyTouched = $state(false);
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
@@ -248,7 +270,121 @@
 		}))
 	);
 
+	function reminderStateForNudge() {
+		if (reminderOn) {
+			return 'on';
+		}
+		if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+			return 'denied';
+		}
+		return remindersSupported() ? 'off' : 'unsupported';
+	}
+
+	function buildHomeNudgeState() {
+		return buildNudgeState({
+			page: 'home',
+			history: getHistory(),
+			streak,
+			reminderState: reminderStateForNudge(),
+			secondsOnPage: homeOpenedAt ? Math.round((Date.now() - homeOpenedAt) / 1000) : 0,
+			isDataSaver: $isDataSaverActive,
+			locale: $activeLanguage === 'hindi' ? 'hi' : 'en',
+		});
+	}
+
+	// The decision rides the home personalize call; the card waits out a short
+	// dwell so it never competes with the first glance.
+	function queueHomeNudge(nudge, state) {
+		if (!nudge || nudgeDismissed || pendingNudge || nudgeKind) {
+			return;
+		}
+		const kind = nudge.kind;
+		if (!kind) {
+			if (nudge.suppressed) {
+				track('nudge:suppressed', { page: 'home', reason: nudge.suppressed });
+			}
+			return;
+		}
+		const reason = momentSuppression({
+			kind,
+			ledger: readNudgeLedger(),
+			now: Date.now(),
+			session: getSessionBudget(),
+		});
+		if (reason) {
+			track('nudge:suppressed', { page: 'home', kind, reason });
+			return;
+		}
+		pendingNudge = {
+			kind,
+			confidence: nudge.confidence,
+			cohort: state.distinctTestDays >= 2 ? 'repeat' : 'new',
+			params:
+				kind === 'share_streak' || kind === 'enable_reminders'
+					? { count: streak?.currentStreak || 0 }
+					: {},
+		};
+		window.clearTimeout(nudgeTimer);
+		nudgeTimer = window.setTimeout(() => {
+			if (!pendingNudge || nudgeDismissed) {
+				return;
+			}
+			nudgeKind = pendingNudge.kind;
+			nudgeParams = pendingNudge.params;
+			track('nudge:shown', {
+				page: 'home',
+				kind: pendingNudge.kind,
+				confidence: pendingNudge.confidence,
+				cohort: pendingNudge.cohort,
+			});
+			markMomentShown(pendingNudge.kind);
+		}, HOME_NUDGE_DWELL_MS);
+	}
+
+	async function handleNudgeSelect(kind) {
+		nudgeKind = null;
+		if (kind === 'share_streak') {
+			track('nudge:clicked', { page: 'home', kind });
+			await streakCardRef?.shareStreak('nudge');
+			return;
+		}
+		const result = await enableReminders();
+		track('nudge:clicked', {
+			page: 'home',
+			kind,
+			outcome: result.ok ? 'enabled' : result.reason,
+		});
+		if (result.ok) {
+			reminderOn = true;
+			showToast($t('reminderEnabledToast'), 'success');
+			return;
+		}
+		const message =
+			result.reason === 'denied'
+				? $t('reminderDenied')
+				: result.reason === 'unconfigured'
+					? $t('reminderUnconfigured')
+					: $t('reminderFailed');
+		showToast(message, 'warning');
+		markMomentDismissed(kind);
+	}
+
+	function handleNudgeDismiss(kind) {
+		track('nudge:dismissed', { page: 'home', kind });
+		markMomentDismissed(kind);
+		pendingNudge = null;
+		nudgeDismissed = true;
+		nudgeKind = null;
+	}
+
+	onDestroy(() => {
+		if (typeof window !== 'undefined') {
+			window.clearTimeout(nudgeTimer);
+		}
+	});
+
 	onMount(() => {
+		homeOpenedAt = Date.now();
 		const ua = window.navigator.userAgent || '';
 		isAndroidDevice = /android/i.test(ua);
 		isInCapacitorApp = Boolean(window.Capacitor?.isNativePlatform?.());
@@ -281,18 +417,32 @@
 		historyCount = historyEntries.length;
 		// Central personalization (fail-open, once per load): Jev picks one
 		// entry point to promote; hides stay behind existing toggles/links.
-		void requestPersonalize('home', {
-			hasUnsubmitted: Boolean(unsubmittedTest),
-			historyCount: historyEntries.length,
-			streak: streak?.currentStreak || 0,
-		}).then((decision) => {
-			if (!decision?.applied) return;
-			if (decision.hide?.includes('manual-browsers')) {
-				showManualConfig = false;
-			}
-			if (decision.promote?.includes('exam-browser')) {
-				showManualConfig = true;
-			}
+		// The nudge slice rides the same call; the push ask needs to know
+		// whether reminders are already on before it is even offered.
+		const reminderReady = remindersSupported() ? isReminderEnabled() : Promise.resolve(false);
+		void reminderReady.then((enabled) => {
+			reminderOn = enabled;
+			const nudgeState = buildHomeNudgeState();
+			const nudgeEligible =
+				!nudgeDismissed && nudgeState && eligibleNudgeKinds(nudgeState).length > 0;
+			void requestPersonalize('home', {
+				hasUnsubmitted: Boolean(unsubmittedTest),
+				historyCount: historyEntries.length,
+				streak: streak?.currentStreak || 0,
+				...(nudgeEligible ? { nudge: nudgeState } : {}),
+			}).then((decision) => {
+				if (decision?.applied) {
+					if (decision.hide?.includes('manual-browsers')) {
+						showManualConfig = false;
+					}
+					if (decision.promote?.includes('exam-browser')) {
+						showManualConfig = true;
+					}
+				}
+				if (nudgeEligible) {
+					queueHomeNudge(decision?.nudge, nudgeState);
+				}
+			});
 		});
 		// Always visible: for a brand-new visitor the empty state and the
 		// explainer are the onboarding ("practice today to start your streak").
@@ -1570,11 +1720,20 @@
 
 		{#if showStreakCard}
 			<StreakCard
+				bind:this={streakCardRef}
 				{streak}
 				{stats}
 				{historyCount}
 				locale={$activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN'}
 			/>
+			{#if nudgeKind}
+				<NudgeCard
+					kind={nudgeKind}
+					params={nudgeParams}
+					onselect={handleNudgeSelect}
+					ondismiss={handleNudgeDismiss}
+				/>
+			{/if}
 		{/if}
 
 		<QuickStart

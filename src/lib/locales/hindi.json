@@ -717,6 +717,7 @@
 	"reminderTimeSet": "रिमाइंडर {time} पर सेट हो गया",
 	"reminderTimeSmart": "स्मार्ट (सुबह/शाम)",
 	"reminderUnconfigured": "रिमाइंडर अभी उपलब्ध नहीं हैं",
+	"reminderEnabledToast": "रोज़ के रिमाइंडर चालू हैं",
 	"nudgeChallengeTitle": "मेरा {score}/{total} हराओ",
 	"nudgeChallengeBody": "यह पेपर दोस्त को भेजें। वही सवाल, बिना साइनअप।",
 	"nudgeChallengeCta": "दोस्त को चुनौती दें",

@@ -717,6 +717,7 @@
 	"reminderTimeSet": "Reminder set for {time}",
 	"reminderTimeSmart": "Smart (morning/evening)",
 	"reminderUnconfigured": "Reminders aren't available right now",
+	"reminderEnabledToast": "Daily reminders are on",
 	"nudgeChallengeTitle": "Beat my {score}/{total}",
 	"nudgeChallengeBody": "Send this paper to a friend. Same questions, no signup.",
 	"nudgeChallengeCta": "Challenge a friend",

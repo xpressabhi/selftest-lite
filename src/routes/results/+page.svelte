@@ -489,7 +489,6 @@
 
 	function handleNudgeSelect(kind) {
 		track('nudge:clicked', { page: 'results', kind });
-		markShareUsed();
 		nudgeKind = null;
 		void shareResult({ source: 'nudge' });
 	}
@@ -810,7 +809,6 @@
 	async function shareResult({ source = 'button' } = {}) {
 		track('results:share', { source });
 		shareSheetEverOpened = true;
-		markShareUsed();
 		const url = challengeShareUrl();
 		const title = `${questionPaper.topic} - ${questionPaper.questions.length} ${$t('questions')}`;
 		const text = $t('shareResultText', {
@@ -825,9 +823,11 @@
 				text,
 				url,
 			});
+			markShareUsed();
 			return;
 		}
 		await navigator.clipboard.writeText(`${text}\n${url}`);
+		markShareUsed();
 		showToast($t('shareLinkCopied'), 'success');
 	}
 
@@ -837,14 +837,13 @@
 		}
 		track('results:share-card');
 		shareSheetEverOpened = true;
-		markShareUsed();
 		const numericId = /^\d+$/.test(String(questionPaper.id));
 		// The card prints a clean, short link; the share text keeps the
 		// full challenge URL with score and name.
 		const displayLink = numericId
 			? `${window.location.origin}/test?id=${encodeURIComponent(questionPaper.id)}`
 			: '';
-		await shareCard({
+		const cardResult = await shareCard({
 			draw: drawScoreCard,
 			card: {
 				topic: questionPaper.topic || '',
@@ -869,6 +868,9 @@
 			url: numericId ? challengeShareUrl() : '',
 			savedToastKey: 'cardSaved',
 		});
+		if (cardResult === 'shared' || cardResult === 'downloaded') {
+			markShareUsed();
+		}
 	}
 
 	async function toggleShareSheet() {
