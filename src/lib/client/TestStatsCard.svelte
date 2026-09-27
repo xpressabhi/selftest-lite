@@ -8,20 +8,10 @@
 
 	let stats = $state(null);
 
-	// Shown once someone else has opened or taken the test, or when the
-	// viewer has their own score to see. A fresh private test shows nothing.
-	const visible = $derived.by(() => {
-		if (!stats) {
-			return false;
-		}
-		if (stats.viewer?.hasAttempted || stats.myAttempt) {
-			return true;
-		}
-		const othersVisited = Number(stats.visitors || 0) - (stats.viewer?.hasVisited ? 1 : 0);
-		const othersSubmitted =
-			Number(stats.submissions || 0) - (stats.viewer?.hasAttempted ? 1 : 0);
-		return othersVisited >= 1 || othersSubmitted >= 1;
-	});
+	// Shown only when there is something to compare: at least two submissions.
+	// A single submission is the viewer's own run (their score already leads
+	// the results page), and none means no activity worth a card.
+	const visible = $derived(Number(stats?.submissions || 0) >= 2);
 
 	const topScores = $derived((stats?.scores || []).slice(0, 5));
 

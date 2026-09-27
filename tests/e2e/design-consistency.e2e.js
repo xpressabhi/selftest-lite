@@ -659,6 +659,20 @@ test('test start, stats and results stay fluid at every width', async ({
 	`;
 	const testId = rows[0].id;
 
+	// The activity card only shows with 2+ submissions, so a second probe test
+	// carries seeded attempts: the card layout beside the summary is still
+	// audited, while the first test keeps the no-card state covered.
+	const statsRows = await sql`
+		INSERT INTO ai_test (test, topic, language, num_questions)
+		VALUES (${JSON.stringify({ topic: 'Layout probe', questions })}::jsonb, 'Layout probe', 'english', 2)
+		RETURNING id
+	`;
+	const statsTestId = statsRows[0].id;
+	await sql`
+		INSERT INTO ai_test_attempts (test_id, score, total_questions, time_taken)
+		VALUES (${statsTestId}, 1, 2, 30), (${statsTestId}, 2, 2, 25)
+	`;
+
 	const report = [];
 	const immersiveShellReport = [];
 	const stateShellReport = [];
@@ -695,14 +709,14 @@ test('test start, stats and results stay fluid at every width', async ({
 		});
 		const visitor = await visitorContext.newPage();
 		await freezeMotion(visitor);
-		await visitor.goto(`/test?id=${testId}`, { waitUntil: 'load' });
+		await visitor.goto(`/test?id=${statsTestId}`, { waitUntil: 'load' });
 		await visitor.locator('.test-stats-card').waitFor({ state: 'visible' });
 		await settled(visitor);
 		report.push({
 			route: `/test (activity card) @${width}`,
 			...(await visitor.evaluate(auditLayout)),
 		});
-		await visitor.goto(`/test/stats?id=${testId}`, { waitUntil: 'load' });
+		await visitor.goto(`/test/stats?id=${statsTestId}`, { waitUntil: 'load' });
 		await settled(visitor);
 		report.push({ route: `/test/stats @${width}`, ...(await visitor.evaluate(auditLayout)) });
 		stateShellReport.push({

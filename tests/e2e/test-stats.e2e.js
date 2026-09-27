@@ -88,22 +88,30 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	await connectOrSkip(sql);
 	const testId = await seedTest(sql, 2);
 
-	// First visitor: no external activity yet, so no stats card.
+	// First visitor: no submissions yet, so no stats card.
+	const firstLoad = page.waitForResponse((response) =>
+		response.url().includes('/api/test/stats')
+	);
 	await page.goto(`/test?id=${testId}`);
 	await expect(page.locator('.test-summary-card')).toBeVisible({ timeout: 15000 });
+	await firstLoad;
 	await expect(page.locator('.test-stats-card')).toHaveCount(0);
 
-	// Second visitor: the card appears with both visits counted.
+	// Second visitor: both visits count, but with no submissions yet the
+	// activity card stays hidden.
 	const visitorContext = await browser.newContext();
 	const visitorPage = await visitorContext.newPage();
+	const visitorFirstLoad = visitorPage.waitForResponse((response) =>
+		response.url().includes('/api/test/stats')
+	);
 	await visitorPage.goto(`/test?id=${testId}`);
-	await expect(visitorPage.locator('.test-stats-card')).toBeVisible();
+	await visitorFirstLoad;
+	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
 	await expect
 		.poll(async () => (await statsViaPage(visitorPage, testId)).body.visitors, {
 			intervals: [500, 1000, 2000],
 		})
 		.toBe(2);
-	await expect(visitorPage.locator('[data-metric="visitors"] .test-stats-value')).toHaveText('2');
 
 	// Answering one question moves the test into "in progress".
 	await visitorPage.getByRole('button', { name: 'Start Test' }).click();
@@ -115,9 +123,15 @@ test('visitors, in-progress and submissions across two visitors', async ({
 		.toBe(1);
 
 	// Submit: one submission, one public score, nothing left in progress.
+	// Hold the stats card's own fetch so the hidden assertion below runs after
+	// the component has its data, not before it mounts.
+	const resultsStats = visitorPage.waitForResponse((response) =>
+		response.url().includes('/api/test/stats')
+	);
 	await visitorPage.locator('.test-progress-pill').click();
 	await pressAndHold(visitorPage, await holdSubmit(visitorPage));
 	await expect(visitorPage).toHaveURL(new RegExp(`/results\\?id=${testId}`));
+	await resultsStats;
 	const after = await statsViaPage(visitorPage, testId);
 	expect(after.body.submissions).toBe(1);
 	expect(after.body.inProgress).toBe(0);
@@ -125,22 +139,39 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	expect(after.body.scores[0]).toMatchObject({ name: null, score: 1, total: 2, isMine: true });
 	expect(after.body.myAttempt).toMatchObject({ score: 1, total: 2 });
 
-	// The taker's own score shows on the results card and back on the start page.
-	await expect(visitorPage.locator('.test-stats-card')).toBeVisible();
-	await expect(visitorPage.locator('.test-stats-my-score')).toContainText('1/2');
+	// One submission or none is not activity: the card stays hidden for the
+	// taker (their score already leads the results page) and for everyone else.
+	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
+
+	const visitorSummaryStats = visitorPage.waitForResponse((response) =>
+		response.url().includes('/api/test/stats')
+	);
 	await visitorPage.goto(`/test?id=${testId}`);
+	await visitorSummaryStats;
+	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
+
+	const firstSummaryStats = page.waitForResponse((response) =>
+		response.url().includes('/api/test/stats')
+	);
+	await page.goto(`/test?id=${testId}`);
+	await firstSummaryStats;
+	await expect(page.locator('.test-stats-card')).toHaveCount(0);
+
+	// A second submission gives the card something to compare: it appears for
+	// both takers, with both public scores and the viewer's own row.
+	await answerFirstAndSubmit(page, new RegExp(`/results\\?id=${testId}`));
+	await expect(page.locator('.test-stats-card')).toBeVisible();
+	await expect(page.locator('.test-stats-my-score')).toContainText('1/2');
+	await expect(page.locator('[data-metric="visitors"] .test-stats-value')).toHaveText('2');
+	await expect(page.locator('[data-metric="submissions"] .test-stats-value')).toHaveText('2');
+	await expect(page.locator('.test-stats-score-row')).toHaveCount(2);
+
+	await visitorPage.goto(`/test?id=${testId}`);
+	await expect(visitorPage.locator('.test-stats-card')).toBeVisible();
 	await expect(visitorPage.locator('.test-stats-my-score')).toContainText('1/2');
 	await expect(
 		visitorPage.locator('[data-metric="submissions"] .test-stats-value')
-	).toHaveText('1');
-
-	// The first visitor sees the activity and the other person's score, not their own.
-	await page.goto(`/test?id=${testId}`);
-	await expect(page.locator('.test-stats-card')).toBeVisible();
-	await expect(page.locator('[data-metric="visitors"] .test-stats-value')).toHaveText('2');
-	await expect(page.locator('[data-metric="submissions"] .test-stats-value')).toHaveText('1');
-	await expect(page.locator('.test-stats-score-row').first()).toContainText('1/2');
-	await expect(page.locator('.test-stats-my-score')).toHaveCount(0);
+	).toHaveText('2');
 
 	// The full stats page renders the same numbers.
 	await page.goto(`/test/stats?id=${testId}`);
@@ -155,7 +186,7 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify(
-			{ visitors: 2, submissions: 1, inProgress: 0, score: '1/2' },
+			{ visitors: 2, submissions: 2, inProgress: 0, score: '1/2' },
 			null,
 			2
 		),
@@ -178,7 +209,8 @@ test('challenge name and params survive submission to the results page', async (
 	await expect(page.locator('.challenge-card')).toBeVisible();
 	const stats = await statsViaPage(page, testId);
 	expect(stats.body.scores[0]).toMatchObject({ name: 'Ravi', score: 1, total: 2 });
-	await expect(page.locator('.test-stats-card')).toBeVisible();
+	// This taker's single submission keeps the activity card hidden.
+	await expect(page.locator('.test-stats-card')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
