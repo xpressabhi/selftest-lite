@@ -383,6 +383,36 @@
 		}
 	});
 
+	// The planner input takes focus on landing so desktop visitors can type
+	// immediately. Touch/coarse-pointer devices are skipped: the on-screen
+	// keyboard would cover the hero and welcome gallery before a tap. The
+	// explicit ?focus=search deep link forces focus on every device.
+	function focusPlannerInput({ force = false } = {}) {
+		if (typeof window === 'undefined') {
+			return;
+		}
+		if (!force) {
+			const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+			const touchPoints = (navigator.maxTouchPoints || 0) > 0;
+			if (coarsePointer || touchPoints) {
+				return;
+			}
+		}
+		// Let the page settle (restored drafts, wizard state) before focusing,
+		// and never steal focus from something the visitor already engaged.
+		window.setTimeout(() => {
+			const input = document.querySelector('.intent-input');
+			if (!input || input.disabled || showProfileWizard) {
+				return;
+			}
+			const active = document.activeElement;
+			if (active && active !== document.body && active !== input) {
+				return;
+			}
+			input.focus({ preventScroll: true });
+		}, 50);
+	}
+
 	onMount(() => {
 		homeOpenedAt = Date.now();
 		const ua = window.navigator.userAgent || '';
@@ -509,13 +539,17 @@
 		window.addEventListener('online', updateNetwork);
 		window.addEventListener('offline', updateNetwork);
 
-		if (new URL(window.location.href).searchParams.get('focus') === 'search') {
+		// Land ready to type: the planner input focuses by default (see
+		// focusPlannerInput). The ?focus=search deep link only needs its URL
+		// cleaned up now.
+		const focusRequested =
+			new URL(window.location.href).searchParams.get('focus') === 'search';
+		if (focusRequested) {
+			// Plain History API: SvelteKit's replaceState refuses to run this
+			// early in the mount effect (router not initialized yet).
 			window.history.replaceState(null, '', window.location.pathname);
-			window.setTimeout(() => {
-				const input = document.querySelector('.intent-input');
-				if (input) input.focus();
-			}, 50);
 		}
+		focusPlannerInput({ force: focusRequested });
 
 		const applyProfilePrefill = (insightsData) => {
 			if (!insightsData?.suggestedDifficulty || difficultyTouched || isFullExam) {

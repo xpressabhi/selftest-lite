@@ -187,3 +187,36 @@ test('hindi home keeps the kicker and the hindi pitch', async ({ page }, testInf
 	expect(panel.y).toBeLessThanOrEqual(200);
 	expect(errors).toEqual([]);
 });
+
+test('desktop landing focuses the planner input, touch devices stay unfocused', async ({
+	browser,
+	page,
+}) => {
+	const errors = await collectErrors(page);
+	await stubBackend(page);
+	await page.goto('/');
+	await waitForHydration(page);
+	await expect(page.locator('.intent-input')).toBeFocused();
+
+	// Touch/coarse-pointer devices land unfocused so the on-screen keyboard
+	// never covers the hero and welcome gallery.
+	const touchContext = await browser.newContext({
+		hasTouch: true,
+		viewport: { width: 390, height: 844 },
+	});
+	const touchPage = await touchContext.newPage();
+	await stubBackend(touchPage);
+	await touchPage.goto('/');
+	await waitForHydration(touchPage);
+	await touchPage.waitForTimeout(250);
+	await expect(touchPage.locator('.intent-input')).not.toBeFocused();
+
+	// The explicit deep link still focuses everywhere and cleans its param.
+	await touchPage.goto('/?focus=search');
+	await waitForHydration(touchPage);
+	await expect(touchPage.locator('.intent-input')).toBeFocused();
+	await expect(touchPage).toHaveURL(/\/$/);
+	await touchContext.close();
+
+	expect(errors).toEqual([]);
+});
