@@ -210,6 +210,13 @@
 			})
 	);
 
+	// True when every question in the current filter is open: the toggle then
+	// offers "Collapse all" instead of "Expand all".
+	let allVisibleExpanded = $derived(
+		filteredQuestions.length > 0 &&
+			filteredQuestions.every(({ index }) => expanded[index] === true)
+	);
+
 	const RING_RADIUS = 42;
 	const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
@@ -517,6 +524,18 @@
 			[index]: !expanded[index],
 		};
 		track('results:toggle-question', { q: index });
+	}
+
+	// Opens (or closes) every question in the current filter at once, so the
+	// answer and options for correct questions are reachable in one tap.
+	function toggleAllExpanded() {
+		const next = !allVisibleExpanded;
+		const nextExpanded = { ...expanded };
+		for (const { index } of filteredQuestions) {
+			nextExpanded[index] = next;
+		}
+		expanded = nextExpanded;
+		track('results:toggle-all', { expanded: next });
 	}
 
 	function reviewWrongAnswers() {
@@ -1289,6 +1308,16 @@
 			>
 				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
 			</button>
+			{#if filteredQuestions.length > 0}
+				<button
+					class="filter-chip filter-toggle-all"
+					type="button"
+					aria-pressed={allVisibleExpanded}
+					onclick={toggleAllExpanded}
+				>
+					{$t(allVisibleExpanded ? 'collapseAll' : 'expandAll')}
+				</button>
+			{/if}
 		</div>
 
 		<label class="auto-explain-row no-print">
@@ -1845,6 +1874,21 @@
 	.filter-chip.active .filter-count {
 		background: var(--color-brand-600);
 		color: var(--on-brand);
+	}
+
+	/* Expand/collapse-all is an action, not a filter: quiet text button at the
+	   end of the bar so it never reads as another filter chip. */
+	.filter-chip.filter-toggle-all {
+		margin-left: auto;
+		border-color: transparent;
+		background: transparent;
+		color: var(--brand-text);
+	}
+
+	.filter-chip.filter-toggle-all:hover,
+	.filter-chip.filter-toggle-all:focus-visible {
+		border-color: transparent;
+		text-decoration: underline;
 	}
 
 	.score-ring {

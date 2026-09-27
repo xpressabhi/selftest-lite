@@ -81,6 +81,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'results:explain-fail',
 	'results:bookmark-question',
 	'results:toggle-question',
+	'results:toggle-all',
 	'results:retake',
 	'results:print',
 	'results:share',

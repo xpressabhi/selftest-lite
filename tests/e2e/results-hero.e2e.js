@@ -279,3 +279,32 @@ test('print opens a clean, chrome-free paper page', async ({ page }) => {
 	await expect(page.locator('.print-btn')).toBeVisible();
 	expect(errors).toEqual([]);
 });
+
+test('expand all opens every question, including correct ones', async ({ page }) => {
+	const errors = await collectErrors(page);
+	// Two correct, one wrong: only the wrong card is open by default.
+	await seedHistory(page, [attempt({ id: 'e2e-expand-all', correctCount: 2, total: 3 })]);
+	await page.goto('/results?id=e2e-expand-all');
+
+	await expect(page.locator('.review-card-body')).toHaveCount(1);
+	const toggle = page.locator('.filter-toggle-all');
+	await expect(toggle).toHaveText('Expand all');
+
+	await toggle.click();
+	await expect(page.locator('.review-card-body')).toHaveCount(3);
+	await expect(toggle).toHaveText('Collapse all');
+	await expect(page.locator('.review-card-head').first()).toHaveAttribute('aria-expanded', 'true');
+
+	// A single card still toggles on its own.
+	await page.locator('.review-card-head').first().click();
+	await expect(page.locator('.review-card-body')).toHaveCount(2);
+	await expect(toggle).toHaveText('Expand all');
+
+	await toggle.click();
+	await expect(page.locator('.review-card-body')).toHaveCount(3);
+
+	await toggle.click();
+	await expect(page.locator('.review-card-body')).toHaveCount(0);
+	await expect(toggle).toHaveText('Expand all');
+	expect(errors).toEqual([]);
+});

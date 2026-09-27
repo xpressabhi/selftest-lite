@@ -42,6 +42,8 @@
 	"filterCorrect": "सही",
 	"filterIncorrect": "गलत",
 	"filterUnanswered": "अनुत्तरित",
+	"expandAll": "सभी खोलें",
+	"collapseAll": "सभी बंद करें",
 	"noFilteredResults": "इस फ़िल्टर से मेल खाने वाले कोई प्रश्न नहीं हैं।",
 	"question": "प्रश्न",
 	"of": "का",
