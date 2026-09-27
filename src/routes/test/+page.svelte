@@ -558,6 +558,15 @@
 		await criticalSection();
 	}
 
+	// Opens the clean paper view (the same /print route the results page uses).
+	function printTest() {
+		if (!questionPaper?.id) {
+			return;
+		}
+		track('test:print');
+		goto(`/print?t=${encodeURIComponent(questionPaper.id)}`);
+	}
+
 	async function shareTest() {
 		if (!questionPaper) {
 			return;
@@ -951,6 +960,10 @@
 						<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
 							{$t('share')}
 						</button>
+						<button class="btn btn-outline-secondary" type="button" onclick={printTest}>
+							<Icon name="print" size={18} />
+							{$t('print')}
+						</button>
 						<button class="btn btn-primary" type="button" onclick={startTest}>
 							{hasDraftAnswers ? $t('continueTest') : $t('startTest')}
 						</button>
@@ -1336,7 +1349,8 @@
 		font-weight: 600;
 	}
 
-	.test-summary-actions .btn-outline-primary {
+	.test-summary-actions .btn-outline-primary,
+	.test-summary-actions .btn-outline-secondary {
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;

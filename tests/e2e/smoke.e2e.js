@@ -500,3 +500,29 @@ test('seeded paper: skip-streak unlocks 50-50, submit lands on results', async (
 	await expect(page.locator('.score-ring-sub')).toContainText('3 of 3 correct');
 	expect(errors).toEqual([]);
 });
+
+test('test start page print opens the clean paper view', async ({ page }) => {
+	const errors = await collectErrors(page);
+	const paper = {
+		id: 'e2e-start-print',
+		topic: 'Smoke Arithmetic',
+		timestamp: Date.now(),
+		questions: [
+			{ question: 'Q1', options: ['A1', 'B1', 'C1', 'D1'], answer: 'A1' },
+			{ question: 'Q2', options: ['A2', 'B2', 'C2', 'D2'], answer: 'A2' },
+		],
+	};
+	await page.addInitScript((seed) => {
+		window.localStorage.setItem('selftest_history', JSON.stringify([seed]));
+	}, paper);
+
+	await page.goto('/test?id=e2e-start-print');
+	await expect(page.locator('.test-summary-card')).toBeVisible();
+	await page.getByRole('button', { name: 'Print' }).click();
+	await expect(page).toHaveURL(/\/print\?t=e2e-start-print$/);
+
+	await expect(page.locator('.print-paper')).toBeVisible();
+	await expect(page.locator('.print-question')).toHaveCount(2);
+	await expect(page.locator('.print-question').first()).toContainText('Q1');
+	expect(errors).toEqual([]);
+});
