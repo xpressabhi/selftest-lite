@@ -19,6 +19,17 @@ body {
 	overscroll-behavior-y: contain;
 }
 
+/* Printing is a product surface (the /print paper): chrome that is parked
+   off-screen or floating must never leak into the sheet. */
+@media print {
+	.skip-link,
+	.toast-lite,
+	.connection-banner,
+	.pwa-install-hint {
+		display: none !important;
+	}
+}
+
 /* Coarse pointers (phones/tablets): enforce the 44px minimum touch target. */
 @media (pointer: coarse) {
 	.btn,

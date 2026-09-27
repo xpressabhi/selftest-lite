@@ -55,6 +55,8 @@
 </script>
 
 <article class="print-paper">
+	<div class="print-watermark" aria-hidden="true">selftest.in</div>
+
 	<header class="print-head">
 		<h1 class="print-topic">{paper?.topic || ''}</h1>
 		{#if examLine}
@@ -144,11 +146,30 @@
 		--line: #d1d5db;
 		--brand-text: #1d4ed8;
 		--on-brand: #f8fafc;
+		position: relative;
 		max-width: 820px;
 		margin: 0 auto;
 		padding: 30px 26px 44px;
 		background: #fff;
 		color: #111827;
+	}
+
+	/* Faint brand watermark: one mark on the sheet on screen, repeated on
+	   every printed page (fixed elements repeat per page in print). */
+	.print-watermark {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		overflow: hidden;
+		pointer-events: none;
+		user-select: none;
+		white-space: nowrap;
+		color: rgba(17, 24, 39, 0.05);
+		font-size: clamp(3.5rem, 9vw, 6.5rem);
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		transform: rotate(-28deg);
 	}
 
 	.print-head {
@@ -285,6 +306,14 @@
 		.print-paper {
 			max-width: none;
 			padding: 0;
+			orphans: 3;
+			widows: 3;
+		}
+
+		.print-watermark {
+			position: fixed;
+			color: rgba(17, 24, 39, 0.08);
+			font-size: 5.5rem;
 		}
 
 		.print-section {
@@ -294,11 +323,26 @@
 			background: transparent;
 		}
 
-		.print-question,
+		/* Keep blocks whole: a question (stem + options) never splits, and the
+		   header/section banners stay with what follows them so a page break
+		   never lands in the middle of a question. */
+		.print-head,
 		.print-section,
-		.print-head {
+		.print-question,
+		.print-foot {
 			break-inside: avoid;
 			page-break-inside: avoid;
+		}
+
+		.print-head,
+		.print-section {
+			break-after: avoid;
+			page-break-after: avoid;
+		}
+
+		/* Proper paper margins; the watermark and content sit inside them. */
+		@page {
+			margin: 15mm 12mm;
 		}
 	}
 </style>
