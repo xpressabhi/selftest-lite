@@ -1,5 +1,5 @@
-// Failure modes P1-P4 were written in tasks/plan-intent-capture.md before this
-// file and before the originalRequest block existed in prompt.js.
+// Failure modes P1-P4 were written before this file and before the
+// originalRequest block existed in prompt.js.
 
 import { describe, expect, it } from 'vitest';
 import { generatePrompt } from './prompt.js';

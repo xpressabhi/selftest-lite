@@ -1,5 +1,5 @@
-// Failure modes S1-S13 were written in tasks/plan-intent-capture.md before
-// this file and before src/lib/server/intentCapture.js existed.
+// Failure modes S1-S13 were written before this file and before
+// src/lib/server/intentCapture.js existed.
 
 import { describe, expect, it } from 'vitest';
 import { buildOriginalRequest, sanitizeIntentCapture } from './intentCapture.js';
