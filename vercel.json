@@ -12,7 +12,11 @@
 			]
 		},
 		{
-			"source": "/og-cover.png",
+			"source": "/og-cover.jpg",
+			"headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+		},
+		{
+			"source": "/og-cover-hi.jpg",
 			"headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
 		},
 		{

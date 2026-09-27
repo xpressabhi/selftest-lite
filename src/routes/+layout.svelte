@@ -242,6 +242,11 @@
 	});
 
 	let activePath = $derived(page.url.pathname);
+	// Social card language follows the URL-driven store the layout pins before
+	// children render: English pages ship the English poster, /hi the Hindi one.
+	let socialImagePath = $derived(
+		$activeLanguage === 'hindi' ? '/og-cover-hi.jpg' : '/og-cover.jpg'
+	);
 	// Chrome-free routes: the test runner and the printable paper.
 	let isImmersive = $derived(
 		page.url.pathname === '/test' || page.url.pathname === '/print'
@@ -474,19 +479,15 @@
 	{/if}
 	<meta name="author" content="selftest.in" />
 	<meta property="og:site_name" content="selftest.in" />
-	<meta property="og:image" content={`${SITE_ORIGIN}/og-cover.png`} />
+	<meta property="og:image" content={`${SITE_ORIGIN}${socialImagePath}`} />
+	<meta property="og:image:type" content="image/jpeg" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
-	<meta
-		property="og:image:alt"
-		content="selftest.in — AI Quiz and Exam Paper Generator for India"
-	/>
+	<meta property="og:image:alt" content={$t('socialImageAlt')} />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:image" content={`${SITE_ORIGIN}/og-cover.png`} />
-	<meta
-		name="twitter:image:alt"
-		content="selftest.in — AI Quiz and Exam Paper Generator for India"
-	/>
+	<meta name="twitter:site" content="@selftest_in" />
+	<meta name="twitter:image" content={`${SITE_ORIGIN}${socialImagePath}`} />
+	<meta name="twitter:image:alt" content={$t('socialImageAlt')} />
 	<link rel="alternate" type="application/rss+xml" title="selftest.in blog" href="/rss.xml" />
 	{@html siteJsonLd}
 </svelte:head>

@@ -10,6 +10,10 @@
 	let { slug, post, related } = $props();
 
 	const category = $derived(getBlogCategory(post.categoryId));
+	// Blog rich result uses the card that matches the article language.
+	const socialImage = $derived(
+		$activeLanguage === 'hindi' ? '/og-cover-hi.jpg' : '/og-cover.jpg'
+	);
 
 	const postJsonLd = $derived(
 		jsonLdScript({
@@ -18,7 +22,7 @@
 			headline: $t(post.titleKey),
 			description: $t(post.excerptKey),
 			articleBody: (post.bodyKeys || []).map((key) => $t(key)).join('\n\n'),
-			image: `${SITE_ORIGIN}/og-cover.png`,
+			image: `${SITE_ORIGIN}${socialImage}`,
 			datePublished: post.date,
 			dateModified: post.modified || post.date,
 			inLanguage: $activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN',
