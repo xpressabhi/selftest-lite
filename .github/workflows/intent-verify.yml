@@ -1,0 +1,63 @@
+name: Intent verify
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: intent-verify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The verifier diffs the pull request against its base revision.
+          fetch-depth: 0
+
+      - name: Locate the change record
+        id: change
+        run: |
+          set -eu
+          base="origin/${{ github.base_ref }}"
+          dirs=$(git diff --name-only "$base"...HEAD -- .intent/changes \
+            | awk -F/ 'NF > 3 && $1 == ".intent" && $2 == "changes" { print $1 "/" $2 "/" $3 }' \
+            | sort -u \
+            | while IFS= read -r dir; do
+                if [ -f "$dir/change.yaml" ]; then printf '%s\n' "$dir"; fi
+              done)
+          count=$(printf '%s' "$dirs" | grep -c . || true)
+          if [ "$count" -eq 0 ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          elif [ "$count" -eq 1 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "dir=$dirs" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::This pull request changes multiple Intent change records; keep one change record per pull request." >&2
+            printf '%s\n' "$dirs" >&2
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        if: steps.change.outputs.found == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.change.outputs.found == 'true'
+        run: npm ci
+
+      - name: Verify change record
+        if: steps.change.outputs.found == 'true'
+        run: sh .intent/scripts/verify-change.sh --change "${{ steps.change.outputs.dir }}" --base "origin/${{ github.base_ref }}"
+
+      - name: Intent verification skipped
+        if: steps.change.outputs.found == 'false'
+        run: echo "::notice::No .intent/changes/<id>/ record changed by this pull request; Intent verification skipped."

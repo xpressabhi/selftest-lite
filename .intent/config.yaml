@@ -1,0 +1,15 @@
+protocol_version: "1.0"
+review:
+  required: false
+  authorized_reviewers: [] # TODO: add authorized reviewers before enabling approval gates
+policy:
+  protected_paths:
+    - "tests/**"
+    - "test/**"
+    - "spec/**"
+    - "**/*.test.*"
+    - "**/*.spec.*"
+    - "**/*_test.*"
+    - "**/test_*.py"
+  verify_command: "npm run test"
+  require_baseline: false
