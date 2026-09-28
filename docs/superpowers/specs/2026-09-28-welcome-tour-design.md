@@ -3,13 +3,14 @@
 Date: 2026-09-28
 Status: approved (behavior and implementation reviewed in the brainstorming session)
 Scope: a one-time, home-only spotlight tour for visitors with no test history: a language
-choice, then composer, examples, and Daily 5. No API, schema, or dependency changes.
+choice (with the header toggle spotlighted), then composer, examples, Daily 5, and the
+streak card. No API, schema, or dependency changes.
 
 ## 1. Objective
 
 The welcome gallery (2026-09-24 spec) filled the empty planner panel, but the funnel still
 leaks: 273 page identities versus 69 `generate:start` in the measured month (see the gallery
-spec §1). The tour turns the next step into an explicit, four-move walkthrough and ends with
+spec §1). The tour turns the next step into an explicit, five-move walkthrough and ends with
 the composer already filled, so a first-time visitor is one tap from a test.
 
 Success criteria:
@@ -18,9 +19,10 @@ Success criteria:
   welcome gallery settles, on `/` and `/hi` only.
 - Step 1 chooses the app language; the choice persists (`selftest_language`) and the tour
   continues in it through the localized twin URL (`/` ↔ `/hi`).
-- Steps 2–4 spotlight the composer, the example rows, and Daily 5; Skip is always visible;
-  Esc and backdrop tap skip; finish and skip both write the device flag and the tour never
-  returns.
+- Steps 2–5 spotlight the composer, the example rows, Daily 5, and the streak card; Skip is
+  always visible; Esc and backdrop tap skip; finish and skip both write the device flag and
+  the tour never returns. Step 1 also spotlights the header language toggle, so the
+  persistent control is discoverable after the tour.
 - "Fill an example" uses the normal example-tap path: exact fill, no request, no
   auto-submit, no keyboard pop, gallery stays visible, `planner:example-tap` fires.
 - Returning users (history exists) are untouched. English + Hindi copy ships in the same
@@ -69,13 +71,14 @@ showWelcome                               (existing derived state)
 
 | # | Spotlight target | Title | Body |
 | - | ---------------- | ----- | ---- |
-| 1 | none (centered card) | Choose your language | Buttons: English · हिंदी. Shown bilingually; no spotlight. |
+| 1 | header language toggle (`.lang-toggle`) | Choose your language | Buttons: English · हिंदी. Shown bilingually; the toggle stays spotlighted so the user learns where to switch later. |
 | 2 | `.intent-input` | Start here | Type what you want to practice. I'll build the test. Add "hard", "20 questions" or "in Hindi" for more control. |
 | 3 | `.welcome-gallery` | No idea what to type? | Tap an example and I'll write it into the box. Edit it any way you like. |
 | 4 | `.daily-five-row` | In a hurry? | Daily 5 starts a five-question round in one tap. No setup needed. |
+| 5 | `.streak-card` | Keep your streak | Practice every day to grow your streak and earn badges. |
 
-Controls: Skip tour (always visible, top-right of the card), Back (steps 2–4), Next (steps
-1–3), step dots plus an sr-only "Step N of 4" counter. Step 4's primary action is **Fill an
+Controls: Skip tour (always visible, top-right of the card), Back (steps 2–5), Next (steps
+1–4), step dots plus an sr-only "Step N of 5" counter. Step 5's primary action is **Fill an
 example**: it calls the existing `handleExampleTap` with the first example of the first
 group (the localized sentence), closes the tour, and writes the flag. No focus is moved to
 the composer, so no keyboard appears. The language step marks the current UI language with
@@ -98,7 +101,9 @@ Language step behavior:
   and a 2px `--brand-text` ring, radius `--radius-surface`. Its top/left/width/height come
   from the measured `getBoundingClientRect()` of the target plus an 8px halo; a CSS
   transition (~240ms ease) moves it between steps. No rAF loop: re-measure on
-  `resize` and `orientationchange` only.
+  `resize`, `orientationchange`, and by a 250ms watcher while the tour is open
+  (state updates only when a rect actually moves, so late hydration shifts such as the
+  header's sign-in control keep the spotlight on target).
 - **Card**: prefers below the target, flips above when space is short, clamps to 16px
   gutters, and must never overlap the spotlighted target. On phones the card sits in the
   larger free region; e2e asserts non-overlap and in-viewport placement at 390×844 and
@@ -111,7 +116,8 @@ Language step behavior:
 - **Reduced motion**: `@media (prefers-reduced-motion: reduce)` disables the spotlight and
   card transitions and uses instant scrolling; the tour remains fully usable.
 - **Exits**: Skip button, Esc, and backdrop tap all skip (flag written). The final CTA
-  completes (flag written). Missing target for a step skips just that step; the tour never
+  completes (flag written). A missing or hidden target (for example a control not rendered
+  at this breakpoint) falls back to a centered card instead of a spotlight; the tour never
   breaks on unexpected DOM.
 
 ## 6. Wiring
@@ -134,13 +140,15 @@ Language step behavior:
 | --- | ------- | ----- |
 | `welcomeTourLabel` | Welcome tour | स्वागत टूर |
 | `welcomeTourLanguageTitle` | Choose your language | अपनी भाषा चुनें |
-| `welcomeTourLanguageHint` | You can change it any time. | आप इसे कभी भी बदल सकते हैं। |
+| `welcomeTourLanguageHint` | You can change it any time from the header. | आप इसे कभी भी हेडर से बदल सकते हैं। |
 | `welcomeTourStartTitle` | Start here | यहाँ से शुरू करें |
 | `welcomeTourStartBody` | Type what you want to practice. I'll build the test. Add “hard”, “20 questions” or “in Hindi” for more control. | जो अभ्यास करना है वह लिखें। मैं टेस्ट बना दूँगा। ज़्यादा नियंत्रण के लिए “कठिन”, “20 प्रश्न” या “अंग्रेज़ी में” जोड़ें। |
 | `welcomeTourExamplesTitle` | No idea what to type? | समझ नहीं आ रहा क्या लिखें? |
 | `welcomeTourExamplesBody` | Tap an example and I'll write it into the box. Edit it any way you like. | किसी उदाहरण पर टैप करें, मैं उसे बॉक्स में लिख दूँगा। चाहें तो बदल भी सकते हैं। |
 | `welcomeTourDailyTitle` | In a hurry? | जल्दी में हैं? |
 | `welcomeTourDailyBody` | Daily 5 starts a five-question round in one tap. No setup needed. | डेली 5 एक टैप में पाँच सवालों का राउंड शुरू करता है। कोई सेटअप नहीं। |
+| `welcomeTourStreakTitle` | Keep your streak | स्ट्रीक बनाए रखें |
+| `welcomeTourStreakBody` | Practice every day to grow your streak and earn badges. | हर दिन अभ्यास करें, अपनी स्ट्रीक बढ़ाएँ और बैज कमाएँ। |
 | `welcomeTourSkip` | Skip tour | टूर छोड़ें |
 | `welcomeTourBack` | Back | पीछे |
 | `welcomeTourNext` | Next | आगे |
@@ -188,11 +196,12 @@ E2E first (`tests/e2e/welcome-tour.e2e.js`), with the established stubs for
 `/api/user/history` and `/api/test`; evidence attached to `test-results/e2e-artifact.json`:
 
 1. New visitor at 390×844 → tour opens ~500ms after the gallery; step 1 shows both
-   language buttons and marks the current language; no console errors (covers 11, 12).
+   language buttons, marks the current language, and spotlights the header language
+   toggle; no console errors (covers 11, 12).
 2. Pick हिंदी → URL `/hi`, Hindi chrome, tour continues at step 2 in Hindi (covers 4).
-3. Next/Back across steps 2–4; the spotlight rect contains the target at phone and desktop
+3. Next/Back across steps 2–5; the spotlight rect contains the target at phone and desktop
    widths (covers 6, 12); step changes move focus to the title.
-4. Step 4 "Fill an example" → composer value equals the first example exactly; no
+4. Step 5 "Fill an example" → composer value equals the first example exactly; no
    `/api/parse-intent` or `/api/generate`; gallery visible; flag written (covers 7, 8).
 5. Skip button, Esc, and backdrop tap each close and write the flag (covers 8).
 6. Reload after finish → no tour; returning user with one stubbed recent test → no tour
@@ -254,7 +263,7 @@ distribution telling whether the tour is too long.
 
 | Risk | Impact | Mitigation |
 | ---- | ------ | ---------- |
-| Tour feels like friction; users skip | Med | Four short steps, Skip always visible, once per device; skip-rate telemetry measures it |
+| Tour feels like friction; users skip | Med | Five short steps, Skip always visible, once per device; skip-rate telemetry measures it |
 | Global test suppression hides regressions | Med | The dedicated spec drives every step and exit; suppression only sets the flag |
 | Spotlight geometry drift (mobile URL bar, rotation) | Med | Re-measure on resize/orientationchange and at each step; e2e asserts containment |
 | Language goto mid-tour on slow networks | Low | Module state survives; the tour stays usable and resumes in the chosen language |

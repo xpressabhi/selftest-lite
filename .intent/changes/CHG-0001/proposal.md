@@ -5,9 +5,10 @@
 ## Request and outcome
 
 A first-time visitor (no test history) sees a one-time welcome tour on the home page:
-step 1 chooses the app language (persisted), steps 2–4 spotlight the composer, the example
-rows, and Daily 5, and the final "Fill an example" action writes a localized example into
-the composer with no request and no auto-submit. Approved design:
+step 1 chooses the app language (persisted) with the header language toggle spotlighted,
+steps 2–5 spotlight the composer, the example rows, Daily 5, and the streak card, and the
+final "Fill an example" action writes a localized example into the composer with no
+request and no auto-submit. Approved design:
 `docs/superpowers/specs/2026-09-28-welcome-tour-design.md`.
 
 ## Context
@@ -26,6 +27,8 @@ to the twin. New UI strings ship in English and Hindi; tests are E2E.
   adoption this feature builds on).
 - A client-only WelcomeTour component with measured spotlight, card placement, step
   controls, focus trap, and body scroll lock.
+- Five steps: language (spotlighting the header language toggle), composer, examples,
+  Daily 5, and the streak card.
 - HomePage open logic (welcome state, device flag, no focused input, 500ms settle) and
   handlers: language choice, fill (reuses `handleExampleTap`), skip, complete.
 - New locale keys (en/hi), storage key `selftest_welcome_tour_done_at`, telemetry events
@@ -60,7 +63,10 @@ suites are protected from the overlay by a global storage-state fixture.
 - Shown once per device; finish, Skip, Esc, and backdrop tap all write the flag so it
   never nags.
 - Language step reuses `setLanguage` + twin navigation so the choice persists and the
-  tour continues in the chosen language.
+  tour continues in the chosen language; the header toggle stays spotlighted so the
+  persistent control is discoverable.
+- The spotlight is re-measured by a 250ms watcher while the tour is open (state updates
+  only when the target actually moves), so late hydration shifts keep it aligned.
 - No new runtime dependencies; geometry measured per step, motion CSS-only, no rAF loops;
   reduced motion has no transitions and instant scrolling.
 - E2E artifact must stay reproducible; telemetry allowlist and emit sites stay honest in

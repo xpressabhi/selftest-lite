@@ -494,7 +494,7 @@
 
 				<div class="header-actions">
 					<button
-						class="header-icon"
+						class="header-icon lang-toggle"
 						type="button"
 						aria-label={$t('switchLanguageAria')}
 						onclick={toggleLanguage}

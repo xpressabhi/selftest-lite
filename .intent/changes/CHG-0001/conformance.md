@@ -3,18 +3,19 @@
 ## Change and intent
 
 - Change: `CHG-0001` — First-visit welcome tour on the home page.
-- Proposal: `proposal.md`, revision 1, digest
-  `sha256:3d9737d8b3fe6405913fee951bcae39e5497b863305389828761849d86981682`.
+- Proposal: `proposal.md`, revision 2, digest
+  `sha256:2a0981c35e9d5a8c3280e4620f74676eafb59403ae5ef9d335626c3846a09fca`.
 - Approval: not required (`review.required: false`); no review evidence recorded.
 
 ## Outcome
 
 As requested. A first-time visitor (no test history, device flag unset) gets a one-time
 tour on `/` and `/hi`: step 1 chooses the app language (persisted through the existing
-preference and twin-URL navigation; the tour continues in that language), then steps 2–4
-spotlight the composer, the example rows, and Daily 5. The final "Fill an example" action
-fills the composer through the existing example-tap path (no request, no auto-submit, no
-keyboard), and finish, Skip, Escape, and backdrop tap all write
+preference and twin-URL navigation; the tour continues in that language) with the header
+language toggle spotlighted so the persistent control stays discoverable, then steps 2–5
+spotlight the composer, the example rows, Daily 5, and the streak card. The final "Fill an
+example" action fills the composer through the existing example-tap path (no request, no
+auto-submit, no keyboard), and finish, Skip, Escape, and backdrop tap all write
 `selftest_welcome_tour_done_at`. Returning users and devices that finished the tour never
 see it. English and Hindi copy ship together; reduced motion has no transitions.
 
@@ -36,10 +37,18 @@ see it. English and Hindi copy ship together; reduced motion has no transitions.
   or any other focused text field, still blocks opening. The reduced-motion test now
   measures the spotlight after step 2 exists, and the blocked-storage test blocks writes
   to the tour's own flag only (a pre-existing unguarded app write is out of scope).
-- The first E2E run caught a real defect: with no spotlight target (the language step),
-  the card had no position and rendered invisible at the viewport origin, also swallowing
-  backdrop taps there. The card now centers when a step has no target; the backdrop-tap
-  test pins it.
+- Revision 2 (second user-requested delta): the streak card joins as step 5, step 1 now
+  spotlights the header language toggle (new `.lang-toggle` hook in the layout) so users
+  learn where to switch later, copy and the step counter/dots/autofocus follow the five
+  steps, and the design doc records all of it.
+- The first E2E run caught a real defect: a step with no position (no target) rendered the
+  card invisible at the viewport origin, also swallowing backdrop taps there. The card now
+  centers when a step has no (or a hidden) target; the backdrop-tap test pins it. The spec
+  wording was corrected from "skip that step" to this fallback.
+- The language spotlight initially pinned to the pre-settlement header position (the
+  sign-in control changes width after hydration). The tour now re-measures with a 250ms
+  watcher that only writes state when the rect actually moves, keeping the spotlight on
+  its target without re-render churn.
 - The pinned verifier was patched: its scope and protected-path loops let bash
   pathname-expand the unquoted pattern lists, replacing declared globs like `src/**` with
   concrete file names so they stopped matching. Both loops now run under `set -f` with the

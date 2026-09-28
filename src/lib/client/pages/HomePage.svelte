@@ -1594,7 +1594,7 @@
 	}
 
 	function handleTourNext() {
-		setTourStep(Math.min(get(welcomeTour).step + 1, 4));
+		setTourStep(Math.min(get(welcomeTour).step + 1, 5));
 	}
 
 	function handleTourBack() {

@@ -15,12 +15,12 @@
 		onfill = () => {},
 	} = $props();
 
-	const STEP_COUNT = 4;
+	const STEP_COUNT = 5;
 	const HALO = 8;
 	const GUTTER = 16;
 	const CARD_GAP = 12;
 	const CARD_MAX_WIDTH = 340;
-	const STEP_INDEXES = [1, 2, 3, 4];
+	const STEP_INDEXES = [1, 2, 3, 4, 5];
 
 	const LANGUAGES = [
 		{ id: 'english', label: 'English' },
@@ -30,7 +30,12 @@
 	// Spotlight targets are the repository's stable test hooks, so the tour
 	// follows the live layout instead of hard-coded coordinates.
 	const STEPS = [
-		{ key: 'language', target: null, titleKey: 'welcomeTourLanguageTitle', bodyKey: '' },
+		{
+			key: 'language',
+			target: '.lang-toggle',
+			titleKey: 'welcomeTourLanguageTitle',
+			bodyKey: '',
+		},
 		{
 			key: 'composer',
 			target: '.intent-input',
@@ -49,6 +54,12 @@
 			titleKey: 'welcomeTourDailyTitle',
 			bodyKey: 'welcomeTourDailyBody',
 		},
+		{
+			key: 'streak',
+			target: '.streak-card',
+			titleKey: 'welcomeTourStreakTitle',
+			bodyKey: 'welcomeTourStreakBody',
+		},
 	];
 
 	const meta = $derived(STEPS[step - 1] ?? STEPS[0]);
@@ -60,7 +71,7 @@
 	let cardEl = $state(null);
 	let titleEl = $state(null);
 	let otherLanguageTitle = $state('');
-	let settleTimer = null;
+	let watchTimer = null;
 	let lastFocusedStep = step;
 
 	// Step 1 speaks both scripts: the current one in the title, the other one
@@ -92,12 +103,28 @@
 			return;
 		}
 		const rect = target.getBoundingClientRect();
-		spotlight = {
+		if (rect.width < 2 || rect.height < 2) {
+			// Hidden at this breakpoint (e.g. desktop-only controls): fall back
+			// to a centered card instead of a zero-size spotlight.
+			spotlight = null;
+			centerCard();
+			return;
+		}
+		const next = {
 			x: rect.left - HALO,
 			y: rect.top - HALO,
 			width: rect.width + HALO * 2,
 			height: rect.height + HALO * 2,
 		};
+		if (
+			!spotlight ||
+			Math.abs(spotlight.x - next.x) > 0.5 ||
+			Math.abs(spotlight.y - next.y) > 0.5 ||
+			Math.abs(spotlight.width - next.width) > 0.5 ||
+			Math.abs(spotlight.height - next.height) > 0.5
+		) {
+			spotlight = next;
+		}
 		placeCard();
 	}
 
@@ -152,7 +179,13 @@
 					: GUTTER;
 		}
 		y = Math.min(Math.max(y, GUTTER), Math.max(GUTTER, viewportHeight - height - GUTTER));
-		cardPosition = { x, y };
+		if (
+			!cardPosition ||
+			Math.abs(cardPosition.x - x) > 0.5 ||
+			Math.abs(cardPosition.y - y) > 0.5
+		) {
+			cardPosition = { x, y };
+		}
 	}
 
 	function handleViewportChange() {
@@ -167,15 +200,19 @@
 		}
 		const previousOverflow = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';
+		// The header and page settle after hydration (the sign-in control
+		// changes width), so keep watching at a low rate and update only when
+		// the target actually moved.
+		watchTimer = window.setInterval(measureSpotlight, 250);
 		window.addEventListener('resize', handleViewportChange);
 		window.addEventListener('orientationchange', handleViewportChange);
 		window.addEventListener('scroll', handleViewportChange, { passive: true });
 		return () => {
 			document.body.style.overflow = previousOverflow;
+			window.clearInterval(watchTimer);
 			window.removeEventListener('resize', handleViewportChange);
 			window.removeEventListener('orientationchange', handleViewportChange);
 			window.removeEventListener('scroll', handleViewportChange);
-			window.clearTimeout(settleTimer);
 		};
 	});
 
@@ -191,19 +228,12 @@
 		}
 		void tick().then(() => {
 			measureSpotlight();
-			if (target) {
-				window.clearTimeout(settleTimer);
-				settleTimer = window.setTimeout(measureSpotlight, 350);
-			}
 			if (currentStep !== lastFocusedStep) {
 				lastFocusedStep = currentStep;
 				titleEl?.focus({ preventScroll: true });
 			}
 		});
 		track('tour:step', { step: currentStep });
-		return () => {
-			window.clearTimeout(settleTimer);
-		};
 	});
 </script>
 

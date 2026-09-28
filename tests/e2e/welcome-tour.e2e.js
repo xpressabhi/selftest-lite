@@ -150,6 +150,10 @@ test('new visitor sees the tour: language step in both scripts, 44px controls', 
 	await expect(page.locator('.welcome-tour-skip')).toBeVisible();
 	await expect(page.locator('.welcome-tour-next')).toBeVisible();
 	await expect(page.locator('.welcome-tour-back')).toHaveCount(0);
+	// The header language toggle is spotlighted so the persistent control is
+	// discoverable after the tour.
+	await spotlightContains(page, '.lang-toggle');
+	await expectCardClearOfSpotlight(page);
 
 	for (const control of ['welcome-tour-skip', 'welcome-tour-lang', 'welcome-tour-next']) {
 		const boxes = await page.locator(`.${control}`).all();
@@ -208,7 +212,7 @@ test('hindi choice continues the tour in hindi on /hi and persists', async ({ pa
 	expect(errors).toEqual([]);
 });
 
-test('next and back walk steps 2-4 with the spotlight on its target', async ({ page }, testInfo) => {
+test('next and back walk steps 2-5 with the spotlight on its target', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await page.setViewportSize({ width: 390, height: 844 });
 	await stubBackend(page);
@@ -228,11 +232,15 @@ test('next and back walk steps 2-4 with the spotlight on its target', async ({ p
 	await page.locator('.welcome-tour-next').click();
 	await expectTourStep(page, 4);
 	await spotlightContains(page, '.daily-five-row');
+
+	await page.locator('.welcome-tour-next').click();
+	await expectTourStep(page, 5);
+	await spotlightContains(page, '.streak-card');
 	await expect(page.locator('.welcome-tour-next')).toHaveCount(0);
 	await expect(page.locator('.welcome-tour-fill')).toBeVisible();
 
 	await page.locator('.welcome-tour-back').click();
-	await expectTourStep(page, 3);
+	await expectTourStep(page, 4);
 	await expect(page.locator('.welcome-tour-title')).toBeFocused();
 
 	await testInfo.attach('evidence', {
@@ -276,10 +284,10 @@ test('fill an example completes the tour exactly without requests', async ({ pag
 	await openTour(page);
 
 	const exampleText = (await page.locator('.welcome-example').first().textContent()).trim();
-	for (let index = 0; index < 3; index += 1) {
+	for (let index = 0; index < 4; index += 1) {
 		await page.locator('.welcome-tour-next').click();
 	}
-	await expectTourStep(page, 4);
+	await expectTourStep(page, 5);
 	await page.locator('.welcome-tour-fill').click();
 
 	await expect(page.locator('.welcome-tour')).toHaveCount(0);
@@ -499,11 +507,12 @@ test('resize keeps the spotlight on its target', async ({ page }, testInfo) => {
 
 	await page.locator('.welcome-tour-next').click();
 	await page.locator('.welcome-tour-next').click();
-	await expectTourStep(page, 4);
-	await spotlightContains(page, '.daily-five-row');
+	await page.locator('.welcome-tour-next').click();
+	await expectTourStep(page, 5);
+	await spotlightContains(page, '.streak-card');
 
 	await page.setViewportSize({ width: 390, height: 844 });
-	await spotlightContains(page, '.daily-five-row');
+	await spotlightContains(page, '.streak-card');
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
