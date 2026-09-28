@@ -6,6 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { neon } from '@neondatabase/serverless';
 import webpush from 'web-push';
+import { getReminderCopy } from '../../src/lib/shared/reminderCopy.js';
 import { REMINDER_DEFAULT_HOUR, REMINDER_QUIET_HOUR } from '../../src/lib/shared/reminders.js';
 import { isPgliteUrl, testDatabaseUrl } from './testDb.js';
 import { PUSH_TEST_KEYS } from './pushTestKeys.js';
@@ -80,6 +81,17 @@ async function readNotifications(page) {
 		const registration = await navigator.serviceWorker.ready;
 		const notifications = await registration.getNotifications();
 		return notifications.map((note) => ({ title: note.title, body: note.body, data: note.data }));
+	});
+}
+
+// Notifications have no unique marker per send, so tests that assert "this
+// sender run delivered" clear the tray first and poll for the title again.
+async function clearNotifications(page) {
+	return page.evaluate(async () => {
+		const registration = await navigator.serviceWorker.ready;
+		const notifications = await registration.getNotifications();
+		notifications.forEach((note) => note.close());
+		return notifications.length;
 	});
 }
 
@@ -166,9 +178,9 @@ test.describe('daily reminder web push', () => {
 					)
 					INSERT INTO push_subscription_archive
 						(id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
-						 created_at, updated_at, last_sent_at, last_error, reminder_hour, archived_at)
+						 created_at, updated_at, last_sent_at, last_error, reminder_hour, language, archived_at)
 					SELECT id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
-						created_at, updated_at, last_sent_at, last_error, reminder_hour, NOW()
+						created_at, updated_at, last_sent_at, last_error, reminder_hour, language, NOW()
 					FROM moved`,
 					[endpoint]
 				)
@@ -248,11 +260,12 @@ test.describe('daily reminder web push', () => {
 		await expect(select).toBeVisible();
 		expect(await select.inputValue()).toBe('');
 
-		// Off: the selection is a local mirror, no server call yet.
-		await select.selectOption('10');
-		await expect(page.getByText(/reminder set for 10 am/i)).toBeVisible();
+		// Off: the selection is a local mirror, no server call yet. The picker
+		// only offers the evening window (4pm → 11pm).
+		await select.selectOption('16');
+		await expect(page.getByText(/reminder set for 4 pm/i)).toBeVisible();
 		expect(reminderRequests.filter((request) => request.method === 'PATCH')).toHaveLength(0);
-		expect(await readStoredHour(page)).toBe(10);
+		expect(await readStoredHour(page)).toBe(16);
 
 		// Enabling applies the selection to the new subscription.
 		const responsePromise = page.waitForResponse(
@@ -266,17 +279,19 @@ test.describe('daily reminder web push', () => {
 		await expect(toggle).toBeChecked();
 
 		const post = reminderRequests.filter((request) => request.method === 'POST').at(-1);
-		expect(post?.body?.hour).toBe(10);
+		expect(post?.body?.hour).toBe(16);
+		expect(post?.body?.language).toBe('en');
 		const subscription = await readSubscription(page);
 		expect(new URL(subscription.endpoint).host).toBe('fcm.googleapis.com');
 		const rows = await sql.query(
-			'SELECT enabled, timezone, last_error, reminder_hour FROM push_subscription WHERE endpoint = $1',
+			'SELECT enabled, timezone, last_error, reminder_hour, language FROM push_subscription WHERE endpoint = $1',
 			[subscription.endpoint]
 		);
 		expect(rows).toHaveLength(1);
 		expect(rows[0].enabled).toBe(true);
 		expect(rows[0].last_error).toBeNull();
-		expect(rows[0].reminder_hour).toBe(10);
+		expect(rows[0].reminder_hour).toBe(16);
+		expect(rows[0].language).toBe('en');
 
 		await testInfo.attach('evidence', {
 			body: JSON.stringify({
@@ -334,18 +349,23 @@ test.describe('daily reminder web push', () => {
 		const testInfo = test.info();
 		const subscription = await readSubscription(page);
 		expect(subscription).toBeTruthy();
-		const [utc] = await sql.query(
-			"SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Etc/GMT0')::int AS hour"
+		// The suite runs at any hour, so pick a timezone whose local clock sits
+		// inside the evening window and a matching chosen hour.
+		const timezone = timezoneWithLocalHour(17);
+		const [{ hour }] = await sql.query(
+			'SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE $1)::int AS hour',
+			[timezone]
 		);
+		expect(hour, `timezone ${timezone} must land at 17:00 local`).toBe(17);
 
-		// Matching hour: the reminder is delivered at the chosen hour itself,
-		// even though the smart default window would not line up.
+		// Matching hour: the reminder is delivered at the chosen hour itself.
 		await sql.query(
 			`UPDATE push_subscription
-			 SET timezone = 'Etc/GMT0', reminder_hour = $2, last_sent_at = NULL
+			 SET timezone = $2, reminder_hour = 17, last_sent_at = NULL
 			 WHERE endpoint = $1`,
-			[subscription.endpoint, utc.hour]
+			[subscription.endpoint, timezone]
 		);
+		await clearNotifications(page);
 		const matchingOutput = await runSender();
 		expect(matchingOutput).toMatch(/1 due, 1 sent, 0 failed, 0 disabled/);
 		await expect
@@ -353,24 +373,24 @@ test.describe('daily reminder web push', () => {
 				timeout: 25_000,
 				message: 'chosen-hour notification should appear',
 			})
-			.toContain('Daily 5 is ready');
+			.toContain(getReminderCopy('en').title);
 
-		// Next hour: nothing is due yet — the catch-up window only opens once
-		// the chosen hour has arrived. (Runs within the same hour window; a
-		// tick exactly between the two runs is the only flake source.)
+		// A later slot: nothing is due yet — the catch-up window only opens
+		// once the chosen hour has arrived. (Runs within the same hour window;
+		// a tick exactly between the two runs is the only flake source.)
 		await sql.query(
 			`UPDATE push_subscription
-			 SET reminder_hour = $2, last_sent_at = NULL
+			 SET reminder_hour = 18, last_sent_at = NULL
 			 WHERE endpoint = $1`,
-			[subscription.endpoint, (utc.hour + 1) % 24]
+			[subscription.endpoint]
 		);
 		const adjacentOutput = await runSender();
 		expect(adjacentOutput).toMatch(/0 due, 0 sent, 0 failed, 0 disabled/);
 
 		await testInfo.attach('evidence', {
 			body: JSON.stringify({
-				timezone: 'Etc/GMT0',
-				utcHour: utc.hour,
+				timezone,
+				localHour: hour,
 				matchingOutput,
 				adjacentOutput,
 			}),
@@ -383,20 +403,21 @@ test.describe('daily reminder web push', () => {
 		const subscription = await readSubscription(page);
 		expect(subscription).toBeTruthy();
 		// The suite runs at any hour, so pick a timezone whose local clock sits
-		// at 14:00 and a chosen hour of 9:00: the slot has passed and the quiet
-		// hour has not arrived, so the sender must deliver a catch-up reminder.
-		const timezone = timezoneWithLocalHour(14);
+		// at 19:00 and a chosen hour of 17:00: the slot has passed and the
+		// quiet hour has not arrived, so the sender must deliver a catch-up.
+		const timezone = timezoneWithLocalHour(19);
 		const [{ hour }] = await sql.query(
 			'SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE $1)::int AS hour',
 			[timezone]
 		);
-		expect(hour, `timezone ${timezone} must land at 14:00 local`).toBe(14);
+		expect(hour, `timezone ${timezone} must land at 19:00 local`).toBe(19);
 		await sql.query(
 			`UPDATE push_subscription
-			 SET timezone = $2, reminder_hour = 9, last_sent_at = NULL
+			 SET timezone = $2, reminder_hour = 17, last_sent_at = NULL
 			 WHERE endpoint = $1`,
 			[subscription.endpoint, timezone]
 		);
+		await clearNotifications(page);
 		const senderOutput = await runSender();
 		expect(senderOutput).toMatch(/1 due, 1 sent, 0 failed, 0 disabled/);
 		await expect
@@ -404,10 +425,38 @@ test.describe('daily reminder web push', () => {
 				timeout: 25_000,
 				message: 'caught-up notification should appear',
 			})
-			.toContain('Daily 5 is ready');
+			.toContain(getReminderCopy('en').title);
 
 		await testInfo.attach('evidence', {
-			body: JSON.stringify({ timezone, chosenHour: 9, senderOutput }),
+			body: JSON.stringify({ timezone, chosenHour: 17, senderOutput }),
+			contentType: 'application/json',
+		});
+	});
+
+	test('the sender follows the stored language for the copy', async () => {
+		const testInfo = test.info();
+		const subscription = await readSubscription(page);
+		expect(subscription).toBeTruthy();
+		const timezone = timezoneWithLocalHour(17);
+		await sql.query(
+			`UPDATE push_subscription
+			 SET timezone = $2, reminder_hour = NULL, last_sent_at = NULL, language = 'hi'
+			 WHERE endpoint = $1`,
+			[subscription.endpoint, timezone]
+		);
+		await clearNotifications(page);
+		const senderOutput = await runSender();
+		expect(senderOutput).toMatch(/1 due, 1 sent, 0 failed, 0 disabled/);
+		const hindiCopy = getReminderCopy('hi');
+		await expect
+			.poll(async () => (await readNotifications(page)).map((note) => note.title), {
+				timeout: 25_000,
+				message: 'Hindi notification should appear',
+			})
+			.toContain(hindiCopy.title);
+
+		await testInfo.attach('evidence', {
+			body: JSON.stringify({ language: 'hi', expectedTitle: hindiCopy.title, senderOutput }),
 			contentType: 'application/json',
 		});
 	});
@@ -472,8 +521,8 @@ test.describe('daily reminder web push', () => {
 		await select.selectOption('18');
 
 		await expect(page.getByText(/couldn't update reminders/i)).toBeVisible();
-		expect(await select.inputValue()).toBe('10');
-		expect(await readStoredHour(page)).toBe(10);
+		expect(await select.inputValue()).toBe('16');
+		expect(await readStoredHour(page)).toBe(16);
 		await page.unroute(`**${REMINDER_API}`);
 		const [after] = await sql.query(
 			'SELECT reminder_hour FROM push_subscription WHERE endpoint = $1',
@@ -482,7 +531,7 @@ test.describe('daily reminder web push', () => {
 		expect(after.reminder_hour).toEqual(before.reminder_hour);
 
 		await testInfo.attach('evidence', {
-			body: JSON.stringify({ selectAfterFailure: '10', localMirror: 10, rowUnchanged: true }),
+			body: JSON.stringify({ selectAfterFailure: '16', localMirror: 16, rowUnchanged: true }),
 			contentType: 'application/json',
 		});
 	});

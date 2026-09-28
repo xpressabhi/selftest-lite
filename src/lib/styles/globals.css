@@ -95,6 +95,21 @@ body {
 	}
 }
 
+/* The home planner composer's travelling brand ring. The angle is a
+   registered property so the conic gradient animates without JS; the
+   global reduced-motion rule freezes it into a static gradient border. */
+@property --ring-angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@keyframes brand-ring {
+	to {
+		--ring-angle: 360deg;
+	}
+}
+
 :root {
 	color-scheme: light;
 	--surface: #ffffff;

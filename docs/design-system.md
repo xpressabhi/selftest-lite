@@ -82,6 +82,11 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
   size (never below 44px).
 - `.form-control` / `.form-select` — 44px, token focus ring, dark-mode aware.
 - Icons: `Icon.svelte` only, one stroke family.
+- The home planner composer carries the one sanctioned always-on looping accent: a
+  travelling brand ring (`@property --ring-angle` + conic-gradient, 8s linear) that marks
+  the planner input as the page's starting point. It freezes into a static gradient
+  border under reduced motion and falls back to a `CanvasText` border in forced-colors
+  mode; do not duplicate the effect elsewhere.
 
 ## Content handling
 

@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
 	HIDDEN_HISTORY: 'selftest_hidden_history',
 	PLANNER_DRAFT: 'selftest_planner_draft',
 	REMINDER_HOUR: 'selftest_reminder_hour',
+	REMINDER_PROMPT_DISMISSED_AT: 'selftest_reminder_prompt_dismissed_at',
 	NUDGE_LEDGER: 'selftest_nudge_ledger',
 };
 

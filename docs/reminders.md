@@ -1,39 +1,44 @@
 # Daily practice reminders (Web Push)
 
-A daily practice reminder at the subscriber's chosen local hour (10 AM, 5 PM,
-…), or from the smart default of 7 AM when they have not chosen one, at most
-once per 20 hours and never after the quiet hour (10 PM local). Delivery
-catches up: GitHub schedules are best-effort (this repo has measured ~6 runs a
-day, not 24), so a run landing hours after the chosen time still delivers that
-day's reminder instead of skipping it. The opt-in is offered on the results page
-after the first completed test.
+An evening nudge from the "study buddy": delivered in the subscriber's local
+window from 4 PM — their chosen hour when it is later — until the quiet hour
+(10 PM), at most once per 20 hours, and never on a day they have already taken
+a test. Delivery catches up: GitHub schedules are best-effort (this repo has
+measured ~6 runs a day, not 24), so a run landing hours after the window opened
+still delivers that day's reminder instead of skipping it. Copy rotates by day
+and language (6 English + 6 Hindi lines in `src/lib/shared/reminderCopy.js`).
+Returning visitors (at least one completed test) get a one-tap opt-in prompt on
+the home streak card; "Not now" is a seven-day cooldown, and the results page
+keeps the manual toggle.
 
 ## How it flows
 
 1. Client (`src/lib/client/reminders.js`) requests notification permission,
    subscribes via `PushManager` with `PUBLIC_VAPID_KEY`, and POSTs the
-   subscription + IANA timezone + chosen hour (null = smart) to
+   subscription + IANA timezone + chosen hour (null = smart) + language to
    `/api/reminders/subscribe`. Picking a different time (`PATCH` to the same
-   route) updates that subscription's `reminder_hour`; the client mirrors the
-   selection in `localStorage` (`selftest_reminder_hour`) so the picker renders
-   before the server answers. Changing the hour clears `last_sent_at`, so the
-   new slot can fire the same day instead of waiting out the 20-hour gap.
-2. Rows live in `push_subscription` (`reminder_hour` 0–23, null = smart);
-   unsubscribing moves the row to `push_subscription_archive` (archive-first,
-   never deleted). Archive inserts name their columns explicitly: the archive is
-   `LIKE push_subscription` + `archived_at`, so a positional `SELECT *` would
-   mis-map once a new source column lands after `archived_at`.
+   route) updates that subscription's `reminder_hour` (and its `language`); the
+   client mirrors the selection in `localStorage` (`selftest_reminder_hour`) so
+   the picker renders before the server answers. Changing the hour clears
+   `last_sent_at`, so the new slot can fire the same day instead of waiting out
+   the 20-hour gap.
+2. Rows live in `push_subscription` (`reminder_hour` null = smart, `language`
+   `en|hi`); unsubscribing moves the row to `push_subscription_archive`
+   (archive-first, never deleted). Archive inserts name their columns
+   explicitly: the archive is `LIKE push_subscription` + `archived_at`, so a
+   positional `SELECT *` would mis-map once a new source column lands after
+   `archived_at`.
 3. `.github/workflows/reminders.yml` runs hourly and calls
    `npm run reminders:send`, which selects due subscriptions and sends through
-   `src/lib/server/push.js`. The whole due rule — chosen hour or the smart
-   default, the catch-up window, the 20-hour gap, the timezone fallback — is one
-   SQL statement in `src/lib/shared/reminders.js`, executed by the sender (and
-   pinned by its PGlite test). The rule is a catch-up window in the subscriber's
-   timezone: due from their slot (chosen hour, or the 7 AM smart default) until
-   the quiet hour (10 PM), subject to the 20-hour gap. Scheduled runs are
-   best-effort, so a run at, say, 2 PM still delivers a 7 AM reminder instead of
-   waiting for tomorrow. 404/410 endpoints are disabled (kept in the table),
-   other failures record `last_error`.
+   `src/lib/server/push.js`. The whole due rule — the evening window clamp, the
+   catch-up window, the 20-hour gap, the timezone fallback, and the
+   practiced-today skip (an `ai_test_attempts` row today for the same
+   `client_id`/`user_id` means the reminder would only nag) — is one SQL
+   statement in `src/lib/shared/reminders.js`, executed by the sender (and
+   pinned by its PGlite test). Scheduled runs are best-effort, so a run at,
+   say, 6 PM still delivers a 4 PM reminder instead of waiting for tomorrow.
+   404/410 endpoints are disabled (kept in the table), other failures record
+   `last_error`.
 4. The service worker handler (`static/push-handler.js`) is injected into the
    Workbox worker via `workbox.importScripts` and opens `/?daily=1`, which
    auto-starts the Daily 5 (`src/routes/+page.svelte`).
@@ -59,21 +64,21 @@ after the first completed test.
 3. Redeploy after adding the Vercel variable (env changes apply per
    deployment), then test locally with a production build
    (`npm run build && npm run preview`); `serviceWorker.ready` does not resolve
-   reliably in `npm run dev`. The toggle now fails fast there: with no
+   reliably in `npm run dev`. The opt-in now fails fast there: with no
    registration it resolves immediately and reports "Reminders aren't available
    right now" instead of hanging.
 
 ## Verifying end-to-end
 
 `npm run test:e2e:push` builds the production app, previews it and drives real
-Chrome through the whole pipeline: the reminder row after the first test, the
-time picker (local while off, saved on enable), a real push delivered via FCM,
-the hourly sender honoring the chosen hour (and sending nothing at an adjacent
-hour), the smart default windows, the hourly sender, and
-archive-on-unsubscribe (including the archived `reminder_hour`). It also injects
-failing save/update responses to prove the toggle stays off, the browser
-subscription is rolled back, the picker snaps back, and invalid hours are
-rejected.
+Chrome through the whole pipeline: the reminder controls after the first test,
+the time picker (local while off, saved on enable, evening hours only), a real
+push delivered via FCM, the hourly sender honoring the chosen hour (and sending
+nothing at an adjacent hour), the smart default window, the stored-language
+copy, and archive-on-unsubscribe (including the archived `reminder_hour`). It
+also injects failing save/update responses to prove the opt-in stays off, the
+browser subscription is rolled back, the picker snaps back, and invalid hours
+are rejected.
 
 Requirements: Chrome installed, network access to FCM, `DATABASE_URL` (env or
 `.env.local`) and a headed session. Headless Chrome denies notification
@@ -87,11 +92,11 @@ so `push_subscription_archive` grows by one row per run). Evidence lands in
 ## Notes
 
 - Without VAPID keys the send script exits 0 with a message and the client
-  toggle reports "unconfigured" — the feature is inert, not broken. The same
-  outcome covers `npm run dev`, which registers no service worker: the row
-  still renders, but flipping the toggle resolves straight to the unavailable
-  toast rather than awaiting a worker that will never arrive. Real opt-in is
-  tested through the preview build or `npm run test:e2e:push`.
+  opt-in reports "unconfigured" — the feature is inert, not broken. The same
+  outcome covers `npm run dev`, which registers no service worker: the prompt
+  still renders, but enabling resolves straight to the unavailable toast rather
+  than awaiting a worker that will never arrive. Real opt-in is tested through
+  the preview build or `npm run test:e2e:push`.
 - iOS requires the PWA to be installed (Add to Home Screen) before Web Push
   works; the toggle is simply hidden where the APIs are missing.
 - Telemetry: `reminder:opt-in` (`enabled: true|false`, plus timezone) and

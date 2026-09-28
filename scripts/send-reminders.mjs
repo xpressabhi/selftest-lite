@@ -4,16 +4,18 @@
 // Run hourly (the reminders GitHub Action does; GitHub schedules are
 // best-effort, so runs arrive late, in bursts, or not at all for an hour). A
 // subscription is due when it is enabled, has not been sent in the last
-// REMINDER_MIN_GAP_HOURS, and the subscriber's local time is inside the
-// catch-up window that opens at their chosen hour — or at the smart default
-// hour when they have not chosen one — and closes at the quiet hour
-// (src/lib/shared/reminders.js).
+// REMINDER_MIN_GAP_HOURS, the subscriber's local time is inside the evening
+// catch-up window (4pm at the earliest — their chosen hour when it is later —
+// until the quiet hour), and they have not already practiced today
+// (src/lib/shared/reminders.js). Copy rotates per day and language
+// (src/lib/shared/reminderCopy.js).
 //
 // Requires DATABASE_URL and VAPID keys. When VAPID keys are absent the script
 // exits 0 with a message so the scheduled workflow is not noisy before setup.
 
 import { neon } from '@neondatabase/serverless';
 import { sendPushNotification } from '../src/lib/server/push.js';
+import { getReminderCopy } from '../src/lib/shared/reminderCopy.js';
 import { DUE_SUBSCRIPTION_PARAMS, DUE_SUBSCRIPTIONS_SQL } from '../src/lib/shared/reminders.js';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -46,8 +48,7 @@ for (const subscription of dueSubscriptions) {
 		await sendPushNotification(
 			subscription,
 			{
-				title: 'Daily 5 is ready',
-				body: 'Keep your streak going — 5 quick questions.',
+				...getReminderCopy(subscription.language, new Date()),
 				url: '/?daily=1',
 			},
 			{ publicKey, privateKey, subject }

@@ -202,7 +202,37 @@ test('badges show earned and locked states and the carousel arrows move', async 
 	});
 });
 
-test('the reminder row appears only after a completed test', async ({ page }, testInfo) => {
+test('the reminder prompt appears only after a completed test', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seed(page, {
+		streak: defaultStreak(),
+		history: [completedAttempt('a', 3, 10)],
+	});
+	await page.goto('/');
+
+	const prompt = page.locator('.streak-reminder-prompt');
+	await expect(prompt).toBeVisible();
+	await expect(prompt).toContainText('Your study buddy wants to nudge you daily');
+	await expect(prompt).toContainText('One tap. A friendly nudge every evening');
+	await expect(prompt.getByRole('button', { name: 'Enable nudges' })).toBeVisible();
+	await expect(prompt.getByRole('button', { name: 'Not now' })).toBeVisible();
+	// Phone width keeps both actions tappable (44px minimum).
+	for (const action of ['Enable nudges', 'Not now']) {
+		const box = await prompt.getByRole('button', { name: action }).boundingBox();
+		expect(box.height).toBeGreaterThanOrEqual(44);
+	}
+
+	// The enabled/save path needs a service worker and real FCM access, so it is
+	// covered by the opt-in push e2e run; this suite only asserts the gate.
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ promptVisible: true, actions: ['Enable nudges', 'Not now'] }, null, 2),
+	});
+});
+
+test('dismissing the reminder prompt snoozes it for a week', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await seed(page, {
 		streak: defaultStreak(),
@@ -210,22 +240,29 @@ test('the reminder row appears only after a completed test', async ({ page }, te
 	});
 	await page.goto('/');
 
-	const reminder = page.locator('.streak-reminder');
-	await expect(reminder).toBeVisible();
-	await expect(reminder).toContainText('Stay tuned');
-	await expect(reminder).toContainText('Daily practice reminders');
-	await expect(reminder.locator('input[type="checkbox"]')).not.toBeChecked();
+	const prompt = page.locator('.streak-reminder-prompt');
+	await expect(prompt).toBeVisible();
+	await prompt.getByRole('button', { name: 'Not now' }).click();
+	await expect(page.locator('.streak-reminder')).toHaveCount(0);
 
-	// The enabled/save path needs a service worker and real FCM access, so it is
-	// covered by the opt-in push e2e run; this suite only asserts the gate.
+	// A week after the dismissal the friendly ask may return.
+	await page.evaluate(() => {
+		window.localStorage.setItem(
+			'selftest_reminder_prompt_dismissed_at',
+			String(Date.now() - 8 * 24 * 60 * 60 * 1000)
+		);
+	});
+	await page.reload();
+	await expect(page.locator('.streak-reminder-prompt')).toBeVisible();
+
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify({ reminderVisible: true, checked: false }, null, 2),
+		body: JSON.stringify({ dismissed: true, resurfacedAfterAWeek: true }, null, 2),
 	});
 });
 
-test('the reminder toggle fails fast instead of hanging in dev', async ({ page }, testInfo) => {
+test('the reminder enable fails fast instead of hanging in dev', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	const reminderRequests = [];
 	page.on('request', (request) => {
@@ -235,7 +272,7 @@ test('the reminder toggle fails fast instead of hanging in dev', async ({ page }
 	});
 	// Granted so the request-permission step cannot mask the service-worker
 	// wait: with no registration (dev registers /sw.js only in production) the
-	// toggle must resolve instead of awaiting `serviceWorker.ready` forever.
+	// opt-in must resolve instead of awaiting `serviceWorker.ready` forever.
 	await page.context().grantPermissions(['notifications']);
 	await seed(page, {
 		streak: defaultStreak(),
@@ -243,18 +280,15 @@ test('the reminder toggle fails fast instead of hanging in dev', async ({ page }
 	});
 	await page.goto('/');
 
-	const toggle = page.locator('.streak-reminder input[type="checkbox"]');
-	await expect(toggle).not.toBeChecked();
-	// Click the label like a user would: the track/thumb sits above the
-	// visually hidden input, so clicking the input directly is intercepted.
-	await page.locator('.streak-reminder-label').click();
+	const enable = page.locator('.streak-reminder-prompt button', { hasText: 'Enable nudges' });
+	await expect(enable).toBeVisible();
+	await enable.click();
 
 	const toast = page.locator('.toast-lite.warning', {
 		hasText: "Reminders aren't available right now",
 	});
 	await expect(toast).toBeVisible();
-	await expect(toggle).not.toBeChecked();
-	await expect(toggle).toBeEnabled();
+	await expect(enable).toBeEnabled();
 	expect(reminderRequests).toEqual([]);
 
 	expect(errors).toEqual([]);
@@ -264,7 +298,7 @@ test('the reminder toggle fails fast instead of hanging in dev', async ({ page }
 			{
 				toast: "Reminders aren't available right now",
 				subscribeRequests: reminderRequests.length,
-				toggleRestored: true,
+				promptRestored: true,
 			},
 			null,
 			2

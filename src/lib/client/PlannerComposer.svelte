@@ -445,20 +445,39 @@
 		gap: 8px;
 		padding: 6px 6px 6px 8px;
 		border-radius: var(--radius-overlay);
-		background: var(--surface);
-		border: 2px solid var(--line);
-		transition:
-			border-color 0.2s ease,
-			box-shadow 0.2s ease;
+		/* Always-on travelling brand ring: base gradient layer under the
+		   border, surface fill over the padding box, angle animated by the
+		   globally registered `brand-ring` keyframes. Reduced motion freezes
+		   it into a static gradient border. */
+		--ring-base: color-mix(in srgb, var(--color-brand-600) 28%, var(--line));
+		--ring-comet: var(--brand-text);
+		border: 2px solid transparent;
+		background:
+			linear-gradient(var(--surface), var(--surface)) padding-box,
+			conic-gradient(
+					from var(--ring-angle),
+					var(--ring-comet) 0deg,
+					var(--ring-base) 40deg,
+					var(--ring-base) 140deg,
+					var(--ring-comet) 180deg,
+					var(--ring-base) 220deg,
+					var(--ring-base) 320deg,
+					var(--ring-comet) 360deg
+				)
+				border-box;
+		animation: brand-ring 8s linear infinite;
+		transition: box-shadow 0.2s ease;
 	}
 
 	.composer-group:focus-within {
-		border-color: rgb(var(--brand-text-rgb));
+		/* The ring stays; focus adds the halo outside it. */
 		box-shadow: 0 0 0 4px rgba(var(--brand-rgb), 0.12);
 	}
 
-	.composer-group.parsing {
-		border-color: rgb(var(--brand-text-rgb));
+	@media (forced-colors: active) {
+		.composer-group {
+			border-color: CanvasText;
+		}
 	}
 
 	.composer-search {

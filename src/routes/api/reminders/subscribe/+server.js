@@ -58,6 +58,7 @@ export async function POST({ request, cookies }) {
 			auth,
 			timezone: body?.timezone,
 			reminderHour: hour,
+			language: body?.language,
 		});
 
 		await logApiEvent({
@@ -116,7 +117,10 @@ export async function PATCH({ request }) {
 			return json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
 		}
 
-		const updated = await updatePushSubscriptionHour(endpoint, hour);
+		// Older clients only send the hour; language is optional so those
+		// updates leave the stored value untouched.
+		const language = body?.language === undefined ? null : body.language;
+		const updated = await updatePushSubscriptionHour(endpoint, hour, language);
 		if (!updated) {
 			return json(
 				{ error: 'Subscription not found', code: 'SUBSCRIPTION_NOT_FOUND' },

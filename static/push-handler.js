@@ -2,9 +2,11 @@
 // Handles daily reminder pushes and focuses (or opens) the app at the Daily 5.
 
 self.addEventListener('push', (event) => {
+	// The sender always carries a day-rotated, language-aware title/body; this
+	// default only covers non-JSON payloads (kept in the study-buddy voice).
 	let payload = {
-		title: 'Daily 5 is ready',
-		body: 'Keep your streak going — 5 quick questions.',
+		title: 'Yo! Your study buddy called 🎯',
+		body: "The table's set, the chai's warm — 5 quick questions?",
 		url: '/?daily=1',
 	};
 	try {

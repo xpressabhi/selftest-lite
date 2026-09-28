@@ -2,8 +2,9 @@ name: Daily reminders
 
 on:
   schedule:
-    # Hourly; the sender only delivers during each subscriber's morning and
-    # evening windows (see scripts/send-reminders.mjs).
+    # Hourly; the sender only delivers during each subscriber's evening
+    # window (4pm → 10pm local) and skips anyone who already practiced today
+    # (see scripts/send-reminders.mjs).
     - cron: '0 * * * *'
   workflow_dispatch:
 

@@ -1,14 +1,18 @@
 // Daily practice reminders via Web Push.
 //
-// The opt-in is explicit and only offered after a user has finished at least
-// two tests. Notification copy is streak-aware and delivered any time from
-// 7am local (chosen hour, or the 7am smart default) until 10pm, catching up
-// when a scheduled run is late (see scripts/send-reminders.mjs), max once per
-// 20 hours.
+// The opt-in is explicit and only offered once a visitor has finished at least
+// one test. Notification copy is a day-rotated "study buddy" line in the
+// subscriber's language (src/lib/shared/reminderCopy.js) and delivered in the
+// evening window from 4pm local — chosen hour or the smart default — until
+// 10pm, catching up when a scheduled run is late (see
+// scripts/send-reminders.mjs), max once per 20 hours.
 
+import { get } from 'svelte/store';
 import { env } from '$env/dynamic/public';
+import { normalizeReminderLanguage } from '$lib/shared/reminderCopy';
 import { parseReminderHour } from '$lib/shared/reminders';
 import { STORAGE_KEYS } from './constants';
+import { language } from './preferences';
 import { track } from './telemetry';
 
 function urlBase64ToUint8Array(base64String) {
@@ -87,8 +91,8 @@ export function getReminderHour() {
 }
 
 /**
- * Changes the daily reminder time (null = smart default, the catch-up window
- * from 7am).
+ * Changes the daily reminder time (null = smart default, the evening window
+ * from 4pm).
  * While reminders are off this only updates the local mirror; enabling applies
  * it. With a live subscription the server row is patched, and a failed patch
  * restores the previous selection.
@@ -113,7 +117,11 @@ export async function setReminderHour(hour) {
 		const response = await fetch('/api/reminders/subscribe', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ endpoint: subscription.endpoint, hour: normalized }),
+			body: JSON.stringify({
+				endpoint: subscription.endpoint,
+				hour: normalized,
+				language: normalizeReminderLanguage(get(language)),
+			}),
 		}).catch(() => null);
 		if (!response?.ok) {
 			writeStoredReminderHour(previous);
@@ -180,6 +188,7 @@ export async function enableReminders() {
 				},
 				timezone,
 				hour: getReminderHour(),
+				language: normalizeReminderLanguage(get(language)),
 			}),
 		}).catch(() => null);
 		if (!saved?.ok) {

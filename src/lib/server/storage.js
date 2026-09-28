@@ -10,6 +10,7 @@ import {
 	toNotificationItem
 } from '$lib/shared/examNotificationSql';
 import { addDays, todayInIst } from '$lib/shared/examNotificationStatus';
+import { normalizeReminderLanguage } from '$lib/shared/reminderCopy';
 import { parseReminderHour } from '$lib/shared/reminders';
 import { sanitizeHintedIndexes } from './hint.js';
 
@@ -244,13 +245,19 @@ export async function ensureStorageSchema() {
 				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 				last_sent_at TIMESTAMPTZ,
 				last_error TEXT,
-				reminder_hour SMALLINT CHECK (reminder_hour BETWEEN 0 AND 23)
+				reminder_hour SMALLINT CHECK (reminder_hour BETWEEN 0 AND 23),
+				language TEXT NOT NULL DEFAULT 'en'
 			)
 		`);
 
 		await query(`
 			ALTER TABLE push_subscription
 			ADD COLUMN IF NOT EXISTS reminder_hour SMALLINT CHECK (reminder_hour BETWEEN 0 AND 23)
+		`);
+
+		await query(`
+			ALTER TABLE push_subscription
+			ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'en'
 		`);
 
 		await query(`
@@ -1353,6 +1360,7 @@ export async function savePushSubscription({
 	auth,
 	timezone = null,
 	reminderHour = null,
+	language = 'en',
 }) {
 	await ensureStorageSchema();
 
@@ -1376,11 +1384,12 @@ export async function savePushSubscription({
 	if (normalizedHour === undefined) {
 		return false;
 	}
+	const normalizedLanguage = normalizeReminderLanguage(language);
 
 	await query(
 		`INSERT INTO push_subscription
-			(client_id, user_id, endpoint, p256dh, auth, timezone, enabled, updated_at, reminder_hour)
-		 VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW(), $7)
+			(client_id, user_id, endpoint, p256dh, auth, timezone, enabled, updated_at, reminder_hour, language)
+		 VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW(), $7, $8)
 		 ON CONFLICT (endpoint) DO UPDATE SET
 			client_id = EXCLUDED.client_id,
 			user_id = COALESCE(EXCLUDED.user_id, push_subscription.user_id),
@@ -1388,6 +1397,7 @@ export async function savePushSubscription({
 			auth = EXCLUDED.auth,
 			timezone = EXCLUDED.timezone,
 			reminder_hour = EXCLUDED.reminder_hour,
+			language = EXCLUDED.language,
 			-- A changed time starts its own schedule: the old last-send must
 			-- not suppress the first reminder at the new hour.
 			last_sent_at = CASE
@@ -1397,17 +1407,26 @@ export async function savePushSubscription({
 			END,
 			enabled = TRUE,
 			updated_at = NOW()`,
-		[normalizedClientId, normalizedUserId, endpoint, p256dh, auth, normalizedTimezone, normalizedHour]
+		[
+			normalizedClientId,
+			normalizedUserId,
+			endpoint,
+			p256dh,
+			auth,
+			normalizedTimezone,
+			normalizedHour,
+			normalizedLanguage
+		]
 	);
 	return true;
 }
 
 /**
- * Changes the reminder hour for one subscription. A changed hour clears the
- * last-send so the new slot can fire the same day, and re-enables the row (a
- * 404/410 send may have disabled it).
+ * Changes the reminder hour for one subscription (and optionally its push
+ * language). A changed hour clears the last-send so the new slot can fire the
+ * same day, and re-enables the row (a 404/410 send may have disabled it).
  */
-export async function updatePushSubscriptionHour(endpoint, hour) {
+export async function updatePushSubscriptionHour(endpoint, hour, language = null) {
 	await ensureStorageSchema();
 	if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) {
 		return false;
@@ -1416,9 +1435,12 @@ export async function updatePushSubscriptionHour(endpoint, hour) {
 	if (normalizedHour === undefined) {
 		return false;
 	}
+	const normalizedLanguage =
+		language === null || language === undefined ? null : normalizeReminderLanguage(language);
 	const result = await query(
 		`UPDATE push_subscription
 		 SET reminder_hour = $2::smallint,
+			language = COALESCE($3, language),
 			last_sent_at = CASE
 				WHEN reminder_hour IS DISTINCT FROM $2::smallint THEN NULL
 				ELSE last_sent_at
@@ -1426,7 +1448,7 @@ export async function updatePushSubscriptionHour(endpoint, hour) {
 			enabled = TRUE,
 			updated_at = NOW()
 		 WHERE endpoint = $1`,
-		[endpoint, normalizedHour]
+		[endpoint, normalizedHour, normalizedLanguage]
 	);
 	return (result.rowCount || 0) > 0;
 }
@@ -1445,9 +1467,9 @@ export async function archivePushSubscription(endpoint) {
 		)
 		INSERT INTO push_subscription_archive
 			(id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
-			 created_at, updated_at, last_sent_at, last_error, reminder_hour, archived_at)
+			 created_at, updated_at, last_sent_at, last_error, reminder_hour, language, archived_at)
 		SELECT id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
-			created_at, updated_at, last_sent_at, last_error, reminder_hour, NOW()
+			created_at, updated_at, last_sent_at, last_error, reminder_hour, language, NOW()
 		FROM moved`,
 		[endpoint]
 	);

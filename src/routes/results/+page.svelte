@@ -29,6 +29,7 @@
 	import ResultReviewList from '$lib/client/ResultReviewList.svelte';
 	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
 	import { questionTextFor } from '$lib/shared/questionText';
+	import { REMINDER_EARLIEST_HOUR } from '$lib/shared/reminders';
 	import {
 		disableReminders,
 		enableReminders,
@@ -94,7 +95,12 @@
 	let reminderEnabled = $state(false);
 	let reminderBusy = $state(false);
 	let reminderHour = $state(null);
-	const reminderHours = Array.from({ length: 24 }, (_, hour) => hour);
+	// Reminders only deliver in the evening window (4pm → 10pm local), so an
+	// earlier hour is not offered.
+	const reminderHours = Array.from(
+		{ length: 24 - REMINDER_EARLIEST_HOUR },
+		(_, index) => REMINDER_EARLIEST_HOUR + index
+	);
 	let comparison = $state(null);
 	let shareSheetOpen = $state(false);
 	let shareButton = $state();
@@ -281,7 +287,12 @@
 			autoExplainEnabled = false;
 		}
 		historyCount = getHistory().length;
-		reminderHour = getReminderHour();
+		const storedReminderHour = getReminderHour();
+		// A pre-evening choice from before the window existed behaves as Smart.
+		reminderHour =
+			storedReminderHour !== null && storedReminderHour < REMINDER_EARLIEST_HOUR
+				? null
+				: storedReminderHour;
 		if (remindersSupported()) {
 			void isReminderEnabled().then((enabled) => {
 				reminderEnabled = enabled;
