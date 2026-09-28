@@ -19,7 +19,8 @@
 // (default gemini-flash-lite-latest; set empty to fail instead of falling
 // back), EXAM_SYNC_MODEL_INTERVAL_MS (default 15000 — keeps calls under the
 // 5 RPM tier limit), EXAM_SYNC_MAX_MODEL_CALLS (default 16 — daily-call
-// budget guard).
+// budget guard). Discovery asks for Google Search grounding and retries
+// prompt-only when the tool is quota-gated on the key's tier.
 
 import { readFileSync, appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -523,10 +524,28 @@ async function extractSourceItems(source, pageText) {
 	throw new Error(`extraction schema mismatch: ${validated.error.message.slice(0, 300)}`);
 }
 
+// Search grounding is gated by API tier: on this key the tool is rejected
+// with 429 RESOURCE_EXHAUSTED while plain calls keep working (the weekly
+// discovery run hit this on every attempt). Discovery only proposes
+// candidates for human review, and every suggestion passes the official-host
+// and reachability checks below, so retrying prompt-only beats failing the
+// weekly job. The report records `grounded` so a degraded run is visible.
 async function suggestSources(knownHosts) {
-	const response = await generateModelContent(buildDiscoveryPrompt({ knownHosts, todayIso }), {
-		tools: [{ googleSearch: {} }]
-	});
+	const prompt = buildDiscoveryPrompt({ knownHosts, todayIso });
+	let response;
+	let grounded = true;
+	try {
+		response = await generateModelContent(prompt, { tools: [{ googleSearch: {} }] });
+	} catch (error) {
+		if (!isModelUnavailable(error)) {
+			throw error;
+		}
+		grounded = false;
+		console.log(
+			`discovery Google Search grounding unavailable (${String(error?.message || '').slice(0, 80)}); retrying without it`
+		);
+		response = await generateModelContent(prompt, {});
+	}
 	let suggestions = [];
 	try {
 		const parsed = parseJsonResponse(response.text);
@@ -547,14 +566,15 @@ async function suggestSources(knownHosts) {
 			}))
 			.filter((suggestion) => suggestion.url);
 	}
-	return suggestions;
+	return { suggestions, grounded };
 }
 
 async function main() {
 	if (options.discover) {
 		const knownHosts = EXAM_SOURCES.flatMap((source) => source.allowedHosts);
+		const discovery = await suggestSources(knownHosts);
 		const report = await runSourceDiscovery({
-			suggest: () => suggestSources(knownHosts),
+			suggest: () => discovery.suggestions,
 			checkLink,
 			store,
 			knownHosts
@@ -566,6 +586,7 @@ async function main() {
 					model,
 					modelCalls: modelCallsMade,
 					fallbackCalls: fallbackCallsMade,
+					grounded: discovery.grounded,
 					startedAt: todayIso,
 					...report
 				},

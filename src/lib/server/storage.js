@@ -87,7 +87,12 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-const SCHEMA_VERSION = 10;
+// Bump this in the same commit as any DDL change below: a database stamped
+// with the current version skips every statement, so a forgotten bump leaves
+// the new column/table missing everywhere and breaks whatever reads it (the
+// push language column shipped without a bump and took the reminder sender
+// down with `column "language" does not exist`).
+const SCHEMA_VERSION = 11;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
