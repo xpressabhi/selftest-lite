@@ -1,6 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount, untrack } from 'svelte';
+	import { get } from 'svelte/store';
 	import { activeLanguage, localizedApiError, t } from '$lib/client/i18n';
 	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
 	import { track } from '$lib/client/telemetry';
@@ -35,13 +36,23 @@
 	import { mergeRecentTests } from '$lib/client/recentTests';
 	import { hydrateHistoryFromServer } from '$lib/client/sync';
 	import { STORAGE_KEYS } from '$lib/client/constants';
+	import { setLanguage } from '$lib/client/preferences';
+	import {
+		beginTour,
+		finishTour,
+		hasFinishedTour,
+		setTourStep,
+		skipTour,
+		welcomeTour,
+	} from '$lib/client/welcomeTour';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
 	import { getStats, getStreak } from '$lib/client/learning';
 	import ChatThread from '$lib/client/ChatThread.svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import PlannerComposer from '$lib/client/PlannerComposer.svelte';
 	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { localizedPath } from '$lib/shared/seo';
+	import WelcomeTour from '$lib/client/WelcomeTour.svelte';
+	import { languageHref, localizedPath } from '$lib/shared/seo';
 	import {
 		applyTurnFailure,
 		applyTurnResult,
@@ -184,6 +195,7 @@
 	let reminderOn = $state(false);
 	let homeOpenedAt = $state(0);
 	let nudgeTimer = null;
+	let tourTimer = null;
 	let pendingNudge = null;
 
 	const HOME_NUDGE_DWELL_MS = 2000;
@@ -378,6 +390,7 @@
 	onDestroy(() => {
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
+			window.clearTimeout(tourTimer);
 		}
 	});
 
@@ -410,6 +423,41 @@
 			input.focus({ preventScroll: true });
 		}, 50);
 	}
+
+	onMount(() => {
+		// Welcome tour: teach first-time visitors once, only while the welcome
+		// gallery is showing and no one is busy in a field. The app focuses the
+		// empty composer as an invitation, which must not block the tour; typed
+		// text, a filled composer, or any other focused text field does. The
+		// device flag is written on finish or skip, never on a mere open.
+		if (get(welcomeTour).status === 'active' || hasFinishedTour()) {
+			return;
+		}
+		const engagedTextField = () => {
+			const active = document.activeElement;
+			if (
+				!(active instanceof HTMLElement) ||
+				!active.matches('input, textarea, [contenteditable="true"]')
+			) {
+				return false;
+			}
+			if (active.classList.contains('intent-input')) {
+				return plannerTyped || galleryFill || active.value.length > 0;
+			}
+			return true;
+		};
+		if (engagedTextField()) {
+			return;
+		}
+		tourTimer = window.setTimeout(() => {
+			tourTimer = null;
+			if (!untrack(() => showWelcome) || engagedTextField()) {
+				return;
+			}
+			beginTour();
+			track('tour:start');
+		}, 500);
+	});
 
 	onMount(() => {
 		homeOpenedAt = Date.now();
@@ -1535,6 +1583,38 @@
 		intentValue = $t(example.key);
 	}
 
+	function handleTourLanguage(language) {
+		track('tour:language', { language });
+		void setLanguage(language);
+		setTourStep(2);
+		const twin = languageHref(window.location.pathname, language);
+		if (twin && twin !== window.location.pathname) {
+			void goto(twin);
+		}
+	}
+
+	function handleTourNext() {
+		setTourStep(Math.min(get(welcomeTour).step + 1, 4));
+	}
+
+	function handleTourBack() {
+		setTourStep(Math.max(get(welcomeTour).step - 1, 1));
+	}
+
+	function handleTourSkip() {
+		track('tour:skip', { step: get(welcomeTour).step });
+		skipTour();
+	}
+
+	function handleTourFill() {
+		const first = plannerExampleGroups[0]?.examples[0];
+		track('tour:complete');
+		finishTour();
+		if (first) {
+			handleExampleTap(first);
+		}
+	}
+
 	function handleTestNavigate(testId) {
 		// Tapping a past test leaves the planner: stop in-flight previews and
 		// forget half-settled values so coming back never shows a stale plan.
@@ -1670,6 +1750,17 @@
 				{planDensity}
 			/>
 		</div>
+
+		{#if $welcomeTour.status === 'active'}
+			<WelcomeTour
+				step={$welcomeTour.step}
+				onlanguage={handleTourLanguage}
+				onback={handleTourBack}
+				onnext={handleTourNext}
+				onskip={handleTourSkip}
+				onfill={handleTourFill}
+			/>
+		{/if}
 
 		{#if selectedExam && examSectionsStatus !== 'idle'}
 			<div class="exam-sections-row mb-4">

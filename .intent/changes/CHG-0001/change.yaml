@@ -1,0 +1,38 @@
+protocol_version: "1.0"
+id: "CHG-0001"
+title: "First-visit welcome tour on the home page"
+status: "complete"
+created_at: "2026-09-28T15:48:29Z"
+request: "A first-time visitor gets a one-time guided tour: choose language, then see the composer, examples, and Daily 5 spotlighted, ending with an example filled into the composer."
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:3d9737d8b3fe6405913fee951bcae39e5497b863305389828761849d86981682"
+scope:
+  included:
+    - "One-time welcome tour for visitors with no test history, home page only."
+    - "Language step that persists the choice and continues the tour in the chosen language."
+    - "Spotlight steps for composer, example rows, and Daily 5; skip via button, Escape, or backdrop."
+    - "Fill-an-example completion through the existing example-tap path."
+  excluded:
+    - "Replay affordances, tours on other pages, auto-advance or typewriter motion."
+    - "API, schema, dependency, and background-job changes."
+    - "Changes to the header language toggle or the paper-language control."
+  paths:
+    - "AGENTS.md"
+    - ".github/**"
+    - "docs/**"
+    - "playwright.config.js"
+    - "src/**"
+    - "tests/**"
+preserved:
+  - "Welcome gallery contract for returning users and tap-to-fill behavior."
+  - "Composer, gradient ring, and planner flows unchanged."
+  - "No pre-existing test is modified, skipped, or deleted."
+test_changes: []
+decisions:
+  - "Spotlight overlay tour chosen over passive animation or coach marks."
+  - "Tour shows once per device; finish, skip, Escape, and backdrop tap all write the flag."
+  - "Language step reuses setLanguage plus twin-URL navigation; module state survives it."
+  - "Test suites are shielded from the overlay via a global storage-state fixture."
+review_required: false

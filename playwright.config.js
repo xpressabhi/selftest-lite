@@ -26,6 +26,9 @@ export default defineConfig({
 		baseURL: 'http://localhost:5174',
 		channel: 'chrome',
 		headless: true,
+		// Existing suites behave like visitors who already finished the welcome
+		// tour; welcome-tour.e2e.js overrides this with an empty state.
+		storageState: 'tests/e2e/welcome-tour-seen.storage.json',
 	},
 	webServer: {
 		command: 'npm run dev -- --port 5174 --strictPort',

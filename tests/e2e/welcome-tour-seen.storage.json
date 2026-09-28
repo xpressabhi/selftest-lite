@@ -1,0 +1,14 @@
+{
+	"cookies": [],
+	"origins": [
+		{
+			"origin": "http://localhost:5174",
+			"localStorage": [
+				{
+					"name": "selftest_welcome_tour_done_at",
+					"value": "1759000000000"
+				}
+			]
+		}
+	]
+}

@@ -47,9 +47,11 @@ step:   1..4
 Open condition, checked on HomePage mount:
 
 ```
-showWelcome                                  (existing derived state)
-&& !hasFinishedTour()                        (selftest_welcome_tour_done_at unset)
-&& no text input focused                     (checked at open time)
+showWelcome                               (existing derived state)
+&& !hasFinishedTour()                     (selftest_welcome_tour_done_at unset)
+&& no engaged text field                  (checked at open time: the composer
+                                          counts only when typed/filled; any
+                                          other focused text field blocks)
 ```
 
 - When the condition holds, a 500ms settle timer opens the tour at step 1. If `showWelcome`
@@ -73,7 +75,7 @@ showWelcome                                  (existing derived state)
 | 4 | `.daily-five-row` | In a hurry? | Daily 5 starts a five-question round in one tap. No setup needed. |
 
 Controls: Skip tour (always visible, top-right of the card), Back (steps 2–4), Next (steps
-1–2), step dots plus an sr-only "Step N of 4" counter. Step 4's primary action is **Fill an
+1–3), step dots plus an sr-only "Step N of 4" counter. Step 4's primary action is **Fill an
 example**: it calls the existing `handleExampleTap` with the first example of the first
 group (the localized sentence), closes the tour, and writes the flag. No focus is moved to
 the composer, so no keyboard appears. The language step marks the current UI language with
@@ -164,8 +166,8 @@ and "हिंदी" labels in their own scripts.
 ## 9. Failure modes (written before the code)
 
 1. Tour appears for a user with history or after the flag is written.
-2. Tour opens while the user is typing / an input is focused; or opens after the welcome
-   state already left (must not write the flag).
+2. Tour opens while the user is typing or another text field is focused, or opens
+   after the welcome state already left (must not write the flag).
 3. Existing suites click through the overlay → global test suppression plus a dedicated
    tour spec.
 4. The language step's navigation loses the tour (state resets to step 1 or closes) →
@@ -196,10 +198,11 @@ E2E first (`tests/e2e/welcome-tour.e2e.js`), with the established stubs for
 6. Reload after finish → no tour; returning user with one stubbed recent test → no tour
    (covers 1).
 7. Reduced motion → computed transitions are ~0, tour fully usable (covers 9).
-8. Focus the composer before the settle timer fires → no tour appears and the flag stays
-   unset (covers 2).
-9. Storage blocked (an init script makes `localStorage` throw) → the tour still opens and
-   skips without console errors (covers 10).
+8. Text already in the composer when the app hydrates (pre-hydration fill) → no tour
+   appears and the flag stays unset (covers 2).
+9. Storage blocked (an init script makes writes to the tour's flag throw) → the tour
+   still opens and skips with no uncaught errors (the app's own storage helpers log and
+   recover) (covers 10).
 10. Resize mid-step → spotlight still contains the target (covers 6).
 
 Failure mode 3 (existing suites) is covered by the suppression below, not by an assertion.

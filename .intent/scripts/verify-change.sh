@@ -552,28 +552,35 @@ done < "$raw"
 scope_patterns=$(scope_paths "$change_yaml")
 if [ -n "$scope_patterns" ]; then
   outside_scope=0
+  # Keep declared globs literal: without `set -f`, unquoted expansions in the
+  # `for` list pathname-expand glob patterns into matching file names, so
+  # `src/**` would stop matching `src/lib/...`.
+  set -f
   while IFS= read -r path; do
-    case $path in .intent/*) continue ;; esac
+    case "$path" in .intent/*) continue ;; esac
     match=0
     for pattern in $scope_patterns; do
-      case $path in $pattern) match=1; break ;; esac
+      case "$path" in $pattern) match=1; break ;; esac
     done
     if [ "$match" -eq 0 ]; then
       note_fail "path outside declared scope: $path"
       outside_scope=1
     fi
   done < "$changed_all"
+  set +f
   [ "$outside_scope" -eq 1 ] || say "changed paths are within declared scope"
 fi
 
 test_change_list=$tmp/test-changes
 test_change_paths "$change_yaml" > "$test_change_list"
 if [ -n "$patterns" ]; then
+  # Same literal-pattern guard as the scope check above.
+  set -f
   while IFS= read -r path; do
-    case $path in .intent/*) continue ;; esac
+    case "$path" in .intent/*) continue ;; esac
     match=0
     for pattern in $patterns; do
-      case $path in $pattern) match=1; break ;; esac
+      case "$path" in $pattern) match=1; break ;; esac
     done
     [ "$match" -eq 1 ] || continue
     if ! grep -Fq -- "$path" "$proposal"; then
@@ -583,6 +590,7 @@ if [ -n "$patterns" ]; then
       note_fail "protected path changed but missing from change.yaml test_changes: $path"
     fi
   done < "$changed_declared"
+  set +f
 fi
 
 weaken_re='^-[[:space:]]*((def|func|fn)[[:space:]]+[Tt]est|it\(|test\(|describe\(|#\[test\]|@Test)'

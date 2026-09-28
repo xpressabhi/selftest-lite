@@ -31,6 +31,12 @@ export const TELEMETRY_EVENTS = new Set([
 	'preview:edit-toggle',
 	'preview:edit-chip',
 	'planner:example-tap',
+	// Welcome tour (first-visit walkthrough)
+	'tour:start',
+	'tour:step',
+	'tour:language',
+	'tour:skip',
+	'tour:complete',
 	'home:manual-expand',
 	'home:resume-test',
 	'streak:view',
