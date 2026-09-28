@@ -445,27 +445,61 @@
 		gap: 8px;
 		padding: 6px 6px 6px 8px;
 		border-radius: var(--radius-overlay);
-		/* Always-on travelling brand ring: base gradient layer under the
-		   border, surface fill over the padding box, angle animated by the
-		   globally registered `brand-ring` keyframes. Reduced motion freezes
-		   it into a static gradient border. */
+		/* Always-on celebratory ring: surface fill over the padding box, then
+		   two conic layers under the border — multicolour comet trains and
+		   counter-rotating glints, angles animated via the globally
+		   registered `brand-ring` / `brand-sparks` keyframes. Reduced motion
+		   freezes it into a static gradient border. */
 		--ring-base: color-mix(in srgb, var(--color-brand-600) 28%, var(--line));
-		--ring-comet: var(--brand-text);
 		border: 2px solid transparent;
 		background:
 			linear-gradient(var(--surface), var(--surface)) padding-box,
+			/* Counter-rotating glints, over the comet trains below. */
+			conic-gradient(
+					from var(--spark-angle),
+					transparent 0deg,
+					transparent 30deg,
+					var(--color-spark-glint) 34deg,
+					var(--color-spark-glint) 40deg,
+					transparent 44deg,
+					transparent 124deg,
+					var(--color-spark-glint) 128deg,
+					var(--color-spark-glint) 134deg,
+					transparent 138deg,
+					transparent 214deg,
+					var(--color-spark-glint) 218deg,
+					var(--color-spark-glint) 224deg,
+					transparent 228deg,
+					transparent 304deg,
+					var(--color-spark-glint) 308deg,
+					var(--color-spark-glint) 314deg,
+					transparent 318deg,
+					transparent 360deg
+				)
+				border-box,
+			/* Two comets: pink head, violet and sky tails. */
 			conic-gradient(
 					from var(--ring-angle),
-					var(--ring-comet) 0deg,
-					var(--ring-base) 40deg,
-					var(--ring-base) 140deg,
-					var(--ring-comet) 180deg,
-					var(--ring-base) 220deg,
-					var(--ring-base) 320deg,
-					var(--ring-comet) 360deg
+					var(--color-spark-pink) 0deg,
+					var(--color-spark-violet) 16deg,
+					var(--color-spark-sky) 34deg,
+					var(--ring-base) 58deg,
+					var(--ring-base) 122deg,
+					var(--color-spark-sky) 146deg,
+					var(--color-spark-violet) 164deg,
+					var(--color-spark-pink) 180deg,
+					var(--color-spark-violet) 196deg,
+					var(--color-spark-sky) 214deg,
+					var(--ring-base) 238deg,
+					var(--ring-base) 302deg,
+					var(--color-spark-sky) 326deg,
+					var(--color-spark-violet) 344deg,
+					var(--color-spark-pink) 360deg
 				)
 				border-box;
-		animation: brand-ring 8s linear infinite;
+		animation:
+			brand-ring 8s linear infinite,
+			brand-sparks 4s cubic-bezier(0.6, 0, 0.4, 1) infinite;
 		transition: box-shadow 0.2s ease;
 	}
 

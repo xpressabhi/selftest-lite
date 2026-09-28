@@ -59,6 +59,12 @@ body {
 	--animate-thinking-dot: thinking-dot 1.4s ease-in-out infinite;
 	--animate-shimmer: shimmer 2.5s ease-in-out infinite;
 	--animate-scale-press: scale-press 0.15s ease-out;
+	/* Composer-ring accents. The planner ring is the one sanctioned multi-hue
+	   accent (see docs/design-system.md); the rest of the app stays indigo. */
+	--color-spark-violet: #8b5cf6;
+	--color-spark-pink: #ec4899;
+	--color-spark-sky: #38bdf8;
+	--color-spark-glint: #f0abfc;
 }
 
 @keyframes thinking-dot {
@@ -95,10 +101,16 @@ body {
 	}
 }
 
-/* The home planner composer's travelling brand ring. The angle is a
-   registered property so the conic gradient animates without JS; the
-   global reduced-motion rule freezes it into a static gradient border. */
+/* The home planner composer's travelling brand ring. The angles are
+   registered properties so the conic gradients animate without JS; the
+   global reduced-motion rule freezes them into a static gradient border. */
 @property --ring-angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@property --spark-angle {
 	syntax: '<angle>';
 	initial-value: 0deg;
 	inherits: false;
@@ -107,6 +119,14 @@ body {
 @keyframes brand-ring {
 	to {
 		--ring-angle: 360deg;
+	}
+}
+
+/* The glint layer orbits the other way, so the ring reads as playful
+   rather than as a progress indicator. */
+@keyframes brand-sparks {
+	to {
+		--spark-angle: -360deg;
 	}
 }
 

@@ -83,10 +83,12 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
 - `.form-control` / `.form-select` — 44px, token focus ring, dark-mode aware.
 - Icons: `Icon.svelte` only, one stroke family.
 - The home planner composer carries the one sanctioned always-on looping accent: a
-  travelling brand ring (`@property --ring-angle` + conic-gradient, 8s linear) that marks
-  the planner input as the page's starting point. It freezes into a static gradient
-  border under reduced motion and falls back to a `CanvasText` border in forced-colors
-  mode; do not duplicate the effect elsewhere.
+  celebratory ring of multicolour comet trains with counter-rotating glints
+  (`@property --ring-angle` / `--spark-angle` + conic-gradients) that marks the planner
+  input as the page's starting point. It is the single documented exception to the
+  one-accent rule — the spark colours live in `@theme` as `--color-spark-*`; do not
+  reuse them or duplicate the effect elsewhere. It freezes into a static gradient border
+  under reduced motion and falls back to a `CanvasText` border in forced-colors mode.
 
 ## Content handling
 

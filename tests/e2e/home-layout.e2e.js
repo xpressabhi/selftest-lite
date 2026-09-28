@@ -220,3 +220,79 @@ test('desktop landing focuses the planner input, touch devices stay unfocused', 
 
 	expect(errors).toEqual([]);
 });
+
+// The composer ring is the one sanctioned always-on accent
+// (docs/design-system.md): it must survive both themes and freeze into a
+// static gradient under reduced motion.
+test('the planner composer carries the travelling brand ring in both themes and freezes under reduced motion', async ({
+	page,
+	browser,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await stubBackend(page);
+	await page.goto('/');
+	await waitForHydration(page);
+
+	const readRing = (target) =>
+		target.evaluate(() => {
+			const group = document.querySelector('.composer-group');
+			const style = getComputedStyle(group);
+			const durations = style.animationDuration.split(',').map((value) => {
+				const token = value.trim();
+				return parseFloat(token) * (token.endsWith('ms') ? 0.001 : 1);
+			});
+			return {
+				animationName: style.animationName,
+				animationDurations: durations,
+				animationIterationCount: style.animationIterationCount,
+				borderTopWidth: style.borderTopWidth,
+				backgroundImage: style.backgroundImage,
+			};
+		});
+
+	const light = await readRing(page);
+	await page.evaluate(() => document.documentElement.classList.add('dark'));
+	const dark = await readRing(page);
+
+	expect(light.animationName).toContain('brand-ring');
+	expect(light.animationName).toContain('brand-sparks');
+	expect(light.animationDurations[0]).toBeCloseTo(8, 2);
+	expect(light.animationDurations[1]).toBeCloseTo(4, 2);
+	expect(light.animationIterationCount).toContain('infinite');
+	expect(light.borderTopWidth).toBe('2px');
+	expect(light.backgroundImage).toContain('conic-gradient');
+	expect(light.backgroundImage).toContain('linear-gradient');
+	expect(dark.backgroundImage).toContain('conic-gradient');
+	// The base ring swaps with the theme, so the ring must differ.
+	expect(dark.backgroundImage).not.toBe(light.backgroundImage);
+
+	const reducedContext = await browser.newContext({
+		reducedMotion: 'reduce',
+		viewport: { width: 1280, height: 800 },
+	});
+	const reducedPage = await reducedContext.newPage();
+	await stubBackend(reducedPage);
+	await reducedPage.goto('/');
+	await waitForHydration(reducedPage);
+	const reduced = await readRing(reducedPage);
+	await reducedContext.close();
+
+	expect(reduced.backgroundImage).toContain('conic-gradient');
+	expect(reduced.animationDurations.every((value) => value < 0.001)).toBe(true);
+
+	await testInfo.attach('ring-light.png', {
+		contentType: 'image/png',
+		body: await page.locator('.composer-group').screenshot(),
+	});
+	await page.evaluate(() => document.documentElement.classList.remove('dark'));
+	await testInfo.attach('ring-dark.png', {
+		contentType: 'image/png',
+		body: await page.locator('.composer-group').screenshot(),
+	});
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ light, dark, reduced }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
