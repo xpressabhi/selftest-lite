@@ -21,8 +21,8 @@
 		<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
 		<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
 		<script>
-			// Pre-paint preferences: apply saved theme/language/data-saver from
-			// localStorage before first paint to avoid theme/language flashes.
+			// Pre-paint preferences: apply saved theme/language from local
+			// storage before first paint to avoid theme/language flashes.
 			(function () {
 				try {
 					var stored = window.localStorage;
@@ -42,9 +42,6 @@
 						stored.getItem('selftest_language') === 'hindi'
 					) {
 						document.documentElement.setAttribute('lang', 'hi');
-					}
-					if (stored.getItem('dataSaverMode') === 'true') {
-						document.documentElement.classList.add('data-saver', 'reduce-motion');
 					}
 				} catch (error) {
 					// localStorage unavailable (private mode etc.); defaults apply.

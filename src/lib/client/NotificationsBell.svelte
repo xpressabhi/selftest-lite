@@ -25,7 +25,6 @@
 		requestNudgeDecision,
 		writeNudgeLedger
 	} from '$lib/client/nudge';
-	import { isDataSaverActive } from '$lib/client/preferences';
 	import { showToastWithAction } from '$lib/client/toast';
 	import { NOTIFICATION_STATUS, todayInIst } from '$lib/shared/examNotificationStatus';
 	import { localizedPath } from '$lib/shared/seo';
@@ -79,7 +78,6 @@
 				candidates,
 				topics: interests.topics,
 				hourLocal: new Date().getHours(),
-				isDataSaver: $isDataSaverActive,
 				locale: $activeLanguage === 'hindi' ? 'hi' : 'en'
 			})
 		);

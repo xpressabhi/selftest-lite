@@ -46,8 +46,8 @@ function localeLabel(language, key) {
 
 // The theme control is icon-only and translated, so resolve its aria-label
 // from the same locale files the layout renders. Position-based selectors are
-// not stable here: .header-actions also holds the data-saver, language,
-// history and menu controls.
+// not stable here: .header-actions also holds the language, history and menu
+// controls.
 const THEME_LABELS = ['english', 'hindi'].map((language) =>
 	localeLabel(language, 'toggleThemeAria')
 );
@@ -70,13 +70,9 @@ test.describe('public pages render clean', () => {
 				await page.setViewportSize({ width: viewport.width, height: viewport.height });
 				// Freeze entry animations: transforms contribute to the
 				// scrollable overflow area, so a mid-flight card could read
-				// as a false horizontal overflow. The init script runs before
-				// the document exists, so guard it and re-apply after load.
-				await page.addInitScript(() => {
-					document.documentElement?.classList.add('reduce-motion');
-				});
+				// as a false horizontal overflow.
+				await page.emulateMedia({ reducedMotion: 'reduce' });
 				await page.goto(path);
-				await page.evaluate(() => document.documentElement.classList.add('reduce-motion'));
 				await expect(page.locator('h1')).toBeVisible();
 				await page.waitForLoadState('networkidle');
 				await page.evaluate(() => document.fonts?.ready);

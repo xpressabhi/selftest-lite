@@ -6,8 +6,6 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkRehype from 'remark-rehype';
-import { get } from 'svelte/store';
-import { isDataSaverActive } from './preferences';
 
 const sanitizeSchema = {
 	...defaultSchema,
@@ -109,13 +107,10 @@ function schedulePrewarm() {
 
 /**
  * Renders text(s) in the background so the unified pipeline never runs on the
- * interaction path. Used to warm the cache for upcoming questions. Skipped in
- * data-saver mode and deferred to idle time so navigation never blocks.
+ * interaction path. Used to warm the cache for upcoming questions. Deferred to
+ * idle time so navigation never blocks.
  */
 export function prewarmRichMarkdown(values) {
-	if (get(isDataSaverActive)) {
-		return;
-	}
 	const texts = Array.isArray(values) ? values : [values];
 	for (const text of texts) {
 		const normalized = String(text || '');

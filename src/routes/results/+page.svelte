@@ -4,7 +4,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import { localizedApiError, t } from '$lib/client/i18n';
-	import { isDataSaverActive, language } from '$lib/client/preferences';
+	import { language } from '$lib/client/preferences';
 	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '$lib/client/countUp.js';
 	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
 	import { track } from '$lib/client/telemetry';
@@ -221,7 +221,7 @@
 	const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 	// Count the score up once the paper arrives, then settle the ring. Skipped
-	// for data-saver and reduced-motion users, who see the final value.
+	// for reduced-motion users, who see the final value.
 	$effect(() => {
 		if (!questionPaper || countUpStarted || percentage <= 0) {
 			return;
@@ -230,7 +230,7 @@
 		const reduceMotion =
 			typeof window !== 'undefined' &&
 			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-		if (!shouldCountUp({ dataSaver: $isDataSaverActive, reduceMotion })) {
+		if (!shouldCountUp({ reduceMotion })) {
 			displayedPercentage = percentage;
 			scoreSettled = true;
 			return;
@@ -428,7 +428,6 @@
 			reminderState: reminderStateForNudge(),
 			shareSheetOpenedThisResult: shareSheetEverOpened,
 			secondsOnPage: resultsOpenedAt ? Math.round((Date.now() - resultsOpenedAt) / 1000) : 0,
-			isDataSaver: $isDataSaverActive,
 			locale: $language === 'hindi' ? 'hi' : 'en',
 		});
 	}
@@ -602,7 +601,7 @@
 	}
 
 	async function runAutoExplain() {
-		if (autoExplainRunning || !questionPaper || $isDataSaverActive) {
+		if (autoExplainRunning || !questionPaper) {
 			return;
 		}
 		const targets = wrongIndices
@@ -1324,7 +1323,6 @@
 			<input
 				type="checkbox"
 				checked={autoExplainEnabled}
-				disabled={$isDataSaverActive}
 				onchange={toggleAutoExplain}
 			/>
 			<span class="small text-muted">
@@ -1332,9 +1330,6 @@
 				{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
 			</span>
 		</label>
-		{#if $isDataSaverActive}
-			<p class="auto-explain-note small text-muted no-print">{$t('autoExplainDataSaver')}</p>
-		{/if}
 
 		{#if achievements.some((item) => item.unlocked) && !resultsHide.includes('achievements')}
 			<div class="row g-3 mb-4">
@@ -1718,11 +1713,6 @@
 		align-items: center;
 		gap: 10px;
 		margin: -6px 0 16px;
-		padding: 0 4px;
-	}
-
-	.auto-explain-note {
-		margin: -12px 0 16px;
 		padding: 0 4px;
 	}
 

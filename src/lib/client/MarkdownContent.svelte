@@ -1,7 +1,5 @@
 <script>
 	import { onDestroy, tick } from 'svelte';
-	import { isDataSaverActive } from './preferences';
-	import { t } from './i18n';
 	import { prepareMathTextForRendering } from '$lib/shared/latex';
 
 	let { content = '', tag = 'div', links = 'allow' } = $props();
@@ -67,11 +65,8 @@
 			return;
 		}
 		mermaidObserver?.disconnect();
-		const render = async (blocks, force = false) => {
+		const render = async (blocks) => {
 			mermaidObserver?.disconnect();
-			if ($isDataSaverActive && !force) {
-				return;
-			}
 			const mermaidModule = await import('mermaid');
 			const mermaid = mermaidModule.default;
 			mermaid.initialize({
@@ -104,29 +99,6 @@
 				})
 			);
 		};
-
-		// Data saver: never ship the mermaid chunk automatically. Show a
-		// tap-to-load placeholder so the diagram is still one tap away.
-		if ($isDataSaverActive) {
-			for (const block of mermaidBlocks) {
-				const pre = block.closest('pre');
-				if (!pre || pre.dataset.mermaidPlaceholder === '1') {
-					continue;
-				}
-				pre.dataset.mermaidPlaceholder = '1';
-				pre.style.display = 'none';
-				const button = document.createElement('button');
-				button.type = 'button';
-				button.className = 'mermaid-load-btn';
-				button.textContent = $t('loadDiagram');
-				button.addEventListener('click', () => {
-					button.remove();
-					void render([block], true);
-				});
-				pre.after(button);
-			}
-			return;
-		}
 
 		if (!('IntersectionObserver' in window)) {
 			await render(mermaidBlocks);
@@ -239,16 +211,4 @@
 		height: auto;
 	}
 
-	.markdown-content :global(.mermaid-load-btn) {
-		display: block;
-		width: 100%;
-		min-height: 44px;
-		padding: 10px 12px;
-		border: 1px dashed var(--line);
-		border-radius: var(--radius-control);
-		background: var(--surface-muted, #f8f9fa);
-		color: var(--text);
-		font-size: 0.85rem;
-		cursor: pointer;
-	}
 </style>

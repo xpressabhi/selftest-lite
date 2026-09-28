@@ -14,7 +14,7 @@ export function countUpValue(target, elapsedMs, durationMs = COUNT_UP_MS) {
 	return Math.round(value * eased);
 }
 
-/** Count-up is decorative: skip it for data-saver and reduced-motion users. */
-export function shouldCountUp({ dataSaver = false, reduceMotion = false } = {}) {
-	return !dataSaver && !reduceMotion;
+/** Count-up is decorative: skip it for reduced-motion users. */
+export function shouldCountUp({ reduceMotion = false } = {}) {
+	return !reduceMotion;
 }

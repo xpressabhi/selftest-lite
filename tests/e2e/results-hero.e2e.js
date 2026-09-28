@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 // Spotlight results hero: comparison-pill states, the adaptive CTA, the share
-// sheet, relocated controls (auto-explain, rating, reminder, print, retake),
-// and data-saver behaviour. Everything is seeded through localStorage; no API
-// keys or backend data needed.
+// sheet, and relocated controls (auto-explain, rating, reminder, print,
+// retake). Everything is seeded through localStorage; no API keys or backend
+// data needed.
 
 const HISTORY_KEY = 'selftest_history';
 
@@ -229,14 +229,12 @@ test('share sheet routes link and card sharing, and dismisses cleanly', async ({
 	expect(errors).toEqual([]);
 });
 
-test('data saver keeps the hero static and disables auto-explain', async ({ page }) => {
+test('reduced motion renders the final score without count-up', async ({ page }) => {
 	const errors = await collectErrors(page);
-	await page.addInitScript(() => window.localStorage.setItem('dataSaverMode', 'true'));
-	await seedHistory(page, [attempt({ id: 'e2e-saver' })]);
-	await page.goto('/results?id=e2e-saver');
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await seedHistory(page, [attempt({ id: 'e2e-reduced-motion' })]);
+	await page.goto('/results?id=e2e-reduced-motion');
 
-	await expect(page.locator('html')).toHaveClass(/data-saver/);
-	await expect(page.locator('.auto-explain-row input')).toBeDisabled();
 	// No count-up: the final value is rendered straight away.
 	await expect(page.locator('.score-ring-pct')).toHaveText('67%');
 	await expect(page.locator('.score-ring')).toHaveClass(/settled/);

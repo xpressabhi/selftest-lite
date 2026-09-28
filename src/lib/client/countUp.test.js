@@ -29,10 +29,8 @@ describe('countUpValue', () => {
 });
 
 describe('shouldCountUp', () => {
-	it('skips the animation for data-saver and reduced-motion users', () => {
-		expect(shouldCountUp({ dataSaver: true })).toBe(false);
+	it('skips the animation for reduced-motion users', () => {
 		expect(shouldCountUp({ reduceMotion: true })).toBe(false);
-		expect(shouldCountUp({ dataSaver: true, reduceMotion: true })).toBe(false);
 	});
 
 	it('animates by default', () => {

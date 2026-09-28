@@ -540,13 +540,6 @@
 		}
 	}
 
-	:global(html.data-saver) .welcome-gallery,
-	:global(html.reduce-motion) .welcome-gallery,
-	:global(html.data-saver) .welcome-tip,
-	:global(html.reduce-motion) .welcome-tip {
-		animation: none;
-	}
-
 	.typing-dot {
 		width: 7px;
 		height: 7px;
@@ -574,12 +567,6 @@
 			opacity: 1;
 			transform: translateY(-3px);
 		}
-	}
-
-	:global(html.data-saver) .typing-dot,
-	:global(html.reduce-motion) .typing-dot {
-		animation: none;
-		opacity: 0.7;
 	}
 
 	@media (max-width: 480px) {

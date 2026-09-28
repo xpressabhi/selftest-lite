@@ -82,7 +82,7 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 
 - **Tailwind**: Generated through the SvelteKit PostCSS pipeline.
 - **Custom CSS**: Shared variables and Tailwind component primitives live in `src/lib/styles/globals.css`.
-- **Animations**: Prefer subtle transforms and transitions for a "premium" feel. The `.data-saver` / `.reduce-motion` classes on `document.documentElement` disable heavy animations on low-end devices (managed by `src/lib/client/preferences.js`).
+- **Animations**: Prefer subtle transforms and transitions for a "premium" feel; the OS `prefers-reduced-motion` setting disables them globally via `globals.css`.
 
 ### 5. Telemetry & Product Analytics
 
@@ -112,15 +112,12 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 - **Low-End (Budget Android)**:
     - Minimize heavy JS execution.
     - Use lightweight skeletons/placeholders instead of complex spinners.
-    - Respect the `.data-saver` class on `document.documentElement` to disable heavy animations.
     - **Default optimization target**: Assume low-end Android is the baseline device for all new features and refactors.
 
 ### 3. Network Resilience (Slow Internet)
 
-- `src/lib/client/preferences.js` detects slow connections (`navigator.connection.saveData` / `effectiveType`) and exposes the `isDataSaverActive` store.
 - **Optimization Strategy**:
-    - Reduce the default number of questions if data saver is active.
-    - Prefer the lighter `src/lib/client/markdownRenderer.js` path; heavy diagram/math rendering must degrade gracefully in data-saver mode.
+    - Prefer the lighter `src/lib/client/markdownRenderer.js` path; heavy diagram/math rendering must degrade gracefully (lazy chunks, deferred work).
     - Avoid unnecessary client fetches and duplicate API calls; prefer cached/local-first UX when safe.
 - **Image Handling**: Always use `loading="lazy"` for non-critical images.
 
@@ -132,7 +129,7 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
     - Math/science notation via KaTeX (`remark-math` + `rehype-katex`)
     - Physics/chemistry symbols and unicode characters (Ω, μ, θ, CO₂, H₂SO₄)
 - Security rule: do not render unsanitized raw HTML from model output (`rehype-sanitize` is applied before rendering).
-- Performance rule: math/diagram rendering must degrade gracefully in data-saver mode and on slow devices.
+- Performance rule: math/diagram rendering must degrade gracefully on slow devices (lazy chunks, deferred work).
 
 ---
 
@@ -201,13 +198,12 @@ Before submitting a change:
 2. [ ] Run `npm run check` (SvelteKit sync + production build).
 3. [ ] Run `npm run test` (vitest unit tests).
 4. [ ] Verify mobile responsiveness (check Safari/Chrome mobile view).
-5. [ ] Test with "Slow 3G" throttling in DevTools to ensure data-saver mode triggers.
-6. [ ] Verify safe areas on iOS (no content hidden behind notches or home indicators).
-7. [ ] If adding an API, check rate limiting in `src/lib/server/rateLimiter.js`.
-8. [ ] Ensure Google Adsense (`ADSENSE.md`) or PWA features aren't broken.
-9. [ ] Validate quiz/explanation rendering for markdown + math/symbol-heavy content.
-10. [ ] Validate behavior on low-end Android profile + slow internet (no blocking jank).
-11. [ ] Touched SEO, prerender, routes or i18n? Run `npm run verify:vercel` (builds and validates the Vercel output: sitemap ↔ static/SSR coverage, canonical, hreflang, `<html lang>`, crawler files).
+5. [ ] Verify safe areas on iOS (no content hidden behind notches or home indicators).
+6. [ ] If adding an API, check rate limiting in `src/lib/server/rateLimiter.js`.
+7. [ ] Ensure Google Adsense (`ADSENSE.md`) or PWA features aren't broken.
+8. [ ] Validate quiz/explanation rendering for markdown + math/symbol-heavy content.
+9. [ ] Validate behavior on low-end Android profile + slow internet (no blocking jank).
+10. [ ] Touched SEO, prerender, routes or i18n? Run `npm run verify:vercel` (builds and validates the Vercel output: sitemap ↔ static/SSR coverage, canonical, hreflang, `<html lang>`, crawler files).
 
 ---
 
@@ -220,4 +216,4 @@ Before submitting a change:
 
 ---
 
-_Last updated: Aug 2026_
+_Last updated: Sep 2026_

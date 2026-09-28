@@ -215,8 +215,4 @@
 		opacity: 1;
 	}
 
-	/* Data saver: keep the running state visible but stop the decorative loop. */
-	:global(html.data-saver) .trace-step.is-running .step-dot.ai-shimmer {
-		animation: none;
-	}
 </style>

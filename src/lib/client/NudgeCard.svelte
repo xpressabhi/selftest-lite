@@ -1,7 +1,7 @@
 <script>
 	// One quiet, inline nudge row. Presentational only: the page owns the
 	// decision, the ledger writes and the action. Never a modal, never an
-	// animation beyond the switch primitives (data-saver stays flat).
+	// animation beyond the switch primitives.
 	import Icon from '$lib/client/Icon.svelte';
 	import { t } from '$lib/client/i18n';
 

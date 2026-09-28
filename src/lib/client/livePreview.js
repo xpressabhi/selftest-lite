@@ -117,7 +117,6 @@ export function shouldRunPreview({
 	lastText = '',
 	status = 'idle',
 	offline = false,
-	dataSaver = false,
 	lastAt = 0,
 	now = 0,
 	pausedUntil = 0,
@@ -129,7 +128,7 @@ export function shouldRunPreview({
 	if (normalized === lastText) return false;
 	if (isTestIdQuery(normalized)) return false; // test-id search path
 	if (status === 'parsing') return false;
-	if (offline || dataSaver) return false;
+	if (offline) return false;
 	if (pausedUntil && now < pausedUntil) return false;
 	if (lastAt && now - lastAt < minIntervalMs) return false;
 	return true;

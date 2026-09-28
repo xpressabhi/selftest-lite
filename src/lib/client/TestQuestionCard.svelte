@@ -242,11 +242,6 @@
 		transition: width 1s linear;
 	}
 
-	:global(html.data-saver) .hint-charge > span,
-	:global(html.reduce-motion) .hint-charge > span {
-		transition: none;
-	}
-
 	.test-hint {
 		display: inline-flex;
 		min-height: 44px;

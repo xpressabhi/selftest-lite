@@ -28,7 +28,7 @@ function baseState(overrides = {}) {
 		shareSheetOpenedThisResult: false,
 		reminderState: 'off',
 		nudgeHistory: { lastShareDaysAgo: null, lastPushDaysAgo: null, dismissals: 0 },
-		session: { secondsOnPage: 12, interactionCount: 3, hourLocal: 19, isDataSaver: false },
+		session: { secondsOnPage: 12, interactionCount: 3, hourLocal: 19 },
 		locale: 'en',
 		candidates: [],
 		...overrides

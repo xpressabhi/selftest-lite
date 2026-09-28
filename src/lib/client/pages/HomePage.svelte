@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { activeLanguage, localizedApiError, t } from '$lib/client/i18n';
-	import { isDataSaverActive } from '$lib/client/preferences';
 	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
 	import { track } from '$lib/client/telemetry';
 	import {
@@ -287,7 +286,6 @@
 			streak,
 			reminderState: reminderStateForNudge(),
 			secondsOnPage: homeOpenedAt ? Math.round((Date.now() - homeOpenedAt) / 1000) : 0,
-			isDataSaver: $isDataSaverActive,
 			locale: $activeLanguage === 'hindi' ? 'hi' : 'en',
 		});
 	}
@@ -602,12 +600,6 @@
 		}
 	});
 
-	$effect(() => {
-		if ($isDataSaverActive && !isFullExam && numQuestions > 5) {
-			numQuestions = 5;
-		}
-	});
-
 	const PLANNER_PLAN_FIELDS = [
 		'topic',
 		'testType',
@@ -758,7 +750,6 @@
 			lastText: lastPreviewText,
 			status: intentStatus,
 			offline: isOffline,
-			dataSaver: $isDataSaverActive,
 			lastAt: lastPreviewAt,
 			now: Date.now(),
 			pausedUntil: previewPausedUntil,
@@ -1230,9 +1221,7 @@
 					: testType,
 			numQuestions: section
 				? section.questionCount
-				: $isDataSaverActive
-					? Math.min(Number(exam.defaultNumQuestions || 20), 10)
-					: Number(exam.defaultNumQuestions || 20),
+				: Number(exam.defaultNumQuestions || 20),
 			difficulty: exam.defaultDifficulty || 'intermediate',
 			language: paperLanguage,
 			objectiveOnly: true,
@@ -1388,11 +1377,8 @@
 	}
 
 	// The success path navigates straight to /test. Hold the ready state for a
-	// beat so the trace can land; data-saver/reduced-motion users skip ahead.
+	// beat so the trace can land; reduced-motion users skip ahead.
 	function generationSettleDelayMs() {
-		if ($isDataSaverActive) {
-			return 120;
-		}
 		if (
 			typeof window !== 'undefined' &&
 			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -1440,7 +1426,7 @@
 					}
 					const data = await postGenerate(requestParams, captureEnabled);
 					// Let the trace settle on "Ready" before the hard
-					// navigation; shortened for data-saver/reduced-motion.
+					// navigation; shortened for reduced-motion.
 					triggerVibration(HAPTIC_SUCCESS);
 					await new Promise((resolve) =>
 						window.setTimeout(resolve, generationSettleDelayMs())

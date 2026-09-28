@@ -270,7 +270,6 @@ describe('buildNudgeState', () => {
 			secondsOnPage: 9,
 			interactionCount: 2,
 			hourLocal: 19,
-			isDataSaver: false,
 			locale: 'en'
 		});
 		expect(state).toMatchObject({
@@ -289,8 +288,7 @@ describe('buildNudgeState', () => {
 		expect(state.session).toEqual({
 			secondsOnPage: 9,
 			interactionCount: 2,
-			hourLocal: 19,
-			isDataSaver: false
+			hourLocal: 19
 		});
 	});
 
@@ -338,13 +336,12 @@ describe('buildNotificationState', () => {
 			candidates: Array.from({ length: 9 }, (_, index) => ({ id: String(index) })),
 			topics: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
 			now: NOW,
-			hourLocal: 12,
-			isDataSaver: true
+			hourLocal: 12
 		});
 		expect(state.page).toBe('notifications');
 		expect(state.candidates).toHaveLength(6);
 		expect(state.topics).toHaveLength(5);
-		expect(state.session).toMatchObject({ hourLocal: 12, isDataSaver: true, interactionCount: 0 });
+		expect(state.session).toMatchObject({ hourLocal: 12, interactionCount: 0 });
 	});
 });
 

@@ -130,10 +130,9 @@ describe('shouldRunPreview', () => {
 		expect(shouldRunPreview({ ...base, lastText: 'photosynthesis quiz' })).toBe(false);
 	});
 
-	it('blocks while a turn runs, offline, or in data saver', () => {
+	it('blocks while a turn runs or offline', () => {
 		expect(shouldRunPreview({ ...base, status: 'parsing' })).toBe(false);
 		expect(shouldRunPreview({ ...base, offline: true })).toBe(false);
-		expect(shouldRunPreview({ ...base, dataSaver: true })).toBe(false);
 	});
 
 	it('honours the interval and the post-429 pause', () => {

@@ -1,6 +1,5 @@
 <script>
 	import { t } from '$lib/client/i18n';
-	import { isDataSaverActive } from '$lib/client/preferences';
 	import { track } from '$lib/client/telemetry';
 	import {
 		isNearInputLimit,
@@ -34,10 +33,7 @@
 	const PARSING = $derived(status === 'parsing');
 	const trimmedValue = $derived(value.trim());
 	const showStrip = $derived(
-		!searchOpen &&
-			!PARSING &&
-			!$isDataSaverActive &&
-			(trimmedValue.length >= 4 || /^\d+$/.test(trimmedValue))
+		!searchOpen && !PARSING && (trimmedValue.length >= 4 || /^\d+$/.test(trimmedValue))
 	);
 
 	function isMobileViewport() {
@@ -569,11 +565,7 @@
 		animation-delay: 0.32s;
 	}
 
-	:global(html.data-saver) .composer-thinking span,
-	:global(html.reduce-motion) .composer-thinking span {
-		animation: none;
-		opacity: 0.7;
-	}
+
 
 	@keyframes thinking-dot {
 		0%,

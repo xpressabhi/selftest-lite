@@ -6,10 +6,7 @@
 	import { activeLanguage, t } from '$lib/client/i18n';
 	import {
 		initializePreferences,
-		isDataSaverActive,
 		language,
-		preferencesReady,
-		setDataSaver,
 		setLanguage,
 		setThemePreference,
 		themePreference,
@@ -119,11 +116,8 @@
 
 	// AdSense is intentionally NOT loaded: adsbygoogle.js is ~1.4MB (the heaviest
 	// payload on the site) and there are no ad units placed yet. Re-enable only
-	// once real ad slots exist, then load it gated behind `isDataSaverActive`
-	// so low-end/slow-connection users never pay the cost.
+	// once real ad slots exist.
 	// Example (restore when ad units are live):
-	//   import { get } from 'svelte/store';
-	//   if (get(isDataSaverActive)) return;
 	//   const script = document.createElement('script');
 	//   script.async = true;
 	//   script.dataset.selftestAdsense = 'true';
@@ -158,16 +152,9 @@
 		};
 		window.addEventListener('online', handleOnlineFlush);
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-			navigator.serviceWorker
-				.register('/sw.js')
-				.then(async () => {
-					// Wait for saved preferences so the toast uses the user's language.
-					await preferencesReady;
-					showToast($t('offlineReady'), 'success');
-				})
-				.catch(() => {
-					// Service worker registration is best-effort; local dev may not serve a built sw.js.
-				});
+			navigator.serviceWorker.register('/sw.js').catch(() => {
+				// Service worker registration is best-effort; local dev may not serve a built sw.js.
+			});
 		}
 
 		const updateNetworkState = () => {
@@ -444,12 +431,6 @@
 		setThemePreference(next);
 	}
 
-	function toggleDataSaver() {
-		const next = !$isDataSaverActive;
-		track('settings:data-saver-toggle', { enabled: next });
-		setDataSaver(next);
-	}
-
 	async function handleGoogleCredential(credential) {
 		isSigningIn = true;
 		try {
@@ -512,17 +493,6 @@
 				</nav>
 
 				<div class="header-actions">
-					<button
-						class:active={$isDataSaverActive}
-						class="header-icon data-saver-control"
-						type="button"
-						aria-label={$t('dataSaver')}
-						aria-pressed={$isDataSaverActive}
-						title={$t('dataSaver')}
-						onclick={toggleDataSaver}
-					>
-						<Icon name="gauge" />
-					</button>
 					<button
 						class="header-icon"
 						type="button"
@@ -641,12 +611,6 @@
 					{/if}
 					<a href="/history" onclick={() => (isMenuOpen = false)}
 						><Icon name="clock" size={18} /> {$t('history')}</a
-					>
-					<button
-						type="button"
-						class:active={$isDataSaverActive}
-						aria-pressed={$isDataSaverActive}
-						onclick={toggleDataSaver}><Icon name="gauge" size={18} /> {$t('dataSaver')}</button
 					>
 					{#if $user}
 						<button
@@ -964,10 +928,6 @@
 	.header-icon.active {
 		background: color-mix(in srgb, var(--color-brand-600) 13%, transparent);
 		color: var(--brand-text);
-	}
-
-	.data-saver-control {
-		display: none;
 	}
 
 	.desktop-only {
@@ -1350,8 +1310,7 @@
 
 	@media (min-width: 1024px) {
 		.desktop-nav,
-		.desktop-only,
-		.data-saver-control {
+		.desktop-only {
 			display: inline-flex;
 		}
 

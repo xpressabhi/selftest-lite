@@ -100,7 +100,4 @@
 		}
 	}
 
-	:global(html.data-saver) .fuse-line {
-		display: none;
-	}
 </style>

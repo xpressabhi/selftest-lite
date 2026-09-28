@@ -127,7 +127,7 @@ body {
 	--z-toast: 1180;
 	--z-skip: 1200;
 	/* Motion scale for micro-interactions. Durations stay short by design;
-	   `html.reduce-motion` and the OS setting zero them out globally. */
+	   the OS reduced-motion setting zeroes them out globally. */
 	--motion-fast: 120ms;
 	--motion-base: 180ms;
 	--motion-slow: 240ms;
@@ -176,16 +176,7 @@ html {
 	outline-offset: 2px;
 }
 
-html.reduce-motion *,
-html.reduce-motion *::before,
-html.reduce-motion *::after {
-	animation-duration: 0.01ms !important;
-	animation-iteration-count: 1 !important;
-	scroll-behavior: auto !important;
-	transition-duration: 0.01ms !important;
-}
-
-/* Honour the OS setting too, not only the in-app data-saver class. */
+/* Honour the OS accessibility setting. */
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,

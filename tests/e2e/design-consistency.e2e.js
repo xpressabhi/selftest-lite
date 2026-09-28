@@ -470,11 +470,7 @@ async function settled(page) {
 
 /** Freeze entry animations so measurements never catch a mid-flight scale. */
 async function freezeMotion(page) {
-	// The init script can run before the document element exists; callers that
-	// need the class guaranteed before measuring re-apply it after navigation.
-	await page.addInitScript(() => {
-		document.documentElement?.classList.add('reduce-motion');
-	});
+	await page.emulateMedia({ reducedMotion: 'reduce' });
 }
 
 function failures(report) {

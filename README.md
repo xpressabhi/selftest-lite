@@ -14,7 +14,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 - **Local-first history**: tests and answers cached in the browser; generated papers persisted to PostgreSQL.
 - **Personalized tests**: a learner profile (class, exam target, subjects, preferences, focus topics) plus behavior-driven weak-topic detection tailors difficulty and content per user — with a visible override, opt-out, and full transparency.
 - **Markdown + math rendering**: KaTeX math, physics/chemistry symbols (Ω, μ, CO₂), and diagrams.
-- **PWA**: installable, offline-capable, with slow-connection data-saver mode.
+- **PWA**: installable and offline-capable.
 - **Admin dashboard**: usage analytics behind a password-protected admin area.
 
 ## Tech Stack

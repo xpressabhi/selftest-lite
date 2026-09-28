@@ -23,11 +23,7 @@
 		if (typeof window === 'undefined') {
 			return true;
 		}
-		return (
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ||
-			document.documentElement.classList.contains('reduce-motion') ||
-			document.documentElement.classList.contains('data-saver')
-		);
+		return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 	}
 
 	function scrollToIndex(index) {

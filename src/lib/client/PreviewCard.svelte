@@ -1313,11 +1313,6 @@
 		}
 	}
 
-	:global(html.data-saver) .thinking-dots span {
-		animation: none;
-		opacity: 0.7;
-	}
-
 	/* --- Settling (calm preview) --- */
 	.preview-card.settling {
 		border-style: dashed;
@@ -1340,11 +1335,6 @@
 			background: var(--surface-muted);
 			border-color: var(--line);
 		}
-	}
-
-	:global(html.data-saver) .spec-tile.changed,
-	:global(html.reduce-motion) .spec-tile.changed {
-		animation: none;
 	}
 
 	/* --- Keyboard tiers: all four tiles stay, only the density changes. --- */

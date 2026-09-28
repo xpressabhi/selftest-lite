@@ -110,7 +110,6 @@ export const TELEMETRY_EVENTS = new Set([
 	// Global settings
 	'settings:language-toggle',
 	'settings:theme-toggle',
-	'settings:data-saver-toggle',
 	'settings:auto-advance-toggle',
 
 	// PWA / distribution

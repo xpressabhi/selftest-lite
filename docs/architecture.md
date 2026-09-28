@@ -28,7 +28,7 @@ Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 | `src/lib/client/plannerState.js`   | Home planner draft state machine (messages, locks, clarifications) + persistence                                |
 | `src/lib/server/adminAuth.js`      | HMAC-signed admin session tokens, timing-safe credential checks                                                 |
 | `src/lib/client/storage.js`        | `localStorage` history/paper caching                                                                            |
-| `src/lib/client/preferences.js`    | Language, theme, and data-saver detection/stores                                                                |
+| `src/lib/client/preferences.js`    | Language, theme, and auto-advance preference stores                                                             |
 | `src/lib/locales/*.json`           | English/Hindi UI strings                                                                                        |
 | `src/lib/shared/latex.js`          | LaTeX normalization used by both server and client                                                              |
 | `src/lib/server/examSync.js`       | Exam notification pipeline: fetch → Gemini extraction → validation → upsert/quarantine (injected deps, offline-testable) |

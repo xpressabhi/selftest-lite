@@ -1,8 +1,5 @@
-import { get } from 'svelte/store';
-import { isDataSaverActive } from './preferences';
-
-// Shared patterns for micro-interaction moments. `triggerVibration` already
-// no-ops when data saver is on, so callers never need to guard.
+// Shared patterns for micro-interaction moments. All calls are best-effort;
+// unsupported platforms simply no-op.
 export const HAPTIC_COMMIT = 12;
 export const HAPTIC_SUCCESS = [10, 30, 18];
 export const HAPTIC_ERROR = [24, 50, 24];
@@ -12,9 +9,6 @@ function isNativePlatform() {
 }
 
 export function triggerVibration(pattern) {
-	if (get(isDataSaverActive)) {
-		return false;
-	}
 	// In the Capacitor shell navigator.vibrate is unreliable (the WebView needs
 	// the VIBRATE permission); use the native Haptics plugin instead.
 	if (isNativePlatform()) {

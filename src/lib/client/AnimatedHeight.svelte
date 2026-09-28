@@ -1,6 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import { isDataSaverActive } from './preferences';
 
 	let {
 		children,
@@ -17,9 +16,8 @@
 	let previousHeight = 0;
 	let animationFrame = 0;
 
-	let motionDisabled = $derived(prefersReducedMotion || $isDataSaverActive);
 	let transition = $derived(
-		motionDisabled ? 'none' : `height ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`
+		prefersReducedMotion ? 'none' : `height ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`
 	);
 
 	function getElementHeight() {
@@ -50,7 +48,7 @@
 			previousHeight = getElementHeight();
 		}
 
-		if (motionDisabled || Math.abs(previousHeight - nextHeight) < 1) {
+		if (prefersReducedMotion || Math.abs(previousHeight - nextHeight) < 1) {
 			previousHeight = nextHeight;
 			height = 'auto';
 			return;
@@ -78,7 +76,7 @@
 	});
 
 	$effect(() => {
-		if (motionDisabled && element) {
+		if (prefersReducedMotion && element) {
 			cancelAnimationFrame(animationFrame);
 			height = 'auto';
 		}

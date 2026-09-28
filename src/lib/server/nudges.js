@@ -108,10 +108,9 @@ const nudgeStateSchema = z.object({
 		.object({
 			secondsOnPage: clampedInt(86400),
 			interactionCount: clampedInt(10000),
-			hourLocal: clampedInt(23),
-			isDataSaver: z.boolean().catch(false)
+			hourLocal: clampedInt(23)
 		})
-		.catch({ secondsOnPage: 0, interactionCount: 0, hourLocal: 0, isDataSaver: false }),
+		.catch({ secondsOnPage: 0, interactionCount: 0, hourLocal: 0 }),
 	locale: z.enum(['en', 'hi']).catch('en'),
 	topics: z
 		.array(z.string().transform((value) => value.slice(0, 80)))

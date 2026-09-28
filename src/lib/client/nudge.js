@@ -225,7 +225,6 @@ export function buildNudgeState({
 	secondsOnPage = 0,
 	interactionCount = 0,
 	hourLocal = new Date(now).getHours(),
-	isDataSaver = false,
 	locale = 'en'
 } = {}) {
 	const entries = Array.isArray(history) ? history : [];
@@ -261,8 +260,7 @@ export function buildNudgeState({
 		session: {
 			secondsOnPage: Number(secondsOnPage) || 0,
 			interactionCount: Number(interactionCount) || 0,
-			hourLocal,
-			isDataSaver: isDataSaver === true
+			hourLocal
 		},
 		locale
 	};
@@ -277,7 +275,6 @@ export function buildNotificationState({
 	now = Date.now(),
 	secondsOnPage = 0,
 	hourLocal = new Date(now).getHours(),
-	isDataSaver = false,
 	locale = 'en'
 } = {}) {
 	return {
@@ -290,8 +287,7 @@ export function buildNotificationState({
 		session: {
 			secondsOnPage: Number(secondsOnPage) || 0,
 			interactionCount: 0,
-			hourLocal,
-			isDataSaver: isDataSaver === true
+			hourLocal
 		},
 		locale
 	};

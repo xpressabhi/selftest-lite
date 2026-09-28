@@ -318,23 +318,27 @@ test('panel height is unchanged when the gallery is dismissed by typing', async 
 	expect(errors).toEqual([]);
 });
 
-test('data saver shows the gallery without animation', async ({ page }, testInfo) => {
+test('reduced motion shows the gallery without a running animation', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await stubBackend(page);
-	await page.addInitScript(() => window.localStorage.setItem('dataSaverMode', 'true'));
+	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await page.goto('/');
 	await waitForHydration(page);
 
-	await expect(page.locator('html')).toHaveClass(/data-saver/);
 	await expect(page.locator('.welcome-gallery')).toBeVisible();
-	const animationName = await page
+	const animationDuration = await page
 		.locator('.welcome-gallery')
-		.evaluate((element) => window.getComputedStyle(element).animationName);
+		.evaluate((element) => window.getComputedStyle(element).animationDuration);
+	// The global reduced-motion override serializes differently per engine
+	// ("0.01ms" in WebKit, "1e-05s" in Chromium); compare in seconds.
+	const durationSeconds = animationDuration.endsWith('ms')
+		? parseFloat(animationDuration) / 1000
+		: parseFloat(animationDuration);
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify({ animationName }, null, 2),
+		body: JSON.stringify({ animationDuration }, null, 2),
 	});
-	expect(animationName).toBe('none');
+	expect(durationSeconds).toBeLessThan(0.001);
 	expect(errors).toEqual([]);
 });

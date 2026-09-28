@@ -330,8 +330,4 @@
 		}
 	}
 
-	/* Data saver: swipe still works, the burning fuse is dropped. */
-	:global(html.data-saver) .toast-fuse {
-		display: none;
-	}
 </style>

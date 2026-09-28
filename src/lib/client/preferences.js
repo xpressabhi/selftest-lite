@@ -4,21 +4,11 @@ import { emitLocalStorageChange } from './storage';
 
 const LANGUAGE_KEY = 'selftest_language';
 const THEME_KEY = 'selftest_theme';
-const DATA_SAVER_KEY = 'dataSaverMode';
 const AUTO_ADVANCE_KEY = 'selftest_autoAdvance';
 
 export const language = writable('english');
 export const themePreference = writable('system');
-export const isDataSaverActive = writable(false);
 export const autoAdvance = writable(false);
-
-// Resolves once the saved preferences have been applied. Consumers that run
-// very early (service-worker callbacks, first-paint toasts) await this so they
-// read the user's language instead of the English default.
-let resolvePreferencesReady;
-export const preferencesReady = new Promise((resolve) => {
-	resolvePreferencesReady = resolve;
-});
 
 function getSystemLanguage() {
 	if (typeof navigator === 'undefined') {
@@ -62,21 +52,8 @@ export async function initializePreferences() {
 	themePreference.set(savedTheme);
 	applyTheme(savedTheme);
 
-	const savedDataSaver = readStored(DATA_SAVER_KEY);
-	const connection =
-		navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-	const slowConnection =
-		Boolean(connection?.saveData) ||
-		['slow-2g', '2g', '3g'].includes(String(connection?.effectiveType || '').toLowerCase());
-	const resolvedDataSaver = savedDataSaver === null ? slowConnection : savedDataSaver === 'true';
-	isDataSaverActive.set(resolvedDataSaver);
-	document.documentElement.classList.toggle('data-saver', resolvedDataSaver);
-	document.documentElement.classList.toggle('reduce-motion', resolvedDataSaver);
-
 	const savedAutoAdvance = readStored(AUTO_ADVANCE_KEY);
 	autoAdvance.set(savedAutoAdvance === null ? true : savedAutoAdvance === 'true');
-
-	resolvePreferencesReady?.();
 }
 
 export async function setLanguage(nextLanguage, { persist = true } = {}) {
@@ -119,17 +96,6 @@ export function setThemePreference(preference) {
 		}
 		applyTheme(normalized);
 		emitLocalStorageChange(THEME_KEY);
-	}
-}
-
-export function setDataSaver(nextValue) {
-	const enabled = Boolean(nextValue);
-	isDataSaverActive.set(enabled);
-	if (typeof window !== 'undefined') {
-		window.localStorage.setItem(DATA_SAVER_KEY, String(enabled));
-		document.documentElement.classList.toggle('data-saver', enabled);
-		document.documentElement.classList.toggle('reduce-motion', enabled);
-		emitLocalStorageChange(DATA_SAVER_KEY);
 	}
 }
 

@@ -7,11 +7,11 @@ const MAX_CALLS_PER_PAGE = 4;
 let lastAtByPage = new Map();
 let callsByPage = new Map();
 
-function shouldSkip({ page, offline = false, dataSaver = false, now = Date.now() } = {}) {
+function shouldSkip({ page, offline = false, now = Date.now() } = {}) {
 	if (typeof window === 'undefined') {
 		return true;
 	}
-	if (offline || dataSaver) {
+	if (offline) {
 		return true;
 	}
 	const lastAt = lastAtByPage.get(page) || 0;
@@ -33,9 +33,7 @@ function shouldSkip({ page, offline = false, dataSaver = false, now = Date.now()
 export async function requestPersonalize(page, state = {}, options = {}) {
 	const { signal } = options;
 	const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-	const dataSaver =
-		typeof document !== 'undefined' && document.documentElement?.classList?.contains('data-saver');
-	if (shouldSkip({ page, offline, dataSaver })) {
+	if (shouldSkip({ page, offline })) {
 		track('personalize:fallback', { page, reason: 'skipped' });
 		return { applied: false, action: null, hide: [], promote: [] };
 	}
