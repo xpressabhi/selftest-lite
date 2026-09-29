@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -42,7 +42,9 @@
 	// leaking between concurrent server renders. On the client the +layout.js
 	// load and saved preferences own this store.
 	if (typeof window === 'undefined') {
-		activeLanguage.set(data?.lang ?? null);
+		// untrack: the server read is deliberate and must not be treated as a
+		// reactive dependency (there is no later value to observe).
+		activeLanguage.set(untrack(() => data?.lang ?? null));
 	}
 
 	let isOffline = $state(false);
@@ -924,8 +926,7 @@
 	}
 
 	.header-icon:hover,
-	.header-icon:focus-visible,
-	.header-icon.active {
+	.header-icon:focus-visible {
 		background: color-mix(in srgb, var(--color-brand-600) 13%, transparent);
 		color: var(--brand-text);
 	}
@@ -991,13 +992,8 @@
 	}
 
 	.mobile-menu a:hover,
-	.mobile-menu button:hover,
-	.mobile-menu button.active {
+	.mobile-menu button:hover {
 		color: var(--brand-text);
-	}
-
-	.mobile-menu button.active {
-		font-weight: 700;
 	}
 
 	.menu-signout {

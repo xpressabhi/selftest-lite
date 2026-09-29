@@ -1,0 +1,30 @@
+protocol_version: "1.0"
+id: "CHG-0002"
+title: "Silence remaining Svelte compiler warnings"
+status: "complete"
+created_at: "2026-09-29T10:08:42Z"
+request: "Local dev and builds print no Svelte compiler warnings, with behavior and copy unchanged."
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:544defec9f525987b0abf13bf5cea263b4884b11935e9d972f87fba42b2a5ed3"
+scope:
+  included:
+    - "The layout, ChatThread, and Toast warning sites are clean under vite build."
+  excluded:
+    - "Any visual, interaction, copy, API, or dependency change."
+  paths:
+    - "AGENTS.md"
+    - ".github/**"
+    - "docs/**"
+    - "playwright.config.js"
+    - "src/**"
+    - "tests/**"
+preserved:
+  - "Toast focus/Escape behavior and all rendered output stay identical."
+  - "No pre-existing test is modified, skipped, or deleted."
+test_changes: []
+decisions:
+  - "The toast keeps tabindex with a documented svelte-ignore instead of losing the keyboard affordance."
+  - "Dead CSS selectors are deleted, not kept for hypothetical states."
+review_required: false

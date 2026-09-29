@@ -144,7 +144,7 @@
 						{/each}
 					</div>
 				{:else if recentTests.length > 0}
-					<div class="recent-block" onpointerdown={onrecenttouch}>
+					<div class="recent-block" role="presentation" onpointerdown={onrecenttouch}>
 						<span class="recent-title">{$t('plannerRecentTests')}</span>
 						{#each recentTests as test (test.id)}
 							<button

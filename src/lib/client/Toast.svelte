@@ -154,6 +154,9 @@
 	});
 </script>
 
+<!-- The toast is deliberately focusable: focus pauses the auto-dismiss timer
+     and Escape dismisses it, so the timing stays keyboard-adjustable. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	class="toast-lite {entry.type}"
 	class:is-leaving={leaving}
