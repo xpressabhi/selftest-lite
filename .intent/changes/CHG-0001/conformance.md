@@ -49,6 +49,11 @@ see it. English and Hindi copy ship together; reduced motion has no transitions.
   sign-in control changes width after hydration). The tour now re-measures with a 250ms
   watcher that only writes state when the rect actually moves, keeping the spotlight on
   its target without re-render churn.
+- Post-verification cleanup: the overlay markup was split into a presentational
+  backdrop (the click skip target, with scroll prevention) and a handler-free card,
+  and the step focus tracker initializes to `null`, removing the four Svelte compiler
+  warnings the first version emitted in dev (initial `step` capture; backdrop role and
+  keyboard; card click). No behavior change; the tour suite stayed green.
 - The pinned verifier was patched: its scope and protected-path loops let bash
   pathname-expand the unquoted pattern lists, replacing declared globs like `src/**` with
   concrete file names so they stopped matching. Both loops now run under `set -f` with the

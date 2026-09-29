@@ -72,7 +72,7 @@
 	let titleEl = $state(null);
 	let otherLanguageTitle = $state('');
 	let watchTimer = null;
-	let lastFocusedStep = step;
+	let lastFocusedStep = null;
 
 	// Step 1 speaks both scripts: the current one in the title, the other one
 	// underneath, so a visitor who cannot read the current UI language still
@@ -228,28 +228,31 @@
 		}
 		void tick().then(() => {
 			measureSpotlight();
-			if (currentStep !== lastFocusedStep) {
-				lastFocusedStep = currentStep;
+			if (lastFocusedStep !== null && currentStep !== lastFocusedStep) {
 				titleEl?.focus({ preventScroll: true });
 			}
+			lastFocusedStep = currentStep;
 		});
 		track('tour:step', { step: currentStep });
 	});
 </script>
 
-<div
-	class="welcome-tour"
-	data-step={step}
-	onclick={onskip}
-	onwheel={(event) => event.preventDefault()}
-	ontouchmove={(event) => event.preventDefault()}
->
+<div class="welcome-tour" data-step={step}>
 	{#if spotlight}
 		<div
 			class="welcome-tour-spotlight"
 			style="left: {spotlight.x}px; top: {spotlight.y}px; width: {spotlight.width}px; height: {spotlight.height}px;"
 		></div>
 	{/if}
+
+	<div
+		class="welcome-tour-backdrop"
+		class:solid={!spotlight}
+		role="presentation"
+		onclick={onskip}
+		onwheel={(event) => event.preventDefault()}
+		ontouchmove={(event) => event.preventDefault()}
+	></div>
 
 	<div
 		class="welcome-tour-card"
@@ -261,7 +264,6 @@
 		tabindex="-1"
 		use:focusTrap={{ onEscape: onskip }}
 		bind:this={cardEl}
-		onclick={(event) => event.stopPropagation()}
 	>
 		<div class="welcome-tour-head">
 			<h2 class="welcome-tour-title" id="welcome-tour-title" tabindex="-1" bind:this={titleEl}>
@@ -351,6 +353,15 @@
 		position: fixed;
 		inset: 0;
 		z-index: var(--z-modal);
+	}
+
+	.welcome-tour-backdrop {
+		position: fixed;
+		inset: 0;
+	}
+
+	.welcome-tour-backdrop.solid {
+		background: var(--backdrop);
 	}
 
 	.welcome-tour-spotlight {
