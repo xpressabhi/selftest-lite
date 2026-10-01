@@ -16,10 +16,11 @@ export function generatePrompt({
 	warmUpDifficulty = null,
 	originalRequest = null,
 }) {
-	// Matching and assertion-reasoning papers leave options and the answer to
-	// the server (see matchingBuilder / assertionReasoning), so the model only
-	// supplies content fields. Their prompt must not ask for options.
-	const usesOptions = !['matching', 'assertion-reasoning'].includes(testType);
+	// Matching, assertion-reasoning, and statement-based (true/false) papers
+	// leave options and the answer to the server (see matchingBuilder /
+	// assertionReasoning / statementBuilder), so the model only supplies
+	// content fields. Their prompt must not ask for options.
+	const usesOptions = !['matching', 'assertion-reasoning', 'true-false'].includes(testType);
 
 	const outputContract =
 		testType === 'matching'
@@ -50,7 +51,23 @@ export function generatePrompt({
     }
 
     For every question, decide which of the four relationships holds first, then write the rationale, then confirm the code.`
-				: `{
+				: testType === 'true-false'
+					? `{
+      "topic": "A clear topic description",
+      "questions": [
+        {
+          "statements": [
+            { "text": "First short factual statement", "isTrue": true },
+            { "text": "Second short factual statement", "isTrue": false },
+            { "text": "Third short factual statement", "isTrue": true }
+          ],
+          "rationale": "Private reasoning: why each statement is true or false"
+        }
+      ]
+    }
+
+    The platform writes the "Consider the following statements" instruction, the closing question, and the four combination options from your truth values.`
+					: `{
       "topic": "A clear topic description",
       "questions": [
         {
@@ -70,17 +87,22 @@ export function generatePrompt({
 		...(usesOptions
 			? [
 					'Multiple choice questions must have exactly 4 options',
-					'True/False questions must have exactly 2 options using localized equivalents of true/false',
 					'Copy each answer exactly from one complete option string, character-for-character. Never output a label (A/B), a combination (both A and B), or any prefix in the answer field',
 				]
 			: testType === 'assertion-reasoning'
 				? [
 						'The "answer" field must be exactly one code: "a", "b", "c", or "d". Never output the option text itself and never output options',
 					]
-				: [
-						'Do not output "options" or an "answer" field: the platform scrambles Column II and builds the four combination options from your pairs',
-						'Write columnB in the same order as columnA, where columnB[i] is the correct match for columnA[i]',
-					]),
+				: testType === 'true-false'
+					? [
+							'Every question must list exactly 3 or 4 short factual statements as { "text", "isTrue" } entries',
+							'At least one statement must be true and at least one must be false in every question',
+							'Do not output "options" or an "answer" field: the platform composes the question text and builds the four combination options ("Only 1", "1 and 2", or their Hindi equivalents) from your truth values',
+						]
+					: [
+							'Do not output "options" or an "answer" field: the platform scrambles Column II and builds the four combination options from your pairs',
+							'Write columnB in the same order as columnA, where columnB[i] is the correct match for columnA[i]',
+						]),
 		'Questions must match the specified difficulty level',
 		'Do not repeat previous questions',
 		examName
@@ -182,11 +204,11 @@ export function generatePrompt({
           - For code questions, show short code snippets in proper format`
 					: testType === 'true-false'
 						? `
-          - Create nuanced true/false statements that test deep understanding
-          - Use exactly 2 options with localized true/false wording in the selected language
-          - Include some slightly tricky but fair statements
-          - Focus on common misconceptions and important concepts
-          - For code, present statements about code behavior or best practices`
+          - Create statement-based objective questions in the style of Indian competitive exams: 3 or 4 short factual statements per question.
+          - Each statement must be a single crisp fact; mix true and false statements so roughly 1 to 3 statements are true.
+          - Never make all statements in a question true or all of them false.
+          - Do not write the "Consider the following statements" instruction, the closing question, the options, or the answer: the platform adds them.
+          - Focus on common misconceptions, key facts, dates, and figures; make each statement independently verifiable`
 						: testType === 'coding'
 							? `
           - Create practical coding problems using proper code block formatting

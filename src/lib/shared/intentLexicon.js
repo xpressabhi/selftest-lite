@@ -578,7 +578,8 @@ const TEST_TYPE_VALUE_PATTERNS = [
 	{ value: 'coding', pattern: /\b(coding|programming|code)\b|प्रोग्रामिंग/iu },
 	{
 		value: 'true-false',
-		pattern: /\btrue\s?-?\s?false\b|\bbinary\b|\byes\s?-?\s?no\b|सही\s*\/?\s*गलत/iu,
+		pattern:
+			/\btrue\s?-?\s?false\b|\bbinary\b|\byes\s?-?\s?no\b|सही\s*\/?\s*गलत|कथनों?\s*पर\s*विचार|कथन\s*आधारित|\bstatement[ -]?based\b/iu,
 	},
 	{ value: 'speed-challenge', pattern: /\b(speed|rapid|timer|timed)\b|तेज़/iu },
 	{

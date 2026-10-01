@@ -49,6 +49,26 @@ export const assertionReasoningQuestionSchema = z.object({
 		),
 });
 
+export const statementBasedQuestionSchema = z.object({
+	statements: z
+		.array(
+			z.object({
+				text: z
+					.string()
+					.describe('One short factual statement, a single sentence with no numbering'),
+				isTrue: z.boolean().describe('Whether the statement is factually correct'),
+			})
+		)
+		.min(3)
+		.max(4)
+		.describe(
+			'Three or four statements with at least one true and at least one false statement'
+		),
+	rationale: z
+		.string()
+		.describe('Private one-sentence reasoning: why each statement is true or false'),
+});
+
 export const paperSchema = z.object({
 	topic: z.string().describe('The topic of the test'),
 	questions: z.array(questionSchema).describe('An array of questions in the test'),
@@ -56,9 +76,9 @@ export const paperSchema = z.object({
 
 /**
  * The structured-output schema for a paper, per test type. The model can only
- * answer in the shape its format needs: content fields for matching and
- * assertion-reasoning (the server owns options and the answer), or the full
- * question shape for legacy formats.
+ * answer in the shape its format needs: content fields for matching,
+ * assertion-reasoning, and true/false (the server owns options and the
+ * answer), or the full question shape for legacy formats.
  */
 export function paperSchemaFor(testType) {
 	if (testType === 'matching') {
@@ -73,6 +93,14 @@ export function paperSchemaFor(testType) {
 			questions: z
 				.array(assertionReasoningQuestionSchema)
 				.describe('An array of assertion-reasoning questions'),
+		});
+	}
+	if (testType === 'true-false') {
+		return z.object({
+			topic: z.string().describe('The topic of the test'),
+			questions: z
+				.array(statementBasedQuestionSchema)
+				.describe('An array of statement-based questions'),
 		});
 	}
 	return paperSchema;

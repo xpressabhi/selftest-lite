@@ -20,6 +20,7 @@ import { normalizeMathText } from '$lib/shared/latex';
 import { questionTextFor } from '$lib/shared/questionText';
 import { buildMatchingQuestion } from '$lib/server/matchingBuilder';
 import { buildAssertionReasoningQuestion } from '$lib/server/assertionReasoning';
+import { buildStatementQuestion } from '$lib/server/statementBuilder';
 import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
 import {
 	buildProfileContext,
@@ -196,13 +197,13 @@ function normalizeGeneratedPaper(questionPaper) {
 }
 
 /**
- * Converts matching / assertion-reasoning drafts into their final stored
- * shape, where the server owns options and the answer. Builder failures are
- * returned as structural issues for the index so the salvage path regenerates
- * only those questions.
+ * Converts matching / assertion-reasoning / statement-based drafts into their
+ * final stored shape, where the server owns options and the answer. Builder
+ * failures are returned as structural issues for the index so the salvage
+ * path regenerates only those questions.
  */
 function buildStructuredQuestions(questionPaper, { testType, language }) {
-	if (testType !== 'matching' && testType !== 'assertion-reasoning') {
+	if (!['matching', 'assertion-reasoning', 'true-false'].includes(testType)) {
 		return { paper: questionPaper, issues: [] };
 	}
 
@@ -211,7 +212,9 @@ function buildStructuredQuestions(questionPaper, { testType, language }) {
 		const result =
 			testType === 'matching'
 				? buildMatchingQuestion(raw)
-				: buildAssertionReasoningQuestion(raw, { language });
+				: testType === 'assertion-reasoning'
+					? buildAssertionReasoningQuestion(raw, { language })
+					: buildStatementQuestion(raw, { language });
 		if (result.ok) {
 			return result.question;
 		}
@@ -243,6 +246,9 @@ function sanitizeQuestion(question) {
 		sanitized.format = 'assertion-reasoning';
 		sanitized.assertion = normalizeMathText(question.assertion).trim();
 		sanitized.reason = normalizeMathText(question.reason).trim();
+	}
+	if (question.format === 'statement-based') {
+		sanitized.format = 'statement-based';
 	}
 	return sanitized;
 }

@@ -20,6 +20,12 @@ import { normalizeMathText } from '$lib/shared/latex';
 import { questionTextFor } from '$lib/shared/questionText';
 import { MATCHING_PAIR_COUNT, parseCombination } from './matchingBuilder';
 import { AR_OPTIONS, optionsForLanguage } from './assertionReasoning';
+import {
+	STATEMENT_MAX_COUNT,
+	STATEMENT_MIN_COUNT,
+	STATEMENT_OPTION_COUNT,
+	parseStatementOption,
+} from './statementBuilder';
 
 const MATH_SEGMENT_PATTERN = /(\$\$?)([\s\S]*?)\1/g;
 
@@ -402,16 +408,58 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, l
 			return;
 		}
 
+		if (q.format === 'statement-based') {
+			const normalizedLanguage = String(language || 'english').toLowerCase();
+			const parsedOptions = q.options.map((option) =>
+				parseStatementOption(option, normalizedLanguage)
+			);
+			if (
+				q.options.length !== STATEMENT_OPTION_COUNT ||
+				parsedOptions.some((numbers) => !numbers)
+			) {
+				add(
+					'statement-option-malformed',
+					`Question ${index + 1} has a malformed statement combination option`
+				);
+				return;
+			}
+			const optionKeys = parsedOptions.map((numbers) => numbers.join(','));
+			if (new Set(optionKeys).size !== optionKeys.length) {
+				add('duplicate-options', `Question ${index + 1} contains duplicate options`);
+				return;
+			}
+			const keyNumbers = parseStatementOption(q.answer, normalizedLanguage);
+			if (
+				!keyNumbers ||
+				parsedOptions.filter((numbers) => numbers.join(',') === keyNumbers.join(',')).length !== 1
+			) {
+				add(
+					'answer-mismatch',
+					`Question ${index + 1} answer must match exactly one statement combination`
+				);
+				return;
+			}
+			const statementCount = Math.max(...parsedOptions.flat());
+			if (statementCount < STATEMENT_MIN_COUNT || statementCount > STATEMENT_MAX_COUNT) {
+				add(
+					'statement-count',
+					`Question ${index + 1} must reference ${STATEMENT_MIN_COUNT} or ${STATEMENT_MAX_COUNT} statements`
+				);
+				return;
+			}
+			try {
+				validateMathSyntax(questionText, `Question ${index + 1}`);
+			} catch (error) {
+				add('invalid-latex', error.message);
+			}
+			return;
+		}
+
 		if (
 			(testType === 'multiple-choice' || testType === 'speed-challenge') &&
 			q.options.length !== 4
 		) {
 			add('option-count', `Question ${index + 1} must have exactly 4 options`);
-			return;
-		}
-
-		if (testType === 'true-false' && q.options.length !== 2) {
-			add('option-count', `Question ${index + 1} must have exactly 2 options for true/false format`);
 			return;
 		}
 

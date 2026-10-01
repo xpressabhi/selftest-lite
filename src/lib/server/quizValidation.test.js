@@ -10,6 +10,7 @@ import {
 } from './quizValidation';
 import { buildMatchingQuestion } from './matchingBuilder';
 import { buildAssertionReasoningQuestion } from './assertionReasoning';
+import { buildStatementQuestion } from './statementBuilder';
 
 describe('validateGenerateRequest', () => {
 	const base = {
@@ -512,5 +513,106 @@ describe('new paper formats', () => {
 				language: 'hindi',
 			})
 		).toEqual([]);
+	});
+
+	function builtStatement(seed = 9) {
+		return buildStatementQuestion(
+			{
+				statements: [
+					{ text: 'Statement one is correct.', isTrue: true },
+					{ text: 'Statement two is wrong.', isTrue: false },
+					{ text: 'Statement three is also wrong.', isTrue: false },
+				],
+				rationale: 'Only statement one is correct.',
+			},
+			{ language: 'english', random: seededRandom(seed) }
+		).question;
+	}
+
+	it('accepts a clean statement-based question built by the server', () => {
+		const question = builtStatement();
+		expect(
+			inspectGeneratedPaper({
+				questionPaper: { topic: 'Polity', questions: [question] },
+				testType: 'true-false',
+				numQuestions: 1,
+				language: 'english',
+			})
+		).toEqual([]);
+	});
+
+	it('flags malformed statement options, duplicate options, and answer drift', () => {
+		const question = builtStatement();
+
+		const malformed = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Polity',
+				questions: [
+					{ ...question, options: [...question.options.slice(1), 'All of the above'] },
+				],
+			},
+			testType: 'true-false',
+			numQuestions: 1,
+			language: 'english',
+		});
+		expect(malformed.map((issue) => issue.issue)).toContain('statement-option-malformed');
+
+		const duplicated = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Polity',
+				questions: [
+					{
+						...question,
+						options: [question.options[0], question.options[0], ...question.options.slice(1, 3)],
+					},
+				],
+			},
+			testType: 'true-false',
+			numQuestions: 1,
+			language: 'english',
+		});
+		expect(duplicated.map((issue) => issue.issue)).toContain('duplicate-options');
+
+		const drifted = inspectGeneratedPaper({
+			questionPaper: {
+				topic: 'Polity',
+				questions: [{ ...question, answer: question.answer === 'Only 1' ? 'Only 2' : 'Only 1' }],
+			},
+			testType: 'true-false',
+			numQuestions: 1,
+			language: 'english',
+		});
+		expect(drifted.map((issue) => issue.issue)).toContain('answer-mismatch');
+	});
+
+	it('accepts Hindi statement options only under the hindi grammar', () => {
+		const question = buildStatementQuestion(
+			{
+				statements: [
+					{ text: 'कथन एक सही है।', isTrue: true },
+					{ text: 'कथन दो गलत है।', isTrue: false },
+					{ text: 'कथन तीन भी गलत है।', isTrue: false },
+				],
+				rationale: 'केवल कथन एक सही है।',
+			},
+			{ language: 'hindi', random: seededRandom(4) }
+		).question;
+
+		expect(
+			inspectGeneratedPaper({
+				questionPaper: { topic: 'राजव्यवस्था', questions: [question] },
+				testType: 'true-false',
+				numQuestions: 1,
+				language: 'hindi',
+			})
+		).toEqual([]);
+
+		const wrongGrammar = inspectGeneratedPaper({
+			questionPaper: { topic: 'राजव्यवस्था', questions: [question] },
+			testType: 'true-false',
+			numQuestions: 1,
+			language: 'english',
+		});
+		expect(wrongGrammar.map((issue) => issue.issue)).toContain('statement-option-malformed');
 	});
 });

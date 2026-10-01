@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inspectGeneratedPaper, validateGenerateRequest } from './quizValidation';
+import { buildStatementQuestion } from './statementBuilder';
 import {
 	assertionReasoningQuestionSchema,
 	explanationSchema,
@@ -7,6 +8,7 @@ import {
 	paperSchema,
 	paperSchemaFor,
 	questionSchema,
+	statementBasedQuestionSchema,
 } from './quizSchema';
 
 // Shape vs content: these schemas only describe the JSON the model must
@@ -37,6 +39,15 @@ const arQuestion = {
 	answer: 'a',
 };
 
+const statementQuestion = {
+	statements: [
+		{ text: 'The Constituent Assembly adopted the national flag on 22 July 1947.', isTrue: true },
+		{ text: 'The wheel of the national flag has 21 spokes.', isTrue: false },
+		{ text: 'The flag has a length-to-width ratio of 3:4.', isTrue: false },
+	],
+	rationale: 'Only statement 1 is correct.',
+};
+
 function issuePaths(result) {
 	return result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'));
 }
@@ -45,7 +56,6 @@ describe('paperSchemaFor', () => {
 	it('keeps the full-question shape for every legacy test type and unknown input', () => {
 		for (const testType of [
 			'multiple-choice',
-			'true-false',
 			'mixed',
 			'speed-challenge',
 			'coding',
@@ -100,8 +110,44 @@ describe('paperSchemaFor', () => {
 		expect(arPaths).toContain('questions.0.reason');
 	});
 
+	it('rejects a full-question object under the statement-based schema', () => {
+		const paths = issuePaths(paperSchemaFor('true-false').safeParse(mcPaper));
+		expect(paths).toContain('questions.0.statements');
+	});
+
+	it('accepts 3 or 4 statements and rejects other counts under the statement-based schema', () => {
+		const paperWith = (statements) => ({
+			topic: 'Polity',
+			questions: [{ statements, rationale: 'x' }],
+		});
+		expect(
+			paperSchemaFor('true-false').safeParse(paperWith(statementQuestion.statements)).success
+		).toBe(true);
+		expect(
+			paperSchemaFor('true-false').safeParse(
+				paperWith([
+					...statementQuestion.statements,
+					{ text: 'The flag was designed by Pingali Venkayya.', isTrue: true },
+				])
+			).success
+		).toBe(true);
+		expect(
+			paperSchemaFor('true-false').safeParse(paperWith(statementQuestion.statements.slice(0, 2)))
+				.success
+		).toBe(false);
+		expect(
+			paperSchemaFor('true-false').safeParse(
+				paperWith([
+					...statementQuestion.statements,
+					{ text: 'Extra one', isTrue: true },
+					{ text: 'Extra two', isTrue: false },
+				])
+			).success
+		).toBe(false);
+	});
+
 	it('rejects a structured-only object under the legacy schema', () => {
-		const result = paperSchemaFor('true-false').safeParse({
+		const result = paperSchemaFor('multiple-choice').safeParse({
 			topic: 'Vitamins',
 			questions: [matchingQuestion],
 		});
@@ -145,28 +191,41 @@ describe('shape validation', () => {
 	});
 });
 
-describe('layer boundary: content rules live in quizValidation', () => {
+describe('layer boundary: content rules live beyond the schema', () => {
 	it('lets the schema accept option counts that inspectGeneratedPaper rejects', () => {
 		const twoOptionPaper = {
 			topic: 'General',
 			questions: [{ ...mcQuestion, options: ['Newton', 'Joule'], answer: 'Newton' }],
 		};
-		const parsed = paperSchemaFor('true-false').safeParse(twoOptionPaper);
+		const parsed = paperSchema.safeParse(twoOptionPaper);
 		expect(parsed.success).toBe(true);
 		expect(
 			inspectGeneratedPaper({
 				questionPaper: parsed.data,
-				testType: 'true-false',
+				testType: 'multiple-choice',
 				numQuestions: 1,
-			})
-		).toEqual([]);
+			}).map((issue) => issue.issue)
+		).toContain('option-count');
+	});
 
-		const mcIssues = inspectGeneratedPaper({
-			questionPaper: parsed.data,
-			testType: 'multiple-choice',
-			numQuestions: 1,
-		});
-		expect(mcIssues.map((issue) => issue.issue)).toContain('option-count');
+	it('lets the statement schema accept all-true content that the builder rejects', () => {
+		const allTruePaper = {
+			topic: 'Polity',
+			questions: [
+				{
+					statements: statementQuestion.statements.map((statement) => ({
+						...statement,
+						isTrue: true,
+					})),
+					rationale: 'x',
+				},
+			],
+		};
+		const parsed = paperSchemaFor('true-false').safeParse(allTruePaper);
+		expect(parsed.success).toBe(true);
+		const built = buildStatementQuestion(parsed.data.questions[0], { language: 'english' });
+		expect(built.ok).toBe(false);
+		expect(built.issues).toContain('statement-content-invalid');
 	});
 
 	it('does not carry difficulty or language; validateGenerateRequest rejects those', () => {
@@ -199,6 +258,14 @@ describe('individual schemas', () => {
 		expect(matchingQuestionSchema.safeParse(mcQuestion).success).toBe(false);
 		expect(assertionReasoningQuestionSchema.safeParse(arQuestion).success).toBe(true);
 		expect(assertionReasoningQuestionSchema.safeParse(mcQuestion).success).toBe(false);
+		expect(statementBasedQuestionSchema.safeParse(statementQuestion).success).toBe(true);
+		expect(statementBasedQuestionSchema.safeParse(mcQuestion).success).toBe(false);
+		expect(
+			statementBasedQuestionSchema.safeParse({
+				...statementQuestion,
+				statements: statementQuestion.statements.map(({ text }) => ({ text })),
+			}).success
+		).toBe(false);
 	});
 
 	it('validates the explanation payload', () => {

@@ -61,6 +61,18 @@ describe('generatePrompt format contracts', () => {
 		expect(prompt).not.toContain('"options": ["Option A"');
 	});
 
+	it('statement-based true/false asks for statements and never for options', () => {
+		const prompt = generatePrompt({ ...BASE, testType: 'true-false' });
+		expect(prompt).toContain('"statements"');
+		expect(prompt).toContain('"isTrue"');
+		expect(prompt).toContain('exactly 3 or 4 short factual statements');
+		expect(prompt).toContain('At least one statement must be true and at least one must be false');
+		expect(prompt).toContain('platform composes the question text');
+		expect(prompt).not.toContain('"options": ["Option A"');
+		expect(prompt).not.toContain('OPTION LENGTH BALANCE');
+		expect(prompt).not.toContain('exactly 2 options');
+	});
+
 	it('legacy formats keep the option contract and length checks', () => {
 		const prompt = generatePrompt(BASE);
 		expect(prompt).toContain('"options": ["Option A", "Option B", "Option C", "Option D"]');

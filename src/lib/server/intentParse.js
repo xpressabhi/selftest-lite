@@ -176,7 +176,7 @@ export function buildIntentQuestions({
 			instructions: INSTRUCTIONS.test_type,
 			criteria: {
 				'multiple-choice': 'Classic multiple-choice questions with four options',
-				'true-false': 'True or false / binary yes-no statements',
+				'true-false': 'Statement-based questions that list 3-4 statements and ask which are correct',
 				coding: 'Programming problems with code answers',
 				'speed-challenge': 'A rapid-fire quick test against the clock',
 				matching: 'Match the columns / match the following questions',

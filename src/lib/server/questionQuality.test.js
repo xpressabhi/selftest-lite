@@ -210,7 +210,7 @@ describe('script ratio constant', () => {
 	});
 });
 
-describe('server-built formats (matching, assertion-reasoning)', () => {
+describe('server-built formats (matching, assertion-reasoning, statement-based)', () => {
 	const matching = {
 		format: 'matching',
 		question: 'Match the vitamin in Column I with the deficiency disease in Column II.',
@@ -232,6 +232,13 @@ describe('server-built formats (matching, assertion-reasoning)', () => {
 		options: [...AR_OPTIONS.english],
 		answer: AR_OPTIONS.english[0],
 	};
+	const statementBased = {
+		format: 'statement-based',
+		question:
+			'Consider the following statements:\n\n1. Statement one.\n2. Statement two.\n3. Statement three.\n\nWhich of the statements given above is/are correct?',
+		options: ['1, 2 and 3', 'Only 1', '1 and 2', '2 and 3'],
+		answer: 'Only 1',
+	};
 
 	it('never shuffles server-built option orders', () => {
 		expect(improveQuestion(matching, { random: () => 0 }).question.options).toEqual(
@@ -240,10 +247,14 @@ describe('server-built formats (matching, assertion-reasoning)', () => {
 		expect(
 			improveQuestion(assertionReasoning, { random: () => 0 }).question.options
 		).toEqual(assertionReasoning.options);
+		expect(
+			improveQuestion(statementBased, { random: () => 0 }).question.options
+		).toEqual(statementBased.options);
 	});
 
-	it('skips the longest-answer tell for the canonical statement set', () => {
+	it('skips the longest-answer tell for server-built option sets', () => {
 		expect(inspectQuestion(assertionReasoning)).not.toContain('longest-answer-tell');
+		expect(inspectQuestion(statementBased)).not.toContain('longest-answer-tell');
 	});
 
 	it('flags over-long matching items as a soft issue', () => {
@@ -269,6 +280,19 @@ describe('server-built formats (matching, assertion-reasoning)', () => {
 	});
 
 	it('keeps key-length aggregation blind to server-built formats', () => {
-		expect(summarizeQuestionLengths([assertionReasoning, matching]).count).toBe(0);
+		expect(summarizeQuestionLengths([assertionReasoning, matching, statementBased]).count).toBe(0);
+	});
+
+	it('detects statement-based near-duplicates through the composed text', () => {
+		expect(
+			inspectQuestion(
+				{
+					...statementBased,
+					question:
+						'Consider the following statements:\n\n1. Statement one.\n2. Statement two.\n3. Statement three!\n\nWhich of the statements given above is/are correct?',
+				},
+				{ currentPaperTexts: [questionTextFor(statementBased)] }
+			)
+		).toContain('near-duplicate');
 	});
 });

@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-// Question formats suite: matching columns and assertion-reasoning papers.
-// Spec: docs/superpowers/specs/2026-09-24-question-formats-design.md
+// Question formats suite: matching columns, assertion-reasoning, and
+// statement-based true/false papers.
+// Specs: docs/superpowers/specs/2026-09-24-question-formats-design.md and
+// docs/superpowers/specs/2026-10-01-statement-based-truefalse-design.md
 //
 // Route-mocked and localStorage-seeded: no API keys, no backend rows.
 
@@ -80,6 +82,43 @@ const AR_OPTIONS = [
 	'Both A and R are true, but R is NOT the correct explanation of A',
 	'A is true, but R is false',
 	'A is false, but R is true',
+];
+
+const STATEMENT_KEY = 'केवल 1';
+
+const STATEMENT_VARIANTS = [
+	{
+		name: 'Hindi',
+		language: 'hindi',
+		topic: 'राष्ट्रीय प्रतीक',
+		instruction: 'निम्नलिखित कथनों पर विचार कीजिए:',
+		closing: 'उपर्युक्त कथनों में से कौन-सा/से सही है/हैं?',
+		key: STATEMENT_KEY,
+		question: {
+			format: 'statement-based',
+			question:
+				'निम्नलिखित कथनों पर विचार कीजिए:\n\n1. भारत की संविधान सभा ने राष्ट्रीय ध्वज का प्रस्ताव 22 जुलाई, 1947 को अपनाया था।\n2. राष्ट्रीय ध्वज के बीच चक्र में 21 तीलियां हैं।\n3. राष्ट्रीय ध्वज की लंबाई-चौड़ाई का अनुपात 3:4 है।\n\nउपर्युक्त कथनों में से कौन-सा/से सही है/हैं?',
+			rationale: 'कथन 1 सही है; चक्र में 24 तीलियां हैं और अनुपात 3:2 है।',
+			options: ['1 तथा 2', STATEMENT_KEY, '2 तथा 3', 'केवल 2'],
+			answer: STATEMENT_KEY,
+		},
+	},
+	{
+		name: 'English',
+		language: 'english',
+		topic: 'National Symbols of India',
+		instruction: 'Consider the following statements:',
+		closing: 'Which of the statements given above is/are correct?',
+		key: 'Only 1',
+		question: {
+			format: 'statement-based',
+			question:
+				'Consider the following statements:\n\n1. The Constituent Assembly adopted the national flag on 22 July 1947.\n2. The wheel of the national flag has 21 spokes.\n3. The flag has a length-to-width ratio of 3:4.\n\nWhich of the statements given above is/are correct?',
+			rationale: 'Only statement 1 is correct; the wheel has 24 spokes and the ratio is 3:2.',
+			options: ['1 and 2', 'Only 1', '2 and 3', 'Only 2'],
+			answer: 'Only 1',
+		},
+	},
 ];
 
 function assertionReasoningQuestion(assertion, reason) {
@@ -300,6 +339,66 @@ test('assertion-reasoning paper renders inline labels and scores', async ({
 	});
 	expect(errors).toEqual([]);
 });
+
+for (const variant of STATEMENT_VARIANTS) {
+	test(`statement-based true/false paper renders numbered statements and scores (${variant.name})`, async ({
+		page,
+	}, testInfo) => {
+		const errors = await collectErrors(page);
+		const paperId = `e2e-formats-statements-${variant.language}`;
+		const paper = {
+			id: paperId,
+			topic: variant.topic,
+			testMode: 'quiz-practice',
+			language: variant.language,
+			questions: [variant.question],
+		};
+		await seedPaper(page, paper);
+		await page.setViewportSize({ width: 390, height: 844 });
+
+		await page.goto('/test');
+		await page.getByRole('button', { name: 'Start Test' }).click();
+
+		// The composed question shows the instruction, three numbered
+		// statements, and the closing line, like printed exam papers.
+		const body = page.locator('.test-question-text');
+		await expect(body).toContainText(variant.instruction);
+		await expect(body.locator('li')).toHaveCount(3);
+		await expect(body).toContainText(variant.closing);
+		await expect(page.locator('.test-option')).toHaveCount(4);
+
+		const keyOption = page.locator('.test-option').filter({ hasText: variant.key });
+		await expect(keyOption).toHaveCount(1);
+		await keyOption.click();
+		await page.locator('.test-progress-pill').click();
+		await pressAndHold(page, page.locator('.hold-button'));
+
+		await expect(page).toHaveURL(new RegExp(`/results\\?id=${paperId}`));
+		await expect(page.locator('.score-ring-sub')).toContainText('1 of 1 correct');
+
+		const reviewCard = page.locator('#question-0');
+		await reviewCard.locator('.review-card-head').click();
+		await expect(reviewCard.locator('.review-card-head')).toContainText(variant.instruction);
+		await expect(reviewCard.locator('.review-card-head')).toContainText(variant.closing);
+		await expect(reviewCard.locator('.review-option.correct-option')).toContainText(variant.key);
+
+		await testInfo.attach('evidence', {
+			contentType: 'application/json',
+			body: JSON.stringify(
+				{
+					language: variant.language,
+					statements: 3,
+					options: 4,
+					key: variant.key,
+					score: '1 of 1',
+				},
+				null,
+				2
+			),
+		});
+		expect(errors).toEqual([]);
+	});
+}
 
 test('weak-area practice keeps structured format fields', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);

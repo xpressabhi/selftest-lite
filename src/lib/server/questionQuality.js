@@ -22,12 +22,16 @@ export const HINDI_SCRIPT_RATIO_MIN = 0.25;
 export const MATCHING_ITEM_LONG_CHARS = 60;
 
 /**
- * Matching and assertion-reasoning options are built server-side: their order
- * and length profile are deliberate, so shuffling and length-tell heuristics
- * do not apply to them.
+ * Matching, assertion-reasoning, and statement-based options are built
+ * server-side: their order and length profile are deliberate, so shuffling
+ * and length-tell heuristics do not apply to them.
  */
 function isServerBuiltFormat(question) {
-	return question?.format === 'matching' || question?.format === 'assertion-reasoning';
+	return (
+		question?.format === 'matching' ||
+		question?.format === 'assertion-reasoning' ||
+		question?.format === 'statement-based'
+	);
 }
 
 /** Lowercases, strips markdown/LaTeX/punctuation and collapses whitespace. */

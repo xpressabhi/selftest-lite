@@ -1,11 +1,11 @@
 /**
  * Composes the plain-text rendering of a structured question.
  *
- * Structured formats (matching, assertion-reasoning) keep their content in
- * dedicated fields, and an assertion-reasoning question has an intentionally
- * empty stem. Everything that needs to read or quote a question as text —
- * dedupe lists, quality checks, explain requests — goes through this helper so
- * no consumer ever sees a context-free blank.
+ * Structured formats (matching, assertion-reasoning, statement-based) keep
+ * their content in dedicated fields, and an assertion-reasoning question has an
+ * intentionally empty stem. Everything that needs to read or quote a question
+ * as text — dedupe lists, quality checks, salvage rounds, explain requests —
+ * goes through this helper so no consumer ever sees a context-free blank.
  */
 
 export function questionTextFor(question) {
@@ -17,6 +17,7 @@ export function questionTextFor(question) {
 	const hasColumns = Array.isArray(question.columnA) && Array.isArray(question.columnB);
 	const hasStatements =
 		typeof question.assertion === 'string' || typeof question.reason === 'string';
+	const hasStatementList = Array.isArray(question.statements);
 
 	if (hasColumns && (question.format === 'matching' || !stem)) {
 		const columnA = question.columnA
@@ -35,6 +36,15 @@ export function questionTextFor(question) {
 			return stem;
 		}
 		return [`Assertion (A): ${assertion}`, `Reason (R): ${reason}`].join('\n');
+	}
+
+	// Raw statement drafts (before the builder composes the stored stem).
+	if (hasStatementList && (question.format === 'statement-based' || !stem)) {
+		const statements = question.statements
+			.map((entry, index) => `${index + 1}. ${String(entry?.text ?? '').trim()}`)
+			.filter((line) => !/^\d+\.\s*$/u.test(line))
+			.join('\n');
+		return statements || stem;
 	}
 
 	return stem;

@@ -60,6 +60,29 @@ describe('questionTextFor', () => {
 		).toContain('Column II: A. Night blindness');
 	});
 
+	it('composes raw statement drafts as a numbered list', () => {
+		expect(
+			questionTextFor({
+				statements: [
+					{ text: 'First fact.', isTrue: true },
+					{ text: 'Second fact.', isTrue: false },
+					{ text: 'Third fact.', isTrue: false },
+				],
+			})
+		).toBe('1. First fact.\n2. Second fact.\n3. Third fact.');
+	});
+
+	it('prefers the composed stem for stored statement-based questions', () => {
+		expect(
+			questionTextFor({
+				format: 'statement-based',
+				question: 'Consider the following statements:',
+				options: ['Only 1'],
+				answer: 'Only 1',
+			})
+		).toBe('Consider the following statements:');
+	});
+
 	it('degrades safely on missing or malformed input', () => {
 		expect(questionTextFor(null)).toBe('');
 		expect(questionTextFor(undefined)).toBe('');
