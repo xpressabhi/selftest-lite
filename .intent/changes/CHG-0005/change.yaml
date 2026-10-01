@@ -1,0 +1,37 @@
+protocol_version: "1.0"
+id: "CHG-0005"
+title: "Mobile shell: Practice tab in the bottom bar and a denser hamburger menu"
+status: "complete"
+created_at: "2026-10-01T05:15:03Z"
+request: "Mobile footer gains a Practice Exams tab next to the gray Create quick-test link, and the right-side hamburger navigation display is optimized."
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:3dc2a85a4834882b8fd1c37e39526be93bb5536ddcbd685d1f17db0723059f1d"
+scope:
+  included:
+    - "Bottom tab bar: Practice tab linking to /practice (and /hi/practice), active on practice pages."
+    - "Hamburger menu: two-column icon grid for Explore links, active-page highlight, viewport-bounded scrollable height."
+    - "practiceTab locale key in English and Hindi."
+  excluded:
+    - "Desktop navigation, site footer, routes, create flow, telemetry events."
+  paths:
+    - ".intent/changes/CHG-0005/**"
+    - "src/routes/+layout.svelte"
+    - "src/lib/locales/english.json"
+    - "src/lib/locales/hindi.json"
+    - "tests/e2e/taste-pass.e2e.js"
+preserved:
+  - "Home, Bookmarks, History and Create tabs keep their destinations."
+  - "Create tab still opens the home quick-test creation page."
+  - "Desktop and tablet header navigation and all route content are unchanged."
+test_changes:
+  - path: "tests/e2e/taste-pass.e2e.js"
+    kind: "modified"
+    reason: "The shell contract pins the bottom-nav item count at 4; the requested Practice tab makes it 5, and the new tab's destination is asserted."
+decisions:
+  - "Order Home, Practice, Create, Bookmarks, History keeps Create centered and groups discovery vs personal tabs."
+  - "Short practiceTab label in the tab bar, full practiceTitle in the menu, so five labels fit at 320px."
+  - "Menu max-height = viewport minus sticky header (minus the phone bottom bar) with overflow-y auto, so long menus stay reachable."
+  - "Reuse the local Icon component for every menu link instead of adding glyphs."
+review_required: false

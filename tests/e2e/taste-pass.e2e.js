@@ -63,6 +63,9 @@ test('shell icons are real SVGs with 44px targets and no glyph text', async ({ p
 		return {
 			iconControlCount: iconControls.length,
 			bottomItemCount: bottomItems.length,
+			practiceHref:
+				document.querySelector('.bottom-nav a[href="/practice"]')?.getAttribute('href') ??
+				null,
 			glyphText,
 			tooSmall,
 			legacyGlow: document.querySelectorAll('.ai-glow').length,
@@ -71,7 +74,9 @@ test('shell icons are real SVGs with 44px targets and no glyph text', async ({ p
 
 	// The signed-out shell always ships the language and theme controls.
 	expect(shell.iconControlCount).toBeGreaterThanOrEqual(2);
-	expect(shell.bottomItemCount).toBe(4);
+	// Home, Practice, Create, Bookmarks, History.
+	expect(shell.bottomItemCount).toBe(5);
+	expect(shell.practiceHref).toBe('/practice');
 	expect(shell.glyphText).toEqual([]);
 	expect(shell.tooSmall).toEqual([]);
 	expect(shell.legacyGlow).toBe(0);

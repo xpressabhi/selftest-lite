@@ -231,6 +231,28 @@
 	});
 
 	let activePath = $derived(page.url.pathname);
+	let homeHref = $derived(localizedPath('/', $activeLanguage));
+	let practiceHref = $derived(localizedPath('/practice', $activeLanguage));
+
+	// A destination is active for its own path and any child route (the
+	// practice hub and every exam below it), not for paths that merely share
+	// a prefix. `exact` pins single-page entries like the Create tab.
+	function isActivePath(href, { exact = false } = {}) {
+		return exact ? activePath === href : activePath === href || activePath.startsWith(`${href}/`);
+	}
+
+	// Hamburger menu tiles: the same destinations as the desktop nav, paired
+	// with one local icon each so the compact grid stays scannable.
+	const exploreLinks = $derived([
+		{ href: localizedPath('/about', $activeLanguage), icon: 'info', label: $t('about') },
+		{ href: practiceHref, icon: 'target', label: $t('practiceTitle') },
+		{ href: localizedPath('/blog', $activeLanguage), icon: 'book', label: $t('blog') },
+		{ href: localizedPath('/faq', $activeLanguage), icon: 'note', label: $t('faq') },
+		{ href: localizedPath('/contact', $activeLanguage), icon: 'mail', label: $t('contact') },
+		{ href: localizedPath('/privacy', $activeLanguage), icon: 'shield', label: $t('privacy') },
+		{ href: localizedPath('/terms', $activeLanguage), icon: 'scale', label: $t('terms') }
+	]);
+
 	// Social card language follows the URL-driven store the layout pins before
 	// children render: English pages ship the English poster, /hi the Hindi one.
 	let socialImagePath = $derived(
@@ -580,7 +602,7 @@
 						aria-controls="mobile-nav-menu"
 						onclick={() => (isMenuOpen = !isMenuOpen)}
 					>
-						<Icon name="menu" size={22} />
+						<Icon name={isMenuOpen ? 'close' : 'menu'} size={22} />
 					</button>
 				</div>
 			</nav>
@@ -596,42 +618,66 @@
 						</div>
 					{/if}
 					<div class="menu-section-label">{$t('menuSectionExplore')}</div>
-					<a href={localizedPath('/about', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('about')}</a>
-					<a href={localizedPath('/practice', $activeLanguage)} onclick={() => (isMenuOpen = false)}
-						>{$t('practiceTitle')}</a
-					>
-					<a href={localizedPath('/blog', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('blog')}</a>
-					<a href={localizedPath('/faq', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('faq')}</a>
-					<a href={localizedPath('/contact', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('contact')}</a>
-					<a href={localizedPath('/privacy', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('privacy')}</a>
-					<a href={localizedPath('/terms', $activeLanguage)} onclick={() => (isMenuOpen = false)}>{$t('terms')}</a>
+					<div class="menu-grid">
+						{#each exploreLinks as link (link.href)}
+							<a
+								class="menu-tile"
+								class:active={isActivePath(link.href)}
+								href={link.href}
+								aria-current={isActivePath(link.href) ? 'page' : undefined}
+								onclick={() => (isMenuOpen = false)}
+							>
+								<Icon name={link.icon} size={18} />
+								<span class="menu-tile-label">{link.label}</span>
+							</a>
+						{/each}
+					</div>
 					<div class="menu-section-label">{$t('menuSectionActions')}</div>
-					{#if $user}
-						<a href="/profile" onclick={() => (isMenuOpen = false)}
-							><Icon name="user" size={18} /> {$t('profileMenuLabel')}</a
+					<div class="menu-actions">
+						{#if $user}
+							<a
+								class="menu-action"
+								class:active={activePath === '/profile'}
+								href="/profile"
+								aria-current={activePath === '/profile' ? 'page' : undefined}
+								onclick={() => (isMenuOpen = false)}
+							>
+								<Icon name="user" size={18} />{$t('profileMenuLabel')}
+							</a>
+						{/if}
+						<a
+							class="menu-action"
+							class:active={activePath === '/history'}
+							href="/history"
+							aria-current={activePath === '/history' ? 'page' : undefined}
+							onclick={() => (isMenuOpen = false)}
 						>
-					{/if}
-					<a href="/history" onclick={() => (isMenuOpen = false)}
-						><Icon name="clock" size={18} /> {$t('history')}</a
-					>
-					{#if $user}
-						<button
-							type="button"
-							class="menu-signout"
-							onclick={() => {
-								isMenuOpen = false;
-								void handleSignOut();
-							}}><Icon name="logout" size={18} /> {$t('signOut')}</button
-						>
-					{:else if !$isAuthLoading}
-						<button
-							type="button"
-							onclick={() => {
-								isMenuOpen = false;
-								showSignInModal = true;
-							}}><Icon name="login" size={18} /> {$t('signIn')}</button
-						>
-					{/if}
+							<Icon name="clock" size={18} />{$t('history')}
+						</a>
+						{#if $user}
+							<button
+								type="button"
+								class="menu-action menu-signout"
+								onclick={() => {
+									isMenuOpen = false;
+									void handleSignOut();
+								}}
+							>
+								<Icon name="logout" size={18} />{$t('signOut')}
+							</button>
+						{:else if !$isAuthLoading}
+							<button
+								type="button"
+								class="menu-action"
+								onclick={() => {
+									isMenuOpen = false;
+									showSignInModal = true;
+								}}
+							>
+								<Icon name="login" size={18} />{$t('signIn')}
+							</button>
+						{/if}
+					</div>
 				</nav>
 			{/if}
 		</header>
@@ -718,23 +764,31 @@
 	{#if !isImmersive}
 		<nav class="bottom-nav border-top bg-body" aria-label={$t('mobileNavigation')}>
 			<a
-				class:active={activePath === '/'}
-				href={localizedPath('/', $activeLanguage)}
-				aria-current={activePath === '/' ? 'page' : undefined}
-				><Icon name="home" size={18} />{$t('homeTab')}</a
+				class:active={isActivePath(homeHref, { exact: true })}
+				href={homeHref}
+				aria-current={isActivePath(homeHref, { exact: true }) ? 'page' : undefined}
+				><Icon name="home" size={18} /><span class="tab-label">{$t('homeTab')}</span></a
+			>
+			<a
+				class:active={isActivePath(practiceHref)}
+				href={practiceHref}
+				aria-current={isActivePath(practiceHref) ? 'page' : undefined}
+				><Icon name="target" size={18} /><span class="tab-label">{$t('practiceTab')}</span></a
+			>
+			<a class="create-tab" href={homeHref}
+				><Icon name="plus" size={20} /><span class="tab-label">{$t('createTab')}</span></a
 			>
 			<a
 				class:active={activePath === '/bookmarks'}
 				href="/bookmarks"
 				aria-current={activePath === '/bookmarks' ? 'page' : undefined}
-				><Icon name="bookmark" size={18} />{$t('bookmarksTab')}</a
+				><Icon name="bookmark" size={18} /><span class="tab-label">{$t('bookmarksTab')}</span></a
 			>
-			<a class="create-tab" href={localizedPath('/', $activeLanguage)}><Icon name="plus" size={20} />{$t('createTab')}</a>
 			<a
 				class:active={activePath === '/history'}
 				href="/history"
 				aria-current={activePath === '/history' ? 'page' : undefined}
-				><Icon name="clock" size={18} />{$t('historyTab')}</a
+				><Icon name="clock" size={18} /><span class="tab-label">{$t('historyTab')}</span></a
 			>
 		</nav>
 	{/if}
@@ -938,10 +992,42 @@
 	.mobile-menu {
 		display: grid;
 		gap: 2px;
+		/* Bounded so a long menu can never be clipped by the sticky header:
+		   every row stays reachable through scrolling. */
+		max-height: calc(100vh - 58px - var(--sat, env(safe-area-inset-top, 0px)));
+		max-height: calc(100dvh - 58px - var(--sat, env(safe-area-inset-top, 0px)));
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding-block: 8px 14px;
 		padding-inline: max(20px, var(--sal)) max(20px, var(--sar));
 		border-top: 1px solid var(--line);
 		background: var(--surface);
+	}
+
+	.menu-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 6px;
+	}
+
+	.menu-tile-label {
+		min-width: 0;
+		line-height: 1.2;
+	}
+
+	.menu-actions {
+		display: grid;
+		gap: 2px;
+	}
+
+	.menu-action {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.mobile-menu a.active {
+		color: var(--brand-text);
 	}
 
 	.menu-section-label {
@@ -991,9 +1077,27 @@
 		text-align: left;
 	}
 
+	.menu-grid .menu-tile {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 12px;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-control);
+	}
+
+	.menu-tile.active {
+		border-color: var(--brand-text);
+		background: color-mix(in srgb, var(--color-brand-600) 10%, transparent);
+	}
+
 	.mobile-menu a:hover,
 	.mobile-menu button:hover {
 		color: var(--brand-text);
+	}
+
+	.menu-grid .menu-tile:hover {
+		border-color: var(--brand-text);
 	}
 
 	.menu-signout {
@@ -1062,7 +1166,7 @@
 		left: 0;
 		z-index: var(--z-bottom-nav);
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(5, minmax(0, 1fr));
 		padding-block: 0 calc(6px + var(--sab, env(safe-area-inset-bottom, 0px)));
 		padding-inline: max(8px, var(--sal)) max(8px, var(--sar));
 	}
@@ -1073,15 +1177,17 @@
 
 	.bottom-nav a {
 		display: flex;
+		min-width: 0;
 		min-height: 48px;
 		align-items: center;
 		justify-content: center;
 		flex-direction: column;
 		gap: 2px;
+		padding-inline: 0;
 		color: inherit;
 		border: 0;
 		background: transparent;
-		font-size: 0.78rem;
+		font-size: 0.74rem;
 		text-decoration: none;
 	}
 
@@ -1089,6 +1195,13 @@
 	.bottom-nav a:focus-visible {
 		color: var(--brand-text);
 		font-weight: 700;
+	}
+
+	.tab-label {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.create-tab {
@@ -1320,6 +1433,21 @@
 		}
 	}
 
+	/* Phones keep the fixed bottom bar; bound the menu above it so its last
+	   row is never hidden behind the bar. */
+	@media (max-width: 767.98px) {
+		.mobile-menu {
+			max-height: calc(
+				100vh - 58px - var(--sat, env(safe-area-inset-top, 0px)) - 62px -
+					var(--sab, env(safe-area-inset-bottom, 0px))
+			);
+			max-height: calc(
+				100dvh - 58px - var(--sat, env(safe-area-inset-top, 0px)) - 62px -
+					var(--sab, env(safe-area-inset-bottom, 0px))
+			);
+		}
+	}
+
 	@media (max-width: 575.98px) {
 		.pwa-install-hint {
 			align-items: flex-start;
@@ -1330,6 +1458,11 @@
 	@media (max-width: 359.98px) {
 		.brand-link span {
 			display: none;
+		}
+
+		/* Five tabs at 320px: keep every label on one line. */
+		.bottom-nav a {
+			font-size: 0.68rem;
 		}
 	}
 </style>
