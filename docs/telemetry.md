@@ -35,14 +35,31 @@ Run `npm run test` before shipping any telemetry change.
 ## Running the report
 
 ```bash
-npm run telemetry:report                 # last 30 days
-npm run telemetry:report -- --days=90    # custom window
+npm run telemetry:report                          # 30d sections, 7d gates
+npm run telemetry:report -- --days=90             # wider trend window
+npm run telemetry:report -- --days=90 --gate-days=30   # gates on the wide window too
+npm run telemetry:report -- --strict              # non-zero exit when a gate fails
 ```
 
 The script loads `DATABASE_URL` from `.env.local` / `.env` and is **read-only**.
+
+Two windows are in play and they answer different questions:
+
+| Flag        | Default | Answers                                              |
+| ----------- | ------- | ---------------------------------------------------- |
+| `--days`    | 30      | Descriptive sections: trend and context over time    |
+| `--gate-days` | 7     | Quality gates: is the product healthy *right now*   |
+
+Gates deliberately default to a short window. A gate answers a question about
+the present, so an incident fixed three weeks ago must not keep it red — that
+only teaches everyone to ignore the gate. The weekly workflow runs `--strict`,
+which means a stale window there produced a permanently red build.
+
 It prints:
 
 - database overview and weekly activity (events, sessions, identities)
+- the production / non-production split of `api_request_events`, with the count
+  of excluded rows called out (see Production vs non-production below)
 - retention: new vs returning identities per week
 - activation funnel: page view → generate → test start → submit → explain
 - top feature events, plus allowlisted events not seen in the window
@@ -54,17 +71,38 @@ It prints:
   batch, and client-reported `generate:fail` codes
 - device & network: per-identity device tier mix, top low-tier models, network
   mix per session, generate outcomes by downlink bucket, and the supported floor
-- data-quality checks: null `test_mode`/`difficulty`/`language`, generate and
-  explain success rates, server 5xx count
+- data-quality checks: null `test_mode`/`difficulty`/`language` on rows the
+  generate endpoint wrote, plus how many foreign rows were skipped, server-side
+  generate and explain outcomes (including how many papers came back trimmed by
+  the deadline), and the server 5xx count
 - quality gates (PASS/FAIL). Pass `--strict` to exit non-zero when any gate
   fails (used by the scheduled workflow).
 
+### Production vs non-production
+
+Vercel attaches `x-vercel-ip-country` and friends to production traffic. A local
+dev server pointed at the production database, a Playwright run, or a `curl`
+probe does not, so those rows carry `ip_country IS NULL`.
+
+Those are real requests but not real users, and they were **~70% of the API
+table** — one local client key alone made 11,365 requests in seven days. Every
+latency average, error count and rate-limit number was a blend of a dev loop and
+production. The report therefore splits them:
+
+- API hotspots, the 5xx count, latency gates, the `>10s` gate and the
+  generate/explain success rates read **production rows only**.
+- The report prints the excluded row and client-key count right under the
+  hotspot table, so a dev loop pointed at production stays visible instead of
+  being silently filtered.
+
 ### Quality gates
+
+Gates run over `--gate-days` (default 7) and over production rows only.
 
 | Gate                                                | Target     |
 | --------------------------------------------------- | ---------- |
-| Generate success rate                               | >= 95%     |
-| Explain failure rate                                | < 2%       |
+| Generate success rate (server attempts)             | >= 95%     |
+| Explain failure rate (server)                       | < 2%       |
 | Server 5xx                                          | 0          |
 | Null `test_mode` on generated tests                 | 0          |
 | `/api/user/state` and `/api/auth/me` p95            | <= 3000 ms |
@@ -76,6 +114,40 @@ It prints:
 | D1 retention                                        | >= 15%     |
 | D7 retention                                        | >= 8%      |
 | Device profile coverage                             | >= 80%     |
+
+Notes on what each gate deliberately measures:
+
+- **Generate / explain success** come from `api_request_events`, not client
+  events. `generate:fail` only fires once the client exhausts its retries, and a
+  premium rejection (`403`) is never reported as a failure at all, so the client
+  funnel could show a healthier rate than the server saw. Server rows count
+  every attempt, including the premium-gated ones (reported separately in the
+  gate detail).
+- **Answer position and longest-answer tell** exclude `matching`,
+  `assertion-reasoning` and `statement-based`. Their options are built
+  server-side in a deliberate order and never shuffled, which
+  `isServerBuiltFormat` in `questionQuality.js` already accounts for at
+  runtime; including them here measured a shuffle the product never performs.
+- **Duplicate questions** key on the composed text that `questionTextFor()`
+  builds, not on `question`. An `assertion-reasoning` item stores an
+  intentionally empty stem with its content in `assertion`/`reason`, so grouping
+  on `question` collapsed all of them into one group of identical empty strings
+  and reported them as duplicates.
+- **Non-discriminating items** deduplicate per respondent before counting
+  (last answer per person per item, >= 4 distinct respondents). Counting raw
+  attempts let one person retaking a paper 25 times manufacture "too easy"
+  items — discrimination means different people got different answers.
+- **Device profile coverage** only counts sessions on or after the first
+  `device:profile` row. Sessions from before that instrumentation shipped had no
+  chance of passing, so the gate was mathematically unable to clear on any
+  window longer than the instrumentation's own age.
+- **Null `test_mode`** counts only rows the generate endpoint could have
+  written. `createTestRecord()` always writes `test_mode`, `test_type` and
+  `difficulty` together, so a row missing all three came from a manual insert
+  or a probe, and the report lists those separately as "foreign rows ignored".
+- **D1 / D7 retention** report `inconclusive` and pass below 60 identities in
+  the cohort. At 4–17 identities per cohort a retention percentage moves by
+  whole points on a single visitor, which is not a measurement.
 
 ## Generation failure diagnostics
 
@@ -212,19 +284,29 @@ expired/revoked sessions (`app_user_session`), and legacy tables.
    `429`s. For generation, start from the `generationFailure` breakdown
    (stage, issue codes, model) before reading raw logs.
 4. **Latency** — p95 for `/api/user/state`, `/api/auth/me`, `/api/test:list`
-   is dominated by cold-start schema bootstrap; flag regressions.
+   is dominated by cold-start schema bootstrap; flag regressions. Read these on
+   the gate window, not the trend window, so a fixed regression stops counting.
 5. **Rate limits** — normal clients tripping limits means limits are too tight
    or the client is too chatty.
 6. **Data quality** — null `test_mode` on new tests means the generate endpoint
-   stopped recording metadata.
-7. **Bot noise** — spikes with few identities are usually crawlers; do not read
-   them as growth.
-8. **Planner health** — check `intent:parse-failed` stays near zero, the
+   stopped recording metadata. Ignore the "foreign rows ignored" line when
+   reading this: those rows were never written by the endpoint, and a rising
+   count means something is inserting into `ai_test` by hand.
+7. **Generation deadline** — papers are salvaged and trimmed rather than failed
+   when the 180s deadline lands with enough approved questions, so a
+   `trimmed_by_deadline` count is the honest measure of how often the deadline
+   bites. A non-zero count here with a passing success rate still means real
+   users are getting shorter papers than they asked for.
+8. **Bot noise** — spikes with few identities are usually crawlers; do not read
+   them as growth. Check the excluded-row count under the API hotspot table: a
+   jump there is local dev, e2e or probes writing to the production database,
+   which is itself worth fixing (see Production vs non-production).
+9. **Planner health** — check `intent:parse-failed` stays near zero, the
    clarification asked → answered ratio, and whether `topicSource` is mostly
    `span`/`exam` (good) versus `raw` (the model found no subject).
-9. **Device & network** — read the tier/network mix, the top low-tier models,
-   failures by downlink bucket, and whether the supported floor moved; a
-   coverage-gate failure means the tracker broke, not that devices changed.
+10. **Device & network** — read the tier/network mix, the top low-tier models,
+    failures by downlink bucket, and whether the supported floor moved; a
+    coverage-gate failure means the tracker broke, not that devices changed.
 
 ## Caveats
 

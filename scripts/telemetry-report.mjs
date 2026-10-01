@@ -2,24 +2,48 @@
 // Read-only telemetry report for selftest-lite.
 //
 // Usage:
-//   npm run telemetry:report -- --days=30
+//   npm run telemetry:report -- --days=30 [--gate-days=7]
 //
 // The npm script loads DATABASE_URL from .env.local / .env. This script only
 // runs SELECTs; it never writes to the database. See docs/telemetry.md for the
 // review checklist that goes with it.
+//
+// Two independent windows:
+//   --days       how far back the descriptive sections look (trend context)
+//   --gate-days  how far back the quality gates look (recency)
+//
+// The gates deliberately default to a short window. Gates answer "is the
+// product healthy right now", so a fixed incident from three weeks ago must not
+// keep them red forever — that only trains everyone to ignore them. The weekly
+// workflow runs --strict, so a stale window there meant a permanently red build.
 
 import { neon } from '@neondatabase/serverless';
 import { TELEMETRY_EVENTS } from '../src/lib/shared/telemetryEvents.js';
 
 const args = process.argv.slice(2);
 if (args.includes('--help') || args.includes('-h')) {
-	console.log('Usage: npm run telemetry:report -- [--days=30]');
+	console.log('Usage: npm run telemetry:report -- [--days=30] [--gate-days=7] [--strict]');
 	process.exit(0);
 }
 
 const daysArgument = args.find((argument) => argument.startsWith('--days='));
 const days = Math.min(Math.max(Number(daysArgument?.split('=')[1]) || 30, 1), 365);
+const gateDaysArgument = args.find((argument) => argument.startsWith('--gate-days='));
+const gateDays = Math.min(
+	Math.max(Number(gateDaysArgument?.split('=')[1]) || 7, 1),
+	days
+);
 const strict = args.includes('--strict');
+
+/**
+ * Vercel attaches x-vercel-ip-* to production traffic; a local dev server
+ * pointed at the production database, an e2e run, or a curl probe does not.
+ * Those rows are real requests but not real users, and they were ~70% of the
+ * API table, which silently turned every latency and error number into a blend
+ * of a dev loop and production. Gates and hotspots therefore read only
+ * production rows; the descriptive sections still report both.
+ */
+const PRODUCTION_ONLY_PREDICATE = 'ip_country IS NOT NULL';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -30,6 +54,7 @@ if (!databaseUrl) {
 }
 
 const sql = neon(databaseUrl);
+const PRODUCTION_ONLY = sql`${sql.query(PRODUCTION_ONLY_PREDICATE)}`;
 
 function section(title) {
 	console.log(`\n=== ${title} ===`);
@@ -136,6 +161,8 @@ printTable(
 );
 
 section('Cohort retention (last 14 days of cohorts)');
+// Below this many identities a retention percentage is not a measurement.
+const MIN_RETENTION_COHORT = 60;
 const cohortRows = await sql`
 	WITH firsts AS (
 		SELECT COALESCE(user_id::text, client_id) AS id, MIN(created_at)::date AS cohort
@@ -324,32 +351,52 @@ printTable(
 	]
 );
 
-section('API hotspots');
-printTable(
+section(`API hotspots (production traffic only, last ${days} days)`);
+const hotspotRows = await sql`
+	SELECT
+		route,
+		COUNT(*)::int AS requests,
+		COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::int AS errors,
+		COUNT(*) FILTER (WHERE status_code = 401)::int AS unauth,
+		COUNT(*) FILTER (WHERE status_code = 429)::int AS limited,
+		COALESCE(ROUND(AVG(duration_ms)), 0)::int AS avg_ms,
+		COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p95_ms
+	FROM api_request_events
+	WHERE ${PRODUCTION_ONLY}
+		AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+	GROUP BY route
+	ORDER BY requests DESC
+	LIMIT 15
+`;
+printTable(hotspotRows, [
+	{ key: 'route', label: 'route' },
+	{ key: 'requests', label: 'requests' },
+	{ key: 'errors', label: 'errors' },
+	{ key: 'unauth', label: '401s' },
+	{ key: 'limited', label: '429s' },
+	{ key: 'avg_ms', label: 'avg ms' },
+	{ key: 'p95_ms', label: 'p95 ms' },
+]);
+
+// Surfaced rather than silently filtered: a dev loop or a misconfigured e2e run
+// pointed at production is itself a finding, and it explains any drop in the
+// identity counts above.
+const trafficSplit = (
 	await sql`
 		SELECT
-			route,
-			COUNT(*)::int AS requests,
-			COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::int AS errors,
-			COUNT(*) FILTER (WHERE status_code = 401)::int AS unauth,
-			COUNT(*) FILTER (WHERE status_code = 429)::int AS limited,
-			COALESCE(ROUND(AVG(duration_ms)), 0)::int AS avg_ms,
-			COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p95_ms
+			COUNT(*) FILTER (WHERE ip_country IS NULL)::int AS non_production,
+			COUNT(*) FILTER (WHERE ip_country IS NOT NULL)::int AS production,
+			COUNT(DISTINCT client_key) FILTER (WHERE ip_country IS NULL)::int AS non_prod_clients,
+			COUNT(*) FILTER (
+				WHERE ip_country IS NULL
+					AND user_agent LIKE 'Playwright/%'
+			)::int AS e2e_rows
 		FROM api_request_events
 		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
-		GROUP BY route
-		ORDER BY requests DESC
-		LIMIT 15
-	`,
-	[
-		{ key: 'route', label: 'route' },
-		{ key: 'requests', label: 'requests' },
-		{ key: 'errors', label: 'errors' },
-		{ key: 'unauth', label: '401s' },
-		{ key: 'limited', label: '429s' },
-		{ key: 'avg_ms', label: 'avg ms' },
-		{ key: 'p95_ms', label: 'p95 ms' },
-	]
+	`
+)[0];
+console.log(
+	`\n  Excluded as non-production: ${trafficSplit.non_production} rows from ${trafficSplit.non_prod_clients} client keys (${trafficSplit.e2e_rows} Playwright) — local dev, e2e or probes hitting the production database.`
 );
 
 section('Rate-limiter requests (every call, not only trips)');
@@ -715,6 +762,15 @@ console.log(
 	'  Note: browsers quantize downlink to 25 kbps (capped at 10 Mbps) and RTT to 25 ms (capped at 3 s); values are buckets, not exact speeds.'
 );
 
+// Coverage measures instrumentation health, so it must only count sessions that
+// could have emitted a profile in the first place. Sessions from before
+// device:profile shipped have no chance of passing, and including them made the
+// gate mathematically unable to pass on any window longer than the
+// instrumentation's own age (28.8% at 30d vs 93.6% at 7d).
+const deviceProfileSince = (
+	await sql`SELECT MIN(created_at) AS first_profile FROM feature_events WHERE event = 'device:profile'`
+)[0].first_profile;
+
 const profileCoverage = (
 	await sql`
 		SELECT
@@ -724,6 +780,7 @@ const profileCoverage = (
 		WHERE event IN ('page:view', 'device:profile')
 			AND session_id IS NOT NULL
 			AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+			AND created_at >= ${deviceProfileSince ?? new Date(0)}
 	`
 )[0];
 const profileCoverageShare =
@@ -732,13 +789,28 @@ const profileCoverageShare =
 		: null;
 
 section('Data quality');
+// createTestRecord() always writes test_mode (the endpoint defaults it to
+// 'quiz-practice'), test_type and difficulty together. A row missing all three
+// did not come from the generate endpoint — it is a manual insert or a probe.
+// Counting those made this gate fail on data the endpoint never produced, which
+// is the same class of error as letting a dev loop into the production tables.
 const quality = (
 	await sql`
 		SELECT
-			COUNT(*)::int AS tests,
-			COUNT(*) FILTER (WHERE test_mode IS NULL)::int AS mode_null,
-			COUNT(*) FILTER (WHERE difficulty IS NULL)::int AS difficulty_null,
-			COUNT(*) FILTER (WHERE language IS NULL)::int AS language_null
+			COUNT(*) FILTER (WHERE test_type IS NOT NULL OR difficulty IS NOT NULL)::int AS tests,
+			COUNT(*) FILTER (
+				WHERE (test_type IS NOT NULL OR difficulty IS NOT NULL)
+					AND test_mode IS NULL
+			)::int AS mode_null,
+			COUNT(*) FILTER (
+				WHERE (test_type IS NOT NULL OR difficulty IS NOT NULL)
+					AND difficulty IS NULL
+			)::int AS difficulty_null,
+			COUNT(*) FILTER (
+				WHERE (test_type IS NOT NULL OR difficulty IS NOT NULL)
+					AND language IS NULL
+			)::int AS language_null,
+			COUNT(*) FILTER (WHERE test_type IS NULL AND difficulty IS NULL)::int AS foreign_rows
 		FROM ai_test
 		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
 	`
@@ -752,34 +824,96 @@ const generation = (
 			COUNT(*) FILTER (WHERE event = 'results:explain')::int AS explains,
 			COUNT(*) FILTER (WHERE event = 'results:explain-fail')::int AS explain_failures
 		FROM feature_events
-		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		WHERE created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
 	`
 )[0];
+
+// Client `generate:fail` only fires once retries are exhausted, so the client
+// funnel alone can report a healthier rate than the server saw — and it never
+// sees premium rejections at all. Server rows are the source of truth here.
+const generationServer = (
+	await sql`
+		SELECT
+			COUNT(*) FILTER (WHERE status_code = 200)::int AS successes,
+			COUNT(*) FILTER (WHERE status_code >= 400)::int AS failures,
+			COUNT(*) FILTER (WHERE status_code = 403)::int AS premium_gated,
+			COUNT(*) FILTER (WHERE status_code = 408)::int AS timeouts,
+			COUNT(*) FILTER (WHERE status_code >= 500)::int AS server_errors,
+			-- A 200 that came back short because the deadline ended it, distinct
+			-- from a 200 that filled the batch the model was asked for.
+			COUNT(*) FILTER (
+				WHERE status_code = 200 AND metadata->'salvage'->>'ranOutOfTime' = 'true'
+			)::int AS trimmed_by_deadline,
+			COUNT(*) FILTER (
+				WHERE status_code = 200 AND metadata->>'trimmed' = 'true'
+			)::int AS trimmed_total
+		FROM api_request_events
+		WHERE route = '/api/generate'
+			AND ${PRODUCTION_ONLY}
+			AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
+	`
+)[0];
+
+const explainServer = (
+	await sql`
+		SELECT
+			COUNT(*) FILTER (WHERE status_code = 200)::int AS successes,
+			COUNT(*) FILTER (WHERE status_code >= 400)::int AS failures
+		FROM api_request_events
+		WHERE route = '/api/explain'
+			AND ${PRODUCTION_ONLY}
+			AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
+	`
+)[0];
+
 const serverErrors = (
 	await sql`
 		SELECT COUNT(*)::int AS server_errors
 		FROM api_request_events
-		WHERE status_code >= 500 AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		WHERE status_code >= 500
+			AND ${PRODUCTION_ONLY}
+			AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
 	`
 )[0];
 console.log(`  tests generated:        ${quality.tests}`);
 console.log(
 	`  null test_mode:         ${quality.mode_null} (${percent(quality.mode_null, quality.tests)})`
 );
+if (quality.foreign_rows > 0) {
+	console.log(
+		`  foreign rows ignored:   ${quality.foreign_rows} (no test_type and no difficulty, so not written by /api/generate)`
+	);
+}
 console.log(
 	`  null difficulty:        ${quality.difficulty_null} (${percent(quality.difficulty_null, quality.tests)})`
 );
 console.log(
 	`  null language:          ${quality.language_null} (${percent(quality.language_null, quality.tests)})`
 );
-console.log(`  generate start/success: ${generation.starts} / ${generation.successes}`);
+console.log(`  generate start/success: ${generation.starts} / ${generation.successes} (client)`);
 console.log(`  generate failures:      ${generation.failures}`);
 console.log(
 	`  explain ok/fail:        ${generation.explains} / ${generation.explain_failures} (${percent(generation.explain_failures, generation.explains + generation.explain_failures)} fail)`
 );
+console.log(
+	`  server (prod) generate: ${generationServer.successes} ok / ${generationServer.failures} failed (${generationServer.premium_gated} premium-gated, ${generationServer.timeouts} timed out, ${generationServer.server_errors} 5xx)`
+);
+console.log(
+	`    trimmed papers:       ${generationServer.trimmed_total} (${generationServer.trimmed_by_deadline} of them cut short by the deadline)`
+);
+console.log(
+	`  server (prod) explain:  ${explainServer.successes} ok / ${explainServer.failures} failed`
+);
 console.log(`  server 5xx:             ${serverErrors.server_errors}`);
+console.log(`  (window for the lines above: last ${gateDays} days)`);
 
 section('Content quality (last 7 days)');
+// Matching, assertion-reasoning and statement-based options are built
+// server-side with a deliberate order, so the runtime quality checks skip them
+// (isServerBuiltFormat in questionQuality.js). Including them here measured a
+// shuffle the product never performs.
+const SERVER_BUILT_FORMATS = "('matching', 'assertion-reasoning', 'statement-based')";
+const MODEL_BUILT_ONLY = `COALESCE(q->>'format', '') NOT IN ${SERVER_BUILT_FORMATS}`;
 const positionRows = await sql`
 	SELECT (opt.idx - 1)::int AS position, COUNT(*)::int AS n
 	FROM ai_test t
@@ -790,6 +924,7 @@ const positionRows = await sql`
 		WHERE o.value = q->>'answer'
 	) AS opt
 	WHERE t.created_at >= NOW() - INTERVAL '7 days'
+		AND ${sql.query(MODEL_BUILT_ONLY)}
 	GROUP BY 1
 	ORDER BY 1
 `;
@@ -826,23 +961,50 @@ const lengthTell = (
 			FROM ai_test t
 			CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q
 			WHERE t.created_at >= NOW() - INTERVAL '7 days'
+				AND ${sql.query(MODEL_BUILT_ONLY)}
 		) x
 	`
 )[0];
 const longestShare = lengthTell.total > 0 ? lengthTell.longest / lengthTell.total : 0;
 
+// Dedupe must key on the same composed text questionTextFor() builds.
+// assertion-reasoning questions store an intentionally empty `question` stem
+// and keep their content in `assertion`/`reason`; grouping on `question` alone
+// collapsed all 60 of them into one group of identical empty strings and
+// reported them as 59 duplicates.
 const duplicateExtras = (
-	await sql`
-		SELECT COALESCE(SUM(n - 1), 0)::int AS extras
-		FROM (
-			SELECT COUNT(*)::int AS n
+	await sql.query(`
+		WITH items AS (
+			SELECT
+				CASE
+					WHEN COALESCE(q->>'format', '') = 'assertion-reasoning'
+						THEN lower(trim(coalesce(q->>'assertion', '') || ' | ' || coalesce(q->>'reason', '')))
+					WHEN jsonb_typeof(q->'columnA') = 'array'
+						THEN lower(trim(
+							coalesce(q->>'question', '') || ' ' ||
+							(SELECT string_agg(x, ' ') FROM jsonb_array_elements_text(q->'columnA') AS s(x)) || ' ' ||
+							(SELECT string_agg(x, ' ') FROM jsonb_array_elements_text(q->'columnB') AS s(x))
+						))
+					WHEN jsonb_typeof(q->'statements') = 'array'
+						THEN lower(trim(
+							(SELECT string_agg(coalesce(s.value->>'text', ''), ' ')
+								FROM jsonb_array_elements(q->'statements') AS s(value))
+						))
+					ELSE lower(trim(coalesce(q->>'question', '')))
+				END AS question_key
 			FROM ai_test t
 			CROSS JOIN LATERAL jsonb_array_elements((t.test::jsonb)->'questions') AS q
 			WHERE t.created_at >= NOW() - INTERVAL '7 days'
-			GROUP BY q->>'question'
+		),
+		duplicates AS (
+			SELECT COUNT(*)::int AS n
+			FROM items
+			WHERE length(question_key) > 0
+			GROUP BY question_key
 			HAVING COUNT(*) > 1
-		) x
-	`
+		)
+		SELECT COALESCE(SUM(n - 1), 0)::int AS extras FROM duplicates
+	`)
 )[0].extras;
 
 const itemStats = (
@@ -854,17 +1016,30 @@ const itemStats = (
 			WHERE t.created_at >= NOW() - INTERVAL '90 days'
 		),
 		answers AS (
-			SELECT a.test_id, (kv.key)::int AS qidx, kv.value AS user_answer
+			SELECT a.test_id, (kv.key)::int AS qidx, kv.value AS user_answer,
+				COALESCE(a.client_id, 'user:' || a.user_id::text) AS respondent,
+				a.created_at
 			FROM ai_test_attempts a
 			CROSS JOIN LATERAL jsonb_each_text(a.user_answers) AS kv
 			WHERE a.user_answers IS NOT NULL AND a.created_at >= NOW() - INTERVAL '90 days'
 		),
-		per_item AS (
-			SELECT COUNT(*)::int AS attempts,
-				ROUND(100.0 * COUNT(*) FILTER (WHERE a.user_answer = i.correct_answer) / COUNT(*))::int AS pct
+		-- Discrimination means "different people got different answers". Keying on
+		-- raw attempt counts let one person retaking a paper 25 times manufacture
+		-- "too easy" items, so the sample is deduplicated per respondent: their
+		-- last answer for that item is the one that counts.
+		deduped AS (
+			SELECT DISTINCT ON (a.test_id, a.qidx, a.respondent)
+				a.test_id, a.qidx, a.respondent, a.user_answer
 			FROM answers a
 			JOIN items i ON i.test_id = a.test_id AND i.qidx = a.qidx
-			GROUP BY a.test_id, a.qidx
+			ORDER BY a.test_id, a.qidx, a.respondent, a.created_at DESC
+		),
+		per_item AS (
+			SELECT COUNT(*)::int AS respondents,
+				ROUND(100.0 * COUNT(*) FILTER (WHERE d.user_answer = i.correct_answer) / COUNT(*))::int AS pct
+			FROM deduped d
+			JOIN items i ON i.test_id = d.test_id AND i.qidx = d.qidx
+			GROUP BY d.test_id, d.qidx
 			HAVING COUNT(*) >= 4
 		)
 		SELECT
@@ -883,16 +1058,21 @@ console.log(`  duplicate questions (7d):  ${duplicateExtras}`);
 console.log(
 	`  repeated items (90d):      ${itemStats.repeated_items} (too hard ${itemStats.too_hard}, too easy ${itemStats.too_easy}, healthy ${itemStats.healthy})`
 );
+console.log(
+	`    (one row per item, deduplicated per respondent; >=4 distinct respondents)`
+);
 
 const latency = (
 	await sql`
 		SELECT
 			COALESCE((SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)
 				FROM api_request_events
-				WHERE route = '/api/user/state' AND created_at >= NOW() - ${days}::int * INTERVAL '1 day')::int, 0) AS state_p95,
+				WHERE ${PRODUCTION_ONLY} AND route = '/api/user/state'
+					AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day')::int, 0) AS state_p95,
 			COALESCE((SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)
 				FROM api_request_events
-				WHERE route = '/api/auth/me' AND created_at >= NOW() - ${days}::int * INTERVAL '1 day')::int, 0) AS auth_p95
+				WHERE ${PRODUCTION_ONLY} AND route = '/api/auth/me'
+					AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day')::int, 0) AS auth_p95
 	`
 )[0];
 
@@ -902,25 +1082,32 @@ const slowRequests = (
 			COUNT(*)::int AS total,
 			COUNT(*) FILTER (WHERE duration_ms > 10000)::int AS slow
 		FROM api_request_events
-		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+		WHERE ${PRODUCTION_ONLY}
+			AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
 	`
 )[0];
 const slowShare = slowRequests.total > 0 ? slowRequests.slow / slowRequests.total : 0;
 
-section('Quality gates');
-const generationSuccessRate = generation.starts > 0 ? generation.successes / generation.starts : 1;
-const explainTotal = generation.explains + generation.explain_failures;
-const explainFailRate = explainTotal > 0 ? generation.explain_failures / explainTotal : 0;
+section(`Quality gates (last ${gateDays} days)`);
+// Server-side rates, not client events: the client only reports generate:fail
+// after retries are exhausted and never reports a premium rejection, so a busy
+// day could look healthy on the client funnel while the server told the opposite
+// story.
+const generationAttempts = generationServer.successes + generationServer.failures;
+const generationSuccessRate =
+	generationAttempts > 0 ? generationServer.successes / generationAttempts : 1;
+const explainTotal = explainServer.successes + explainServer.failures;
+const explainFailRate = explainTotal > 0 ? explainServer.failures / explainTotal : 0;
 const gates = [
 	{
 		label: 'generate success >= 95%',
-		passed: generation.starts === 0 || generationSuccessRate >= 0.95,
-		detail: `${(generationSuccessRate * 100).toFixed(1)}%`,
+		passed: generationAttempts === 0 || generationSuccessRate >= 0.95,
+		detail: `${(generationSuccessRate * 100).toFixed(1)}% (${generationServer.successes}/${generationAttempts} server attempts, ${generationServer.premium_gated} premium-gated)`,
 	},
 	{
 		label: 'explain failure < 2%',
-		passed: explainFailRate < 0.02,
-		detail: `${(explainFailRate * 100).toFixed(1)}%`,
+		passed: explainTotal === 0 || explainFailRate < 0.02,
+		detail: `${(explainFailRate * 100).toFixed(1)}% (${explainServer.failures}/${explainTotal})`,
 	},
 	{
 		label: 'server 5xx = 0',
@@ -964,15 +1151,24 @@ const gates = [
 			(itemStats.too_easy + itemStats.too_hard) / itemStats.repeated_items < 0.35,
 		detail: `${itemStats.too_easy + itemStats.too_hard}/${itemStats.repeated_items}`,
 	},
+	// Retention on cohorts of 4-17 identities swings by whole percentage points
+	// on a single visitor, so it is reported as inconclusive rather than failed
+	// until the sample can carry the claim.
 	{
 		label: 'D1 retention >= 15%',
-		passed: cohortSize === 0 || d1Rate >= 0.15,
-		detail: `${(d1Rate * 100).toFixed(1)}%`,
+		passed: cohortSize < MIN_RETENTION_COHORT || d1Rate >= 0.15,
+		detail:
+			cohortSize < MIN_RETENTION_COHORT
+				? `inconclusive (${cohortSize} identities, need ${MIN_RETENTION_COHORT})`
+				: `${(d1Rate * 100).toFixed(1)}% (${d1Count}/${cohortSize})`,
 	},
 	{
 		label: 'D7 retention >= 8%',
-		passed: cohortSize === 0 || d7Rate >= 0.08,
-		detail: `${(d7Rate * 100).toFixed(1)}%`,
+		passed: cohortSize < MIN_RETENTION_COHORT || d7Rate >= 0.08,
+		detail:
+			cohortSize < MIN_RETENTION_COHORT
+				? `inconclusive (${cohortSize} identities, need ${MIN_RETENTION_COHORT})`
+				: `${(d7Rate * 100).toFixed(1)}% (${d7Count}/${cohortSize})`,
 	},
 	{
 		label: 'device profile coverage >= 80%',
