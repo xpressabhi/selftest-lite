@@ -1,0 +1,32 @@
+protocol_version: "1.0"
+id: "CHG-0004"
+title: "Visible statement numbers in rendered markdown lists"
+status: "complete"
+created_at: "2026-10-01T05:00:03Z"
+request: "Statement-based questions show their statement numbers; test 1822 and every rendered markdown list keep visible list markers."
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:e7e9771de40ea189097466ffc8d64a3f9c6f0f41289ebd0af30ec32c94342c30"
+scope:
+  included:
+    - "Rendered markdown ordered and unordered lists keep markers and indentation."
+    - "E2E regression assertions for statement-question list markers."
+  excluded:
+    - "Question text, stored data, generation, and component-specific list styling."
+  paths:
+    - ".intent/**"
+    - "src/**"
+    - "tests/**"
+preserved:
+  - "Markdown text, sanitization, math/code/table handling, and non-list rendering stay unchanged."
+  - "No data, API, telemetry, or locale changes."
+test_changes:
+  - path: "tests/e2e/question-formats.e2e.js"
+    kind: "modified"
+    reason: "Assert visible decimal markers and indent on statement lists."
+decisions:
+  - "Fix at the MarkdownContent scope so test, review, print, and explain views restore markers together."
+  - "Use explicit decimal/disc markers with 1.5rem indent and a small li margin for predictable mobile layout."
+  - "No regeneration needed: stored question text already contains the numbering."
+review_required: false

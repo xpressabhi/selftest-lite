@@ -367,6 +367,15 @@ for (const variant of STATEMENT_VARIANTS) {
 		await expect(body).toContainText(variant.closing);
 		await expect(page.locator('.test-option')).toHaveCount(4);
 
+		// Tailwind's preflight strips list markers; the statement numbers must
+		// stay visible because the options refer to them ("1 and 2").
+		const listStyles = await body.locator('ol').evaluate((list) => {
+			const style = getComputedStyle(list);
+			return { type: style.listStyleType, padding: parseFloat(style.paddingLeft) };
+		});
+		expect(listStyles.type).toBe('decimal');
+		expect(listStyles.padding).toBeGreaterThan(0);
+
 		const keyOption = page.locator('.test-option').filter({ hasText: variant.key });
 		await expect(keyOption).toHaveCount(1);
 		await keyOption.click();

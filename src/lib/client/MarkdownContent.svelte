@@ -173,6 +173,23 @@
 		height: auto;
 	}
 
+	/* Tailwind's preflight strips list markers and padding. Rendered markdown
+	   (numbered statements, bullet lists) must keep them so options like
+	   "1 and 2" refer to visibly numbered statements. */
+	.markdown-content :global(ol) {
+		list-style: decimal;
+		padding-left: 1.5rem;
+	}
+
+	.markdown-content :global(ul) {
+		list-style: disc;
+		padding-left: 1.5rem;
+	}
+
+	.markdown-content :global(li) {
+		margin: 0.2rem 0;
+	}
+
 	.markdown-content :global(table) {
 		display: block;
 		max-width: 100%;
