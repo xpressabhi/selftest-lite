@@ -14,6 +14,7 @@ import {
 import { parseRequestBody } from '$lib/server/requestBody';
 import { explanationSchema } from '$lib/server/quizSchema';
 import { parseJsonResponse } from '$lib/server/jsonResponse';
+import { backoffBeforeRetry, isTransientProviderError } from '$lib/server/transientErrors';
 import {
 	MAX_ANSWER_TEXT_LENGTH,
 	MAX_QUESTION_TEXT_LENGTH,
@@ -28,6 +29,7 @@ import {
 
 const EXPLANATION_MODEL = 'gemini-flash-lite-latest';
 const EXPLANATION_TIMEOUT_MS = 45000;
+const MAX_EXPLANATION_ATTEMPTS = 3;
 
 class ExplanationTimeoutError extends Error {
 	constructor() {
@@ -199,9 +201,12 @@ export async function POST({ request }) {
 		let parsed = null;
 		let lastError = null;
 
-		// One retry covers the rare case where the model still emits malformed
-		// JSON despite the response schema (these used to surface as 500s).
-		for (let attempt = 1; attempt <= 2; attempt += 1) {
+		// Two retries, because Gemini returns 503 "high demand" under load and
+		// those surfaced as hard 500s: 20 production 500s in the reviewed window
+		// were all this one transient message, and a retry inside the same 45s
+		// budget converts nearly all of them. Timeouts are not retried — they
+		// have already spent the budget the retry would need.
+		for (let attempt = 1; attempt <= MAX_EXPLANATION_ATTEMPTS; attempt += 1) {
 			try {
 				const text = await requestExplanationText(ai, prompt, deadlineMs);
 				const validated = explanationSchema.safeParse(parseJsonResponse(text));
@@ -209,11 +214,20 @@ export async function POST({ request }) {
 					parsed = validated.data;
 					break;
 				}
+				// Malformed JSON despite the response schema: retry immediately,
+				// there is no provider state to wait out.
 				lastError = new Error('Invalid explanation response from model');
 			} catch (error) {
 				lastError = error;
 				if (error instanceof ExplanationTimeoutError) {
 					throw error;
+				}
+				if (
+					attempt >= MAX_EXPLANATION_ATTEMPTS ||
+					!isTransientProviderError(error) ||
+					!(await backoffBeforeRetry(attempt, { deadlineMs }))
+				) {
+					break;
 				}
 			}
 		}
