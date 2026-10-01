@@ -114,7 +114,16 @@ describe('salvageSummary', () => {
 			rounds: 3,
 			rejected: 4,
 			trimmed: true,
+			ranOutOfTime: false,
 			issueCounts: {},
 		});
+	});
+
+	it('records that the deadline, not the model, ended the paper short', () => {
+		// Without this the report cannot tell "ran out of time" apart from
+		// "would not fill the batch", and those need different fixes.
+		expect(
+			salvageSummary({ requested: 10, approved: 6, rounds: 1, rejectedCount: 4, ranOutOfTime: true })
+		).toMatchObject({ approved: 6, trimmed: false, ranOutOfTime: true });
 	});
 });

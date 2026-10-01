@@ -191,7 +191,7 @@
 	"questionsHeading": "Questions",
 	"offlineAccessHistory": "You're offline. You can still access previously generated tests from history.",
 	"retrying": "Thinking again",
-	"generationTimedOutRetry": "Generation timed out after 180 seconds. Please retry.",
+	"generationTimedOutRetry": "Generation took too long. Please try again.",
 	"errorFailedGenerateAfterAttempts": "Failed to generate test after multiple attempts. Please try again later.",
 	"errorInvalidTestId": "Invalid test ID",
 	"errorSelectObjectiveExam": "Please select an objective exam for full-length paper.",

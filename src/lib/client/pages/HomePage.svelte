@@ -54,6 +54,14 @@
 	import WelcomeTour from '$lib/client/WelcomeTour.svelte';
 	import { languageHref, localizedPath } from '$lib/shared/seo';
 	import {
+		CLIENT_GENERATION_TIMEOUT_MS,
+		GENERATION_BUDGET_MS,
+		MAX_GENERATION_ATTEMPTS,
+		createTerminalEventGuard,
+		isRetryableGenerationStatus,
+		nextAttemptAllowed,
+	} from '$lib/shared/generationBudget';
+	import {
 		applyTurnFailure,
 		applyTurnResult,
 		beginClarifyAnswer,
@@ -95,8 +103,10 @@
 		profileInsights,
 	} from '$lib/client/profile';
 
-	const MAX_RETRIES = 3;
-	const GENERATION_TIMEOUT_MS = 180000;
+	// Retry policy lives in $lib/shared/generationBudget.js so the numbers that
+	// the server deadline and this loop must agree on have one definition.
+	const MAX_RETRIES = MAX_GENERATION_ATTEMPTS;
+	const GENERATION_TIMEOUT_MS = CLIENT_GENERATION_TIMEOUT_MS;
 	const PROFILE_WIZARD_DISMISS_KEY = 'selftest_profile_wizard_dismissed_at';
 	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
@@ -214,6 +224,11 @@
 	let generationDone = $state(false);
 	let generationFailed = $state(false);
 	let generationFailedTimer = null;
+	// Exactly one terminal event per generation. The attempt loop and the page
+	// teardown can both notice an end; without this latch they either
+	// double-count or (worse) both stay silent. See
+	// src/lib/shared/generationBudget.js for why that mattered.
+	const generationTerminal = createTerminalEventGuard();
 
 	const currentProfile = $derived($profileStore);
 	const insights = $derived($profileInsights);
@@ -391,6 +406,20 @@
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
 			window.clearTimeout(tourTimer);
+		}
+		// A generation still in flight when the page goes away is an abandoned
+		// generation, and without this it is invisible: generate:start was
+		// tracked, nothing terminal ever was, and the request simply stops
+		// existing. That is exactly the shape of the timeouts the report could
+		// see server-side but never on the client.
+		if (status === 'loading' && generationTerminal.claim('fail')) {
+			track('generate:fail', {
+				attempt: MAX_RETRIES,
+				code: 'ABANDONED',
+				status: 0,
+				retryable: true,
+				elapsedSeconds: generationElapsed,
+			});
 		}
 	});
 
@@ -1401,7 +1430,7 @@
 				const apiError = new Error(localizedApiError(data, $t, response.status));
 				apiError.status = response.status;
 				apiError.code = typeof data?.code === 'string' ? data.code : null;
-				apiError.retryable = response.status === 429 || response.status >= 500;
+				apiError.retryable = isRetryableGenerationStatus(response.status);
 				throw apiError;
 			}
 			return data;
@@ -1412,7 +1441,10 @@
 				});
 				timeoutError.code = 'GENERATION_TIMEOUT';
 				timeoutError.status = 408;
-				timeoutError.retryable = true;
+				// The client aborted because the whole budget is spent, so a
+				// retry cannot finish either. Report it instead of starting one
+				// that is certain to time out.
+				timeoutError.retryable = false;
 				throw timeoutError;
 			}
 			throw caughtError;
@@ -1453,6 +1485,7 @@
 		window.clearTimeout(generationFailedTimer);
 		generationFailedTimer = null;
 		const generationStartedAt = Date.now();
+		generationTerminal.reset();
 		window.clearInterval(generationTimer);
 		generationTimer = window.setInterval(() => {
 			generationElapsed = Math.floor((Date.now() - generationStartedAt) / 1000);
@@ -1468,6 +1501,32 @@
 
 		try {
 			for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+				// The first attempt always runs; later ones need budget left.
+				// Do not start an attempt that cannot finish inside the budget:
+				// it would leave the user watching a spinner guaranteed to end
+				// in a timeout they could have been told about already.
+				const budget = nextAttemptAllowed({
+					attempt,
+					elapsedMs: Date.now() - generationStartedAt,
+					maxAttempts: MAX_RETRIES,
+					budgetMs: GENERATION_BUDGET_MS,
+				});
+				if (!budget.allowed) {
+					if (generationTerminal.claim('fail')) {
+						track('generate:fail', {
+							attempt,
+							code:
+								budget.reason === 'budget'
+									? 'BUDGET_EXHAUSTED'
+									: 'ATTEMPTS_EXHAUSTED',
+							status: 0,
+							retryable: true,
+							elapsedSeconds: Math.floor((Date.now() - generationStartedAt) / 1000),
+						});
+					}
+					error = $t('errorFailedGenerateAfterAttempts');
+					break;
+				}
 				try {
 					if (attempt > 1) {
 						retryLabel = `${$t('retrying')} ${attempt}/${MAX_RETRIES}`;
@@ -1479,10 +1538,12 @@
 					await new Promise((resolve) =>
 						window.setTimeout(resolve, generationSettleDelayMs())
 					);
-					track('generate:success', {
-						mode:
-							requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
-					});
+					if (generationTerminal.claim('success')) {
+						track('generate:success', {
+							mode:
+								requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
+						});
+					}
 					if (data?.trimmed) {
 						track('generate:trimmed', {
 							requested: Number(data.requestedCount) || 0,
@@ -1502,6 +1563,11 @@
 					return;
 				} catch (caughtError) {
 					if (generationCanceled) {
+						if (generationTerminal.claim('cancel')) {
+							track('generate:cancel', {
+								elapsedSeconds: Math.floor((Date.now() - generationStartedAt) / 1000),
+							});
+						}
 						error = $t('generationCanceled');
 						break;
 					}
@@ -1515,13 +1581,17 @@
 						}, 900);
 					}
 					if (attempt === MAX_RETRIES || !canRetry) {
-						track('generate:fail', {
-							attempt,
-							code: caughtError.code || 'UNKNOWN',
-							status: caughtError.status || 0,
-							retryable: canRetry,
-							elapsedSeconds: Math.floor((Date.now() - generationStartedAt) / 1000),
-						});
+						if (generationTerminal.claim('fail')) {
+							track('generate:fail', {
+								attempt,
+								code: caughtError.code || 'UNKNOWN',
+								status: caughtError.status || 0,
+								retryable: canRetry,
+								elapsedSeconds: Math.floor(
+									(Date.now() - generationStartedAt) / 1000
+								),
+							});
+						}
 						error = caughtError.message || $t('errorFailedGenerateAfterAttempts');
 						break;
 					}
@@ -1548,7 +1618,9 @@
 		}
 		generationCanceled = true;
 		generationAbort?.abort();
-		track('generate:cancel', { elapsedSeconds: generationElapsed });
+		if (generationTerminal.claim('cancel')) {
+			track('generate:cancel', { elapsedSeconds: generationElapsed });
+		}
 	}
 
 	async function handleGenerate() {

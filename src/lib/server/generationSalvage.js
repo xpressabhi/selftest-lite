@@ -128,6 +128,7 @@ export function salvageSummary({
 	rejectedCount,
 	trimmed = false,
 	issueCounts = {},
+	ranOutOfTime = false,
 } = {}) {
 	return {
 		requested,
@@ -135,6 +136,10 @@ export function salvageSummary({
 		rounds,
 		rejected: rejectedCount,
 		trimmed,
+		// True when the deadline ended the run early, as opposed to the model
+		// failing to fill a batch. The two need different fixes, so the report
+		// must be able to tell them apart.
+		ranOutOfTime,
 		issueCounts,
 	};
 }

@@ -107,6 +107,15 @@ function assertWithinDeadline(deadlineMs) {
 	}
 }
 
+/**
+ * True when a round may still start: there is time left, and enough of it to
+ * be worth a model call. The reserve covers the verification pass that follows
+ * generation, so a round never starts with too little time to finish itself.
+ */
+function canStartRound(deadlineMs) {
+	return getRemainingTimeMs(deadlineMs) > GENERATION_RESERVE_MS;
+}
+
 function isModelUnavailableError(error) {
 	return /503|UNAVAILABLE|429|RESOURCE_EXHAUSTED|overloaded/iu.test(String(error?.message || ''));
 }
@@ -406,8 +415,16 @@ async function generatePaper({
 	];
 	let resolvedPaperTopic = resolvedTopic;
 
+	// Set when the deadline ends the run with questions already approved.
+	// Those questions are good; the trim path below returns them at a reduced
+	// size rather than throwing away a paper that took minutes to build.
+	let ranOutOfTime = false;
+
 	for (let index = 0; index < totalBatches; index += 1) {
-		assertWithinDeadline(deadlineMs);
+		if (!canStartRound(deadlineMs)) {
+			ranOutOfTime = true;
+			break;
+		}
 
 		const batchTarget = Math.min(BATCH_SIZE, numQuestions - generatedQuestions.length);
 		if (batchTarget <= 0) {
@@ -433,8 +450,8 @@ async function generatePaper({
 		// Round 0 generates the whole batch; later rounds replace only the
 		// rejected drafts (plus a buffer) instead of regenerating everything.
 		while (approvedInBatch.length < batchTarget && round < MAX_GENERATION_ROUNDS) {
-			assertWithinDeadline(deadlineMs);
-			if (getRemainingTimeMs(deadlineMs) <= GENERATION_RESERVE_MS) {
+			if (!canStartRound(deadlineMs)) {
+				ranOutOfTime = true;
 				break;
 			}
 
@@ -575,10 +592,17 @@ async function generatePaper({
 					batchTotal: totalBatches,
 				});
 			} catch (roundError) {
-				if (
-					isApiLimitExceededError(roundError) ||
-					isApiTimeoutError(roundError)
-				) {
+				if (isApiTimeoutError(roundError)) {
+					// Out of time mid-batch. Keep what is already approved and let
+					// the trim path decide whether it is worth returning; only
+					// give up when nothing usable exists.
+					if (generatedQuestions.length + approvedInBatch.length === 0) {
+						throw roundError;
+					}
+					ranOutOfTime = true;
+					break;
+				}
+				if (isApiLimitExceededError(roundError)) {
 					throw roundError;
 				}
 				lastError = roundError;
@@ -587,6 +611,9 @@ async function generatePaper({
 		}
 
 		if (approvedInBatch.length === 0) {
+			if (ranOutOfTime && generatedQuestions.length > 0) {
+				break;
+			}
 			throw (
 				lastError ||
 				new GenerationFailureError('Failed to validate generated batch', {
@@ -599,6 +626,10 @@ async function generatePaper({
 		generatedQuestions.push(...approvedInBatch.map(sanitizeQuestion));
 	}
 
+	if (ranOutOfTime && generatedQuestions.length === 0) {
+		throw new GenerationTimeoutError();
+	}
+
 	if (generatedQuestions.length !== numQuestions) {
 		if (
 			!shouldReturnTrimmed({
@@ -607,6 +638,11 @@ async function generatePaper({
 				testMode,
 			})
 		) {
+			// Out of time with too little to return is a timeout, not a count
+			// mismatch: the fix is a retry, not a reworded error.
+			if (ranOutOfTime) {
+				throw new GenerationTimeoutError();
+			}
 			throw new GenerationFailureError(
 				`Expected ${numQuestions} questions but generated ${generatedQuestions.length}`,
 				{
@@ -640,6 +676,9 @@ async function generatePaper({
 			rejectedCount: salvage.rejected,
 			trimmed: salvage.trimmed,
 			issueCounts: salvage.issueCounts,
+			// Distinguishes "the deadline ended this paper short" from "the
+			// model would not fill the batch", which need different fixes.
+			ranOutOfTime,
 		}),
 	};
 }

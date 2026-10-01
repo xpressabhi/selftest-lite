@@ -191,7 +191,7 @@
 	"questionsHeading": "प्रश्न",
 	"offlineAccessHistory": "आप ऑफ़लाइन हैं। पहले बनाए गए टेस्ट इतिहास से देख सकते हैं।",
 	"retrying": "फिर सोच रहे हैं",
-	"generationTimedOutRetry": "180 सेकंड बाद जनरेशन टाइम-आउट हो गया। कृपया दोबारा प्रयास करें।",
+	"generationTimedOutRetry": "जनरेशन में बहुत समय लग गया। कृपया दोबारा प्रयास करें।",
 	"errorFailedGenerateAfterAttempts": "कई प्रयासों के बाद टेस्ट बनाना असफल रहा। कृपया बाद में कोशिश करें।",
 	"errorInvalidTestId": "अमान्य टेस्ट आईडी",
 	"errorSelectObjectiveExam": "कृपया फुल-लेंथ पेपर के लिए ऑब्जेक्टिव परीक्षा चुनें।",
