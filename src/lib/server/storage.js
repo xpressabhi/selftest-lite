@@ -87,6 +87,11 @@ export function normalizeUserIdValue(value) {
 	return Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
+// Bumping this is how new DDL below reaches databases that are already warm —
+// the guard at the top of ensureStorageSchema() skips every statement on a
+// version match. schemaMigrations.test.js fingerprints the DDL block and fails
+// when it changes without a matching bump, because a missing bump means the
+// statement only ever runs on a cold start.
 const SCHEMA_VERSION = 10;
 
 export async function ensureStorageSchema() {
