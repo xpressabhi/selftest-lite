@@ -418,7 +418,7 @@
 	}
 
 	.exams-updated-warn {
-		color: var(--warn-text, #b45309);
+		color: var(--warn);
 	}
 
 	.exams-search {
@@ -428,16 +428,16 @@
 		min-height: 48px;
 		padding: 0 0.25rem 0 0.85rem;
 		border: 1px solid var(--line);
-		border-radius: var(--radius-surface);
+		border-radius: var(--radius-control);
 		background: var(--surface);
 		transition:
-			border-color 0.15s ease-out,
-			box-shadow 0.15s ease-out;
+			border-color var(--motion-fast) var(--ease-out),
+			box-shadow var(--motion-fast) var(--ease-out);
 	}
 
 	.exams-search:focus-within {
 		border-color: var(--brand-text);
-		box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.15);
+		box-shadow: var(--focus-ring);
 	}
 
 	.exams-search-icon {
@@ -504,8 +504,8 @@
 	}
 
 	.exams-chip.is-active {
-		border-color: var(--brand-text);
-		background: var(--brand-50, #eef2ff);
+		border-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
+		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
 		color: var(--brand-text);
 		font-weight: 600;
 	}
@@ -531,7 +531,7 @@
 		gap: 0.85rem;
 	}
 
-	@media (min-width: 820px) {
+	@media (min-width: 768px) {
 		.exams-list {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
@@ -569,16 +569,18 @@
 		color: var(--text-muted);
 	}
 
+	/* Status pills use the shared `.status-chip` tint recipe, so they follow
+	   the theme instead of hardcoding a light-mode pair. */
 	.exam-status-open {
-		border-color: var(--brand-text);
-		background: var(--brand-50, #eef2ff);
+		border-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
+		background: color-mix(in srgb, var(--color-brand-600) 8%, var(--surface));
 		color: var(--brand-text);
 	}
 
 	.exam-status-closing_soon {
-		border-color: #f59e0b;
-		background: #fffbeb;
-		color: #b45309;
+		border-color: color-mix(in srgb, rgb(var(--warn-rgb)) 40%, transparent);
+		background: color-mix(in srgb, rgb(var(--warn-rgb)) 8%, var(--surface));
+		color: var(--warn);
 	}
 
 	.exam-status-closed {
@@ -590,8 +592,8 @@
 		border-radius: 999px;
 		font-size: 0.72rem;
 		font-weight: 700;
-		background: #dcfce7;
-		color: #166534;
+		background: color-mix(in srgb, rgb(var(--ok-rgb)) 8%, var(--surface));
+		color: var(--ok);
 	}
 
 	.exam-org {
@@ -615,7 +617,7 @@
 	}
 
 	.exam-card-meta .is-urgent {
-		color: #b45309;
+		color: var(--warn);
 		font-weight: 600;
 	}
 
@@ -647,14 +649,15 @@
 	}
 
 	.exam-action-primary {
-		background: var(--brand-text);
-		border-color: var(--brand-text);
-		color: #fff;
+		background: var(--color-brand-600);
+		border-color: var(--color-brand-600);
+		color: var(--on-brand);
 	}
 
 	.exam-action-primary:hover {
-		color: #fff;
-		opacity: 0.92;
+		background: var(--color-brand-700);
+		border-color: var(--color-brand-700);
+		color: var(--on-brand);
 	}
 
 	.exam-action-practice {
