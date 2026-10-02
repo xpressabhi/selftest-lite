@@ -85,8 +85,15 @@ triplet is required — `--brand-rgb` is a bare comma list and `color-mix()` nee
 
 Use **8%**, not the interactive `.chip`'s 12%: a badge sits under ~12px-weight text on a
 light surface, and 12% drops `--warn` on white to 4.25:1, under the 4.5 floor. Dark mode has
-~9:1 headroom either way. `tests/e2e/design-consistency.e2e.js` asserts computed contrast, so
-a badge that drifts off-token fails the suite rather than shipping.
+~9:1 headroom either way.
+
+A brand-tinted pill uses `--color-brand-600`, which is an `@theme` step and does **not** flip
+with the theme; it reads as ink via the paired `--brand-text`. Both forms are correct as long
+as the fill and the ink are declared together.
+
+Nothing enforces this yet. `taste-pass.e2e.js` checks computed contrast for `.btn-primary`
+only. A repo-wide sweep needs an explicit `color(srgb …)` / `oklch()` → RGB converter, which
+is the outstanding piece of work.
 
 ## Layers
 

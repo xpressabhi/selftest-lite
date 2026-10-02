@@ -504,8 +504,7 @@
 	}
 
 	.composer-group:focus-within {
-		/* The ring stays; focus adds the halo outside it. Shares
-		   --focus-ring with every other composed input. */
+		/* Shares --focus-ring with every other composed input. */
 		box-shadow: var(--focus-ring);
 	}
 

@@ -504,7 +504,10 @@
 	}
 
 	.exams-chip.is-active {
-		border-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
+		/* `--brand-text`, not a mix: the border is the only non-colour signal
+	   that the chip is selected, so it has to clear 3:1 against the surface
+	   (WCAG 1.4.11). A 55% mix measures 2.54:1 on white. */
+		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
 		color: var(--brand-text);
 		font-weight: 600;
