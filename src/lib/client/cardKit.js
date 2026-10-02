@@ -3,7 +3,12 @@
 // Browser-only helpers live here so the async boundary (logo load, PNG blob,
 // native share) is in one place; renderers stay synchronous and take the
 // pre-loaded logo. Palette values mirror the light-theme tokens in
-// src/lib/styles/globals.css (canvas cannot read CSS variables).
+// src/lib/styles/globals.css (canvas cannot read CSS variables) — keep the
+// two in step when a token changes. The font stack is read from the same
+// resolver the in-app canvas measurement uses, so a card and the app it was
+// shared from can never render in two different faces.
+
+import { resolveFontStack } from './pretextLayout.js';
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
@@ -31,11 +36,9 @@ export const CARD_PALETTE = {
 	locked: '#cbd5e1',
 };
 
-const CARD_FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Canvas font shorthand from size/weight, on the shared system stack. */
+/** Canvas font shorthand from size/weight, on the app's resolved stack. */
 export function cardFont(size, weight = 500) {
-	return `${weight} ${size}px ${CARD_FONT}`;
+	return `${weight} ${size}px ${resolveFontStack()}`;
 }
 
 /** Paints the family background: brand-50 wash to white to surface-muted. */

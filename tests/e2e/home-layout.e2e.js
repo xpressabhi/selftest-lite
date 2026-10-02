@@ -59,11 +59,11 @@ test('the kicker is one line and the planner owns the phone first screen', async
 	await page.goto('/');
 	await waitForHydration(page);
 
-	await expect(page.locator('h1.home-kicker')).toHaveText(
-		'AI Quiz & Exam Paper Generator for India'
-	);
+	await expect(page.locator('h1.home-kicker')).toHaveText('Practise anything, any exam');
 	await expect(page.locator('.hero-block')).toHaveCount(0);
 	await expect(page.locator('.hero-heading')).toHaveCount(0);
+	// The SEO title string stays in <title>; it is no longer the visible h1.
+	await expect(page).toHaveTitle(/AI Quiz & Exam Paper Generator for India/);
 
 	const kicker = await page.locator('.home-kicker').boundingBox();
 	const panel = await page.locator('.planner-panel').boundingBox();
@@ -176,7 +176,7 @@ test('hindi home keeps the kicker and the hindi pitch', async ({ page }, testInf
 	await page.goto('/hi');
 	await waitForHydration(page);
 
-	await expect(page.locator('h1.home-kicker')).toContainText('भारत के लिए AI क्विज़');
+	await expect(page.locator('h1.home-kicker')).toContainText('कोई भी विषय');
 	await expect(page.locator('.home-pitch')).toContainText('UPSC, SSC, बैंकिंग');
 	const panel = await page.locator('.planner-panel').boundingBox();
 

@@ -409,7 +409,12 @@
 		color: var(--text-muted);
 	}
 
-	.recent-block,
+	.recent-block {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
 	.welcome-group {
 		display: flex;
 		flex-direction: column;
@@ -519,6 +524,34 @@
 	.welcome-example:hover {
 		border-color: rgba(var(--brand-rgb), 0.4);
 		background: rgba(var(--brand-rgb), 0.05);
+	}
+
+	/* From tablet up the gallery stops being a list of full-width bars. Six
+	   prompts each stretched across a 1200px shell read as a form to fill in
+	   rather than six things you could try, and they pushed the last group
+	   below the panel's scroll fold. Wrapping them into pills fits the whole
+	   set in three short rows. This has to sit after the base rules above —
+	   same specificity, so source order decides. Phones keep the stacked bar:
+	   at 390px these strings do not fit as pills, and the gallery overflow is
+	   an accepted bound pinned by tests/e2e/welcome-gallery.e2e.js. */
+	@media (min-width: 640px) {
+		.welcome-group {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 6px 8px;
+		}
+
+		.welcome-group-label {
+			flex-basis: 100%;
+		}
+
+		.welcome-example {
+			width: auto;
+			padding: 0 14px;
+			border-radius: 999px;
+			background: var(--surface);
+		}
 	}
 
 	.welcome-tip {

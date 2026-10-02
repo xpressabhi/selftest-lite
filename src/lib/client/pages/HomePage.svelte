@@ -1767,7 +1767,7 @@
 
 <section class="app-container py-4 py-md-5">
 	<div class="home-wrap">
-		<h1 class="home-kicker">{$t('homeH1')}</h1>
+		<h1 class="home-kicker">{$t('homeHeading')}</h1>
 
 		{#snippet planCard()}
 			<PreviewCard

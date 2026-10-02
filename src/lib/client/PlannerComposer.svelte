@@ -350,7 +350,7 @@
 					class="composer-clear"
 					type="button"
 					disabled={disabled}
-					aria-label={$t('clearSearchInput')}
+					aria-label={$t('clearTopicInput')}
 					onmousedown={handleClearMouseDown}
 					onclick={clearInput}
 				>
@@ -373,7 +373,7 @@
 					class="composer-send"
 					type="submit"
 					disabled={!trimmedValue || disabled}
-					aria-label={$t('generateQuiz')}
+					aria-label={$t('buildPlan')}
 				>
 					<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
 						<path

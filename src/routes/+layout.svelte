@@ -1144,6 +1144,11 @@
 	}
 
 	.footer-links a {
+		display: inline-flex;
+		align-items: center;
+		/* 44px tap target. These measured ~37.6px before (0.9rem text plus 8px
+	   padding), the only sub-44px control left in the shell. */
+		min-height: 44px;
 		padding: 8px 0;
 		color: var(--text-muted);
 		font-size: 0.9rem;
@@ -1448,21 +1453,29 @@
 		}
 	}
 
-	@media (max-width: 575.98px) {
+	/* The documented tablet rung is 640; 576 is a one-off breakpoint and the
+	   design system forbids adding one. */
+	@media (max-width: 639.98px) {
 		.pwa-install-hint {
 			align-items: flex-start;
 			flex-direction: column;
 		}
 	}
 
+	/* Documented exception to the no-one-off-breakpoints rule: 320px-class
+	   phones, which are below any documented rung. Widening this to the
+	   `small phone` (<480) boundary would drop the wordmark on a 390px
+	   screen, which is the common case, not the narrow one. */
 	@media (max-width: 359.98px) {
 		.brand-link span {
 			display: none;
 		}
 
-		/* Five tabs at 320px: keep every label on one line. */
+		/* Five tabs at 320px: keep every label on one line. 0.72rem is the
+		   documented `.text-micro` step; this was 0.68rem (10.9px), which
+		   reads below the floor for a label on an interactive control. */
 		.bottom-nav a {
-			font-size: 0.68rem;
+			font-size: 0.72rem;
 		}
 	}
 </style>

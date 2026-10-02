@@ -11,6 +11,11 @@
 		['privacySection5Title', 'privacySection5Body'],
 		['privacySection6Title', 'privacySection6Body'],
 		['privacySection7Title', 'privacySection7Body'],
+		// The specific device-capability disclosure (RAM class, device model,
+		// network speed) was written and translated but never reached the page.
+		// Telemetry does collect these to tune for low-end devices, so it has
+		// to be stated here.
+		['privacyItemAnalyticsTitle', 'privacyItemAnalyticsBody'],
 	];
 </script>
 

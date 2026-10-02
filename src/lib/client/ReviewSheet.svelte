@@ -63,7 +63,7 @@
 			<button
 				class="sheet-close"
 				type="button"
-				aria-label={$t('closeMenu')}
+				aria-label={$t('close')}
 				onclick={onClose}
 			>
 				<Icon name="close" size={20} />

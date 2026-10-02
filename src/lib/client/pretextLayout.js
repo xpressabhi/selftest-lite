@@ -41,6 +41,35 @@ function buildCacheKey(text, font, options) {
 	return JSON.stringify([text, font, options || {}]);
 }
 
+/* Canvas text measurement has to run against the font the DOM actually
+   renders with. Hardcoding a family name here is how that drifts: the app
+   stack is `Inter, ui-sans-serif, system-ui` but no Inter webfont is loaded,
+   so every user renders the system UI face while this module measured a
+   name the canvas quietly fell back from — producing wrap geometry that
+   disagreed with the real layout. Read the resolved stack off the body
+   instead, so the two cannot disagree. */
+const FALLBACK_STACK =
+	"ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+let bodyFontStack;
+
+export function resolveFontStack() {
+	if (typeof document === 'undefined') {
+		return FALLBACK_STACK;
+	}
+	if (bodyFontStack === undefined) {
+		bodyFontStack =
+			getComputedStyle(document.body).fontFamily.trim() || FALLBACK_STACK;
+	}
+	return bodyFontStack;
+}
+
+/** Build a canvas font shorthand that uses the app's real family stack. */
+export function canvasFont(px, weight = 400) {
+	const stack = resolveFontStack();
+	return `${weight} ${px}px ${stack.includes(',') ? stack : FALLBACK_STACK}`;
+}
+
 export async function prepareText(text, font, options = {}) {
 	const api = await loadPretext();
 	if (!api) {
@@ -48,7 +77,7 @@ export async function prepareText(text, font, options = {}) {
 	}
 
 	const normalizedText = String(text || '');
-	const normalizedFont = font || '16px Inter';
+	const normalizedFont = font || canvasFont(16);
 	const cacheKey = buildCacheKey(normalizedText, normalizedFont, options);
 	if (!preparedTextCache.has(cacheKey)) {
 		preparedTextCache.set(cacheKey, api.prepare(normalizedText, normalizedFont, options));
@@ -80,13 +109,13 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 	// assertion-reasoning stem is empty), so measure the composed text.
 	const questionResult = await measureText(
 		questionTextFor(question),
-		'18px Inter',
+		canvasFont(18),
 		contentWidth,
 		27
 	);
 	const optionResults = await Promise.all(
 		(question.options || []).map((option) =>
-			measureText(option, '14px Inter', contentWidth, 20)
+			measureText(option, canvasFont(14), contentWidth, 20)
 		)
 	);
 	const columnItems =
@@ -95,7 +124,7 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 			: [];
 	const columnResults = await Promise.all(
 		columnItems.map((item) =>
-			measureText(item, '13px Inter', Math.max(60, Math.floor(contentWidth / 2) - 24), 18)
+			measureText(item, canvasFont(13), Math.max(60, Math.floor(contentWidth / 2) - 24), 18)
 		)
 	);
 

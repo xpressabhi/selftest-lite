@@ -188,7 +188,7 @@
 	<button
 		class="toast-dismiss"
 		type="button"
-		aria-label={$t('dismissNotification')}
+		aria-label={$t('dismissToast')}
 		onclick={() => dismissEntry('dismiss')}
 	>
 		<Icon name="close" size={16} />

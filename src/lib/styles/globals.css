@@ -230,6 +230,17 @@ html {
 	outline-offset: 2px;
 }
 
+/* Small caps-style labels (`.welcome-group-label`, `.menu-section-label`,
+   `.exam-status`, `.preview-eyebrow` and ~10 more) pair `text-transform:
+   uppercase` with positive `letter-spacing`. Uppercase is a no-op on
+   Devanagari, but the tracking still applies — so every one of those labels
+   rendered loose and gappy in Hindi while reading tight in English, across
+   the whole app. One rule resets tracking for non-Latin scripts; weight,
+   size and colour still carry the grouping. English keeps its tracking. */
+:where(:lang(hi), :lang(mr), :lang(bn), :lang(pa), :lang(gu), :lang(ta), :lang(te), :lang(kn), :lang(ml), :lang(ur), :lang(ne)) {
+	letter-spacing: normal !important;
+}
+
 /* Honour the OS accessibility setting. */
 @media (prefers-reduced-motion: reduce) {
 	*,
