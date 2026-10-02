@@ -8,7 +8,7 @@
 // resolver the in-app canvas measurement uses, so a card and the app it was
 // shared from can never render in two different faces.
 
-import { resolveFontStack } from './pretextLayout.js';
+import { canvasFont } from './fontStack.js';
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
@@ -38,7 +38,7 @@ export const CARD_PALETTE = {
 
 /** Canvas font shorthand from size/weight, on the app's resolved stack. */
 export function cardFont(size, weight = 500) {
-	return `${weight} ${size}px ${resolveFontStack()}`;
+	return canvasFont(size, weight);
 }
 
 /** Paints the family background: brand-50 wash to white to surface-muted. */

@@ -246,7 +246,7 @@
 
 	.practice-search:focus-within {
 		border-color: var(--brand-text);
-		box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.15);
+		box-shadow: var(--focus-ring);
 	}
 
 	.practice-search-icon {

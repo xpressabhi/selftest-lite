@@ -539,7 +539,7 @@
 			flex-direction: row;
 			flex-wrap: wrap;
 			align-items: center;
-			gap: 6px 8px;
+			gap: 4px 8px;
 		}
 
 		.welcome-group-label {
@@ -548,9 +548,8 @@
 
 		.welcome-example {
 			width: auto;
-			padding: 0 14px;
+			padding: 0 16px;
 			border-radius: 999px;
-			background: var(--surface);
 		}
 	}
 

@@ -1,4 +1,5 @@
 import { questionTextFor } from '$lib/shared/questionText';
+import { canvasFont } from './fontStack.js';
 
 const preparedTextCache = new Map();
 
@@ -39,35 +40,6 @@ async function loadPretext() {
 
 function buildCacheKey(text, font, options) {
 	return JSON.stringify([text, font, options || {}]);
-}
-
-/* Canvas text measurement has to run against the font the DOM actually
-   renders with. Hardcoding a family name here is how that drifts: the app
-   stack is `Inter, ui-sans-serif, system-ui` but no Inter webfont is loaded,
-   so every user renders the system UI face while this module measured a
-   name the canvas quietly fell back from — producing wrap geometry that
-   disagreed with the real layout. Read the resolved stack off the body
-   instead, so the two cannot disagree. */
-const FALLBACK_STACK =
-	"ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-
-let bodyFontStack;
-
-export function resolveFontStack() {
-	if (typeof document === 'undefined') {
-		return FALLBACK_STACK;
-	}
-	if (bodyFontStack === undefined) {
-		bodyFontStack =
-			getComputedStyle(document.body).fontFamily.trim() || FALLBACK_STACK;
-	}
-	return bodyFontStack;
-}
-
-/** Build a canvas font shorthand that uses the app's real family stack. */
-export function canvasFont(px, weight = 400) {
-	const stack = resolveFontStack();
-	return `${weight} ${px}px ${stack.includes(',') ? stack : FALLBACK_STACK}`;
 }
 
 export async function prepareText(text, font, options = {}) {

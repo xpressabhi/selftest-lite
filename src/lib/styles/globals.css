@@ -144,20 +144,25 @@ body {
 	--warn: #b45309;
 	--danger: #b91c1c;
 	/* Channel triplets for the same three inks, so a component can build the
-	   matching tint with color-mix() and have it flip with the theme. A chip
-	   that hardcodes its own hex stays a light-mode chip in dark mode; one that
-	   mixes these stays correct in both. Never hardcode a hex in a component. */
+	   matching tint with color-mix() and have it flip with the theme. A badge
+	   that hardcodes its own hex stays a light-mode badge in dark mode; one
+	   that mixes these stays correct in both. Never hardcode a hex.
+
+	   The recipe for a state pill is these two lines, at 8%:
+	     background: color-mix(in srgb, rgb(var(--warn-rgb)) 8%, var(--surface));
+	     color: var(--warn);
+	   8% and not the interactive `.chip`'s 12%: a badge sits under ~12px-weight
+	   text on a light surface, and 12% drops --warn on white to 4.25:1, under
+	   the 4.5 floor. Measured, not guessed. Dark mode has ~9:1 headroom either
+	   way. `--rgb` flips per theme, so one rule serves both. */
 	--ok-rgb: 21, 128, 61;
 	--warn-rgb: 180, 83, 9;
-	--danger-rgb: 185, 28, 28;
-	/* Fixed fills for banners and solid state chips (same in both themes),
-	   each with its paired ink so a fill and its text can never drift apart. */
+	/* Fixed fills for banners and solid state chips (same in both themes). A
+	   fill and its ink are declared together so they cannot drift apart. */
 	--ok-fill: #15803d;
 	--warn-fill: #b45309;
 	--danger-fill: #b91c1c;
-	--on-ok: #f0fdf4;
 	--on-warn: #fffbeb;
-	--on-danger: #fef2f2;
 	/* Layering scale (documented once, used everywhere; page-local layers stay
 	   below 1000 so the app shell always wins):
 	   banner 1025 < bottom-nav 1030 < header 1040 < overlay 1060 <
@@ -183,8 +188,13 @@ body {
 	   composer) replace the native outline with a matching ring; a global
 	   :focus-visible outline covers everything else. Four hand-rolled
 	   `box-shadow: 0 0 0 Npx rgba(var(--brand-rgb), X)` variants had drifted
-	   apart — 3px/.15 and 4px/.12 both existed — so the geometry lives here. */
-	--focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand-rgb) 20%, transparent);
+	   apart — 3px/.15 and 4px/.12 both existed — so the geometry lives here.
+
+	   `rgb()` around the triplet is required: `--brand-rgb` is `79, 70, 229`,
+	   a bare comma list, and color-mix() needs a <color>. Without the wrapper
+	   the whole declaration is invalid at computed-value time and box-shadow
+	   silently falls back to none, which is what this token did first. */
+	--focus-ring: 0 0 0 3px color-mix(in srgb, rgb(var(--brand-rgb)) 20%, transparent);
 	/* Brand color for text/iconography on surfaces. Dark mode swaps to a
 	   lighter tint so contrast holds on dark backgrounds; fills keep using
 	   --brand-rgb (white text stays readable). */
@@ -213,7 +223,6 @@ body {
 	--danger: #fca5a5;
 	--ok-rgb: 110, 231, 183;
 	--warn-rgb: 252, 211, 77;
-	--danger-rgb: 252, 165, 165;
 	--brand-text-rgb: 165, 180, 252;
 	--brand-text: #a5b4fc;
 	--backdrop: rgb(2 6 23 / 0.72);
@@ -308,9 +317,13 @@ select {
 	.btn-success {
 		@apply bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:outline-emerald-700;
 	}
+	/* The warning button keeps a light amber fill with dark ink rather than
+	   `--warn-fill` with light ink, unlike a banner or chip. Measured:
+	   #b45309 + #020617 is 4.02:1 at text-sm, under the 4.5 floor;
+	   #fbbf24 + #020617 is 12.08:1. `--warn-fill` is a banner fill and is
+	   paired with `--on-warn` there. */
 	.btn-warning {
-		background: var(--warn-fill);
-		@apply text-slate-950 hover:brightness-110 focus-visible:outline-amber-500;
+		@apply bg-amber-400 text-slate-950 hover:bg-amber-500 focus-visible:outline-amber-500;
 	}
 	.btn-outline-primary {
 		@apply border border-brand-600 text-brand-700 hover:bg-brand-50 focus-visible:outline-brand-600 dark:text-brand-100 dark:hover:bg-slate-800;
@@ -320,65 +333,6 @@ select {
 	}
 	.btn-outline-danger {
 		@apply border border-red-600 text-red-700 hover:bg-red-50 focus-visible:outline-red-600 dark:border-red-400 dark:text-red-300 dark:hover:bg-red-950/40;
-	}
-	/* A non-interactive state pill: a fixed fill with its paired ink. This is
-   the recipe for badges like "Closing soon" / "New" / "Closed". It must
-   never be given a hand-picked hex — the point is that `--warn-fill` and
-   `--on-warn` are the same pair in both themes, so a chip cannot drift
-   out of its theme. Pair with `.status-chip.ok` / `.warn` / `.danger` /
-   `.brand` for the semantic variant. */
-.status-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		min-height: 22px;
-		padding: 0 0.5rem;
-		border: 1px solid transparent;
-		border-radius: 999px;
-		font-size: 0.72rem;
-		font-weight: 700;
-		line-height: 1.4;
-		white-space: nowrap;
-	}
-	.status-chip.brand {
-		background: var(--color-brand-600);
-		color: var(--on-brand);
-	}
-	.status-chip.ok {
-		background: var(--ok-fill);
-		color: var(--on-ok);
-	}
-	.status-chip.warn {
-		background: var(--warn-fill);
-		color: var(--on-warn);
-	}
-	.status-chip.danger {
-		background: var(--danger-fill);
-		color: var(--on-danger);
-	}
-	/* A quieter variant for dense lists: the semantic hue as a tint over the
-	   surface, with the semantic ink as text. `--warn-rgb` and friends flip
-	   with the theme, so this stays legible on both. */
-	.status-chip.tint.ok {
-		background: color-mix(in srgb, rgb(var(--ok-rgb)) 8%, var(--surface));
-		color: var(--ok);
-	}
-	.status-chip.tint.warn {
-		background: color-mix(in srgb, rgb(var(--warn-rgb)) 8%, var(--surface));
-		color: var(--warn);
-	}
-	.status-chip.tint.danger {
-		background: color-mix(in srgb, rgb(var(--danger-rgb)) 8%, var(--surface));
-		color: var(--danger);
-	}
-	/* 8%, not the 12% the interactive `.chip` uses: a chip's active tint sits
-	   under 16px-weight text on a light surface, and anything past ~8% starts
-	   eating the ink's own contrast. Measured, not guessed — 12% drops
-	   --warn on white to 4.25:1, under the 4.5 floor. Dark mode has ~9:1
-	   headroom either way. */
-	.status-chip.tint.brand {
-		background: color-mix(in srgb, var(--color-brand-600) 8%, var(--surface));
-		color: var(--brand-text);
 	}
 	.form-label {
 		@apply block text-sm font-medium;

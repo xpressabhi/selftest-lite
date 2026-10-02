@@ -18,6 +18,11 @@ next to it. The contract is enforced by `tests/e2e/design-consistency.e2e.js` an
 Do not add one-off breakpoints (no `576`, `992`, `359.98`). Max-width queries use `.98px`
 to avoid overlap (`max-width: 767.98px`).
 
+One exception exists: `max-width: 359.98px` in `+layout.svelte`, for 320px-class phones,
+which sit below every documented rung. It drops the header wordmark and tightens the
+bottom-tab labels. Widening it to the `small phone` boundary would hide the wordmark on a
+390px screen, which is the common case, not the narrow one.
+
 ## Widths
 
 - Shared shell: `.app-container` is a `1280px` border-box maximum for every route root,
@@ -64,6 +69,25 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
   both themes uses `var(--brand-text)` with a token mix, never a fixed `brand-100/700`.
 - Shadows and borders follow the same hue in both themes; no pure black on light surfaces.
 
+### State pills
+
+A non-interactive status badge ("Closing soon", "New", "Closed") is the semantic hue as
+an 8% tint over the surface, with the semantic ink as text:
+
+```css
+background: color-mix(in srgb, rgb(var(--warn-rgb)) 8%, var(--surface));
+color: var(--warn);
+```
+
+`--ok-rgb` / `--warn-rgb` flip with the theme, so one rule serves both. `rgb()` around the
+triplet is required — `--brand-rgb` is a bare comma list and `color-mix()` needs a
+`<color>`; omitting it invalidates the declaration and `box-shadow` silently becomes `none`.
+
+Use **8%**, not the interactive `.chip`'s 12%: a badge sits under ~12px-weight text on a
+light surface, and 12% drops `--warn` on white to 4.25:1, under the 4.5 floor. Dark mode has
+~9:1 headroom either way. `tests/e2e/design-consistency.e2e.js` asserts computed contrast, so
+a badge that drifts off-token fails the suite rather than shipping.
+
 ## Layers
 
 `--z-banner` 1025 < `--z-bottom-nav` 1030 < `--z-header` 1040 < `--z-overlay` 1060 <
@@ -81,6 +105,9 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
 - `.btn` / `.btn-sm` — 44px minimum on coarse pointers; `.btn-sm` is density, not target
   size (never below 44px).
 - `.form-control` / `.form-select` — 44px, token focus ring, dark-mode aware.
+- Focus ring: `var(--focus-ring)` for anything composed (search fields, the planner
+  composer), which replaces the native outline. A global `:focus-visible` outline covers
+  every other control. Do not hand-roll a `box-shadow: 0 0 0 Npx rgba(...)` ring.
 - Icons: `Icon.svelte` only, one stroke family.
 - The home planner composer carries the one sanctioned always-on looping accent: a
   celebratory ring of multicolour comet trains with counter-rotating glints

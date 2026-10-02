@@ -569,8 +569,9 @@
 		color: var(--text-muted);
 	}
 
-	/* Status pills use the shared `.status-chip` tint recipe, so they follow
-	   the theme instead of hardcoding a light-mode pair. */
+	/* Status pills follow the token recipe documented on `--ok-rgb` /
+	   `--warn-rgb` in globals.css: the semantic hue as an 8% tint over the
+	   surface, with the semantic ink as text. Both flip with the theme. */
 	.exam-status-open {
 		border-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
 		background: color-mix(in srgb, var(--color-brand-600) 8%, var(--surface));
