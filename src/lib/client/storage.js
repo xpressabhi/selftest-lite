@@ -109,6 +109,30 @@ export function removeFromHistory(testId) {
 	clearUnsubmittedTest(testId);
 }
 
+/**
+ * Empties the visible history for good.
+ *
+ * `saveHistory([])` alone was not a deletion: the attempts still exist
+ * server-side, and `hydrateHistoryFromServer` re-imports every attempt whose id
+ * is absent from HIDDEN_HISTORY. The list came straight back on the next load
+ * after the user had been shown a success state. So this tombstones each id it
+ * drops, the same way `removeFromHistory` does for a single row, and clears the
+ * stored paper so the next load starts clean.
+ */
+export function clearAllHistory() {
+	const history = getHistory();
+	const hidden = getHiddenHistoryIds();
+	const added = history
+		.map((entry, index) => String(entry?.id ?? `idx-${index}`))
+		.filter((key) => !hidden.includes(key));
+
+	saveHistory([]);
+	removeKey(STORAGE_KEYS.QUESTION_PAPER);
+	if (added.length > 0) {
+		writeJson(STORAGE_KEYS.HIDDEN_HISTORY, [...hidden, ...added].slice(-200));
+	}
+}
+
 export function getHiddenHistoryIds() {
 	const value = readJson(STORAGE_KEYS.HIDDEN_HISTORY, []);
 	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];

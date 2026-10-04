@@ -61,6 +61,7 @@ import {
 	shouldReturnTrimmed,
 	topUpBatchSize,
 } from '$lib/server/generationSalvage';
+import { MAX_GENERATION_OUTPUT_TOKENS } from '$lib/server/quizConfig';
 import {
 	answerVerificationSchema,
 	buildAnswerVerificationPrompt,
@@ -134,6 +135,7 @@ async function generateWithModel({ ai, contents, config, runState }) {
 				contents,
 				config: {
 					...config,
+					maxOutputTokens: MAX_GENERATION_OUTPUT_TOKENS,
 					thinkingConfig: {
 						thinkingLevel: 'minimal',
 					},
@@ -1084,6 +1086,13 @@ export async function POST({ request, cookies }) {
 			testType,
 			numQuestions,
 			difficulty,
+			examStream,
+			category,
+			board,
+			classLevel,
+			subject,
+			paperName,
+			school,
 		});
 		if (validationError) {
 			return json(

@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getClientIdFromRequest } from '$lib/server/auth';
+import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
 import {
 	archivePushSubscription,
 	getClientKey,
@@ -22,6 +22,7 @@ export async function POST({ request, cookies }) {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/reminders:subscribe',
 			limit: SUBSCRIBE_RATE_LIMIT,
+			userId: user?.id ?? null,
 		});
 		if (rateLimit.limited) {
 			return rateLimited(rateLimit);
@@ -92,15 +93,17 @@ export async function POST({ request, cookies }) {
 	}
 }
 
-export async function PATCH({ request }) {
+export async function PATCH({ request, cookies }) {
 	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
+	const user = await getAuthenticatedUser(cookies);
+	const clientKey = getClientKey(request, user?.id ?? null);
 	const clientId = getClientIdFromRequest(request);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/reminders:subscribe',
 			limit: SUBSCRIBE_RATE_LIMIT,
+			userId: user?.id ?? null,
 		});
 		if (rateLimit.limited) {
 			return rateLimited(rateLimit);
@@ -120,7 +123,10 @@ export async function PATCH({ request }) {
 		// Older clients only send the hour; language is optional so those
 		// updates leave the stored value untouched.
 		const language = body?.language === undefined ? null : body.language;
-		const updated = await updatePushSubscriptionHour(endpoint, hour, language);
+		const updated = await updatePushSubscriptionHour(endpoint, hour, language, {
+			userId: user?.id ?? null,
+			clientId,
+		});
 		if (!updated) {
 			return json(
 				{ error: 'Subscription not found', code: 'SUBSCRIPTION_NOT_FOUND' },
@@ -159,27 +165,47 @@ export async function PATCH({ request }) {
 	}
 }
 
-export async function DELETE({ request }) {
+export async function DELETE({ request, cookies }) {
 	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
+	const user = await getAuthenticatedUser(cookies);
+	const clientKey = getClientKey(request, user?.id ?? null);
+	const clientId = getClientIdFromRequest(request);
 
 	try {
+		// DELETE had no limiter at all, unlike POST and PATCH on this route, so it
+		// was an unthrottled write primitive keyed on a value the caller supplies.
+		const rateLimit = await rateLimiter(request, {
+			bucket: '/api/reminders:subscribe',
+			limit: SUBSCRIBE_RATE_LIMIT,
+			userId: user?.id ?? null,
+		});
+		if (rateLimit.limited) {
+			return rateLimited(rateLimit);
+		}
+
 		const body = await readJsonBody(request);
 		const endpoint = body?.endpoint;
 		if (typeof endpoint !== 'string' || !endpoint) {
 			return json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });
 		}
 
-		// Archive-first: unsubscribing moves the row, never deletes it.
-		const archived = await archivePushSubscription(endpoint);
+		// Archive-first: unsubscribing moves the row, never deletes it. Scoped to
+		// the caller's own identity so holding someone else's endpoint cannot
+		// disable their reminders.
+		const archived = await archivePushSubscription(endpoint, {
+			userId: user?.id ?? null,
+			clientId,
+		});
 
 		await logApiEvent({
 			route: '/api/reminders/subscribe',
 			action: 'unsubscribe',
 			clientKey,
+			clientId,
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
+			userId: user?.id ?? null,
 			metadata: { archived },
 		});
 

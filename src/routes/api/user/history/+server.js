@@ -8,12 +8,17 @@ import { rateLimiter } from '$lib/server/rateLimiter';
 import { resolveRequestContext } from '$lib/server/apiContext';
 import { rateLimited } from '$lib/server/apiResponse';
 import { readJsonBody } from '$lib/server/requestBody';
+import { stripAnswerKey } from '$lib/server/paperRedaction';
 import { markTestsSubmitted } from '$lib/server/testStats';
 
 const HISTORY_GET_RATE_LIMIT = 60;
 const HISTORY_POST_RATE_LIMIT = 30;
 
 function mapAttemptRow(row) {
+	// The attempt row carries the whole stored paper, answer key and anonymous
+	// device id included. Redact it here for the same reason /api/test does: this
+	// response is the one place a caller sees papers they did not just submit.
+	const paper = row.test ? stripAnswerKey(row.test) : null;
 	return {
 		testId: row.test_id,
 		userAnswers: row.user_answers || {},
@@ -21,8 +26,8 @@ function mapAttemptRow(row) {
 		totalQuestions: row.total_questions,
 		timeTaken: row.time_taken,
 		submittedAt: row.submitted_at,
-		test: row.test || null,
-		topic: row.topic || row.test?.topic || null,
+		test: paper,
+		topic: row.topic || paper?.topic || null,
 	};
 }
 

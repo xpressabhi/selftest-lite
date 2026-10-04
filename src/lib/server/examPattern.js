@@ -3,6 +3,7 @@ import * as z from 'zod';
 import { env } from '$env/dynamic/private';
 import { ensureStorageSchema, query } from './storage.js';
 import { parseJsonResponse } from './jsonResponse.js';
+import { MAX_PATTERN_OUTPUT_TOKENS } from './quizConfig.js';
 
 const PATTERN_MODEL = 'gemini-flash-lite-latest';
 const PATTERN_TIMEOUT_MS = 45000;
@@ -10,6 +11,9 @@ export const PATTERN_TTL_MS = 45 * 24 * 60 * 60 * 1000;
 /** Forced refreshes younger than this are ignored (serves the cache). */
 export const PATTERN_REFRESH_MIN_AGE_MS = 6 * 60 * 60 * 1000;
 const MAX_SECTIONS = 20;
+/** Per-section question ceiling for a discovered pattern. Real papers top out
+ *  well below this; the bound only exists to cap generation fan-out. */
+const MAX_SECTION_QUESTIONS = 100;
 
 /** Raw model answer for "what is the actual pattern of this paper". */
 export const examPatternSchema = z.object({
@@ -26,7 +30,14 @@ export const examPatternSchema = z.object({
 			z.object({
 				name: z.string().min(1),
 				questionTypes: z.array(z.string()).min(1),
-				questionCount: z.number().int().positive(),
+				// Capped because this drives generation directly: the fan-out runs
+				// ceil(count / BATCH_SIZE) model batches per section across up to
+				// MAX_SECTIONS sections. Unbounded, a discovered pattern could ask
+				// for hundreds of questions per section and fan out into dozens of
+				// concurrent long-running model calls. MAX_QUESTIONS on the
+				// user-supplied value did not cover it — this arrives from the
+				// model, not the request.
+				questionCount: z.number().int().positive().max(MAX_SECTION_QUESTIONS),
 				marksPerQuestion: z.number().positive(),
 				negativeMarks: z.number().min(0).nullable(),
 				instructions: z.string().nullable(),
@@ -298,6 +309,7 @@ async function requestPatternText(ai, prompt, deadlineMs) {
 				config: {
 					responseMimeType: 'application/json',
 					responseJsonSchema: z.toJSONSchema(examPatternSchema),
+					maxOutputTokens: MAX_PATTERN_OUTPUT_TOKENS,
 				},
 			}),
 			new Promise((_, reject) => {

@@ -17,13 +17,65 @@ export class InvalidRequestBodyError extends Error {
 }
 
 /**
- * Reads and parses the JSON request body while enforcing a size cap on the
- * raw text before parsing, so callers cannot force a large parse on the
- * server.
+ * Reads the body, refusing anything over the cap, and returns null when it is.
+ *
+ * Two things were wrong with `await request.text()` followed by a length check.
+ * The cap was applied after the whole body had been buffered, so the allocation
+ * it exists to prevent still happened — concurrent large requests were a memory
+ * DoS. And the cap is named in bytes but was compared against UTF-16 code units,
+ * so a body of 3-byte characters passed at roughly 1.5x the intended size.
+ *
+ * A declared Content-Length is rejected up front, and the body is then streamed
+ * and abandoned the moment it crosses the cap, so an oversized upload is never
+ * fully materialised. Returns null for "too large".
  */
+async function readCappedBody(request) {
+	// Trust the declared length only to reject early; it is attacker-supplied, so
+	// the streaming check below is what actually enforces the cap.
+	const declared = Number(request.headers?.get?.('content-length'));
+	if (Number.isFinite(declared) && declared > MAX_REQUEST_BODY_BYTES) {
+		return null;
+	}
+
+	const body = request.body;
+	if (!body || typeof body.getReader !== 'function') {
+		// No stream to cap incrementally; fall back to the buffered read.
+		const text = await request.text();
+		return utf8Length(text) > MAX_REQUEST_BODY_BYTES ? null : text;
+	}
+
+	const reader = body.getReader();
+	const decoder = new TextDecoder();
+	let received = 0;
+	let text = '';
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) {
+				break;
+			}
+			received += value.byteLength;
+			if (received > MAX_REQUEST_BODY_BYTES) {
+				// Stop pulling: the rest of the upload is discarded rather than
+				// buffered, then the connection is released.
+				await reader.cancel().catch(() => {});
+				return null;
+			}
+			text += decoder.decode(value, { stream: true });
+		}
+	} finally {
+		reader.releaseLock?.();
+	}
+	return text + decoder.decode();
+}
+
+/** Byte length of a string once encoded as UTF-8. */
+function utf8Length(value) {
+	return new TextEncoder().encode(value).byteLength;
+}
 export async function parseRequestBody(request) {
-	const rawBody = await request.text();
-	if (rawBody.length > MAX_REQUEST_BODY_BYTES) {
+	const rawBody = await readCappedBody(request);
+	if (rawBody === null) {
 		throw new RequestBodyTooLargeError();
 	}
 	try {
@@ -39,8 +91,8 @@ export async function parseRequestBody(request) {
  * a hostile large/malformed body can never force a parse or a 500.
  */
 export async function readJsonBody(request, fallback = {}) {
-	const rawBody = await request.text();
-	if (rawBody.length > MAX_REQUEST_BODY_BYTES) {
+	const rawBody = await readCappedBody(request);
+	if (rawBody === null) {
 		return typeof fallback === 'function' ? fallback() : fallback;
 	}
 	try {

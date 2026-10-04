@@ -15,12 +15,13 @@ export async function rateLimiter(request, options = {}) {
 		limit = DEFAULT_RATE_LIMIT,
 		windowMs = DEFAULT_WINDOW_MS,
 		bucket = request.nextUrl?.pathname || 'global',
+		userId = null,
 	} = options;
 
 	try {
 		await ensureStorageSchema();
 
-		const clientKey = getClientKey(request);
+		const clientKey = getClientKey(request, userId);
 
 		// Insert and count in a single statement so concurrent requests cannot
 		// slip between an INSERT and a separate COUNT (the INSERT is visible
@@ -73,11 +74,17 @@ export async function rateLimiter(request, options = {}) {
 			resetTime,
 		};
 	} catch (error) {
-		// Fail-open keeps core functionality alive if rate-limit storage has an issue.
-		console.error('Rate limiter fallback (fail-open):', error);
+		// Fail closed. Failing open meant that any fault isolated to this table —
+		// a missing or corrupt `api_rate_limit_events` — silently removed every
+		// limit while the endpoints around it kept working, which is the same
+		// hole as having no limiter at all. Every caller of this function already
+		// needs the database for its own work, so a storage outage fails these
+		// routes regardless; denying is the safer of the two failure modes and it
+		// is logged loudly rather than silently degrading.
+		console.error('Rate limiter storage unavailable (failing closed):', error);
 		return {
-			limited: false,
-			remaining: limit,
+			limited: true,
+			remaining: 0,
 			resetTime: Date.now() + windowMs,
 		};
 	}

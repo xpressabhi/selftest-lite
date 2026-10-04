@@ -17,6 +17,7 @@ import { parseJsonResponse } from '$lib/server/jsonResponse';
 import { backoffBeforeRetry, isTransientProviderError } from '$lib/server/transientErrors';
 import {
 	MAX_ANSWER_TEXT_LENGTH,
+	MAX_EXPLANATION_OUTPUT_TOKENS,
 	MAX_QUESTION_TEXT_LENGTH,
 	MAX_TOPIC_LENGTH,
 	VALID_LANGUAGES,
@@ -53,6 +54,7 @@ async function requestExplanationText(ai, prompt, deadlineMs) {
 				config: {
 					responseMimeType: 'application/json',
 					responseJsonSchema: z.toJSONSchema(explanationSchema),
+					maxOutputTokens: MAX_EXPLANATION_OUTPUT_TOKENS,
 				},
 			}),
 			new Promise((_, reject) => {

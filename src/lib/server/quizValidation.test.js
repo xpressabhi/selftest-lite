@@ -8,6 +8,7 @@ import {
 	validateGeneratedPaper,
 	validateTestRecordPayload,
 } from './quizValidation';
+import { MAX_PROMPT_FIELD_LENGTH } from './quizConfig';
 import { buildMatchingQuestion } from './matchingBuilder';
 import { buildAssertionReasoningQuestion } from './assertionReasoning';
 import { buildStatementQuestion } from './statementBuilder';
@@ -23,6 +24,61 @@ describe('validateGenerateRequest', () => {
 
 	it('accepts a valid request', () => {
 		expect(validateGenerateRequest(base)).toBeNull();
+	});
+
+	// These fields are interpolated straight into the prompt (prompt.js) and into
+	// the exam-pattern cache key. They were accepted at whatever length the 2 MB
+	// body allowed, so a single request could turn into a multi-megabyte billed
+	// prompt. topic/selectedTopics/syllabusFocus were already capped; these were
+	// not.
+	const promptFields = [
+		'examName',
+		'examStream',
+		'category',
+		'board',
+		'classLevel',
+		'subject',
+		'paperName',
+		'school',
+	];
+
+	for (const field of promptFields) {
+		it(`rejects an over-long ${field}`, () => {
+			const error = validateGenerateRequest({
+				...base,
+				testMode: 'full-exam',
+				examName: 'SSC CGL',
+				objectiveOnly: true,
+				[field]: 'x'.repeat(MAX_PROMPT_FIELD_LENGTH + 1),
+			});
+			expect(error).not.toBeNull();
+			expect(error.code).toBe('PROMPT_FIELD_TOO_LONG');
+			expect(error.message).toContain(field);
+		});
+
+		it(`accepts a ${field} at the cap`, () => {
+			expect(
+				validateGenerateRequest({
+					...base,
+					testMode: 'full-exam',
+					examName: 'SSC CGL',
+					objectiveOnly: true,
+					[field]: 'x'.repeat(MAX_PROMPT_FIELD_LENGTH),
+				})
+			).toBeNull();
+		});
+	}
+
+	it('ignores a non-string prompt field instead of coercing it', () => {
+		expect(
+			validateGenerateRequest({
+				...base,
+				testMode: 'full-exam',
+				examName: 'SSC CGL',
+				objectiveOnly: true,
+				board: { toString: () => 'x'.repeat(10_000) },
+			})
+		).toBeNull();
 	});
 
 	it('accepts a full-exam request with exam name and objectiveOnly', () => {

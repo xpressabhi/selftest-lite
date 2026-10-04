@@ -8,6 +8,7 @@ import {
 	MAX_SELECTED_TOPICS,
 	MAX_SYLLABUS_FOCUS,
 	MAX_TEST_QUESTIONS,
+	MAX_PROMPT_FIELD_LENGTH,
 	MAX_TOPIC_LENGTH,
 	MAX_TOPIC_LIST_ITEM_LENGTH,
 	MIN_QUESTIONS,
@@ -163,6 +164,13 @@ export function validateGenerateRequest({
 	testType,
 	numQuestions,
 	difficulty,
+	examStream = null,
+	category = null,
+	board = null,
+	classLevel = null,
+	subject = null,
+	paperName = null,
+	school = null,
 }) {
 	const hasContext = Boolean(topic) || selectedTopics.length > 0 || syllabusFocus.length > 0;
 
@@ -178,6 +186,26 @@ export function validateGenerateRequest({
 			'EXAM_REQUIRED',
 			'Exam selection is required for full exam mode'
 		);
+	}
+
+	// Every field below is interpolated into the prompt and into the exam-pattern
+	// cache key. They used to be accepted at whatever length the 2 MB request
+	// body allowed, so one request could become a multi-megabyte metered prompt.
+	// Only strings are measured: a non-string is ignored here and coerced later,
+	// so an object with an oversized toString() cannot trip this or crash it.
+	for (const [field, value] of Object.entries({
+		examName,
+		examStream,
+		category,
+		board,
+		classLevel,
+		subject,
+		paperName,
+		school,
+	})) {
+		if (typeof value === 'string' && value.length > MAX_PROMPT_FIELD_LENGTH) {
+			return createValidationError('PROMPT_FIELD_TOO_LONG', `${field} is too long`);
+		}
 	}
 
 	if (testMode === 'full-exam' && !objectiveOnly) {

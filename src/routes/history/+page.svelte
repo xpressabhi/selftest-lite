@@ -9,7 +9,7 @@
 	import Icon from '$lib/client/Icon.svelte';
 	import { track, trackDebounced } from '$lib/client/telemetry';
 	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
-	import { getHistory, removeFromHistory, saveHistory } from '$lib/client/storage';
+	import { clearAllHistory, getHistory, removeFromHistory } from '$lib/client/storage';
 	import { requestPersonalize } from '$lib/client/personalize';
 	import {
 		flushPendingAttempts,
@@ -106,7 +106,7 @@
 		if (!confirm($t('clearHistoryConfirm'))) {
 			return;
 		}
-		saveHistory([]);
+		clearAllHistory();
 		track('history:clear');
 		refreshHistory();
 	}

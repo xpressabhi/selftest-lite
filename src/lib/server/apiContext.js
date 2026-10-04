@@ -7,10 +7,14 @@ import { getClientKey } from './storage';
  * client id. Routes keep their own authorization; this only gathers facts.
  */
 export async function resolveRequestContext(request, cookies) {
+	// Resolve the user before the client key so a signed-in caller buckets per
+	// account rather than per address: users behind one office NAT or a carrier
+	// CGNAT range would otherwise share a single rate-limit bucket.
+	const user = await getAuthenticatedUser(cookies);
 	return {
 		startedAt: Date.now(),
-		clientKey: getClientKey(request),
-		user: await getAuthenticatedUser(cookies),
+		clientKey: getClientKey(request, user?.id ?? null),
+		user,
 		clientId: getClientIdFromRequest(request),
 	};
 }

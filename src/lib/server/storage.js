@@ -1,5 +1,4 @@
 import { Pool } from '@neondatabase/serverless';
-import { createHash } from 'crypto';
 import { env } from '$env/dynamic/private';
 import { createPglitePool, isPgliteUrl } from './testDb.js';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
@@ -60,19 +59,10 @@ export function getPoolStats() {
 	};
 }
 
-export function getClientIp(request) {
-	const forwarded = request.headers.get('x-forwarded-for');
-	if (forwarded) {
-		return forwarded.split(',')[0].trim();
-	}
-	return request.headers.get('x-real-ip') || 'unknown';
-}
-
-export function getClientKey(request) {
-	const ip = getClientIp(request);
-	const userAgent = request.headers.get('user-agent') || 'unknown';
-	return createHash('sha256').update(`${ip}|${userAgent}`).digest('hex').slice(0, 40);
-}
+// Client identity for rate-limit buckets and telemetry now lives in ./clientKey,
+// which takes no database or environment imports so it can be unit tested.
+// Re-exported here because most callers already import it from this module.
+export { getClientIp, getClientKey } from './clientKey';
 
 /**
  * Converts a possibly-null user id into a positive integer or null.
@@ -1431,7 +1421,12 @@ export async function savePushSubscription({
  * language). A changed hour clears the last-send so the new slot can fire the
  * same day, and re-enables the row (a 404/410 send may have disabled it).
  */
-export async function updatePushSubscriptionHour(endpoint, hour, language = null) {
+export async function updatePushSubscriptionHour(
+	endpoint,
+	hour,
+	language = null,
+	identity = {}
+) {
 	await ensureStorageSchema();
 	if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) {
 		return false;
@@ -1442,6 +1437,28 @@ export async function updatePushSubscriptionHour(endpoint, hour, language = null
 	}
 	const normalizedLanguage =
 		language === null || language === undefined ? null : normalizeReminderLanguage(language);
+	// Ownership-scoped. The endpoint alone was enough to change or re-enable any
+	// subscription, so holding someone else's (they leak via history, sync and
+	// support screenshots) let a caller silence their reminders or flip them back
+	// on. A caller with no usable identity is refused outright rather than
+	// matching on the endpoint alone.
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if (!userId && !clientId) {
+		return false;
+	}
+	// Positional placeholders must line up with the parameter array, so build both
+	// from one ordered list instead of appending to a fixed prefix.
+	const ownerClauses = [];
+	const params = [endpoint, normalizedHour, normalizedLanguage];
+	if (userId) {
+		params.push(userId);
+		ownerClauses.push(`user_id = $${params.length}`);
+	}
+	if (clientId) {
+		params.push(clientId);
+		ownerClauses.push(`client_id = $${params.length}`);
+	}
+
 	const result = await query(
 		`UPDATE push_subscription
 		 SET reminder_hour = $2::smallint,
@@ -1452,23 +1469,41 @@ export async function updatePushSubscriptionHour(endpoint, hour, language = null
 			END,
 			enabled = TRUE,
 			updated_at = NOW()
-		 WHERE endpoint = $1`,
-		[endpoint, normalizedHour, normalizedLanguage]
+		 WHERE endpoint = $1 AND (${ownerClauses.join(' OR ')})`,
+		params
 	);
 	return (result.rowCount || 0) > 0;
 }
 
-export async function archivePushSubscription(endpoint) {
+export async function archivePushSubscription(endpoint, identity = {}) {
 	await ensureStorageSchema();
 	if (typeof endpoint !== 'string' || !endpoint) {
 		return false;
 	}
+	// Ownership-scoped for the same reason as updatePushSubscriptionHour: the
+	// endpoint by itself was enough to archive anyone's subscription and so
+	// disable their reminders.
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	if (!userId && !clientId) {
+		return false;
+	}
+	const ownerClauses = [];
+	const ownerParams = [endpoint];
+	if (userId) {
+		ownerParams.push(userId);
+		ownerClauses.push(`user_id = $${ownerParams.length}`);
+	}
+	if (clientId) {
+		ownerParams.push(clientId);
+		ownerClauses.push(`client_id = $${ownerParams.length}`);
+	}
+	const ownerWhere = ` AND (${ownerClauses.join(' OR ')})`;
 	// Explicit column lists: `SELECT *, NOW()` only lines up while the archive
 	// column order still matches the source, and a new source column lands
 	// after the archive's archived_at.
 	const result = await query(
 		`WITH moved AS (
-			DELETE FROM push_subscription WHERE endpoint = $1 RETURNING *
+			DELETE FROM push_subscription WHERE endpoint = $1${ownerWhere} RETURNING *
 		)
 		INSERT INTO push_subscription_archive
 			(id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
@@ -1476,7 +1511,7 @@ export async function archivePushSubscription(endpoint) {
 		SELECT id, client_id, user_id, endpoint, p256dh, auth, timezone, enabled,
 			created_at, updated_at, last_sent_at, last_error, reminder_hour, language, NOW()
 		FROM moved`,
-		[endpoint]
+		ownerParams
 	);
 	return (result.rowCount || 0) > 0;
 }
