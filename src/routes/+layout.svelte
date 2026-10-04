@@ -233,6 +233,8 @@
 	let activePath = $derived(page.url.pathname);
 	let homeHref = $derived(localizedPath('/', $activeLanguage));
 	let practiceHref = $derived(localizedPath('/practice', $activeLanguage));
+	let bookmarksHref = $derived(localizedPath('/bookmarks', $activeLanguage));
+	let historyHref = $derived(localizedPath('/history', $activeLanguage));
 
 	// A destination is active for its own path and any child route (the
 	// practice hub and every exam below it), not for paths that merely share
@@ -251,6 +253,18 @@
 		{ href: localizedPath('/contact', $activeLanguage), icon: 'mail', label: $t('contact') },
 		{ href: localizedPath('/privacy', $activeLanguage), icon: 'shield', label: $t('privacy') },
 		{ href: localizedPath('/terms', $activeLanguage), icon: 'scale', label: $t('terms') }
+	]);
+
+	// Desktop bar: the Explore destinations, plus Create, which leads to the app
+	// home. `exact` keeps Create off every child path so it reads as current on
+	// the home route only.
+	const desktopLinks = $derived([
+		{ href: localizedPath('/about', $activeLanguage), label: $t('about') },
+		{ href: practiceHref, label: $t('practiceTitle') },
+		{ href: localizedPath('/blog', $activeLanguage), label: $t('blog') },
+		{ href: localizedPath('/faq', $activeLanguage), label: $t('faq') },
+		{ href: localizedPath('/contact', $activeLanguage), label: $t('contact') },
+		{ href: homeHref, label: $t('createTab'), isCreate: true }
 	]);
 
 	// Social card language follows the URL-driven store the layout pins before
@@ -508,12 +522,18 @@
 				</a>
 
 				<nav class="desktop-nav" aria-label={$t('mainNavigation')}>
-					<a href={localizedPath('/about', $activeLanguage)}>{$t('about')}</a>
-					<a href={localizedPath('/practice', $activeLanguage)}>{$t('practiceTitle')}</a>
-					<a href={localizedPath('/blog', $activeLanguage)}>{$t('blog')}</a>
-					<a href={localizedPath('/faq', $activeLanguage)}>{$t('faq')}</a>
-					<a href={localizedPath('/contact', $activeLanguage)}>{$t('contact')}</a>
-					<a class="create-link" href={localizedPath('/', $activeLanguage)}>{$t('createTab')}</a>
+					{#each desktopLinks as link (link.href)}
+						<a
+							class:create-link={link.isCreate}
+							class:active={isActivePath(link.href, { exact: link.isCreate })}
+							href={link.href}
+							aria-current={isActivePath(link.href, { exact: link.isCreate })
+								? 'page'
+								: undefined}
+						>
+							{link.label}
+						</a>
+					{/each}
 				</nav>
 
 				<div class="header-actions">
@@ -775,19 +795,23 @@
 				aria-current={isActivePath(practiceHref) ? 'page' : undefined}
 				><Icon name="target" size={18} /><span class="tab-label">{$t('practiceTab')}</span></a
 			>
-			<a class="create-tab" href={homeHref}
+			<a
+				class="create-tab"
+				class:active={isActivePath(homeHref, { exact: true })}
+				href={homeHref}
+				aria-current={isActivePath(homeHref, { exact: true }) ? 'page' : undefined}
 				><Icon name="plus" size={20} /><span class="tab-label">{$t('createTab')}</span></a
 			>
 			<a
-				class:active={activePath === '/bookmarks'}
-				href="/bookmarks"
-				aria-current={activePath === '/bookmarks' ? 'page' : undefined}
+				class:active={isActivePath(bookmarksHref)}
+				href={bookmarksHref}
+				aria-current={isActivePath(bookmarksHref) ? 'page' : undefined}
 				><Icon name="bookmark" size={18} /><span class="tab-label">{$t('bookmarksTab')}</span></a
 			>
 			<a
-				class:active={activePath === '/history'}
-				href="/history"
-				aria-current={activePath === '/history' ? 'page' : undefined}
+				class:active={isActivePath(historyHref)}
+				href={historyHref}
+				aria-current={isActivePath(historyHref) ? 'page' : undefined}
 				><Icon name="clock" size={18} /><span class="tab-label">{$t('historyTab')}</span></a
 			>
 		</nav>
@@ -931,7 +955,7 @@
 	.desktop-nav {
 		display: none;
 		align-items: center;
-		gap: 14px;
+		gap: 10px;
 		padding: 4px 8px;
 		border: 1px solid var(--line);
 		border-radius: 999px;
@@ -947,15 +971,32 @@
 		text-decoration: none;
 	}
 
+	/* Padding is identical in both states so marking a link never reflows the
+	   bar; the side room is what lets the active pill read as a pill. */
 	.desktop-nav a {
-		padding: 7px 2px;
+		padding: 7px 9px;
+		border-radius: 999px;
+		transition:
+			background-color 140ms ease,
+			color 140ms ease;
 	}
 
+	/* The Create entry keeps its label weight so the bar still has an obvious
+	   primary action, but the tinted pill is the current-route marker and
+	   nothing else. Painting Create with it on every page is what made the bar
+	   look stuck on Create no matter where the user was. */
 	.desktop-nav .create-link {
-		padding: 7px 15px;
-		border-radius: 999px;
+		padding: 7px 14px;
+		font-weight: 700;
+	}
+
+	.desktop-nav a.active {
 		background: color-mix(in srgb, var(--color-brand-600) 14%, transparent);
 		color: var(--brand-text);
+	}
+
+	.desktop-nav a:hover:not(.active) {
+		background: color-mix(in srgb, var(--color-brand-600) 8%, transparent);
 	}
 
 	.header-actions {
@@ -1209,14 +1250,20 @@
 		white-space: nowrap;
 	}
 
+	/* The centre Create entry keeps its bold weight so the bar still reads as
+	   having a primary action, but the brand colour is the current-route marker.
+	   It used to be painted brand-coloured unconditionally, which is why it read
+	   as permanently selected on pages it does not even lead to. */
 	.create-tab {
-		color: var(--brand-text) !important;
 		font-weight: 700;
 	}
 
+	.bottom-nav .create-tab.active {
+		color: var(--brand-text);
+	}
+
 	:global(.dark) .bottom-nav a.active,
-	:global(.dark) .bottom-nav a:focus-visible,
-	:global(.dark) .create-tab {
+	:global(.dark) .bottom-nav a:focus-visible {
 		color: var(--color-brand-100) !important;
 	}
 
