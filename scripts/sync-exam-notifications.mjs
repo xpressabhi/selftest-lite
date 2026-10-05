@@ -37,6 +37,7 @@ import { htmlToText } from '../src/lib/server/htmlText.js';
 import {
 	buildDiscoveryPrompt,
 	buildExtractionPrompt,
+	discoverySkipReason,
 	runExamSync,
 	runSourceDiscovery,
 	withRetries
@@ -553,12 +554,41 @@ async function suggestSources(knownHosts) {
 async function main() {
 	if (options.discover) {
 		const knownHosts = EXAM_SOURCES.flatMap((source) => source.allowedHosts);
-		const report = await runSourceDiscovery({
-			suggest: () => suggestSources(knownHosts),
-			checkLink,
-			store,
-			knownHosts
-		});
+		let report;
+		try {
+			report = await runSourceDiscovery({
+				suggest: () => suggestSources(knownHosts),
+				checkLink,
+				store,
+				knownHosts
+			});
+		} catch (error) {
+			// Weekly discovery is best-effort: a provider quota/capacity outage
+			// (429/503 after retries) reports a skip and keeps the run green —
+			// the next scheduled run retries with a reset quota. Anything else
+			// stays a hard failure.
+			const skipReason = discoverySkipReason(error);
+			if (!skipReason) throw error;
+			console.log(
+				JSON.stringify(
+					{
+						mode: 'discovery',
+						status: 'skipped_provider_unavailable',
+						model,
+						modelCalls: modelCallsMade,
+						fallbackCalls: fallbackCallsMade,
+						startedAt: todayIso,
+						reason: skipReason
+					},
+					null,
+					2
+				)
+			);
+			console.log(
+				'::warning title=Exam source discovery skipped::provider quota or capacity unavailable — retries next schedule'
+			);
+			return 0;
+		}
 		console.log(
 			JSON.stringify(
 				{

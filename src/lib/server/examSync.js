@@ -11,6 +11,7 @@
 // - bad dates become null with a problem code recorded
 
 import { OBJECTIVE_ONLY_EXAMS } from '../data/indianExams.js';
+import { isTransientProviderError } from './transientErrors.js';
 import {
 	dedupeKeyFor,
 	isExcludedScopeTitle,
@@ -378,6 +379,17 @@ export async function runExamSync({
 		totals,
 		sources: sourceReports
 	};
+}
+
+/**
+ * Weekly discovery is best-effort: a provider quota/capacity outage (Gemini
+ * 429/503 after retries) skips the run rather than failing it — the next
+ * scheduled run retries with a reset quota. Returns a short reason when the
+ * error is skippable, else null (real failures stay visible).
+ */
+export function discoverySkipReason(error) {
+	if (!isTransientProviderError(error)) return null;
+	return String(error?.message || error).slice(0, 300);
 }
 
 /**

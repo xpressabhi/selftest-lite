@@ -3,6 +3,7 @@ import {
 	buildDiscoveryPrompt,
 	buildExtractionPrompt,
 	classifyExtractedItem,
+	discoverySkipReason,
 	normalizeExtractedItems,
 	runExamSync,
 	runSourceDiscovery,
@@ -428,5 +429,26 @@ describe('runSourceDiscovery', () => {
 		]);
 		expect(store.state.addedIds).toEqual([9]);
 		expect(report).toMatchObject({ requested: 5, saved: 1, skipped: 4 });
+	});
+});
+
+describe('discoverySkipReason', () => {
+	it('skips the weekly discovery when the provider quota is exhausted', () => {
+		// The exact failure that reddened the 2026-10-05 scheduled run (Gemini
+		// free-tier daily quota, after both primary and fallback retries).
+		const quotaError = new Error(
+			'ApiError: {"error":{"code":429,"message":"You exceeded your current quota, please check your plan and billing details.","status":"RESOURCE_EXHAUSTED"}}'
+		);
+		expect(discoverySkipReason(quotaError)).toContain('quota');
+		expect(
+			discoverySkipReason({ status: 503, message: 'This model is currently experiencing high demand' })
+		).toBeTruthy();
+	});
+
+	it('keeps real failures hard', () => {
+		expect(discoverySkipReason(new Error('extraction schema mismatch'))).toBeNull();
+		expect(discoverySkipReason({ status: 400, message: 'Invalid JSON payload' })).toBeNull();
+		expect(discoverySkipReason({ message: 'Deadline exceeded' })).toBeNull();
+		expect(discoverySkipReason(null)).toBeNull();
 	});
 });
