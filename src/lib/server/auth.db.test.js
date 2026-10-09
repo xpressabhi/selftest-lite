@@ -1,7 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { UPDATE_USER_FROM_GOOGLE_SQL } from './auth.js';
-import { UPDATE_APP_USER_NAME_SQL } from './storage.js';
+import { DETACH_GOOGLE_IDENTITY_SQL, UPDATE_APP_USER_NAME_SQL } from './storage.js';
 
 // The name a user chooses must survive every later Google sign-in. Getting that
 // wrong silently resets a name someone typed, and it only becomes visible after
@@ -124,5 +124,68 @@ describe('account display name', () => {
 
 	it('does not invent an account when the id does not exist', async () => {
 		expect(await runNameUpdate(999999, 'Nobody')).toBeUndefined();
+	});
+});
+
+describe('disconnecting Google', () => {
+	function detach(userId) {
+		return db
+			.query(DETACH_GOOGLE_IDENTITY_SQL, [userId])
+			.then((result) => result.rows[0]);
+	}
+
+	it('clears the identity and keeps the account, its name and its id', async () => {
+		const user = await insertUser({
+			googleSub: 'google-9',
+			email: 'ninth@example.com',
+			name: 'Ninth Learner'
+		});
+		await db.query(`UPDATE app_user SET picture_url = $2, locale = $3 WHERE id = $1`, [
+			user.id,
+			'https://example.com/ninth.jpg',
+			'hi'
+		]);
+
+		const detached = await detach(user.id);
+
+		expect(detached.id, 'the same account').toBe(user.id);
+		expect(detached.google_sub).toBeNull();
+		expect(detached.email).toBeNull();
+		expect(detached.picture_url).toBeNull();
+		expect(detached.locale).toBeNull();
+
+		const remaining = await db.query('SELECT id, name FROM app_user WHERE id = $1', [user.id]);
+		expect(remaining.rows.length, 'the row is never deleted').toBe(1);
+		expect(remaining.rows[0].name, 'the display name is kept').toBe('Ninth Learner');
+	});
+
+	it('leaves the released identity free, so a later Google sign-in is a new account', async () => {
+		const user = await insertUser({
+			googleSub: 'google-10',
+			email: 'tenth@example.com',
+			name: 'Tenth'
+		});
+		await detach(user.id);
+
+		// No row matches any more: the sign-in path would INSERT rather than
+		// silently re-attach to this account, which is what "disconnected" means.
+		const reattached = await runGoogleUpdate({
+			googleSub: 'google-10',
+			email: 'tenth@example.com',
+			name: 'Tenth Again',
+			pictureUrl: null,
+			locale: null
+		});
+		expect(reattached).toBeUndefined();
+
+		const untouched = await db.query('SELECT google_sub, email FROM app_user WHERE id = $1', [
+			user.id
+		]);
+		expect(untouched.rows[0].google_sub).toBeNull();
+		expect(untouched.rows[0].email).toBeNull();
+	});
+
+	it('does nothing for an account that does not exist', async () => {
+		expect(await detach(999999)).toBeUndefined();
 	});
 });

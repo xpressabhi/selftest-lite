@@ -138,6 +138,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'auth:passkey-add-failure',
 	'auth:passkey-remove',
 	'auth:passkey-link-google',
+	'auth:google-unlink',
 	'profile:save',
 	'profile:reset',
 	'profile:opt-out',

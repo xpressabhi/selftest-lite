@@ -121,18 +121,23 @@ export function decideGoogleLink({ currentGoogleSub, targetGoogleSub, claimedByA
 }
 
 /**
- * Removing the last credential of an account with no Google identity would
- * strand it, so that single case is refused.
+ * How many independent ways into the account exist: each passkey plus the
+ * Google identity when one is linked. Both the passkey removal and the Google
+ * disconnect go through this, so the account can never be left with none.
  */
-export function canRemovePasskey({ passkeyCount, googleSub } = {}) {
-	const count = typeof passkeyCount === 'number' && Number.isFinite(passkeyCount) ? passkeyCount : 0;
-	if (count <= 0) {
-		return false;
-	}
-	if (count > 1) {
-		return true;
-	}
-	return typeof googleSub === 'string' && googleSub.trim().length > 0;
+export function loginMethodCount({ passkeyCount, googleSub } = {}) {
+	const count =
+		typeof passkeyCount === 'number' && Number.isFinite(passkeyCount) ? passkeyCount : 0;
+	const hasGoogle = typeof googleSub === 'string' && googleSub.trim().length > 0;
+	return Math.max(count, 0) + (hasGoogle ? 1 : 0);
+}
+
+/**
+ * Removing one way in is refused when it is the only one left: the account
+ * would be unreachable, and the rule is the same for a passkey and for Google.
+ */
+export function canRemoveLoginMethod({ passkeyCount, googleSub } = {}) {
+	return loginMethodCount({ passkeyCount, googleSub }) > 1;
 }
 
 /**

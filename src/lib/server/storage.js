@@ -2608,14 +2608,15 @@ export async function attachGoogleIdentityToUser({
 export async function getPasskeyGuardState(userId) {
 	const normalizedUserId = normalizeUserIdValue(userId);
 	if (!normalizedUserId) {
-		return { passkeyCount: 0, googleSub: null };
+		return { passkeyCount: 0, googleSub: null, email: null };
 	}
 
 	await ensureStorageSchema();
 	const result = await query(
 		`SELECT
 			(SELECT COUNT(*)::INTEGER FROM app_user_passkey WHERE user_id = u.id) AS passkey_count,
-			u.google_sub
+			u.google_sub,
+			u.email
 		 FROM app_user u
 		 WHERE u.id = $1
 		 LIMIT 1`,
@@ -2625,7 +2626,8 @@ export async function getPasskeyGuardState(userId) {
 	const row = result.rows[0];
 	return {
 		passkeyCount: Number(row?.passkey_count) || 0,
-		googleSub: row?.google_sub || null
+		googleSub: row?.google_sub || null,
+		email: row?.email || null
 	};
 }
 
@@ -2647,5 +2649,28 @@ export async function updateAppUserName(userId, name) {
 
 	await ensureStorageSchema();
 	const result = await query(UPDATE_APP_USER_NAME_SQL, [normalizedUserId, name]);
+	return result.rows[0] || null;
+}
+
+/**
+ * Releases the Google identity from an account. Only the identity columns are
+ * cleared: the user row, its passkeys, history and profile all stay, and a
+ * later Google sign-in with the same account creates a *new* account rather
+ * than silently re-attaching to this one.
+ */
+export const DETACH_GOOGLE_IDENTITY_SQL = `UPDATE app_user
+		 SET google_sub = NULL, email = NULL, picture_url = NULL, locale = NULL,
+		     updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, google_sub, email, name, picture_url, locale, created_at, last_login_at`;
+
+export async function detachGoogleIdentityFromUser(userId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return null;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(DETACH_GOOGLE_IDENTITY_SQL, [normalizedUserId]);
 	return result.rows[0] || null;
 }

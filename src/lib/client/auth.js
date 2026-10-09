@@ -97,6 +97,20 @@ export async function linkGoogleCredential(credential) {
 	return resolvedUser;
 }
 
+/**
+ * Disconnects Google from the signed-in account (settings page). The account is
+ * not deleted: it simply stops being reachable through Google, so the caller
+ * must have another way in.
+ */
+export async function unlinkGoogle() {
+	const data = await fetchJson('/api/auth/google/unlink', { method: 'POST' });
+	const resolvedUser = data?.user || null;
+	if (resolvedUser) {
+		user.set(resolvedUser);
+	}
+	return resolvedUser;
+}
+
 export async function logout() {
 	try {
 		await fetchJson('/api/auth/logout', { method: 'POST' });

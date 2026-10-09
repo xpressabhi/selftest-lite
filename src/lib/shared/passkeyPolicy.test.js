@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	base64UrlToBytes,
 	bytesToBase64Url,
-	canRemovePasskey,
+	canRemoveLoginMethod,
 	decideGoogleLink,
 	describePasskeyDevice,
 	generateDisplayName,
@@ -205,27 +205,32 @@ describe('decideGoogleLink', () => {
 	});
 });
 
-describe('canRemovePasskey', () => {
+describe('canRemoveLoginMethod', () => {
 	it('allows removing one of several passkeys', () => {
-		expect(canRemovePasskey({ passkeyCount: 2, googleSub: null })).toBe(true);
-		expect(canRemovePasskey({ passkeyCount: 5, googleSub: 'google-1' })).toBe(true);
+		expect(canRemoveLoginMethod({ passkeyCount: 2, googleSub: null })).toBe(true);
+		expect(canRemoveLoginMethod({ passkeyCount: 5, googleSub: 'google-1' })).toBe(true);
 	});
 
 	it('refuses to strand an account whose only credential is a passkey', () => {
-		expect(canRemovePasskey({ passkeyCount: 1, googleSub: null })).toBe(false);
-		expect(canRemovePasskey({ passkeyCount: 1, googleSub: '' })).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: 1, googleSub: null })).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: 1, googleSub: '' })).toBe(false);
 	});
 
 	it('allows removing the last passkey once Google can sign the user back in', () => {
-		expect(canRemovePasskey({ passkeyCount: 1, googleSub: 'google-1' })).toBe(true);
+		expect(canRemoveLoginMethod({ passkeyCount: 1, googleSub: 'google-1' })).toBe(true);
+	});
+
+	it('counts every way in, so Google alone is protected too', () => {
+		expect(canRemoveLoginMethod({ passkeyCount: 0, googleSub: 'google-1' })).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: 1, googleSub: 'google-1' })).toBe(true);
+		expect(canRemoveLoginMethod({ passkeyCount: 3, googleSub: null })).toBe(true);
 	});
 
 	it('refuses when there is nothing to remove or the count is unusable', () => {
-		expect(canRemovePasskey({ passkeyCount: 0, googleSub: 'google-1' })).toBe(false);
-		expect(canRemovePasskey({ passkeyCount: -1, googleSub: 'google-1' })).toBe(false);
-		expect(canRemovePasskey({ passkeyCount: Number.NaN, googleSub: 'google-1' })).toBe(false);
-		expect(canRemovePasskey({ passkeyCount: '2', googleSub: 'google-1' })).toBe(false);
-		expect(canRemovePasskey()).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: -1, googleSub: 'google-1' })).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: Number.NaN, googleSub: 'google-1' })).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: '2', googleSub: 'google-1' })).toBe(false);
+		expect(canRemoveLoginMethod()).toBe(false);
 	});
 });
 

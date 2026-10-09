@@ -1,30 +1,30 @@
 import { json } from '@sveltejs/kit';
-import { getPasskeyGuardState, logApiEvent, removePasskeyForUser } from '$lib/server/storage';
+import { logApiEvent, getPasskeyGuardState } from '$lib/server/storage';
+import { unlinkGoogleFromUser } from '$lib/server/auth';
 import { canRemoveLoginMethod, loginMethodCount } from '$lib/shared/passkeyPolicy';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
 import { resolveRequestContext } from '$lib/server/apiContext';
 
-const REMOVE_RATE_LIMIT = 20;
+const UNLINK_RATE_LIMIT = 10;
 
 /**
- * Revokes one of the caller's passkeys (archive-first). Removing the last
- * credential of an account with no Google identity is refused, because that
- * combination leaves the account unreachable.
+ * Disconnects Google from the signed-in account. The account is never deleted:
+ * only the identity columns are cleared, and only when at least one other way
+ * in (a passkey) is left.
  */
 export async function POST({ request, cookies }) {
 	const { startedAt, clientKey, clientId, user } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
-			bucket: '/api/auth/passkey/remove',
-			limit: REMOVE_RATE_LIMIT
+			bucket: '/api/auth/google/unlink',
+			limit: UNLINK_RATE_LIMIT
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
-				route: '/api/auth/passkey/remove',
-				action: 'passkey_remove',
+				route: '/api/auth/google/unlink',
+				action: 'google_unlink',
 				clientKey,
 				clientId,
 				request,
@@ -37,22 +37,23 @@ export async function POST({ request, cookies }) {
 
 		if (!user) {
 			return json(
-				{ error: 'Sign in to manage passkeys.', code: 'SESSION_REQUIRED' },
+				{ error: 'Sign in to manage your sign-in methods.', code: 'SESSION_REQUIRED' },
 				{ status: 401 }
 			);
 		}
 
-		const body = await readJsonBody(request);
-		const passkeyId = Number(body?.id);
-		if (!Number.isInteger(passkeyId) || passkeyId <= 0) {
-			return json({ error: 'A passkey id is required.', code: 'PASSKEY_ID_REQUIRED' }, { status: 400 });
+		const guard = await getPasskeyGuardState(user.id);
+		if (!guard.googleSub) {
+			return json(
+				{ error: 'Google is not connected to this account.', code: 'GOOGLE_NOT_LINKED' },
+				{ status: 409 }
+			);
 		}
 
-		const guard = await getPasskeyGuardState(user.id);
 		if (!canRemoveLoginMethod({ passkeyCount: guard.passkeyCount, googleSub: guard.googleSub })) {
 			await logApiEvent({
-				route: '/api/auth/passkey/remove',
-				action: 'passkey_remove',
+				route: '/api/auth/google/unlink',
+				action: 'google_unlink',
 				clientKey,
 				clientId,
 				request,
@@ -64,36 +65,34 @@ export async function POST({ request, cookies }) {
 			});
 			return json(
 				{
-					error: 'Connect Google first, or this would be your only way in.',
+					error: 'Add a passkey first — Google is the only way into this account.',
 					code: 'LAST_LOGIN_METHOD'
 				},
 				{ status: 409 }
 			);
 		}
 
-		const removed = await removePasskeyForUser({ userId: user.id, passkeyId });
-		if (!removed) {
-			return json({ error: 'That passkey was not found.', code: 'PASSKEY_NOT_FOUND' }, { status: 404 });
-		}
+		const updatedUser = await unlinkGoogleFromUser(user.id);
 
 		await logApiEvent({
-			route: '/api/auth/passkey/remove',
-			action: 'passkey_remove',
+			route: '/api/auth/google/unlink',
+			action: 'google_unlink',
 			clientKey,
 			clientId,
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId: user.id,
-			metadata: { passkeyId }
+			// The released identity is recorded here: the account keeps no copy.
+			metadata: { releasedEmail: guard.email || null, passkeyCount: guard.passkeyCount }
 		});
 
-		return json({ removed: true });
+		return json({ user: updatedUser, googleLinked: false });
 	} catch (error) {
-		console.error('Failed to remove passkey:', error);
+		console.error('Failed to disconnect Google:', error);
 		await logApiEvent({
-			route: '/api/auth/passkey/remove',
-			action: 'passkey_remove',
+			route: '/api/auth/google/unlink',
+			action: 'google_unlink',
 			clientKey,
 			clientId,
 			request,
@@ -102,6 +101,9 @@ export async function POST({ request, cookies }) {
 			errorMessage: error.message,
 			userId: user?.id ?? null
 		});
-		return json({ error: 'Unable to remove that passkey.', code: 'PASSKEY_REMOVE_ERROR' }, { status: 500 });
+		return json(
+			{ error: 'Unable to disconnect Google right now.', code: 'GOOGLE_UNLINK_ERROR' },
+			{ status: 500 }
+		);
 	}
 }

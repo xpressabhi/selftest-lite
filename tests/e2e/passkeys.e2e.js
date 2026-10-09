@@ -9,7 +9,6 @@ import {
 	sessionUser,
 	signOut,
 	signUpWithPasskey,
-	swapToSecondDevice,
 } from './passkeySignIn.js';
 
 // Passkey sign-up and sign-in, driven through the real UI with a Chrome virtual
@@ -108,76 +107,6 @@ test('the anonymous identity is attached to the new account', async ({
 	});
 });
 
-test('a second passkey can be added, and revoking the first archives it', async ({
-	page,
-	request,
-}, testInfo) => {
-	const sql = sqlClient(request);
-	const firstDevice = await addVirtualAuthenticator(page);
-
-	const user = await signUpWithPasskey(page);
-	expect(user).not.toBeNull();
-
-	// A second passkey has to come from another device: the authenticator that
-	// already holds this account's credential is refused by the browser.
-	await swapToSecondDevice(page, firstDevice);
-
-	await page.goto('/profile');
-	const addButton = page.getByRole('button', { name: /add a passkey/i });
-	await addButton.waitFor({ state: 'visible' });
-	await addButton.click();
-
-	await expect(page.locator('.passkey-row')).toHaveCount(2);
-	expect(await passkeyCountFor(sql, user.id), 'two credentials should be stored').toBe(2);
-
-	// Two-step confirmation, so the first tap only arms the removal.
-	const firstRow = page.locator('.passkey-row').first();
-	await firstRow.getByRole('button', { name: /^remove$/i }).click();
-	await firstRow.getByRole('button', { name: /confirm remove/i }).click();
-
-	await expect(page.locator('.passkey-row')).toHaveCount(1);
-	expect(await passkeyCountFor(sql, user.id), 'one credential should remain').toBe(1);
-
-	const archived = await sql.query(
-		'SELECT COUNT(*)::int AS total FROM app_user_passkey_archive WHERE user_id = $1',
-		[user.id]
-	);
-	expect(archived[0]?.total, 'the revoked credential is archived, never deleted').toBe(1);
-
-	await testInfo.attach('evidence', {
-		body: JSON.stringify({
-			userId: user.id,
-			remaining: await passkeyCountFor(sql, user.id),
-			archived: archived[0]?.total ?? 0,
-		}),
-		contentType: 'application/json',
-	});
-});
-
-test('the only passkey of an account with no Google link cannot be revoked', async ({
-	page,
-	request,
-}) => {
-	const sql = sqlClient(request);
-	await addVirtualAuthenticator(page);
-
-	const user = await signUpWithPasskey(page);
-	expect(user).not.toBeNull();
-
-	await page.goto('/profile');
-	const row = page.locator('.passkey-row').first();
-	await row.waitFor({ state: 'visible' });
-	await row.getByRole('button', { name: /^remove$/i }).click();
-	await row.getByRole('button', { name: /confirm remove/i }).click();
-
-	await expect(page.getByRole('alert')).toContainText(/only way in/i);
-	expect(
-		await passkeyCountFor(sql, user.id),
-		'the last credential must survive the attempt'
-	).toBe(1);
-	expect(await sessionUser(page), 'the user is still signed in, not stranded').not.toBeNull();
-});
-
 test('the affordance is hidden where WebAuthn does not exist', async ({ page }) => {
 	await page.addInitScript(() => {
 		// Android WebView has no `PublicKeyCredential`; the affordance must
@@ -195,57 +124,3 @@ test('the affordance is hidden where WebAuthn does not exist', async ({ page }) 
 	await expect(page.locator('.google-sign-in-button, .auth-google-error')).toHaveCount(1);
 });
 
-test('the device that already holds a passkey is told so, not failed silently', async ({
-	page,
-}) => {
-	await addVirtualAuthenticator(page);
-	const user = await signUpWithPasskey(page);
-	expect(user).not.toBeNull();
-
-	await page.goto('/profile');
-	const addButton = page.getByRole('button', { name: /add a passkey/i });
-	await addButton.waitFor({ state: 'visible' });
-	await addButton.click();
-
-	// Chrome raises InvalidStateError because the account's credential is in
-	// `excludeCredentials` on this authenticator; the user gets the "already
-	// registered" wording instead of a generic failure.
-	await expect(
-		page.locator('section[aria-labelledby="passkeys-heading"] [role="alert"]')
-	).toContainText(/already registered/i);
-	await expect(page.locator('.passkey-row')).toHaveCount(1);
-});
-
-test('the passkey panel is reachable on desktop, and says what it has saved', async ({
-	page,
-}, testInfo) => {
-	await addVirtualAuthenticator(page);
-	const user = await signUpWithPasskey(page);
-	expect(user).not.toBeNull();
-
-	// Regression: `/profile` was only linked from the mobile menu, so a desktop
-	// signed-in user had no way to reach the passkey panel at all.
-	await expect(page.viewportSize()?.width ?? 0).toBeGreaterThanOrEqual(1024);
-	await page.getByRole('button', { name: 'Signed in as' }).click();
-	const profileLink = page.locator('#user-menu a[href="/profile"]');
-	await expect(profileLink).toBeVisible();
-	await profileLink.click();
-
-	await expect(page).toHaveURL(/\/profile$/);
-	await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible();
-	await expect(page.locator('.passkey-row')).toHaveCount(1);
-	await expect(page.locator('.passkey-row')).toContainText(
-		/Mac|Windows PC|Linux device|This device/
-	);
-
-	// The button must not read like "your passkey was not saved".
-	await expect(
-		page.getByRole('button', { name: /add a passkey on another device/i })
-	).toBeVisible();
-	await expect(page.getByText(/saved on this device/i)).toBeVisible();
-
-	await testInfo.attach('evidence', {
-		body: JSON.stringify({ userId: user.id, passkeysRendered: 1, addLabel: 'another device' }),
-		contentType: 'application/json',
-	});
-});

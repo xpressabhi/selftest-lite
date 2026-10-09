@@ -645,6 +645,9 @@
 									<a href="/profile" onclick={() => (showUserMenu = false)}
 										><Icon name="user" size={18} /> {$t('profileMenuLabel')}</a
 									>
+									<a href="/settings" onclick={() => (showUserMenu = false)}
+										><Icon name="shield" size={18} /> {$t('settingsMenuLabel')}</a
+									>
 									<a href="/history" onclick={() => (showUserMenu = false)}
 										><Icon name="clock" size={18} /> {$t('history')}</a
 									>
@@ -713,6 +716,15 @@
 								onclick={() => (isMenuOpen = false)}
 							>
 								<Icon name="user" size={18} />{$t('profileMenuLabel')}
+							</a>
+							<a
+								class="menu-action"
+								class:active={activePath === '/settings'}
+								href="/settings"
+								aria-current={activePath === '/settings' ? 'page' : undefined}
+								onclick={() => (isMenuOpen = false)}
+							>
+								<Icon name="shield" size={18} />{$t('settingsMenuLabel')}
 							</a>
 						{/if}
 						<a

@@ -91,9 +91,15 @@ export async function passkeyCountFor(sql, userId) {
 	return rows[0]?.total ?? 0;
 }
 
+/** Opens the sign-in-methods settings page. */
+export async function openSignInMethods(page) {
+	await page.goto('/settings');
+	await expect(page.getByRole('heading', { name: 'Sign-in & security' })).toBeVisible();
+}
+
 /** Opens /profile with the profile wizard dismissed. */
 export async function openProfile(page) {
 	await page.goto('/profile');
 	await dismissProfileWizard(page);
-	await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Your profile' })).toBeVisible();
 }

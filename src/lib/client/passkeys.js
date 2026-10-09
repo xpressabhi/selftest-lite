@@ -93,8 +93,10 @@ export function passkeyErrorKey(error) {
 			return 'passkeyExpired';
 		case 'PASSKEY_UNAVAILABLE':
 			return 'passkeyUnavailable';
-		case 'LAST_CREDENTIAL':
-			return 'passkeyLastCredential';
+		case 'LAST_LOGIN_METHOD':
+			return 'signInLastMethod';
+		case 'GOOGLE_NOT_LINKED':
+			return 'signInGoogleNotLinked';
 		case 'GOOGLE_LINK_CONFLICT':
 			return 'passkeyLinkConflict';
 		default:
@@ -248,7 +250,11 @@ export async function fetchPasskeys() {
 		error.status = response.status;
 		throw error;
 	}
-	return { passkeys: data?.passkeys || [], googleLinked: Boolean(data?.googleLinked) };
+	return {
+		passkeys: data?.passkeys || [],
+		googleLinked: Boolean(data?.googleLinked),
+		googleEmail: data?.googleEmail || null
+	};
 }
 
 export async function removePasskey(passkeyId) {

@@ -48,7 +48,11 @@ export async function GET({ request, cookies }) {
 			metadata: { count: passkeys.length }
 		});
 
-		return json({ passkeys, googleLinked: Boolean(user.googleSub) });
+		return json({
+			passkeys,
+			googleLinked: Boolean(user.googleSub),
+			googleEmail: user.email || null
+		});
 	} catch (error) {
 		console.error('Failed to list passkeys:', error);
 		await logApiEvent({

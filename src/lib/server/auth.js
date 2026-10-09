@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'crypto';
 import { env } from '$env/dynamic/private';
 import {
 	attachGoogleIdentityToUser,
+	detachGoogleIdentityFromUser,
 	ensureStorageSchema,
 	findAppUserClaimingGoogleIdentity,
 	getAppUserById,
@@ -70,6 +71,17 @@ export function mapUserRow(row) {
 
 export async function getUserById(userId) {
 	const row = await getAppUserById(userId);
+	return mapUserRow(row);
+}
+
+/**
+ * Releases the Google identity from an account (the settings page's
+ * "Disconnect"). The account, its passkeys and its history are untouched: only
+ * the identity columns are cleared, which is what makes the removal real rather
+ * than cosmetic.
+ */
+export async function unlinkGoogleFromUser(userId) {
+	const row = await detachGoogleIdentityFromUser(userId);
 	return mapUserRow(row);
 }
 

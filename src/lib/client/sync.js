@@ -242,11 +242,15 @@ export async function hydrateHistoryFromServer() {
 			method: 'GET',
 			headers: getClientHeaders(),
 		});
-		if (response.status === 401) {
+		// Anonymous visitors (401) and a rate-limited sync (429) are both
+		// expected outcomes of a background hydration, and both are already
+		// visible in api_request_events: logging them here would put noise in
+		// the console for something the user cannot act on.
+		if (response.status === 401 || response.status === 429) {
 			return false;
 		}
 		if (!response.ok) {
-			throw new Error('Failed to fetch server history');
+			throw new Error(`Failed to fetch server history (${response.status})`);
 		}
 
 		const data = await response.json();
@@ -327,11 +331,11 @@ export function hydrateUserState() {
 				method: 'GET',
 				headers: getClientHeaders(),
 			});
-			if (response.status === 401) {
+			if (response.status === 401 || response.status === 429) {
 				return false;
 			}
 			if (!response.ok) {
-				throw new Error('Failed to fetch user state');
+				throw new Error(`Failed to fetch user state (${response.status})`);
 			}
 
 			const data = await response.json();
