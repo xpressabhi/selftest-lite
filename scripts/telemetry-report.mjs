@@ -939,11 +939,25 @@ const explainServer = (
 	`
 )[0];
 
+// Fail-open rows logged the upstream classification while the client received
+// a handled 200 fallback (personalize, pre-fix). Those are not served 5xx and
+// must not pin this gate; they are counted separately below so upstream
+// degradation stays visible. New rows log the served status directly.
 const serverErrors = (
 	await sql`
 		SELECT COUNT(*)::int AS server_errors
 		FROM api_request_events
 		WHERE status_code >= 500
+			AND NOT (metadata @> '{"failOpen": true}'::jsonb)
+			AND ${PRODUCTION_ONLY}
+			AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
+	`
+)[0];
+const failOpenEvents = (
+	await sql`
+		SELECT COUNT(*)::int AS total
+		FROM api_request_events
+		WHERE metadata @> '{"failOpen": true}'::jsonb
 			AND ${PRODUCTION_ONLY}
 			AND created_at >= NOW() - ${gateDays}::int * INTERVAL '1 day'
 	`
@@ -978,6 +992,9 @@ console.log(
 	`  server (prod) explain:  ${explainServer.successes} ok / ${explainServer.failures} failed`
 );
 console.log(`  server 5xx:             ${serverErrors.server_errors}`);
+console.log(
+	`  fail-open responses:    ${failOpenEvents.total} (upstream error handled with a 200 fallback)`
+);
 console.log(`  (window for the lines above: last ${gateDays} days)`);
 
 section('Content quality (last 7 days)');

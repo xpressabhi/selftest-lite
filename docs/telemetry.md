@@ -77,7 +77,8 @@ It prints:
 - data-quality checks: null `test_mode`/`difficulty`/`language` on rows the
   generate endpoint wrote, plus how many foreign rows were skipped, server-side
   generate and explain outcomes (including how many papers came back trimmed by
-  the deadline), and the server 5xx count
+  the deadline), the server 5xx count, and the count of fail-open responses
+  (upstream errors served to users as a handled 200 fallback)
 - quality gates (PASS/FAIL). Pass `--strict` to exit non-zero when any gate
   fails (used by the scheduled workflow).
 
@@ -126,6 +127,9 @@ Notes on what each gate deliberately measures:
   funnel could show a healthier rate than the server saw. Server rows count
   every attempt, including the premium-gated ones (reported separately in the
   gate detail).
+- **Server 5xx** counts responses users actually met. A row carrying
+  `metadata.failOpen` (an upstream error handled with a 200 fallback) is
+  reported separately and does not fail the gate.
 - **Answer position and longest-answer tell** exclude `matching`,
   `assertion-reasoning` and `statement-based`. Their options are built
   server-side in a deliberate order and never shuffled, which

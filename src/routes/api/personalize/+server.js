@@ -145,7 +145,7 @@ export async function POST({ request, cookies }) {
 		return json({ ...result, nudge });
 	} catch (aiError) {
 		console.error('Personalization failed (fail-open):', aiError?.message);
-		const { statusCode, code } = classifyApiError(aiError, {
+		const { statusCode: upstreamStatus, code } = classifyApiError(aiError, {
 			fallbackCode: 'PERSONALIZE_FAILED',
 			fallbackMessage: 'Personalization unavailable.',
 		});
@@ -155,11 +155,15 @@ export async function POST({ request, cookies }) {
 			clientKey,
 			clientId,
 			request,
-			statusCode,
+			// The client receives a 200 fallback (below), so that is the status
+			// this row records: status_code must mirror what users experienced,
+			// or the report's 5xx gate counts handled upstream blips as app
+			// errors. The classified upstream status stays in metadata.
+			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId: user?.id || null,
 			errorMessage: aiError?.message,
-			metadata: { page, failOpen: true },
+			metadata: { page, failOpen: true, upstreamStatus },
 		});
 		// Fail-open: keep the current UI instead of surfacing an error.
 		return json({ applied: false, action: null, hide: [], promote: [], nudge: null, code });
