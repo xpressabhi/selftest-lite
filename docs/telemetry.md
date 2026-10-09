@@ -61,11 +61,14 @@ It prints:
 - the production / non-production split of `api_request_events`, with the count
   of excluded rows called out (see Production vs non-production below)
 - retention: new vs returning identities per week
+- engaged retention: cohorts that start at the first generate/test start, plus
+  the drive-by share (identities that never started one)
 - activation funnel: page view → generate → test start → submit → explain
 - top feature events, plus allowlisted events not seen in the window
 - conversational planner: client parse/clarification counts, clarifications by
   field/outcome, and server-side topic source + confidence + token usage
-- API hotspots (requests, errors excluding expected 401/429, 401s, 429s, avg/p95 latency)
+- API hotspots (requests, errors excluding expected 401/429, the date of the
+  last such error, 401s, 429s, avg/p95 latency)
 - rate-limiter requests per route (every limiter call, not only blocked ones)
 - generation failures: stage/code/model breakdown, top issue codes per failing
   batch, and client-reported `generate:fail` codes
@@ -111,8 +114,8 @@ Gates run over `--gate-days` (default 7) and over production rows only.
 | Longest-answer tell (key >1.25x longest distractor) | < 35%      |
 | Duplicate questions (7d)                            | 0          |
 | Non-discriminating repeated items                   | < 35%      |
-| D1 retention                                        | >= 15%     |
-| D7 retention                                        | >= 8%      |
+| D1 retention (engaged)                              | >= 15%     |
+| D7 retention (engaged)                              | >= 8%      |
 | Device profile coverage                             | >= 80%     |
 
 Notes on what each gate deliberately measures:
@@ -145,9 +148,14 @@ Notes on what each gate deliberately measures:
   written. `createTestRecord()` always writes `test_mode`, `test_type` and
   `difficulty` together, so a row missing all three came from a manual insert
   or a probe, and the report lists those separately as "foreign rows ignored".
-- **D1 / D7 retention** report `inconclusive` and pass below 60 identities in
-  the cohort. At 4–17 identities per cohort a retention percentage moves by
-  whole points on a single visitor, which is not a measurement.
+- **D1 / D7 retention are engaged retention**: an identity's cohort starts at
+  its first `generate:start` / `test:start`, not at its first page view. The
+  all-identity cohorts stay printed above for context, but a one-day wave of
+  single-session drive-bys (crawler, campaign, or audit traffic) must not pin
+  the gate red — it measures engagement, not traffic volume. Both gates report
+  `inconclusive` and pass below 60 engaged identities; at that size a retention
+  percentage moves by whole points on a single visitor, which is not a
+  measurement. The drive-by line reports the identities the gate excludes.
 
 ## Generation failure diagnostics
 
@@ -255,7 +263,9 @@ dispatch): it executes the report with `--strict`, archives old telemetry rows,
 and uploads both outputs as artifacts.
 
 Setup: add a repository secret named `DATABASE_URL` (Settings → Secrets and
-variables → Actions). Without it the workflow fails at the report step.
+variables → Actions). Without it the workflow fails at the report step. Both
+telemetry steps run with `set -o pipefail` so a failing gate (or archive) fails
+the workflow — the `tee` that saves the artifact must not swallow the exit code.
 
 ## Archival (no deletions)
 
@@ -277,7 +287,9 @@ expired/revoked sessions (`app_user_session`), and legacy tables.
 
 ## Weekly review checklist
 
-1. **Funnel** — did activate → generate → test → submit hold or improve?
+1. **Funnel** — did activate → generate → test → submit hold or improve? Check
+   the drive-by line first: a spike in identities with no generate/test start
+   is traffic, not activation.
 2. **Dead events** — allowlisted but unseen means the feature is unused or
    instrumentation broke; decide to remove or fix.
 3. **Errors** — real errors exclude expected anonymous `401`s and rate-limit

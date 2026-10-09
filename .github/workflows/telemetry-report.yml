@@ -23,12 +23,21 @@ jobs:
       - name: Archive old telemetry rows
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npm run telemetry:archive -- --apply | tee telemetry-archive.txt
+        # Pipefail so a failing archive step is not masked by tee (the step
+        # must fail even though tee exits 0).
+        run: |
+          set -o pipefail
+          npm run telemetry:archive -- --apply 2>&1 | tee telemetry-archive.txt
 
       - name: Run telemetry report
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npm run telemetry:report -- --days=7 --strict | tee telemetry-report.txt
+        # --strict exits non-zero when a quality gate fails; without pipefail
+        # the pipeline would report tee's exit code and the workflow would stay
+        # green while the gates fail. Do not remove.
+        run: |
+          set -o pipefail
+          npm run telemetry:report -- --days=7 --strict 2>&1 | tee telemetry-report.txt
 
       - name: Upload report artifacts
         if: always()

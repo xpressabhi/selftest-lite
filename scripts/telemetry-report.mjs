@@ -201,6 +201,72 @@ console.log(
 	`  aggregate: ${cohortSize} identities, D1 ${(d1Rate * 100).toFixed(1)}%, D7 ${(d7Rate * 100).toFixed(1)}%`
 );
 
+// The retention gates below measure engaged retention: an identity's cohort
+// starts at its first generate:start / test:start, not at its first page view.
+// A one-day wave of single-session drive-bys otherwise inflates the aggregate
+// past the 60-identity floor and pins the gate red forever, which teaches
+// everyone to ignore it. The all-identity table above stays descriptive.
+section('Engaged retention (first generate/test start, last 14 days of cohorts)');
+const engagedCohortRows = await sql`
+	WITH firsts AS (
+		SELECT COALESCE(user_id::text, client_id) AS id, MIN(created_at)::date AS cohort
+		FROM feature_events
+		WHERE event IN ('generate:start', 'test:start')
+			AND COALESCE(user_id::text, client_id) IS NOT NULL
+		GROUP BY 1
+	),
+	activity AS (
+		SELECT DISTINCT COALESCE(user_id::text, client_id) AS id, created_at::date AS day
+		FROM feature_events
+		WHERE COALESCE(user_id::text, client_id) IS NOT NULL
+	)
+	SELECT
+		f.cohort,
+		COUNT(DISTINCT f.id)::int AS cohort_size,
+		COUNT(DISTINCT a.id) FILTER (WHERE a.day = f.cohort + 1)::int AS d1,
+		COUNT(DISTINCT a.id) FILTER (WHERE a.day > f.cohort AND a.day <= f.cohort + 7)::int AS d7
+	FROM firsts f
+	JOIN activity a USING (id)
+	WHERE f.cohort >= CURRENT_DATE - 14
+	GROUP BY 1
+	ORDER BY 1
+`;
+printTable(engagedCohortRows, [
+	{ key: 'cohort', label: 'cohort' },
+	{ key: 'cohort_size', label: 'size' },
+	{ key: 'd1', label: 'D1' },
+	{ key: 'd7', label: 'D7' },
+]);
+const engagedCohortSize = engagedCohortRows.reduce((sum, row) => sum + row.cohort_size, 0);
+const engagedD1Count = engagedCohortRows.reduce((sum, row) => sum + row.d1, 0);
+const engagedD7Count = engagedCohortRows.reduce((sum, row) => sum + row.d7, 0);
+const engagedD1Rate = engagedCohortSize > 0 ? engagedD1Count / engagedCohortSize : 0;
+const engagedD7Rate = engagedCohortSize > 0 ? engagedD7Count / engagedCohortSize : 0;
+console.log(
+	`  aggregate: ${engagedCohortSize} engaged identities, D1 ${(engagedD1Rate * 100).toFixed(1)}%, D7 ${(engagedD7Rate * 100).toFixed(1)}%`
+);
+
+// Drive-by share: identities that never started a generation or a test.
+// Descriptive, not a gate — it explains funnel dilution and why the
+// all-identity retention above reads lower than the engaged numbers.
+const driveBy = (
+	await sql`
+		WITH per_id AS (
+			SELECT COALESCE(user_id::text, client_id) AS id,
+				COUNT(*) FILTER (WHERE event IN ('generate:start', 'test:start'))::int AS core
+			FROM feature_events
+			WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+				AND COALESCE(user_id::text, client_id) IS NOT NULL
+			GROUP BY 1
+		)
+		SELECT COUNT(*)::int AS identities, COUNT(*) FILTER (WHERE core = 0)::int AS no_core
+		FROM per_id
+	`
+)[0];
+console.log(
+	`  drive-by identities (no generate/test start in ${days}d): ${driveBy.no_core}/${driveBy.identities} (${percent(driveBy.no_core, driveBy.identities)})`
+);
+
 section('Activation funnel (distinct identities)');
 printTable(
 	await sql`
@@ -225,7 +291,11 @@ printTable(
 );
 
 section('Top feature events');
-const topEvents = await sql`
+// Fetch every event, not just the top 25: the display trims to 25 below, but
+// the allowlist doctor needs the full window to know what actually fired.
+// Building the seen-set from the display limit marked ~3 in 4 live events as
+// "not seen" (they were simply below the top-25 cutoff).
+const eventCounts = await sql`
 	SELECT
 		event,
 		COUNT(*)::int AS events,
@@ -235,16 +305,15 @@ const topEvents = await sql`
 	WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
 	GROUP BY event
 	ORDER BY events DESC
-	LIMIT 25
 `;
-printTable(topEvents, [
+printTable(eventCounts.slice(0, 25), [
 	{ key: 'event', label: 'event' },
 	{ key: 'events', label: 'events' },
 	{ key: 'identities', label: 'identities' },
 	{ key: 'last_seen', label: 'last seen' },
 ]);
 
-const seenEvents = new Set(topEvents.map((row) => row.event));
+const seenEvents = new Set(eventCounts.map((row) => row.event));
 const unseenAllowlisted = [...TELEMETRY_EVENTS].filter((event) => !seenEvents.has(event));
 section('Allowlisted events not seen in window');
 console.log(
@@ -360,7 +429,10 @@ const hotspotRows = await sql`
 		COUNT(*) FILTER (WHERE status_code = 401)::int AS unauth,
 		COUNT(*) FILTER (WHERE status_code = 429)::int AS limited,
 		COALESCE(ROUND(AVG(duration_ms)), 0)::int AS avg_ms,
-		COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p95_ms
+		COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p95_ms,
+		MAX(created_at) FILTER (
+			WHERE status_code >= 400 AND status_code NOT IN (401, 429)
+		)::date AS last_error
 	FROM api_request_events
 	WHERE ${PRODUCTION_ONLY}
 		AND created_at >= NOW() - ${days}::int * INTERVAL '1 day'
@@ -372,6 +444,7 @@ printTable(hotspotRows, [
 	{ key: 'route', label: 'route' },
 	{ key: 'requests', label: 'requests' },
 	{ key: 'errors', label: 'errors' },
+	{ key: 'last_error', label: 'last error' },
 	{ key: 'unauth', label: '401s' },
 	{ key: 'limited', label: '429s' },
 	{ key: 'avg_ms', label: 'avg ms' },
@@ -1151,24 +1224,26 @@ const gates = [
 			(itemStats.too_easy + itemStats.too_hard) / itemStats.repeated_items < 0.35,
 		detail: `${itemStats.too_easy + itemStats.too_hard}/${itemStats.repeated_items}`,
 	},
-	// Retention on cohorts of 4-17 identities swings by whole percentage points
-	// on a single visitor, so it is reported as inconclusive rather than failed
-	// until the sample can carry the claim.
+	// Retention is measured on engaged identities (first generate/test start):
+	// a wave of single-session drive-bys can inflate the all-identity cohort
+	// past the 60-identity floor without ever being a retention signal. Below
+	// the floor the result is inconclusive rather than failed, so a quiet
+	// cohort cannot flip the gate red on a single visitor.
 	{
-		label: 'D1 retention >= 15%',
-		passed: cohortSize < MIN_RETENTION_COHORT || d1Rate >= 0.15,
+		label: 'D1 retention (engaged) >= 15%',
+		passed: engagedCohortSize < MIN_RETENTION_COHORT || engagedD1Rate >= 0.15,
 		detail:
-			cohortSize < MIN_RETENTION_COHORT
-				? `inconclusive (${cohortSize} identities, need ${MIN_RETENTION_COHORT})`
-				: `${(d1Rate * 100).toFixed(1)}% (${d1Count}/${cohortSize})`,
+			engagedCohortSize < MIN_RETENTION_COHORT
+				? `inconclusive (${engagedCohortSize} engaged identities, need ${MIN_RETENTION_COHORT})`
+				: `${(engagedD1Rate * 100).toFixed(1)}% (${engagedD1Count}/${engagedCohortSize})`,
 	},
 	{
-		label: 'D7 retention >= 8%',
-		passed: cohortSize < MIN_RETENTION_COHORT || d7Rate >= 0.08,
+		label: 'D7 retention (engaged) >= 8%',
+		passed: engagedCohortSize < MIN_RETENTION_COHORT || engagedD7Rate >= 0.08,
 		detail:
-			cohortSize < MIN_RETENTION_COHORT
-				? `inconclusive (${cohortSize} identities, need ${MIN_RETENTION_COHORT})`
-				: `${(d7Rate * 100).toFixed(1)}% (${d7Count}/${cohortSize})`,
+			engagedCohortSize < MIN_RETENTION_COHORT
+				? `inconclusive (${engagedCohortSize} engaged identities, need ${MIN_RETENTION_COHORT})`
+				: `${(engagedD7Rate * 100).toFixed(1)}% (${engagedD7Count}/${engagedCohortSize})`,
 	},
 	{
 		label: 'device profile coverage >= 80%',
