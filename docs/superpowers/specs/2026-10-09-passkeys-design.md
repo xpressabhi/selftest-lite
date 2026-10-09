@@ -74,11 +74,18 @@ friction this feature exists to remove).
 
 **D4 — Use `@simplewebauthn/server` (14.0.3) for verification.** Verification is the one place in
 this feature where a subtle bug is silent and catastrophic, so it uses the reference implementation
-rather than code we own. The package is imported only by the four passkey routes, so per-route
-bundling keeps it out of every other serverless function; the cost is cold-start parse time on those
-four functions only. Rejected: hand-rolled CBOR/COSE/signature verification on Node `crypto` (no new
-dependency, but we would own the crypto check); hosted auth provider (replaces the working session
-layer, adds vendor cost and a per-request hop, and would rewrite the Google flow that already works).
+rather than code we own. Measured cost: bundling the library with esbuild for a server target adds
+**0.88 MB** (925 KB) of JS. That weight is _not_ confined to the passkey routes — the deployed app
+runs as **one** serverless function (every route's `.func` in `.vercel/output/functions` symlinks to
+`![-]/catchall.func`, 25 MB, and SvelteKit's generated manifest imports every route module
+statically), so the shared function grows by ~4% and the parse lands on every cold start, not only on
+passkey requests. Against the observed ~1 s cold start (Lambda init + Neon WebSocket handshake + SSR
+bootstrap) that is a few milliseconds — the right price for not owning signature verification. The
+adapter's `split: true` would isolate the weight per route, but it would also give every route its own
+cold start, and cold start is this app's remaining tail (§10); rejected for that reason. Rejected:
+hand-rolled CBOR/COSE/signature verification on Node `crypto` (no new dependency, but we would own the
+crypto check); hosted auth provider (replaces the working session layer, adds vendor cost and a
+per-request hop, and would rewrite the Google flow that already works).
 
 **D5 — Challenges live in a single-use database row, not a signed cookie.** A signed cookie would
 need a new server secret to manage; a table needs none, gives server-side single-use enforcement
@@ -402,6 +409,10 @@ Acceptance criteria:
 - After deploy, `/api/auth/passkey/*` p95 latency from `api_request_events` is under 250 ms, measured
   the same way as the region fix, and a real platform passkey (Touch ID or Android screen lock)
   completes signup and login on `https://www.selftest.in`.
+- Because the dependency lands in the one shared function, the cold-start envelope of an unrelated
+  DB-bound route (`/api/test:list`) is re-measured after deploy and stays inside the pre-change
+  envelope (~1 s worst observed, p50 unaffected); a regression there means `split: true` gets
+  reconsidered.
 - `auth:passkey-*` events appear in `npm run telemetry:report` with `reason` on failures.
 
 ## 11. Rollout and verification
