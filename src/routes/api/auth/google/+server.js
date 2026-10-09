@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import {
 	createSessionForUser,
+	linkGoogleProfileToUser,
 	setSessionCookie,
 	upsertGoogleUser,
 	verifyGoogleCredential,
@@ -35,7 +36,7 @@ function getStatusCode(error) {
 }
 
 export async function POST({ request, cookies }) {
-	const { startedAt, clientKey, clientId } = await resolveRequestContext(request, cookies);
+	const { startedAt, clientKey, clientId, user } = await resolveRequestContext(request, cookies);
 
 	try {
 		const rateLimit = await rateLimiter(request, {
@@ -66,11 +67,54 @@ export async function POST({ request, cookies }) {
 		}
 
 		const profile = await verifyGoogleCredential(credential);
-		const user = await upsertGoogleUser(profile);
-		const session = await createSessionForUser(user.id);
+
+		// Recovery path for a passkey-first account: an explicit link from a
+		// signed-in user attaches this Google identity to their own row instead
+		// of switching accounts. A conflict is reported, never merged.
+		if (body?.link === true && user) {
+			const linkResult = await linkGoogleProfileToUser(user.id, profile);
+			if (linkResult.status === 'conflict') {
+				await logApiEvent({
+					route: '/api/auth/google',
+					action: 'google_link',
+					clientKey,
+					clientId,
+					request,
+					statusCode: 409,
+					durationMs: Date.now() - startedAt,
+					errorMessage: 'Google identity already belongs to another account',
+					userId: user.id,
+				});
+				return json(
+					{
+						error:
+							'That Google account already has a Selftest account. Sign in with Google to use it, then add a passkey there.',
+						code: 'GOOGLE_LINK_CONFLICT',
+					},
+					{ status: 409 }
+				);
+			}
+
+			await logApiEvent({
+				route: '/api/auth/google',
+				action: 'google_link',
+				clientKey,
+				clientId,
+				request,
+				statusCode: 200,
+				durationMs: Date.now() - startedAt,
+				userId: user.id,
+				metadata: { status: linkResult.status, email: profile.email },
+			});
+
+			return json({ user: linkResult.user, linked: true, status: linkResult.status });
+		}
+
+		const signedInUser = await upsertGoogleUser(profile);
+		const session = await createSessionForUser(signedInUser.id);
 		setSessionCookie(cookies, session.rawSessionToken, session.expiresAt);
 
-		const backfilledCount = await backfillUserIdentity(user.id, clientId);
+		const backfilledCount = await backfillUserIdentity(signedInUser.id, clientId);
 
 		await logApiEvent({
 			route: '/api/auth/google',
@@ -79,14 +123,14 @@ export async function POST({ request, cookies }) {
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
-			userId: user.id,
+			userId: signedInUser.id,
 			metadata: {
-				email: user.email,
+				email: signedInUser.email,
 				backfilledCount,
 			},
 		});
 
-		return json({ user });
+		return json({ user: signedInUser });
 	} catch (error) {
 		const statusCode = getStatusCode(error);
 

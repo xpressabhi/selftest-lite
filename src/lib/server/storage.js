@@ -82,7 +82,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -224,6 +224,60 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_app_user_session_expires_at
 			ON app_user_session (expires_at)
+		`);
+
+		// Passkeys: a second credential type on the same accounts. A passkey-first
+		// signup has no Google identity, so the two Google-shaped columns must
+		// accept NULL; `webauthn_user_handle` is the stable WebAuthn user id that
+		// keeps every passkey added to an account pointing at the same user.
+		await query(`ALTER TABLE app_user ALTER COLUMN google_sub DROP NOT NULL`);
+		await query(`ALTER TABLE app_user ALTER COLUMN email DROP NOT NULL`);
+		await query(`ALTER TABLE app_user ADD COLUMN IF NOT EXISTS webauthn_user_handle TEXT`);
+		await query(`
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_webauthn_handle
+			ON app_user (webauthn_user_handle)
+			WHERE webauthn_user_handle IS NOT NULL
+		`);
+
+		await query(`
+			CREATE TABLE IF NOT EXISTS app_user_passkey (
+				id BIGSERIAL PRIMARY KEY,
+				user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+				credential_id TEXT NOT NULL UNIQUE,
+				public_key TEXT NOT NULL,
+				counter BIGINT NOT NULL DEFAULT 0,
+				transports TEXT[],
+				device_type TEXT,
+				backed_up BOOLEAN,
+				label TEXT,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_used_at TIMESTAMPTZ,
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_app_user_passkey_user_id
+			ON app_user_passkey (user_id)
+		`);
+
+		// One row per ceremony, consumed (archived) before verification so a
+		// challenge is single-use even when verification then fails.
+		await query(`
+			CREATE TABLE IF NOT EXISTS passkey_challenge (
+				challenge TEXT PRIMARY KEY,
+				kind TEXT NOT NULL,
+				user_id BIGINT,
+				user_handle TEXT,
+				display_name TEXT,
+				expires_at TIMESTAMPTZ NOT NULL,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_passkey_challenge_expires_at
+			ON passkey_challenge (expires_at)
 		`);
 
 		await query(`
@@ -2135,4 +2189,439 @@ export async function getDatabaseHealth() {
 	}
 
 	return { latencyMs, connections };
+}
+
+// --- Passkeys -------------------------------------------------------------
+//
+// A passkey-first account is created in one statement (the CTE below) so a
+// failure cannot leave a user row with no credential. Challenges are consumed
+// before verification, and every removal is archive-first like sessions.
+
+const PASSKEY_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+
+/** Archives challenges that expired long enough ago to be past any retry. */
+async function archiveStalePasskeyChallengesMaybe() {
+	if (Math.random() >= 0.05) {
+		return;
+	}
+
+	try {
+		await query(
+			`WITH moved AS (
+				DELETE FROM passkey_challenge
+				WHERE expires_at < NOW() - INTERVAL '1 hour'
+				RETURNING *
+			)
+			INSERT INTO passkey_challenge_archive
+				(challenge, kind, user_id, user_handle, display_name, expires_at, created_at, archived_at)
+			SELECT challenge, kind, user_id, user_handle, display_name, expires_at, created_at, NOW()
+			FROM moved`
+		);
+	} catch (error) {
+		console.error('Failed to archive expired passkey challenges:', error);
+	}
+}
+
+export async function createPasskeyChallenge({
+	challenge,
+	kind,
+	userId = null,
+	userHandle = null,
+	displayName = null,
+	ttlMs = PASSKEY_CHALLENGE_TTL_MS
+}) {
+	await ensureStorageSchema();
+	const expiresAt = new Date(Date.now() + ttlMs);
+	await query(
+		`INSERT INTO passkey_challenge
+		 (challenge, kind, user_id, user_handle, display_name, expires_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		[challenge, kind, normalizeUserIdValue(userId), userHandle, displayName, expiresAt.toISOString()]
+	);
+	archiveStalePasskeyChallengesMaybe();
+	return { expiresAt };
+}
+
+/**
+ * Single-use consume: the row leaves the hot table and lands in the archive in
+ * the same statement, so a challenge cannot be replayed even if verification
+ * fails afterwards.
+ */
+export async function consumePasskeyChallenge(challenge, kind) {
+	if (typeof challenge !== 'string' || challenge.length === 0) {
+		return null;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`WITH moved AS (
+			DELETE FROM passkey_challenge
+			WHERE challenge = $1 AND kind = $2 AND expires_at > NOW()
+			RETURNING *
+		)
+		INSERT INTO passkey_challenge_archive
+			(challenge, kind, user_id, user_handle, display_name, expires_at, created_at, archived_at)
+		SELECT challenge, kind, user_id, user_handle, display_name, expires_at, created_at, NOW()
+		FROM moved
+		RETURNING challenge, kind, user_id, user_handle, display_name, expires_at`,
+		[challenge, kind]
+	);
+
+	return result.rows[0] || null;
+}
+
+/**
+ * Passkey signup: creates the account and its first credential in a single
+ * statement (atomic in Postgres without needing a transaction), so a rejected
+ * credential cannot leave an orphan user row behind.
+ */
+export async function createPasskeyUserWithCredential({
+	displayName,
+	userHandle,
+	credentialId,
+	publicKey,
+	counter = 0,
+	transports = null,
+	deviceType = null,
+	backedUp = null,
+	label = null
+}) {
+	await ensureStorageSchema();
+	const result = await query(
+		`WITH new_user AS (
+			INSERT INTO app_user (name, webauthn_user_handle, last_login_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())
+			RETURNING id
+		)
+		INSERT INTO app_user_passkey
+			(user_id, credential_id, public_key, counter, transports, device_type, backed_up, label)
+		SELECT id, $3, $4, $5, $6::text[], $7, $8, $9 FROM new_user
+		RETURNING user_id`,
+		[
+			displayName,
+			userHandle,
+			credentialId,
+			publicKey,
+			counter,
+			transports,
+			deviceType,
+			backedUp,
+			label
+		]
+	);
+
+	return result.rows[0] ? Number(result.rows[0].user_id) : null;
+}
+
+export async function insertPasskeyForUser({
+	userId,
+	credentialId,
+	publicKey,
+	counter = 0,
+	transports = null,
+	deviceType = null,
+	backedUp = null,
+	label = null
+}) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		throw new Error('Invalid user id for passkey');
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`INSERT INTO app_user_passkey
+		 (user_id, credential_id, public_key, counter, transports, device_type, backed_up, label)
+		 VALUES ($1, $2, $3, $4, $5::text[], $6, $7, $8)
+		 RETURNING id`,
+		[
+			normalizedUserId,
+			credentialId,
+			publicKey,
+			counter,
+			transports,
+			deviceType,
+			backedUp,
+			label
+		]
+	);
+
+	return result.rows[0] ? Number(result.rows[0].id) : null;
+}
+
+/** Credential plus its account, for sign-in. */
+export async function getPasskeyWithUserByCredentialId(credentialId) {
+	if (typeof credentialId !== 'string' || credentialId.length === 0) {
+		return null;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT
+			p.id, p.user_id, p.credential_id, p.public_key, p.counter, p.transports,
+			p.device_type, p.backed_up, p.label, p.created_at, p.last_used_at,
+			u.id AS app_user_id,
+			u.google_sub,
+			u.email,
+			u.name,
+			u.picture_url,
+			u.locale,
+			u.created_at AS user_created_at,
+			u.last_login_at
+		 FROM app_user_passkey p
+		 INNER JOIN app_user u ON u.id = p.user_id
+		 WHERE p.credential_id = $1
+		 LIMIT 1`,
+		[credentialId]
+	);
+
+	return result.rows[0] || null;
+}
+
+/** Passkeys shown in the profile: no credential id or public key leaves here. */
+export async function listPasskeysForUser(userId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return [];
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT id, label, device_type, backed_up, created_at, last_used_at
+		 FROM app_user_passkey
+		 WHERE user_id = $1
+		 ORDER BY created_at DESC`,
+		[normalizedUserId]
+	);
+
+	return result.rows;
+}
+
+/** Credential ids for `excludeCredentials`, kept off the list response. */
+export async function listPasskeyCredentialsForUser(userId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return [];
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT credential_id, transports
+		 FROM app_user_passkey
+		 WHERE user_id = $1
+		 ORDER BY created_at DESC`,
+		[normalizedUserId]
+	);
+
+	return result.rows.map((row) => ({
+		credentialId: row.credential_id,
+		transports: Array.isArray(row.transports) ? row.transports : null
+	}));
+}
+
+export async function countPasskeysForUser(userId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return 0;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT COUNT(*)::INTEGER AS total FROM app_user_passkey WHERE user_id = $1`,
+		[normalizedUserId]
+	);
+
+	return Number(result.rows[0]?.total) || 0;
+}
+
+/** Revocation: archive-first, and only for the caller's own credential. */
+export async function removePasskeyForUser({ userId, passkeyId }) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	const normalizedPasskeyId = Number(passkeyId);
+	if (!normalizedUserId || !Number.isInteger(normalizedPasskeyId) || normalizedPasskeyId <= 0) {
+		return 0;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`WITH moved AS (
+			DELETE FROM app_user_passkey
+			WHERE id = $1 AND user_id = $2
+			RETURNING *
+		)
+		INSERT INTO app_user_passkey_archive
+			(id, user_id, credential_id, public_key, counter, transports, device_type,
+			 backed_up, label, created_at, last_used_at, updated_at, archived_at)
+		SELECT id, user_id, credential_id, public_key, counter, transports, device_type,
+			 backed_up, label, created_at, last_used_at, updated_at, NOW()
+		FROM moved
+		RETURNING id`,
+		[normalizedPasskeyId, normalizedUserId]
+	);
+
+	return result.rowCount || 0;
+}
+
+export async function updatePasskeyUsage({
+	passkeyId,
+	counter,
+	deviceType = null,
+	backedUp = null
+}) {
+	const normalizedPasskeyId = Number(passkeyId);
+	if (!Number.isInteger(normalizedPasskeyId) || normalizedPasskeyId <= 0) {
+		return;
+	}
+
+	await ensureStorageSchema();
+	await query(
+		`UPDATE app_user_passkey
+		 SET counter = $2, device_type = COALESCE($3, device_type),
+		     backed_up = COALESCE($4, backed_up), last_used_at = NOW(), updated_at = NOW()
+		 WHERE id = $1`,
+		[normalizedPasskeyId, Number(counter) || 0, deviceType, backedUp]
+	);
+}
+
+/**
+ * The WebAuthn user handle is minted once per account and reused by every
+ * passkey added later: a stable `user.id` is what makes two passkeys on one
+ * account resolve to the same user on the platform side. Accounts created
+ * through Google get theirs on their first passkey.
+ */
+export async function ensureWebauthnUserHandle(userId, createHandle) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		throw new Error('Invalid user id for webauthn handle');
+	}
+
+	await ensureStorageSchema();
+	const existing = await query(
+		`SELECT webauthn_user_handle FROM app_user WHERE id = $1`,
+		[normalizedUserId]
+	);
+	const currentHandle = existing.rows[0]?.webauthn_user_handle;
+	if (currentHandle) {
+		return currentHandle;
+	}
+
+	const candidate = createHandle();
+	try {
+		const updated = await query(
+			`UPDATE app_user
+			 SET webauthn_user_handle = $2, updated_at = NOW()
+			 WHERE id = $1 AND webauthn_user_handle IS NULL
+			 RETURNING webauthn_user_handle`,
+			[normalizedUserId, candidate]
+		);
+		if (updated.rows[0]?.webauthn_user_handle) {
+			return updated.rows[0].webauthn_user_handle;
+		}
+	} catch (error) {
+		// Concurrent first-time adds can race; the loser re-reads below.
+		if (error?.code !== '23505') {
+			throw error;
+		}
+	}
+
+	const fallback = await query(`SELECT webauthn_user_handle FROM app_user WHERE id = $1`, [
+		normalizedUserId
+	]);
+	return fallback.rows[0]?.webauthn_user_handle || candidate;
+}
+
+export async function getAppUserById(userId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return null;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT id, google_sub, email, name, picture_url, locale, webauthn_user_handle,
+		        created_at, last_login_at
+		 FROM app_user
+		 WHERE id = $1
+		 LIMIT 1`,
+		[normalizedUserId]
+	);
+
+	return result.rows[0] || null;
+}
+
+/** Which other account (if any) already owns a Google subject or email. */
+export async function findAppUserClaimingGoogleIdentity({ userId, googleSub, email }) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT id
+		 FROM app_user
+		 WHERE id <> $1 AND (google_sub = $2 OR email = $3)
+		 LIMIT 1`,
+		[normalizedUserId || 0, googleSub, email]
+	);
+
+	return result.rows[0]?.id ? Number(result.rows[0].id) : null;
+}
+
+/**
+ * Attaches a verified Google identity to an existing account (the recovery
+ * path for a passkey-first account). Returns the updated row, or null when the
+ * attach was decided against.
+ */
+export async function attachGoogleIdentityToUser({
+	userId,
+	googleSub,
+	email,
+	name,
+	pictureUrl,
+	locale
+}) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return null;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`UPDATE app_user
+		 SET google_sub = $2,
+		     email = $3,
+		     name = COALESCE($4, name),
+		     picture_url = $5,
+		     locale = $6,
+		     last_login_at = NOW(),
+		     updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, google_sub, email, name, picture_url, locale, webauthn_user_handle,
+		           created_at, last_login_at`,
+		[normalizedUserId, googleSub, email, name, pictureUrl, locale]
+	);
+
+	return result.rows[0] || null;
+}
+
+/** Passkey count for the session user, plus their Google link state. */
+export async function getPasskeyGuardState(userId) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return { passkeyCount: 0, googleSub: null };
+	}
+
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT
+			(SELECT COUNT(*)::INTEGER FROM app_user_passkey WHERE user_id = u.id) AS passkey_count,
+			u.google_sub
+		 FROM app_user u
+		 WHERE u.id = $1
+		 LIMIT 1`,
+		[normalizedUserId]
+	);
+
+	const row = result.rows[0];
+	return {
+		passkeyCount: Number(row?.passkey_count) || 0,
+		googleSub: row?.google_sub || null
+	};
 }

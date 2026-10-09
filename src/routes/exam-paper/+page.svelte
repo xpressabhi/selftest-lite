@@ -8,6 +8,12 @@
 	import { streamErrorToError } from '$lib/client/sse';
 	import { readGenerationStream } from '$lib/client/generateStream';
 	import { loginWithGoogleCredential } from '$lib/client/auth';
+	import {
+		createAccountWithPasskey,
+		isPasskeySupported,
+		passkeyErrorKey,
+		signInWithPasskey
+	} from '$lib/client/passkeys';
 	import { track } from '$lib/client/telemetry';
 
 	const BOARDS = ['CBSE', 'ICSE', 'State Board'];
@@ -26,6 +32,9 @@
 	let selectedSection = $state('full');
 	let generating = $state(false);
 	let generateError = $state('');
+	let passkeySupported = $state(false);
+	let passkeyBusy = $state(false);
+	let gateError = $state('');
 
 	const totalQuestions = $derived(
 		(pattern?.sections || []).reduce((sum, section) => sum + (section.questionCount || 0), 0)
@@ -38,6 +47,7 @@
 
 	onMount(async () => {
 		track('exam-paper:open');
+		passkeySupported = isPasskeySupported();
 		try {
 			const response = await fetch('/api/premium/access', {
 				headers: getClientHeaders(),
@@ -49,6 +59,31 @@
 			access = { allowed: false, reason: 'unavailable' };
 		}
 	});
+
+	/** Both passkey paths reload so the gate re-reads premium access. */
+	async function runGatePasskey(action) {
+		passkeyBusy = true;
+		gateError = '';
+		try {
+			await action();
+			location.reload();
+		} catch (error) {
+			const key = passkeyErrorKey(error);
+			if (key) {
+				gateError = key;
+			}
+		} finally {
+			passkeyBusy = false;
+		}
+	}
+
+	function handleGatePasskeySignup() {
+		return runGatePasskey(() => createAccountWithPasskey({ language: $activeLanguage }));
+	}
+
+	function handleGatePasskeySignIn() {
+		return runGatePasskey(() => signInWithPasskey());
+	}
 
 	async function handleCredential(credential) {
 		try {
@@ -171,7 +206,31 @@
 			<h2 class="h6 fw-bold mb-2">{$t('examPaperGateTitle')}</h2>
 			<p class="text-muted small mb-3">{$t('examPaperGateBody')}</p>
 			{#if !access.signedIn}
+				{#if passkeySupported}
+					<div class="d-flex flex-column gap-2 mb-2">
+						<button
+							class="btn btn-primary exam-paper-passkey"
+							type="button"
+							disabled={passkeyBusy}
+							onclick={handleGatePasskeySignup}
+						>
+							{$t('passkeyCreate')}
+						</button>
+						<button
+							class="btn btn-outline-secondary exam-paper-passkey"
+							type="button"
+							disabled={passkeyBusy}
+							onclick={handleGatePasskeySignIn}
+						>
+							{$t('passkeySignIn')}
+						</button>
+					</div>
+					<p class="text-muted small mb-2">{$t('or')}</p>
+				{/if}
 				<GoogleSignInButton onCredential={handleCredential} />
+			{/if}
+			{#if gateError}
+				<div class="alert alert-danger small mt-3 mb-0" role="alert">{$t(gateError)}</div>
 			{/if}
 		</div>
 	{:else}

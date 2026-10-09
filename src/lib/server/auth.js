@@ -1,6 +1,13 @@
 import { createHash, randomBytes } from 'crypto';
 import { env } from '$env/dynamic/private';
-import { ensureStorageSchema, query } from './storage';
+import {
+	attachGoogleIdentityToUser,
+	ensureStorageSchema,
+	findAppUserClaimingGoogleIdentity,
+	getAppUserById,
+	query
+} from './storage';
+import { decideGoogleLink } from '$lib/shared/passkeyPolicy';
 import { resolveGoogleClientId } from '$lib/shared/googleAuth';
 
 export const SESSION_COOKIE_NAME = 'selftest_session';
@@ -37,7 +44,7 @@ function normalizeUserId(value) {
 	return null;
 }
 
-function mapUserRow(row) {
+export function mapUserRow(row) {
 	if (!row) {
 		return null;
 	}
@@ -47,16 +54,62 @@ function mapUserRow(row) {
 		return null;
 	}
 
+	// A passkey-first account has no Google identity, so these two are NULL
+	// until the user links Google as their recovery path.
 	return {
 		id: normalizedId,
-		googleSub: row.google_sub,
-		email: row.email,
-		name: row.name,
-		pictureUrl: row.picture_url,
-		locale: row.locale,
+		googleSub: row.google_sub || null,
+		email: row.email || null,
+		name: row.name || null,
+		pictureUrl: row.picture_url || null,
+		locale: row.locale || null,
 		createdAt: row.created_at,
-		lastLoginAt: row.last_login_at,
+		lastLoginAt: row.last_login_at
 	};
+}
+
+export async function getUserById(userId) {
+	const row = await getAppUserById(userId);
+	return mapUserRow(row);
+}
+
+/**
+ * Attaches a verified Google identity to the signed-in account (the recovery
+ * path for a passkey-first account). The decision table lives in
+ * `$lib/shared/passkeyPolicy`; this only persists the outcome.
+ */
+export async function linkGoogleProfileToUser(userId, profile) {
+	const currentRow = await getAppUserById(userId);
+	if (!currentRow) {
+		return { status: 'conflict', user: null };
+	}
+
+	const claimedByAnotherUser = await findAppUserClaimingGoogleIdentity({
+		userId,
+		googleSub: profile.googleSub,
+		email: profile.email
+	});
+
+	const decision = decideGoogleLink({
+		currentGoogleSub: currentRow.google_sub,
+		targetGoogleSub: profile.googleSub,
+		claimedByAnotherUser: Boolean(claimedByAnotherUser)
+	});
+
+	if (decision !== 'attach') {
+		return { status: decision, user: mapUserRow(currentRow) };
+	}
+
+	const updatedRow = await attachGoogleIdentityToUser({
+		userId,
+		googleSub: profile.googleSub,
+		email: profile.email,
+		name: profile.name,
+		pictureUrl: profile.pictureUrl,
+		locale: profile.locale
+	});
+
+	return { status: 'linked', user: mapUserRow(updatedRow) || mapUserRow(currentRow) };
 }
 
 async function cleanupExpiredSessionsMaybe() {

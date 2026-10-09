@@ -37,7 +37,7 @@ async function fetchJson(url, options = {}) {
  * concurrently can let the GET resolve before the POST is persisted, so the
  * freshly pushed attempts would be missing from the hydrated history.
  */
-async function syncAfterLogin() {
+export async function syncAfterLogin() {
 	await flushPendingAttempts().catch(() => {});
 	await hydrateHistoryFromServer().catch(() => {});
 	await hydrateUserState().catch(() => {});
@@ -76,6 +76,23 @@ export async function loginWithGoogleCredential(credential) {
 		// Attribute pre-login attempts stored locally to the new account and
 		// pull server history + bookmarks so everything is immediately visible.
 		await syncAfterLogin();
+	}
+	return resolvedUser;
+}
+
+/**
+ * Links a Google identity to the account that is already signed in (the
+ * recovery path for a passkey-first account). Unlike sign-in, this never
+ * switches accounts: a conflict is reported to the caller instead.
+ */
+export async function linkGoogleCredential(credential) {
+	const data = await fetchJson('/api/auth/google', {
+		method: 'POST',
+		body: JSON.stringify({ credential, link: true }),
+	});
+	const resolvedUser = data?.user || null;
+	if (resolvedUser) {
+		user.set(resolvedUser);
 	}
 	return resolvedUser;
 }

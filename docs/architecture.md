@@ -14,34 +14,36 @@ Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 
 ## Key Modules
 
-| Module                             | Responsibility                                                                                                  |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `src/lib/server/prompt.js`         | Builds the Gemini generation prompts (language-aware, dedup-aware)                                              |
-| `src/lib/server/quizSchema.js`     | Zod schema for generated papers                                                                                 |
-| `src/lib/server/quizValidation.js` | Request validation, paper repair/validation, LaTeX syntax checks                                                |
-| `src/lib/server/paperRedaction.js` | Strips answer keys before papers leave the server                                                               |
-| `src/lib/server/storage.js`        | Neon pool + schema auto-creation (`ai_test`, `ai_test_attempts`, `api_request_events`, `api_rate_limit_events`) |
-| `src/lib/server/rateLimiter.js`    | Sliding-window rate limiting via `api_rate_limit_events` (fail-open)                                            |
-| `src/lib/server/intentParse.js`    | Conversational intent engine: Jev questions, plan merge, clarification policy                                   |
-| `src/lib/shared/intentLexicon.js`  | Shared pure lexicon: question counts, mentions, topic spans, value detectors (server + live preview)            |
-| `src/lib/client/livePreview.js`    | Live plan preview: instant local tier + when to ask Jev (`mode: "preview"`)                                     |
-| `src/lib/client/plannerState.js`   | Home planner draft state machine (messages, locks, clarifications) + persistence                                |
-| `src/lib/server/adminAuth.js`      | HMAC-signed admin session tokens, timing-safe credential checks                                                 |
-| `src/lib/client/storage.js`        | `localStorage` history/paper caching                                                                            |
-| `src/lib/client/preferences.js`    | Language, theme, and auto-advance preference stores                                                             |
-| `src/lib/locales/*.json`           | English/Hindi UI strings                                                                                        |
-| `src/lib/shared/latex.js`          | LaTeX normalization used by both server and client                                                              |
-| `src/lib/server/examSync.js`       | Exam notification pipeline: fetch → Gemini extraction → validation → upsert/quarantine (injected deps, offline-testable) |
-| `src/lib/shared/examNotifications.js` | Notification rules: normalization, dedupe keys, URL/date validation, scope filter, registry allowlists |
-| `src/lib/shared/examNotificationStatus.js` | Client-safe date/status primitives shared by the store and the `/exams` hub |
-| `src/lib/shared/examNotificationSql.js` | Tracker schema and queries shared by `ensureStorageSchema`, the archive run and the sync script (PGlite-pinned) |
-| `src/lib/data/examSources.js`      | Curated official source registry: listing URLs, allowed hosts, exam mappings, transports |
-| `scripts/sync-exam-notifications.mjs` | CLI the daily/weekly Actions run (Neon + Gemini + per-source curl fallback) |
-| `src/lib/server/nudges.js`         | Pure nudge policy engine: eligibility, Jev question builders, deterministic derivation, holdout hash |
-| `src/lib/shared/nudgePolicy.js`    | Client-safe nudge constants and eligibility shared by the engine and the browser pre-filter |
-| `src/lib/client/nudge.js`          | Browser ledger: cooldowns, dismiss backoff, session/interrupt budgets, state slices |
-| `src/lib/client/notifications.js`  | Exam update feed matching: interest tiers, badge classification, Jev candidate payload |
-| `src/routes/api/exam-notifications/+server.js` | Public CDN-cached feed for the in-app notification bell |
+| Module                                         | Responsibility                                                                                                                |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/server/prompt.js`                     | Builds the Gemini generation prompts (language-aware, dedup-aware)                                                            |
+| `src/lib/server/quizSchema.js`                 | Zod schema for generated papers                                                                                               |
+| `src/lib/server/quizValidation.js`             | Request validation, paper repair/validation, LaTeX syntax checks                                                              |
+| `src/lib/server/paperRedaction.js`             | Strips answer keys before papers leave the server                                                                             |
+| `src/lib/server/storage.js`                    | Neon pool + schema auto-creation (`ai_test`, `ai_test_attempts`, `api_request_events`, `api_rate_limit_events`)               |
+| `src/lib/server/rateLimiter.js`                | Sliding-window rate limiting via `api_rate_limit_events` (fail-open)                                                          |
+| `src/lib/server/intentParse.js`                | Conversational intent engine: Jev questions, plan merge, clarification policy                                                 |
+| `src/lib/shared/intentLexicon.js`              | Shared pure lexicon: question counts, mentions, topic spans, value detectors (server + live preview)                          |
+| `src/lib/client/livePreview.js`                | Live plan preview: instant local tier + when to ask Jev (`mode: "preview"`)                                                   |
+| `src/lib/client/plannerState.js`               | Home planner draft state machine (messages, locks, clarifications) + persistence                                              |
+| `src/lib/server/adminAuth.js`                  | HMAC-signed admin session tokens, timing-safe credential checks                                                               |
+| `src/lib/client/storage.js`                    | `localStorage` history/paper caching                                                                                          |
+| `src/lib/client/preferences.js`                | Language, theme, and auto-advance preference stores                                                                           |
+| `src/lib/locales/*.json`                       | English/Hindi UI strings                                                                                                      |
+| `src/lib/shared/latex.js`                      | LaTeX normalization used by both server and client                                                                            |
+| `src/lib/server/examSync.js`                   | Exam notification pipeline: fetch → Gemini extraction → validation → upsert/quarantine (injected deps, offline-testable)      |
+| `src/lib/shared/examNotifications.js`          | Notification rules: normalization, dedupe keys, URL/date validation, scope filter, registry allowlists                        |
+| `src/lib/shared/examNotificationStatus.js`     | Client-safe date/status primitives shared by the store and the `/exams` hub                                                   |
+| `src/lib/shared/examNotificationSql.js`        | Tracker schema and queries shared by `ensureStorageSchema`, the archive run and the sync script (PGlite-pinned)               |
+| `src/lib/data/examSources.js`                  | Curated official source registry: listing URLs, allowed hosts, exam mappings, transports                                      |
+| `scripts/sync-exam-notifications.mjs`          | CLI the daily/weekly Actions run (Neon + Gemini + per-source curl fallback)                                                   |
+| `src/lib/server/nudges.js`                     | Pure nudge policy engine: eligibility, Jev question builders, deterministic derivation, holdout hash                          |
+| `src/lib/shared/nudgePolicy.js`                | Client-safe nudge constants and eligibility shared by the engine and the browser pre-filter                                   |
+| `src/lib/client/nudge.js`                      | Browser ledger: cooldowns, dismiss backoff, session/interrupt budgets, state slices                                           |
+| `src/lib/client/notifications.js`              | Exam update feed matching: interest tiers, badge classification, Jev candidate payload                                        |
+| `src/routes/api/exam-notifications/+server.js` | Public CDN-cached feed for the in-app notification bell                                                                       |
+| `src/lib/shared/passkeyPolicy.js`              | Framework-neutral passkey policy: RP-ID/origin allowlist, generated name, device label, Google-link table, last-passkey guard |
+| `src/lib/server/passkey.js`                    | The only importer of `@simplewebauthn/server`: ceremony options and verification wrappers                                     |
 
 ## Key Decisions
 
@@ -54,6 +56,7 @@ Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 - **Admin session secret**: if `ADMIN_SESSION_SECRET` is unset, sessions are derived from the credentials so rotating the password invalidates all sessions.
 - **Notifications are link-first and quarantine-gated**: the daily GitHub Action extracts facts with Gemini from official listing pages, publishes only rows that pass host/date/dedupe/link validation, and quarantines the rest for review; `/exams` is SSR with short CDN caching, and every card links to its official notice (and to practice when the row maps to a registry exam).
 - **Nudges are fail-open and code-capped**: Jev judges the moment (and soft notification relevance) inside the existing `/api/personalize` call; deterministic code owns cohort gates, cooldowns, dismiss backoff, quiet hours, the shared interrupt budget, and a server-side 10% holdout. `NUDGE_ENABLED` must be `true` for questions to be built; anything uncertain means silence, never a broken prompt. The in-app inbox badges only fresh, unseen, relevant updates (`first_seen_at`-keyed, never `last_seen_at`).
+- **Sign-in has two credential types on one account model**: Google (identity provider) and passkeys (WebAuthn). A passkey-first account collects nothing — `google_sub` and `email` are NULL and the display name is generated — so `app_user` accepts NULLs there. Google is the _recovery_ path, attached only by an explicit `link: true` call from a signed-in user, and it never merges accounts: a conflict answers `GOOGLE_LINK_CONFLICT` so recovery is never silently re-pointed. Passkey challenges are single-use rows consumed (archived) before verification, so a replayed challenge fails even when verification does; revocation is archive-first like sessions, and the last credential of an account with no Google link cannot be revoked. The RP ID defaults to `selftest.in` (apex plus subdomains) and to the host on localhost, so nothing needs configuring to ship; unknown hosts are refused rather than allowed to mint credentials.
 
 ## Testing
 

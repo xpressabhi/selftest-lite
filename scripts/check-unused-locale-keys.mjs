@@ -52,6 +52,9 @@ const PRODUCER_FILES = [
 	'src/lib/server/intentParse.js',
 	'src/lib/client/plannerState.js',
 	'src/lib/client/i18n.js',
+	// `passkeyErrorKey()` maps passkey failures to locale keys, which the UI
+	// then renders through t(variable).
+	'src/lib/client/passkeys.js',
 ];
 
 const ACHIEVEMENTS_SOURCE = 'src/lib/client/learning.js';

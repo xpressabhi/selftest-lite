@@ -29,6 +29,12 @@
 	import { flushPendingAttempts, startStateSync } from '$lib/client/sync';
 	import { showToast, toast } from '$lib/client/toast';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	import {
+		createAccountWithPasskey,
+		isPasskeySupported,
+		passkeyErrorKey,
+		signInWithPasskey
+	} from '$lib/client/passkeys';
 	import Icon from '$lib/client/Icon.svelte';
 	import Toast from '$lib/client/Toast.svelte';
 	import { jsonLdScript } from '$lib/shared/jsonLd';
@@ -67,6 +73,9 @@
 	let userMenuTrigger = $state(null);
 	let userMenuElement = $state(null);
 	let isSigningIn = $state(false);
+	let passkeySupported = $state(false);
+	let passkeyBusy = $state('');
+	let passkeyError = $state('');
 
 	const PWA_DISMISS_WINDOW = 7 * 24 * 60 * 60 * 1000;
 	const PWA_PROMPT_COOLDOWN = 14 * 24 * 60 * 60 * 1000;
@@ -130,6 +139,9 @@
 		initializePreferences();
 		startTelemetry();
 		startDeviceProfileTracking();
+		// Capability detection is the only gate on the passkey affordance: it
+		// stays hidden in a browser without WebAuthn (Android WebView).
+		passkeySupported = isPasskeySupported();
 		void initDeepLinks();
 		void initNativeShell();
 		void handleAuthRedirect();
@@ -488,6 +500,38 @@
 		await logout();
 		showUserMenu = false;
 		track('auth:sign-out');
+	}
+
+	/**
+	 * One entry point for both passkey actions: the ceremony differs only in
+	 * which client call runs. A dismissed OS prompt (`NotAllowedError`) leaves
+	 * no error behind — the user changed their mind, they did not fail.
+	 */
+	async function runPasskeyAction(action, busyKey) {
+		passkeyBusy = busyKey;
+		passkeyError = '';
+		try {
+			await action();
+			showSignInModal = false;
+			showUserMenu = false;
+		} catch (error) {
+			const key = passkeyErrorKey(error);
+			if (key) {
+				passkeyError = key;
+			} else {
+				console.error('Passkey action was cancelled:', error);
+			}
+		} finally {
+			passkeyBusy = '';
+		}
+	}
+
+	function handlePasskeySignup() {
+		return runPasskeyAction(() => createAccountWithPasskey({ language: $activeLanguage }), 'signup');
+	}
+
+	function handlePasskeySignIn() {
+		return runPasskeyAction(() => signInWithPasskey(), 'login');
 	}
 </script>
 
@@ -876,9 +920,36 @@
 			{#if isSigningIn}
 				<div class="text-center py-3 text-muted">{$t('signingIn')}</div>
 			{:else}
+				{#if passkeySupported}
+					<div class="d-flex flex-column gap-2 py-2">
+						<button
+							class="btn btn-primary passkey-action"
+							type="button"
+							disabled={passkeyBusy !== ''}
+							onclick={handlePasskeySignup}
+						>
+							<Icon name="login" size={18} />
+							{passkeyBusy === 'signup' ? $t('passkeyWorking') : $t('passkeyCreate')}
+						</button>
+						<button
+							class="btn btn-outline-secondary passkey-action"
+							type="button"
+							disabled={passkeyBusy !== ''}
+							onclick={handlePasskeySignIn}
+						>
+							<Icon name="login" size={18} />
+							{passkeyBusy === 'login' ? $t('passkeyWorking') : $t('passkeySignIn')}
+						</button>
+					</div>
+					<p class="small text-muted mb-2">{$t('passkeyHint')}</p>
+					<p class="passkey-divider small text-muted text-center mb-2">{$t('or')}</p>
+				{/if}
 				<div class="d-flex justify-content-center py-2">
 					<GoogleSignInButton onCredential={handleGoogleCredential} disabled={false} />
 				</div>
+			{/if}
+			{#if passkeyError}
+				<div class="alert alert-danger small mt-3 mb-0" role="alert">{$t(passkeyError)}</div>
 			{/if}
 			<p class="small text-muted mt-2 mb-0">{$t('signInAnonymousNote')}</p>
 		</div>
@@ -1427,6 +1498,29 @@
 		color: var(--text-muted);
 		font-size: 1.4rem;
 		line-height: 1;
+	}
+
+	.passkey-action {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+	}
+
+	.passkey-divider {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		text-transform: lowercase;
+	}
+
+	.passkey-divider::before,
+	.passkey-divider::after {
+		height: 1px;
+		flex: 1;
+		background: var(--line);
+		content: '';
 	}
 
 	.pull-indicator {

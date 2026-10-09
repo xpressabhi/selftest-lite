@@ -1,6 +1,14 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import { loginWithGoogleCredential, user } from '$lib/client/auth';
+	import { onMount } from 'svelte';
+	import { activeLanguage, t } from '$lib/client/i18n';
+	import { linkGoogleCredential, loginWithGoogleCredential, user } from '$lib/client/auth';
+	import {
+		addPasskeyToAccount,
+		fetchPasskeys,
+		isPasskeySupported,
+		passkeyErrorKey,
+		removePasskey
+	} from '$lib/client/passkeys';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import Icon from '$lib/client/Icon.svelte';
 	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
@@ -85,6 +93,18 @@
 	let subjectInput = $state('');
 	let focusInput = $state('');
 	let draft = $state(createDefaultProfile());
+	let passkeys = $state([]);
+	let passkeysLoading = $state(false);
+	let googleLinked = $state(false);
+	let passkeySupported = $state(false);
+	let passkeyBusy = $state('');
+	let passkeyError = $state('');
+	let pendingRemoveId = $state(null);
+	let linkingGoogle = $state(false);
+
+	onMount(() => {
+		passkeySupported = isPasskeySupported();
+	});
 
 	const EXAM_SEARCH_INDEX = INDIAN_EXAMS.map((exam) => ({
 		exam,
@@ -109,9 +129,12 @@
 		lastUserId = userId;
 		if (!userId) {
 			loaded = false;
+			passkeys = [];
+			googleLinked = false;
 			return;
 		}
 		loadError = '';
+		void loadPasskeys();
 		void Promise.all([fetchProfile(), fetchProfileInsights()])
 			.then(([nextProfile]) => {
 				if (nextProfile) {
@@ -128,6 +151,85 @@
 				loaded = true;
 			});
 	});
+
+	async function loadPasskeys() {
+		passkeysLoading = true;
+		try {
+			const result = await fetchPasskeys();
+			passkeys = result.passkeys;
+			googleLinked = result.googleLinked;
+		} catch (error) {
+			console.error('Failed to load passkeys:', error);
+			passkeyError = passkeyErrorKey(error);
+		} finally {
+			passkeysLoading = false;
+		}
+	}
+
+	async function handleAddPasskey() {
+		passkeyBusy = 'add';
+		passkeyError = '';
+		try {
+			await addPasskeyToAccount({ language: $activeLanguage });
+			await loadPasskeys();
+		} catch (error) {
+			const key = passkeyErrorKey(error);
+			if (key) {
+				passkeyError = key;
+			}
+		} finally {
+			passkeyBusy = '';
+		}
+	}
+
+	/** Two-step confirm: the first tap arms the second, so no native dialog. */
+	async function handleRemovePasskey(passkeyId) {
+		if (pendingRemoveId !== passkeyId) {
+			pendingRemoveId = passkeyId;
+			passkeyError = '';
+			return;
+		}
+
+		pendingRemoveId = null;
+		passkeyBusy = 'remove';
+		passkeyError = '';
+		try {
+			await removePasskey(passkeyId);
+			await loadPasskeys();
+		} catch (error) {
+			const key = passkeyErrorKey(error);
+			if (key) {
+				passkeyError = key;
+			}
+		} finally {
+			passkeyBusy = '';
+		}
+	}
+
+	async function handleLinkGoogle(credential) {
+		linkingGoogle = true;
+		passkeyError = '';
+		try {
+			await linkGoogleCredential(credential);
+			track('auth:passkey-link-google');
+			await loadPasskeys();
+		} catch (error) {
+			passkeyError = passkeyErrorKey(error);
+		} finally {
+			linkingGoogle = false;
+		}
+	}
+
+	function formatPasskeyDate(value) {
+		if (!value) {
+			return '';
+		}
+		return new Date(value).toLocaleDateString($activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN', {
+			day: 'numeric',
+			month: 'short',
+			year: 'numeric'
+		});
+	}
 
 	function toggleInList(listKey, value) {
 		const current = draft[listKey] || [];
@@ -620,6 +722,77 @@
 						</button>
 					</div>
 				{/if}
+
+				<section class="panel" aria-labelledby="passkeys-heading">
+					<h2 class="h6 fw-bold mb-2" id="passkeys-heading">{$t('passkeysTitle')}</h2>
+					<p class="text-muted small mb-3">{$t('passkeysBody')}</p>
+
+					{#if passkeysLoading}
+						<p class="text-muted small mb-0">{$t('loading')}</p>
+					{:else if passkeys.length === 0}
+						<p class="text-muted small mb-0">{$t('passkeysEmpty')}</p>
+					{:else}
+						<ul class="list-unstyled mb-0">
+							{#each passkeys as passkey (passkey.id)}
+								<li class="passkey-row">
+									<div>
+										<div class="fw-semibold small">
+											{passkey.label || $t('passkeyUnknownDevice')}
+										</div>
+										<div class="text-muted small">
+											{$t('passkeyAddedOn')}
+											{formatPasskeyDate(passkey.createdAt)}
+											{#if passkey.lastUsedAt}
+												· {$t('passkeyLastUsed')}
+												{formatPasskeyDate(passkey.lastUsedAt)}
+											{:else}
+												· {$t('passkeyNeverUsed')}
+											{/if}
+										</div>
+									</div>
+									<button
+										type="button"
+										class="btn btn-sm btn-outline-danger"
+										disabled={Boolean(passkeyBusy)}
+										onclick={() => handleRemovePasskey(passkey.id)}
+									>
+										{pendingRemoveId === passkey.id
+											? $t('passkeyRemoveConfirm')
+											: $t('passkeyRemove')}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+
+					{#if passkeySupported}
+						<button
+							type="button"
+							class="btn btn-outline-primary btn-sm mt-3"
+							disabled={Boolean(passkeyBusy)}
+							onclick={handleAddPasskey}
+						>
+							{passkeyBusy === 'add' ? $t('passkeyWorking') : $t('passkeyAdd')}
+						</button>
+					{/if}
+
+					{#if !googleLinked}
+						<div class="alert alert-warning small mt-3 mb-2" role="note">
+							{$t('passkeyLinkGoogleHint')}
+						</div>
+						<div class="d-flex justify-content-center">
+							<GoogleSignInButton onCredential={handleLinkGoogle} disabled={linkingGoogle} />
+						</div>
+					{:else}
+						<p class="text-success small mt-3 mb-0">{$t('passkeyGoogleLinked')}</p>
+					{/if}
+
+					{#if passkeyError}
+						<div class="alert alert-danger small mt-3 mb-0" role="alert">
+							{$t(passkeyError)}
+						</div>
+					{/if}
+				</section>
 			</div>
 		{:else}
 			<div class="profile-skeleton" role="status" aria-label={$t('loadingContent')}>
@@ -638,6 +811,21 @@
 </section>
 
 <style>
+	.passkey-row {
+		display: flex;
+		min-height: 44px;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		border-bottom: 1px solid var(--line);
+		padding: 8px 0;
+	}
+
+	.passkey-row:last-child {
+		border-bottom: 0;
+	}
+
 	.chip-grid {
 		display: flex;
 		flex-wrap: wrap;
