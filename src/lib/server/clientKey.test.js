@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getClientIp, getClientKey } from './clientKey';
+import { getClientIp, getClientKey, rememberClientAddress } from './clientKey';
 
 // The rate-limit bucket and the telemetry client_key both derive from this. It
 // must be a function of the server-observed peer address (plus the
@@ -47,6 +47,31 @@ describe('getClientIp', () => {
 		expect(getClientIp({ headers: new Headers() })).toBe('unknown');
 		expect(getClientIp(requestWith({ address: null }))).toBe('unknown');
 		expect(getClientIp(requestWith({ address: '' }))).toBe('unknown');
+	});
+
+	// Handlers pass the raw Request to getClientKey, but getClientAddress()
+	// lives on the SvelteKit event. The hook records the adapter-resolved
+	// address for the request so raw requests resolve to the real peer.
+	it('uses the address recorded for the request lifecycle on a raw request', () => {
+		const rawRequest = { headers: new Headers() };
+		rememberClientAddress(rawRequest, '203.0.113.9');
+		expect(getClientIp(rawRequest)).toBe('203.0.113.9');
+	});
+
+	it('prefers the adapter address when one is available', () => {
+		const eventLike = requestWith({ address: '198.51.100.7' });
+		rememberClientAddress(eventLike, '203.0.113.9');
+		expect(getClientIp(eventLike)).toBe('198.51.100.7');
+	});
+
+	it('keeps only the rightmost entry of an appended address list', () => {
+		expect(getClientIp(requestWith({ address: '9.9.9.9, 203.0.113.9' }))).toBe('203.0.113.9');
+	});
+
+	it('ignores blank recorded addresses', () => {
+		const rawRequest = { headers: new Headers() };
+		rememberClientAddress(rawRequest, '   ');
+		expect(getClientIp(rawRequest)).toBe('unknown');
 	});
 });
 
@@ -108,5 +133,27 @@ describe('getClientKey', () => {
 		expect(getClientKey(requestWith({ address: '203.0.113.9' }), null)).toBe(anon);
 		expect(getClientKey(requestWith({ address: '203.0.113.9' }), 0)).toBe(anon);
 		expect(getClientKey(requestWith({ address: '203.0.113.9' }), undefined)).toBe(anon);
+	});
+
+	// Regression: every anonymous caller used to collapse into the shared
+	// 'ip:unknown' bucket because the raw Request has no getClientAddress.
+	it('buckets a raw request by the address the lifecycle recorded', () => {
+		const rawRequest = { headers: new Headers() };
+		rememberClientAddress(rawRequest, '203.0.113.9');
+		expect(getClientKey(rawRequest)).toBe(getClientKey(requestWith({ address: '203.0.113.9' })));
+	});
+
+	it('a spoofed prefix in an appended list does not mint a new bucket', () => {
+		const a = getClientKey(requestWith({ address: '9.9.9.9, 203.0.113.9' }));
+		const b = getClientKey(requestWith({ address: '8.8.8.8, 203.0.113.9' }));
+		expect(a).toBe(b);
+	});
+
+	it('leaves a raw request with no recorded address in the shared bucket', () => {
+		const unrecorded = { headers: new Headers() };
+		expect(getClientKey(unrecorded)).toBe(getClientKey({ headers: new Headers() }));
+		expect(getClientKey(unrecorded)).not.toBe(
+			getClientKey(requestWith({ address: '203.0.113.9' }))
+		);
 	});
 });
