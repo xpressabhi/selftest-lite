@@ -325,8 +325,10 @@ Entry points (all mobile-first, 44px minimum target, all rendered only when
    `google_sub` is NULL.
 3. `src/routes/exam-paper/+page.svelte` sign-in gate (~line 174) — the same two actions.
 
-Error handling: `NotAllowedError` (user dismissed the OS prompt) resets the button silently;
-`InvalidStateError` means the credential already exists on this device and routes to sign-in;
+Error handling: `NotAllowedError` (user dismissed the OS prompt) resets the button silently.
+`InvalidStateError` means this authenticator already holds a credential for the account, so it shows
+the "already registered" copy: a second passkey requires a different device, which is why the e2e
+suite swaps in a fresh virtual authenticator to add one.
 `PASSKEY_UNAVAILABLE`, `PASSKEY_CHALLENGE_EXPIRED`, and network failures surface a localized message.
 
 Localization: every new string is added to both `src/lib/locales/english.json` and
