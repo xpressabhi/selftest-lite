@@ -36,27 +36,37 @@ The real warm-up left all 14 demanded exams with a cached pattern (12-200 questi
 cached patterns, this alone changes production behaviour, and the patterns were verified in the
 database afterwards.
 
-### Not yet verified, and why
+### Verified end to end after deploy (commit 7159a65)
 
-The end-to-end claim — "a freshly generated full-exam paper carries `sections`, and a submission
-stores `marks > 0`" — needs B and C deployed. The post-warm-up probe of the live app made this
-explicit: a full-exam request for `ssc-cgl` returned the existing shared paper (id 1204) in 409 ms
-with `sections: []`, and its attempt stored `marks 0/0`. That is C's case working as intended *before*
-the guard exists, and it is why C is in scope.
+The full chain was proven against production on the cheap 1-section exam (`up-tgt-pgt`, 12q, 4.166
+marks per question, no negative marking). Because a pattern with more than one section fans out one
+generation per section, a 1-section exam keeps the run to a single small generation:
 
-Expected after deploy, for `ssc-cgl` (2 marks per correct, −0.5 per wrong): the shared sectionless
-paper is rejected, a fresh paper is generated with sections, and a submission on it stores
-`marks = 2·correct − 0.5·wrong` with `total_marks = 2·questions`.
+| Step | Observed |
+| ---- | -------- |
+| First request (old deployment live) | reused sectionless paper `1564`, 20q, `sections: []`, 1670 ms — no generation |
+| Second request (new deployment live) | **new paper `1877`**, 8 questions, **1 section**, 7109 ms — C rejected the sectionless paper and regenerated |
+| Section carried | `"Subject Knowledge and General Aptitude" — 8q, 4.166 marks, negative null` |
+| Stored in `ai_test` | **`has_sections = true`** — the field that was absent on all 1680 papers |
+| Submission on the scheme | score **4/8**, stored `marks = 16.66`, `total_marks = 33.33` (4 × 4.166 and 8 × 4.166, rounded) |
+| Stats endpoint | `myAttempt: {score 4, total 8, marks 16.66, totalMarks 33.33}` |
+| Results page | marks row now renders (`totalMarks` truthy, previously always falsy) |
+
+Before this change: 0 of 725 attempts had `marks > 0` and 0 of 1680 papers had a `sections` array.
 
 ### Production side effects (disclosed, not cleaned up)
 
 - Papers **1876** ("Agent probe: units and measurement basics", 5 questions) and an attempt
   (client `agentprobe-0001`, 3/5) from the earlier stats probe.
-- An attempt on the real shared paper **1204** (`ssc-cgl`, 20 questions) from this verification:
-  client `agentprobe-0004`, name "Marks probe", score 10/20, `marks 0/0`. It is visible on that
-  paper's public stats page. `AGENTS.md` forbids deleting without the archive-first path, so it was
-  left in place; the archive-first removal is available if it should not be public.
-- 13 discovered pattern rows in `exam_patterns` (the intended output of A).
+- An attempt on the real shared paper **1204** (`ssc-cgl`, 20 questions): client `agentprobe-0004`,
+  name "Marks probe", score 10/20, `marks 0/0`, visible on that paper's public stats page.
+- Paper **1877** (`up-tgt-pgt`, 8 questions, sectioned) and its attempt (client `agentprobe-0005`,
+  name "Marks verify", 4/8, marks 16.66) from the post-deploy verification.
+- 13 discovered pattern rows in `exam_patterns` (the intended output of A). The old sectionless paper
+  `1564` remains as history and is no longer reused for that exam.
+
+`AGENTS.md` forbids deleting without the archive-first path, so all of the above was left in place;
+archive-first removal is available if any of it should not be public.
 
 ## Test changes
 
@@ -85,8 +95,6 @@ in isolation.
 
 ## Follow-ups
 
-- Deploy and verify: regenerate a full-exam paper and confirm `sections` on the stored paper and
-  `marks > 0` on the attempt.
 - `CHG-0007` follow-ups still stand: `logApiEvent` on the critical path, the `json → jsonb` migration
   on `ai_test` (measured ~2.9× on the list query), and the UTC-day bucketing in the stats `daily[]`.
 - Optional: `--all` warm-up once, to pre-cache patterns for the remaining 87 registered exams, so
