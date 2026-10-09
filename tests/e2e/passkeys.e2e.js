@@ -23,8 +23,8 @@ async function addVirtualAuthenticator(page) {
 			hasResidentKey: true,
 			hasUserVerification: true,
 			isUserVerified: true,
-			automaticPresenceSimulation: true
-		}
+			automaticPresenceSimulation: true,
+		},
 	});
 	return { client, authenticatorId };
 }
@@ -37,7 +37,7 @@ async function addVirtualAuthenticator(page) {
  */
 async function swapToSecondDevice(page, authenticator) {
 	await authenticator.client.send('WebAuthn.removeVirtualAuthenticator', {
-		authenticatorId: authenticator.authenticatorId
+		authenticatorId: authenticator.authenticatorId,
 	});
 	return addVirtualAuthenticator(page);
 }
@@ -103,7 +103,7 @@ test.beforeEach(async ({ page, request }) => {
 
 test('a visitor can create an account with a passkey, with no form fields', async ({
 	page,
-	request
+	request,
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await addVirtualAuthenticator(page);
@@ -132,9 +132,9 @@ test('a visitor can create an account with a passkey, with no form fields', asyn
 			generatedName: user.name,
 			credentialCount,
 			googleSubNull: user.googleSub === null,
-			emailNull: user.email === null
+			emailNull: user.email === null,
 		}),
-		contentType: 'application/json'
+		contentType: 'application/json',
 	});
 });
 
@@ -156,7 +156,10 @@ test('a second visit signs back into the same account with one tap', async ({ pa
 	expect(signedIn?.id, 'the same passkey must resolve to the same account').toBe(created.id);
 });
 
-test('the anonymous identity is attached to the new account', async ({ page, request }, testInfo) => {
+test('the anonymous identity is attached to the new account', async ({
+	page,
+	request,
+}, testInfo) => {
 	const sql = sqlClient(request);
 	await addVirtualAuthenticator(page);
 
@@ -171,17 +174,19 @@ test('the anonymous identity is attached to the new account', async ({ page, req
 		 WHERE route = '/api/auth/passkey/register/verify' AND user_id = $1`,
 		[user.id]
 	);
-	expect(rows[0]?.total, 'the signup event should be attributed to the account').toBeGreaterThan(0);
+	expect(rows[0]?.total, 'the signup event should be attributed to the account').toBeGreaterThan(
+		0
+	);
 
 	await testInfo.attach('evidence', {
 		body: JSON.stringify({ userId: user.id, attributedEvents: rows[0]?.total ?? 0 }),
-		contentType: 'application/json'
+		contentType: 'application/json',
 	});
 });
 
 test('a second passkey can be added, and revoking the first archives it', async ({
 	page,
-	request
+	request,
 }, testInfo) => {
 	const sql = sqlClient(request);
 	const firstDevice = await addVirtualAuthenticator(page);
@@ -219,15 +224,15 @@ test('a second passkey can be added, and revoking the first archives it', async 
 		body: JSON.stringify({
 			userId: user.id,
 			remaining: await passkeyCountFor(sql, user.id),
-			archived: archived[0]?.total ?? 0
+			archived: archived[0]?.total ?? 0,
 		}),
-		contentType: 'application/json'
+		contentType: 'application/json',
 	});
 });
 
 test('the only passkey of an account with no Google link cannot be revoked', async ({
 	page,
-	request
+	request,
 }) => {
 	const sql = sqlClient(request);
 	await addVirtualAuthenticator(page);
@@ -246,10 +251,7 @@ test('the only passkey of an account with no Google link cannot be revoked', asy
 		await passkeyCountFor(sql, user.id),
 		'the last credential must survive the attempt'
 	).toBe(1);
-	expect(
-		await sessionUser(page),
-		'the user is still signed in, not stranded'
-	).not.toBeNull();
+	expect(await sessionUser(page), 'the user is still signed in, not stranded').not.toBeNull();
 });
 
 test('the affordance is hidden where WebAuthn does not exist', async ({ page }) => {
@@ -258,7 +260,7 @@ test('the affordance is hidden where WebAuthn does not exist', async ({ page }) 
 		// disappear there without any deployment flag.
 		Object.defineProperty(window, 'PublicKeyCredential', {
 			configurable: true,
-			value: undefined
+			value: undefined,
 		});
 	});
 
@@ -270,7 +272,7 @@ test('the affordance is hidden where WebAuthn does not exist', async ({ page }) 
 });
 
 test('the device that already holds a passkey is told so, not failed silently', async ({
-	page
+	page,
 }) => {
 	await addVirtualAuthenticator(page);
 	const user = await signUpWithPasskey(page);
@@ -288,4 +290,38 @@ test('the device that already holds a passkey is told so, not failed silently', 
 		page.locator('section[aria-labelledby="passkeys-heading"] [role="alert"]')
 	).toContainText(/already registered/i);
 	await expect(page.locator('.passkey-row')).toHaveCount(1);
+});
+
+test('the passkey panel is reachable on desktop, and says what it has saved', async ({
+	page,
+}, testInfo) => {
+	await addVirtualAuthenticator(page);
+	const user = await signUpWithPasskey(page);
+	expect(user).not.toBeNull();
+
+	// Regression: `/profile` was only linked from the mobile menu, so a desktop
+	// signed-in user had no way to reach the passkey panel at all.
+	await expect(page.viewportSize()?.width ?? 0).toBeGreaterThanOrEqual(1024);
+	await page.getByRole('button', { name: 'Signed in as' }).click();
+	const profileLink = page.locator('#user-menu a[href="/profile"]');
+	await expect(profileLink).toBeVisible();
+	await profileLink.click();
+
+	await expect(page).toHaveURL(/\/profile$/);
+	await expect(page.getByRole('heading', { name: 'Passkeys' })).toBeVisible();
+	await expect(page.locator('.passkey-row')).toHaveCount(1);
+	await expect(page.locator('.passkey-row')).toContainText(
+		/Mac|Windows PC|Linux device|This device/
+	);
+
+	// The button must not read like "your passkey was not saved".
+	await expect(
+		page.getByRole('button', { name: /add a passkey on another device/i })
+	).toBeVisible();
+	await expect(page.getByText(/saved on this device/i)).toBeVisible();
+
+	await testInfo.attach('evidence', {
+		body: JSON.stringify({ userId: user.id, passkeysRendered: 1, addLabel: 'another device' }),
+		contentType: 'application/json',
+	});
 });

@@ -7,7 +7,7 @@
 		fetchPasskeys,
 		isPasskeySupported,
 		passkeyErrorKey,
-		removePasskey
+		removePasskey,
 	} from '$lib/client/passkeys';
 	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
 	import Icon from '$lib/client/Icon.svelte';
@@ -25,7 +25,7 @@
 	import {
 		MAX_PROFILE_FIELD_CHARS,
 		MAX_SEARCH_CHARS,
-		sanitizeInputText
+		sanitizeInputText,
 	} from '$lib/shared/inputLimits';
 
 	const CLASS_OPTIONS = $derived([
@@ -227,7 +227,7 @@
 		return new Date(value).toLocaleDateString($activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN', {
 			day: 'numeric',
 			month: 'short',
-			year: 'numeric'
+			year: 'numeric',
 		});
 	}
 
@@ -772,8 +772,15 @@
 							disabled={Boolean(passkeyBusy)}
 							onclick={handleAddPasskey}
 						>
-							{passkeyBusy === 'add' ? $t('passkeyWorking') : $t('passkeyAdd')}
+							{passkeyBusy === 'add'
+								? $t('passkeyWorking')
+								: passkeys.length > 0
+									? $t('passkeyAddAnother')
+									: $t('passkeyAdd')}
 						</button>
+						{#if passkeys.length > 0}
+							<p class="text-muted small mt-2 mb-0">{$t('passkeyAddAnotherHint')}</p>
+						{/if}
 					{/if}
 
 					{#if !googleLinked}
@@ -781,7 +788,10 @@
 							{$t('passkeyLinkGoogleHint')}
 						</div>
 						<div class="d-flex justify-content-center">
-							<GoogleSignInButton onCredential={handleLinkGoogle} disabled={linkingGoogle} />
+							<GoogleSignInButton
+								onCredential={handleLinkGoogle}
+								disabled={linkingGoogle}
+							/>
 						</div>
 					{:else}
 						<p class="text-success small mt-3 mb-0">{$t('passkeyGoogleLinked')}</p>

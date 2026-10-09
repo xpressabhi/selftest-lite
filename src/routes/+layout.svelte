@@ -33,7 +33,7 @@
 		createAccountWithPasskey,
 		isPasskeySupported,
 		passkeyErrorKey,
-		signInWithPasskey
+		signInWithPasskey,
 	} from '$lib/client/passkeys';
 	import Icon from '$lib/client/Icon.svelte';
 	import Toast from '$lib/client/Toast.svelte';
@@ -252,7 +252,9 @@
 	// practice hub and every exam below it), not for paths that merely share
 	// a prefix. `exact` pins single-page entries like the Create tab.
 	function isActivePath(href, { exact = false } = {}) {
-		return exact ? activePath === href : activePath === href || activePath.startsWith(`${href}/`);
+		return exact
+			? activePath === href
+			: activePath === href || activePath.startsWith(`${href}/`);
 	}
 
 	// Hamburger menu tiles: the same destinations as the desktop nav, paired
@@ -264,7 +266,7 @@
 		{ href: localizedPath('/faq', $activeLanguage), icon: 'note', label: $t('faq') },
 		{ href: localizedPath('/contact', $activeLanguage), icon: 'mail', label: $t('contact') },
 		{ href: localizedPath('/privacy', $activeLanguage), icon: 'shield', label: $t('privacy') },
-		{ href: localizedPath('/terms', $activeLanguage), icon: 'scale', label: $t('terms') }
+		{ href: localizedPath('/terms', $activeLanguage), icon: 'scale', label: $t('terms') },
 	]);
 
 	// Desktop bar: the Explore destinations, plus Create, which leads to the app
@@ -276,7 +278,7 @@
 		{ href: localizedPath('/blog', $activeLanguage), label: $t('blog') },
 		{ href: localizedPath('/faq', $activeLanguage), label: $t('faq') },
 		{ href: localizedPath('/contact', $activeLanguage), label: $t('contact') },
-		{ href: homeHref, label: $t('createTab'), isCreate: true }
+		{ href: homeHref, label: $t('createTab'), isCreate: true },
 	]);
 
 	// Social card language follows the URL-driven store the layout pins before
@@ -285,9 +287,7 @@
 		$activeLanguage === 'hindi' ? '/og-cover-hi.jpg' : '/og-cover.jpg'
 	);
 	// Chrome-free routes: the test runner and the printable paper.
-	let isImmersive = $derived(
-		page.url.pathname === '/test' || page.url.pathname === '/print'
-	);
+	let isImmersive = $derived(page.url.pathname === '/test' || page.url.pathname === '/print');
 
 	// Indexable pages get their language from the URL in +layout.js. App-shell
 	// pages have no language in the URL, so follow the saved preference there.
@@ -527,7 +527,10 @@
 	}
 
 	function handlePasskeySignup() {
-		return runPasskeyAction(() => createAccountWithPasskey({ language: $activeLanguage }), 'signup');
+		return runPasskeyAction(
+			() => createAccountWithPasskey({ language: $activeLanguage }),
+			'signup'
+		);
 	}
 
 	function handlePasskeySignIn() {
@@ -639,6 +642,9 @@
 										</div>
 										<div class="small text-muted">{$t('signedInAs')}</div>
 									</div>
+									<a href="/profile" onclick={() => (showUserMenu = false)}
+										><Icon name="user" size={18} /> {$t('profileMenuLabel')}</a
+									>
 									<a href="/history" onclick={() => (showUserMenu = false)}
 										><Icon name="clock" size={18} /> {$t('history')}</a
 									>
@@ -837,7 +843,8 @@
 				class:active={isActivePath(practiceHref)}
 				href={practiceHref}
 				aria-current={isActivePath(practiceHref) ? 'page' : undefined}
-				><Icon name="target" size={18} /><span class="tab-label">{$t('practiceTab')}</span></a
+				><Icon name="target" size={18} /><span class="tab-label">{$t('practiceTab')}</span
+				></a
 			>
 			<a
 				class="create-tab"
@@ -850,7 +857,9 @@
 				class:active={isActivePath(bookmarksHref)}
 				href={bookmarksHref}
 				aria-current={isActivePath(bookmarksHref) ? 'page' : undefined}
-				><Icon name="bookmark" size={18} /><span class="tab-label">{$t('bookmarksTab')}</span></a
+				><Icon name="bookmark" size={18} /><span class="tab-label"
+					>{$t('bookmarksTab')}</span
+				></a
 			>
 			<a
 				class:active={isActivePath(historyHref)}
@@ -949,7 +958,9 @@
 				</div>
 			{/if}
 			{#if passkeyError}
-				<div class="alert alert-danger small mt-3 mb-0" role="alert">{$t(passkeyError)}</div>
+				<div class="alert alert-danger small mt-3 mb-0" role="alert">
+					{$t(passkeyError)}
+				</div>
 			{/if}
 			<p class="small text-muted mt-2 mb-0">{$t('signInAnonymousNote')}</p>
 		</div>

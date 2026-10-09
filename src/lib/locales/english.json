@@ -583,6 +583,8 @@
 	"passkeysBody": "Sign in with your device's fingerprint, face or screen lock instead of a password.",
 	"passkeysEmpty": "No passkeys yet.",
 	"passkeyAdd": "Add a passkey",
+	"passkeyAddAnother": "Add a passkey on another device",
+	"passkeyAddAnotherHint": "Your passkey is saved on this device. Add one from a phone, tablet or another computer so you can sign in there too.",
 	"passkeyRemove": "Remove",
 	"passkeyRemoveConfirm": "Confirm remove",
 	"passkeyAddedOn": "Added",

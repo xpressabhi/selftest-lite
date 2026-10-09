@@ -90,6 +90,42 @@ point of the test. No test was skipped or deleted, and no assertion was weakened
   `static/.well-known/assetlinks.json` on top of a Capacitor plugin).
 - Premium grants for email-less accounts (the admin grant looks up by email until Google is linked).
 
+## Post-deploy verification and the first real account
+
+Deployed by the user from `b816265`. The deploy was mid-flight when it was reported: the route
+answered 404 at 21:57:13 IST and 200 at 21:57:35 IST, so the checks below ran after the switch-over.
+
+| Check                                     | Result                                                                                                                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/auth/passkey/login/options`    | 200 — `rpId: "selftest.in"`, `userVerification: "required"`, `allowCredentials: []`                                                                                                |
+| `POST /api/auth/passkey/register/options` | 200 — `mode: "signup"`, `attestation: "none"`, `residentKey: "required"`, ES256 + RS256, generated name `Learner 3940`                                                             |
+| `GET /list`, `POST /remove` anonymous     | 401 `SESSION_REQUIRED`                                                                                                                                                             |
+| Schema migration                          | **`app_schema.version = 11`**, applied by the first request to the new build                                                                                                       |
+| Tables                                    | `app_user_passkey`, `app_user_passkey_archive`, `passkey_challenge`, `passkey_challenge_archive` all present; `app_user.google_sub`/`email` nullable, `webauthn_user_handle` added |
+| 5xx in the hour after deploy              | 0                                                                                                                                                                                  |
+
+**The first real passkey account** (created by the user on macOS Chrome, 17:02Z): `app_user` id 43,
+name `Learner 2407`, `google_sub` and `email` NULL, `webauthn_user_handle` set; one credential
+(label `Mac`, `multiDevice`, `backed_up = true`, counter 0); `auth:passkey-signup-start` and
+`-success` in `feature_events`; `/api/auth/passkey/list` answered 200 in 7 ms from their browser. The
+end-to-end path works in production.
+
+### Two defects the first user found, both fixed
+
+1. **`/profile` was unreachable on desktop.** The only links to it were the mobile hamburger menu and
+   a conditional "edit" chip on the home page, so a signed-in desktop user — including a brand-new
+   passkey account with no profile — could not open the passkey panel at all. The desktop user menu
+   (which already held History) now links Profile too.
+2. **"Add a passkey" read as "your passkey was not saved."** No `auth:passkey-add-start` event was
+   recorded, so the button was never clicked — it was misread, which is a copy defect, not a
+   behaviour defect. With at least one passkey the button now reads "Add a passkey on another
+   device", with one line explaining that the passkey is already saved here and a second one needs
+   another device (the real `InvalidStateError` constraint).
+
+Both are covered by a new spec, `the passkey panel is reachable on desktop, and says what it has
+saved`, which asserts the desktop menu path, the rendered credential row, and the contextual copy.
+Suite after the fix: lint clean, **975 unit tests**, **184 e2e tests**, `check-build-mode: OK`.
+
 ## Approval constraints
 
 Not required. `.intent/config.yaml` has `review.required: false`. The design was approved by the user
