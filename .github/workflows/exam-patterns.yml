@@ -1,0 +1,73 @@
+name: Exam pattern warm-up
+
+# Keeps the exam-pattern cache warm so a full-exam generation finds the marking
+# scheme it needs. Without a cached pattern the paper is stored with no
+# `sections`, and `computeAttemptMarks` returns null without them — the reason no
+# attempt in the database carried marks.
+#
+# The model calls happen inside the deployed app behind /api/exam/pattern, so this
+# job needs no GEMINI_API_KEY: only DATABASE_URL to read demand and the cached
+# patterns, and the site URL. Patterns are valid for 45 days and a fresh one is
+# skipped before any HTTP call, so most daily runs do nothing at all.
+
+on:
+  schedule:
+    # Daily at 02:45 UTC (08:15 IST), just after the notification sync. GitHub
+    # schedules are best-effort; the job is idempotent, so a late run is fine.
+    - cron: '45 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Plan only, without triggering any model call
+        type: boolean
+        default: false
+      all:
+        description: Warm every registered exam instead of the exams in demand
+        type: boolean
+        default: false
+      limit:
+        description: Maximum number of exams to warm in one run
+        type: string
+        default: '25'
+
+concurrency:
+  group: exam-patterns
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Warm exam patterns
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.selftest.in' }}
+          INPUT_DRY_RUN: ${{ inputs.dry-run }}
+          INPUT_ALL: ${{ inputs.all }}
+          INPUT_LIMIT: ${{ inputs.limit }}
+        run: |
+          set -o pipefail
+          ARGS="--url=$SITE_URL --limit=${INPUT_LIMIT:-25}"
+          if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "$INPUT_ALL" = "true" ]; then ARGS="$ARGS --all"; fi
+          npm run exams:patterns -- $ARGS 2>&1 | tee exam-patterns-report.txt
+
+      - name: Upload run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-patterns-report
+          path: exam-patterns-report.txt

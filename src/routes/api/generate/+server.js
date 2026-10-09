@@ -1242,12 +1242,17 @@ export async function POST({ request, cookies }) {
 				? sectionFocus.trim().slice(0, 80)
 				: null;
 		if (testMode === 'full-exam') {
-			// Standard exams use a cached pattern opportunistically; a sectional
-			// paper needs the pattern, so it discovers one synchronously.
+			// A pattern is needed for more than prompting: the marking scheme it
+			// carries is the only thing that makes marks computable at submit time
+			// (computeAttemptMarks returns null without sections), and without it a
+			// full-exam paper ships with a marks view that can never render. So a
+			// cache miss discovers synchronously instead of shipping a sectionless
+			// paper. Fresh patterns still cost nothing — getExamPattern serves the
+			// cached row, and refreshes an expired one in the background.
 			try {
 				examPattern = await getExamPattern(
 					{ examId, paperName: paperName || examName, board, classLevel, subject },
-					{ language, discover: Boolean(normalizedSectionFocus) }
+					{ language, discover: true }
 				);
 			} catch (patternError) {
 				console.error('Exam pattern resolution failed:', patternError);
@@ -1319,6 +1324,16 @@ export async function POST({ request, cookies }) {
 					Array.isArray(reusablePaper.questions) ? reusablePaper.questions : [],
 					{ language }
 				);
+				// A reused full exam also has to carry its marking scheme. Without
+				// sections, computeAttemptMarks returns null and every user served
+				// this paper gets a marks view that can never render — the paper is
+				// shared, so the gap is shared too. Only judged when a pattern is
+				// actually in hand: without one, no paper can carry a scheme, and
+				// rejecting it would regenerate the same sectionless paper on every
+				// single request.
+				if (examPattern && !Array.isArray(reusablePaper.sections)) {
+					reusableIssues.push({ index: null, issue: 'missing-marking-scheme' });
+				}
 				if (reusableIssues.length > 0) {
 					await logApiEvent({
 						route: '/api/generate',

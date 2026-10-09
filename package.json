@@ -26,6 +26,7 @@
 		"eval:content": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/eval-content.mjs",
 		"exams:sync": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs",
 		"exams:discover": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs --discover",
+		"exams:patterns": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/warm-exam-patterns.mjs",
 		"cap:sync": "cap sync android",
 		"cap:open": "cap open android",
 		"apk:debug": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug",
