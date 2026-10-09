@@ -196,23 +196,33 @@ export async function verifyGoogleCredential(credential) {
 	};
 }
 
-export async function upsertGoogleUser(profile) {
-	await ensureStorageSchema();
-
-	const updateResult = await query(
-		`UPDATE app_user
+/**
+ * Refresh-on-sign-in for a Google account. The name is only taken from Google
+ * while the user has never edited it (`name_edited_at IS NULL`); once they have
+ * chosen a name in the profile page, that choice outlives every later sign-in.
+ */
+export const UPDATE_USER_FROM_GOOGLE_SQL = `UPDATE app_user
 		 SET
 			google_sub = $1,
 			email = $2,
-			name = $3,
+			name = CASE WHEN name_edited_at IS NULL THEN $3 ELSE name END,
 			picture_url = $4,
 			locale = $5,
 			last_login_at = NOW(),
 			updated_at = NOW()
 		 WHERE google_sub = $1 OR email = $2
-		 RETURNING id, google_sub, email, name, picture_url, locale, created_at, last_login_at`,
-		[profile.googleSub, profile.email, profile.name, profile.pictureUrl, profile.locale]
-	);
+		 RETURNING id, google_sub, email, name, picture_url, locale, created_at, last_login_at`;
+
+export async function upsertGoogleUser(profile) {
+	await ensureStorageSchema();
+
+	const updateResult = await query(UPDATE_USER_FROM_GOOGLE_SQL, [
+		profile.googleSub,
+		profile.email,
+		profile.name,
+		profile.pictureUrl,
+		profile.locale
+	]);
 
 	if (updateResult.rows.length > 0) {
 		return mapUserRow(updateResult.rows[0]);

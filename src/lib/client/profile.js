@@ -52,31 +52,53 @@ export async function fetchProfile() {
 	return nextProfile;
 }
 
-/** Saves the profile locally and to the server (best-effort). */
-export async function saveProfile(next) {
+/**
+ * Saves the profile locally and to the server.
+ *
+ * `displayName` is account data rather than profile data, but it is saved in the
+ * same request so one Save button covers the whole form. The server's answer is
+ * reported to the caller instead of being swallowed: a rejected name must not
+ * look like a successful save.
+ *
+ * Returns `{ profile, user, error, code }` — `profile` is the normalized profile
+ * that was written locally, `user` is the updated account (null unless the name
+ * changed), and `error`/`code` describe a server or network failure.
+ */
+export async function saveProfile(next, { displayName } = {}) {
 	const normalized = normalizeProfile({
 		...next,
 		updatedAt: new Date().toISOString(),
 	});
 	if (!normalized) {
-		return null;
+		return { profile: null, user: null, error: null, code: null };
 	}
 	writeLocalProfile(normalized);
 	profile.set(normalized);
 	emitLocalStorageChange(STORAGE_KEYS.USER_PROFILE);
 	try {
+		const payload = { profile: normalized };
+		if (typeof displayName === 'string') {
+			payload.displayName = displayName;
+		}
 		const response = await fetch('/api/user/profile', {
 			method: 'POST',
 			headers: getClientHeaders(),
-			body: JSON.stringify({ profile: normalized }),
+			body: JSON.stringify(payload),
 		});
+		const data = await response.json().catch(() => ({}));
 		if (!response.ok) {
-			throw new Error('Failed to save user profile');
+			return {
+				profile: normalized,
+				user: null,
+				error: data?.error || 'Failed to save user profile',
+				code: data?.code || 'PROFILE_UPDATE_ERROR',
+			};
 		}
+		return { profile: normalized, user: data?.user || null, error: null, code: null };
 	} catch (error) {
 		console.error('Profile save failed (kept locally):', error);
+		return { profile: normalized, user: null, error: 'offline', code: 'OFFLINE' };
 	}
-	return normalized;
 }
 
 /** Clears the profile entirely (opt-out reset); history is untouched. */

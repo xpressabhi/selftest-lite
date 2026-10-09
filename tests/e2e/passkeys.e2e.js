@@ -1,104 +1,28 @@
 import { expect, test } from '@playwright/test';
 import { connectOrSkip, sqlClient } from './testDb.js';
+import {
+	TEST_USER_AGENT,
+	addVirtualAuthenticator,
+	dismissProfileWizard,
+	openSignInSheet,
+	passkeyCountFor,
+	sessionUser,
+	signOut,
+	signUpWithPasskey,
+	swapToSecondDevice,
+} from './passkeySignIn.js';
 
-// Passkey sign-up and sign-in, driven through the real UI with a Chrome
-// virtual authenticator over CDP. The authenticator is a genuine CTAP2
-// authenticator as far as the page and the server are concerned: attestation,
-// assertion, resident credentials and user verification all go through the
-// same code path a platform passkey would. No Touch ID required.
+// Passkey sign-up and sign-in, driven through the real UI with a Chrome virtual
+// authenticator over CDP. Shared helpers live in ./passkeySignIn.js.
 //
 // The suite runs on http://localhost:5174, which is a secure context, so the
 // resolved RP ID is `localhost` and the expected origin is the dev server's.
-
-const USER_AGENT =
-	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
-async function addVirtualAuthenticator(page) {
-	const client = await page.context().newCDPSession(page);
-	await client.send('WebAuthn.enable');
-	const { authenticatorId } = await client.send('WebAuthn.addVirtualAuthenticator', {
-		options: {
-			protocol: 'ctap2',
-			transport: 'internal',
-			hasResidentKey: true,
-			hasUserVerification: true,
-			isUserVerified: true,
-			automaticPresenceSimulation: true,
-		},
-	});
-	return { client, authenticatorId };
-}
-
-/**
- * Swaps in a fresh authenticator with an empty credential store, which is what
- * a second device looks like to the RP. Without this the browser refuses to
- * create another credential (the account's existing credential is in
- * `excludeCredentials`), which is also asserted below.
- */
-async function swapToSecondDevice(page, authenticator) {
-	await authenticator.client.send('WebAuthn.removeVirtualAuthenticator', {
-		authenticatorId: authenticator.authenticatorId,
-	});
-	return addVirtualAuthenticator(page);
-}
-
-async function openSignInSheet(page) {
-	await page.goto('/');
-	const trigger = page.locator('button.sign-in-control').first();
-	await trigger.waitFor({ state: 'visible' });
-	await trigger.click();
-	await expect(page.locator('.sign-in-modal')).toBeVisible();
-}
-
-/**
- * A brand-new account is offered the profile wizard, which is a modal over the
- * page. Close it so the spec can reach the surfaces it came to test.
- */
-async function dismissProfileWizard(page) {
-	const close = page.locator('.wizard-close');
-	try {
-		await close.first().click({ timeout: 2000 });
-		await expect(close).toHaveCount(0);
-	} catch {
-		// Not shown for this account; nothing to dismiss.
-	}
-}
-
-async function sessionUser(page) {
-	const response = await page.request.get('/api/auth/me');
-	const body = await response.json().catch(() => ({}));
-	return body?.user || null;
-}
-
-async function signUpWithPasskey(page) {
-	await openSignInSheet(page);
-	await page.getByRole('button', { name: /create account with a passkey/i }).click();
-	await expect(page.locator('.sign-in-modal')).toHaveCount(0);
-	await dismissProfileWizard(page);
-	return sessionUser(page);
-}
-
-async function signOut(page) {
-	await page.request.post('/api/auth/logout');
-	// Reload so the layout re-resolves the session and shows the sign-in
-	// control again; the passkey flow is then driven entirely through the UI.
-	await page.goto('/');
-	await page.locator('button.sign-in-control').first().waitFor({ state: 'visible' });
-}
-
-async function passkeyCountFor(sql, userId) {
-	const rows = await sql.query(
-		'SELECT COUNT(*)::int AS total FROM app_user_passkey WHERE user_id = $1',
-		[userId]
-	);
-	return rows[0]?.total ?? 0;
-}
 
 test.beforeEach(async ({ page, request }) => {
 	await connectOrSkip(sqlClient(request));
 	// The device label stored for each passkey is derived from the user agent,
 	// so it is pinned here rather than left to the runner's Chrome build.
-	await page.setExtraHTTPHeaders({ 'user-agent': USER_AGENT });
+	await page.setExtraHTTPHeaders({ 'user-agent': TEST_USER_AGENT });
 });
 
 test('a visitor can create an account with a passkey, with no form fields', async ({

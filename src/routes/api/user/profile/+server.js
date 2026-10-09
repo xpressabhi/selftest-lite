@@ -3,8 +3,11 @@ import {
 	deleteStateForIdentity,
 	getStateForIdentity,
 	logApiEvent,
+	updateAppUserName,
 	upsertStateForIdentity,
 } from '$lib/server/storage';
+import { mapUserRow } from '$lib/server/auth';
+import { normalizeDisplayName } from '$lib/shared/displayName';
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { resolveRequestContext } from '$lib/server/apiContext';
 import { rateLimited } from '$lib/server/apiResponse';
@@ -138,6 +141,37 @@ export async function POST({ request, cookies }) {
 			JSON.stringify(profile)
 		);
 
+		// The display name lives on the account, not in the profile blob, so it
+		// is saved here with the rest of the form but written to app_user. An
+		// unusable name is refused rather than silently dropped: saving the rest
+		// while ignoring the name would look like it worked.
+		let updatedUser = null;
+		if (user?.id && body?.displayName !== undefined) {
+			const displayName = normalizeDisplayName(body.displayName);
+			if (!displayName) {
+				await logApiEvent({
+					route: '/api/user/profile',
+					action: 'upsert_user_profile',
+					clientKey,
+					clientId,
+					request,
+					statusCode: 400,
+					durationMs: Date.now() - startedAt,
+					userId: user.id,
+					errorMessage: 'Invalid display name',
+				});
+				return json(
+					{
+						error: 'Please enter a name between 2 and 40 characters.',
+						code: 'INVALID_DISPLAY_NAME',
+					},
+					{ status: 400 }
+				);
+			}
+
+			updatedUser = mapUserRow(await updateAppUserName(user.id, displayName));
+		}
+
 		await logApiEvent({
 			route: '/api/user/profile',
 			action: 'upsert_user_profile',
@@ -151,10 +185,11 @@ export async function POST({ request, cookies }) {
 				setupComplete: profile.setupComplete,
 				personalized: profile.preferences?.personalized,
 				declaredFocusCount: profile.declaredFocus?.length || 0,
+				displayNameUpdated: Boolean(updatedUser),
 			},
 		});
 
-		return json({ success: didUpsert, profile });
+		return json({ success: didUpsert, profile, user: updatedUser });
 	} catch (error) {
 		console.error('Failed to update user profile:', error);
 		await logApiEvent({

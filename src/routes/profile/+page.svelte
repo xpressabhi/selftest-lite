@@ -27,6 +27,7 @@
 		MAX_SEARCH_CHARS,
 		sanitizeInputText,
 	} from '$lib/shared/inputLimits';
+	import { MAX_DISPLAY_NAME_CHARS, MIN_DISPLAY_NAME_CHARS } from '$lib/shared/displayName';
 
 	const CLASS_OPTIONS = $derived([
 		{ value: 'class-8', label: 'Class 8' },
@@ -93,6 +94,8 @@
 	let subjectInput = $state('');
 	let focusInput = $state('');
 	let draft = $state(createDefaultProfile());
+	// Account display name (app_user.name), not part of the profile blob.
+	let displayName = $state('');
 	let passkeys = $state([]);
 	let passkeysLoading = $state(false);
 	let googleLinked = $state(false);
@@ -101,6 +104,15 @@
 	let passkeyError = $state('');
 	let pendingRemoveId = $state(null);
 	let linkingGoogle = $state(false);
+
+	const displayNameTooShort = $derived(
+		displayName.trim().length > 0 && displayName.trim().length < MIN_DISPLAY_NAME_CHARS
+	);
+
+	/** Matches the server's cleaning so what is shown is what would be saved. */
+	function sanitizeDisplayNameInput() {
+		displayName = sanitizeInputText(displayName, MAX_DISPLAY_NAME_CHARS);
+	}
 
 	onMount(() => {
 		passkeySupported = isPasskeySupported();
@@ -134,6 +146,9 @@
 			return;
 		}
 		loadError = '';
+		// The name shown everywhere lives on the account, so the field starts
+		// from it (a generated "Learner 4821" for a passkey-first account).
+		displayName = $user?.name || '';
 		void loadPasskeys();
 		void Promise.all([fetchProfile(), fetchProfileInsights()])
 			.then(([nextProfile]) => {
@@ -297,10 +312,20 @@
 		saving = true;
 		saveError = '';
 		try {
-			const saved = await saveProfile({ ...draft, setupComplete: true });
+			const result = await saveProfile({ ...draft, setupComplete: true }, { displayName });
 			track('profile:save', { step: 'profile-page' });
-			if (saved) {
-				draft = structuredClone(saved);
+			if (result?.error) {
+				saveError =
+					result.code === 'INVALID_DISPLAY_NAME'
+						? $t('profileNameInvalid')
+						: $t('somethingWentWrong');
+			} else if (result?.profile) {
+				draft = structuredClone(result.profile);
+				// The name lives on the account, so reflect it in the header at
+				// once rather than waiting for the next session refresh.
+				if (result.user) {
+					user.set({ ...$user, ...result.user });
+				}
 				savedToast = true;
 				window.setTimeout(() => (savedToast = false), 2500);
 				void fetchProfileInsights();
@@ -402,6 +427,31 @@
 				{#if !loadError}
 					<section class="panel">
 						<h2 class="h5 fw-bold mb-3">{$t('profileSectionLearner')}</h2>
+						<div class="mb-3">
+							<label class="form-label fw-semibold" for="profile-display-name"
+								>{$t('profileNameLabel')}</label
+							>
+							<input
+								id="profile-display-name"
+								class="form-control"
+								type="text"
+								autocomplete="name"
+								maxlength={MAX_DISPLAY_NAME_CHARS}
+								bind:value={displayName}
+								oninput={() => sanitizeDisplayNameInput()}
+								aria-invalid={displayNameTooShort}
+								aria-describedby="profile-display-name-hint"
+							/>
+							<p
+								id="profile-display-name-hint"
+								class="form-text small mb-0"
+								class:text-danger={displayNameTooShort}
+							>
+								{displayNameTooShort
+									? $t('profileNameInvalid')
+									: $t('profileNameHint')}
+							</p>
+						</div>
 						<div class="row g-3">
 							<div class="col-12 col-sm-6">
 								<label class="form-label fw-semibold" for="profile-class"

@@ -202,12 +202,12 @@
 		saving = true;
 		saveError = false;
 		try {
-			const saved = await saveProfile({
+			const result = await saveProfile({
 				...draft,
 				setupComplete: true,
 			});
 			track('profile:save', { step: 'wizard', setupComplete: true });
-			onafterfinish?.(saved);
+			onafterfinish?.(result?.profile ?? null);
 			closeModal();
 		} catch (error) {
 			console.error('Failed to save profile from wizard:', error);

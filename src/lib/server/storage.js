@@ -82,7 +82,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -233,6 +233,9 @@ export async function ensureStorageSchema() {
 		await query(`ALTER TABLE app_user ALTER COLUMN google_sub DROP NOT NULL`);
 		await query(`ALTER TABLE app_user ALTER COLUMN email DROP NOT NULL`);
 		await query(`ALTER TABLE app_user ADD COLUMN IF NOT EXISTS webauthn_user_handle TEXT`);
+		// Set when the user picks their own display name, so a later Google
+		// sign-in refreshes everything except the name they chose.
+		await query(`ALTER TABLE app_user ADD COLUMN IF NOT EXISTS name_edited_at TIMESTAMPTZ`);
 		await query(`
 			CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_webauthn_handle
 			ON app_user (webauthn_user_handle)
@@ -2624,4 +2627,25 @@ export async function getPasskeyGuardState(userId) {
 		passkeyCount: Number(row?.passkey_count) || 0,
 		googleSub: row?.google_sub || null
 	};
+}
+
+/**
+ * The name the user chose, which outlives later Google sign-ins: setting it
+ * also stamps `name_edited_at`, the marker `UPDATE_USER_FROM_GOOGLE_SQL` reads
+ * to decide whether Google may still refresh the name.
+ */
+export const UPDATE_APP_USER_NAME_SQL = `UPDATE app_user
+		 SET name = $2, name_edited_at = NOW(), updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, google_sub, email, name, picture_url, locale, created_at, last_login_at`;
+
+export async function updateAppUserName(userId, name) {
+	const normalizedUserId = normalizeUserIdValue(userId);
+	if (!normalizedUserId) {
+		return null;
+	}
+
+	await ensureStorageSchema();
+	const result = await query(UPDATE_APP_USER_NAME_SQL, [normalizedUserId, name]);
+	return result.rows[0] || null;
 }
