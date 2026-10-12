@@ -229,6 +229,29 @@ test('share sheet routes link and card sharing, and dismisses cleanly', async ({
 	expect(errors).toEqual([]);
 });
 
+test('without native share the score card downloads and toasts', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+		Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+	});
+	await seedHistory(page, [attempt({ id: 4242 })]);
+	await page.goto('/results?id=4242');
+
+	await page.locator('.hero-share').click();
+	const downloadPromise = page.waitForEvent('download');
+	await page.getByRole('menuitem', { name: 'Share score card' }).click();
+	const download = await downloadPromise;
+	expect(download.suggestedFilename()).toBe('selftest-score.png');
+	await expect(page.locator('.toast-lite')).toContainText('Score card downloaded');
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ fallback: download.suggestedFilename() }, null, 2),
+	});
+});
+
 test('reduced motion renders the final score without count-up', async ({ page }) => {
 	const errors = await collectErrors(page);
 	await page.emulateMedia({ reducedMotion: 'reduce' });

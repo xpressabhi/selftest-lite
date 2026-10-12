@@ -83,3 +83,27 @@ test('test page share sends one PNG with the direct test URL in the text', async
 		body: JSON.stringify(call, null, 2),
 	});
 });
+
+test('without native share the test card downloads and toasts', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+		Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+	});
+	await page.addInitScript((seed) => {
+		window.localStorage.setItem('selftest_question_paper', JSON.stringify(seed));
+	}, seededPaper());
+	await page.goto('/test');
+
+	const downloadPromise = page.waitForEvent('download');
+	await page.getByRole('button', { name: 'Share' }).click();
+	const download = await downloadPromise;
+	expect(download.suggestedFilename()).toBe('selftest-test.png');
+	await expect(page.locator('.toast-lite')).toContainText('Test card downloaded');
+
+	expect(errors).toEqual([]);
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ fallback: download.suggestedFilename() }, null, 2),
+	});
+});
