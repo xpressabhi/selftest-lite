@@ -22,6 +22,7 @@
 		"telemetry:backfill": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-metadata.mjs",
 		"telemetry:backfill-visits": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-test-visits.mjs",
 		"telemetry:archive": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/archive-telemetry.mjs",
+		"attempts:backfill-links": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-attempt-links.mjs",
 		"reminders:send": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/send-reminders.mjs",
 		"eval:content": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/eval-content.mjs",
 		"exams:sync": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs",

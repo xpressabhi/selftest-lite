@@ -1,0 +1,34 @@
+protocol_version: "1.0"
+id: "CHG-0014"
+title: "Backfill attempt-to-account links for anonymous attempts on provably owned devices"
+status: "complete"
+created_at: "2026-10-12T17:04:47Z"
+request: "Old tests taken while signed in must show results everywhere; backfill the account link where we know who took the test."
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:582e4634ee316b09aa545b3cea390191af11d74fbdaf8b46ce03a09787a140df"
+scope:
+  included:
+    - "New scripts/backfill-attempt-links.mjs: dry-run counts plus --apply to set user_id on candidate attempts."
+    - "package.json script entry attempts:backfill-links."
+  excluded:
+    - "Attempts without a client_id, or with ambiguous/unknown device mappings."
+    - "Runtime attribution changes; login-time backfill is unchanged."
+    - "Backfilling ai_test creators, feature events, API events, ai_test_visits."
+    - "Route, storage or schema changes."
+  paths:
+    - ".intent/changes/CHG-0014/**"
+    - "scripts/backfill-attempt-links.mjs"
+    - "package.json"
+preserved:
+  - "No schema change, no deletes; --apply only sets user_id where it is NULL."
+  - "The script is inert unless invoked; the app does not import it."
+  - "No pre-existing test is modified, deleted or skipped."
+test_changes: []
+decisions:
+  - "Require exactly one distinct account per device across all evidence sources; ambiguous devices are skipped, never guessed."
+  - "Evidence only from existing rows carrying both ids (attempts, feature events + archive, ai_test creator + requestParams.clientId)."
+  - "Same attribution rule backfillUserIdentity applies at login, applied once to rows that path could not reach."
+  - "Dry run by default; --apply required to write, mirroring telemetry:backfill*."
+review_required: false
