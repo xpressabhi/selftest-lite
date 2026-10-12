@@ -1008,45 +1008,6 @@
 		<div class="result-hero-card mb-4">
 			<div class="hero-top">
 				<span class="hero-eyebrow">{$t('resultsHeroEyebrow')}</span>
-				<div class="hero-share-wrap" bind:this={shareSheetWrap}>
-					<button
-						bind:this={shareButton}
-						class="hero-share"
-						type="button"
-						aria-expanded={shareSheetOpen}
-						aria-controls="result-share-sheet"
-						onclick={toggleShareSheet}
-					>
-						<span class="visually-hidden">{$t('share')}</span>
-						<Icon name="share" size={16} />
-					</button>
-					{#if shareSheetOpen}
-						<div
-							id="result-share-sheet"
-							class="hero-share-sheet"
-							role="menu"
-							aria-label={$t('share')}
-						>
-							<button
-								bind:this={shareSheetFirstItem}
-								class="share-sheet-item"
-								type="button"
-								role="menuitem"
-								onclick={() => runShareAction('link')}
-							>
-								{$t('resultsShareLink')}
-							</button>
-							<button
-								class="share-sheet-item"
-								type="button"
-								role="menuitem"
-								onclick={() => runShareAction('card')}
-							>
-								{$t('resultsShareCard')}
-							</button>
-						</div>
-					{/if}
-				</div>
 			</div>
 
 			<div class="hero-body">
@@ -1108,6 +1069,46 @@
 							{$t(COMPARISON_KEYS[comparison.state], { delta: comparison.delta })}
 						</span>
 					{/if}
+
+					<div class="hero-share-wrap" bind:this={shareSheetWrap}>
+						<button
+							bind:this={shareButton}
+							class="hero-share"
+							type="button"
+							aria-expanded={shareSheetOpen}
+							aria-controls="result-share-sheet"
+							onclick={toggleShareSheet}
+						>
+							<Icon name="share" size={16} />
+							{$t('resultsShareCta')}
+						</button>
+						{#if shareSheetOpen}
+							<div
+								id="result-share-sheet"
+								class="hero-share-sheet"
+								role="menu"
+								aria-label={$t('share')}
+							>
+								<button
+									bind:this={shareSheetFirstItem}
+									class="share-sheet-item"
+									type="button"
+									role="menuitem"
+									onclick={() => runShareAction('link')}
+								>
+									{$t('resultsShareLink')}
+								</button>
+								<button
+									class="share-sheet-item"
+									type="button"
+									role="menuitem"
+									onclick={() => runShareAction('card')}
+								>
+									{$t('resultsShareCard')}
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 
 				{#if wrongIndices.length > 0}
@@ -1477,18 +1478,22 @@
 
 	.hero-share-wrap {
 		position: relative;
+		margin-top: 14px;
 	}
 
 	.hero-share {
 		position: relative;
-		display: grid;
-		width: 44px;
-		height: 44px;
-		place-items: center;
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		gap: 8px;
+		padding: 0 18px;
 		border: 1px solid var(--line);
 		border-radius: 999px;
 		background: var(--surface-muted);
 		color: var(--brand-text);
+		font-size: 0.9rem;
+		font-weight: 600;
 	}
 
 	.hero-share:hover,
@@ -1501,18 +1506,11 @@
 		transform: translateY(1px);
 	}
 
-	/* Expand the 34px control to a 44px touch target. */
-	.hero-share::after {
-		position: absolute;
-		inset: -5px;
-		content: '';
-	}
-
 	.hero-share-sheet {
 		position: absolute;
 		z-index: var(--z-dropdown);
-		top: calc(100% + 8px);
-		right: 0;
+		bottom: calc(100% + 8px);
+		left: 50%;
 		display: grid;
 		min-width: 210px;
 		gap: 2px;
@@ -1521,6 +1519,7 @@
 		border-radius: var(--radius-overlay);
 		background: var(--surface);
 		box-shadow: var(--shadow-2);
+		transform: translateX(-50%);
 	}
 
 	.share-sheet-item {
