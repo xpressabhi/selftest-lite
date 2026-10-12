@@ -19,10 +19,12 @@
 			'M13.7 20.5a2 2 0 0 1-3.4 0'
 		],
 		user: ['M12 12.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M4.5 20a7.5 7.5 0 0 1 15 0'],
+		// login and logout share the same door (right); the arrow direction
+		// says which way you are going: in to sign in, out to sign out.
 		login: [
-			'M10.5 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4.5',
-			'M14.5 8.5 18 12l-3.5 3.5',
-			'M18 12H9.5'
+			'M13.5 5H18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-4.5',
+			'M10 8.5 13.5 12l-3.5 3.5',
+			'M5 12H13.5'
 		],
 		logout: [
 			'M13.5 5H18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-4.5',
