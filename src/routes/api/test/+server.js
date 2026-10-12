@@ -8,6 +8,11 @@ import {
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { resolveRequestContext } from '$lib/server/apiContext';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
+import {
+	getCachedTestList,
+	getCachedTestRecord,
+	testListCacheKey
+} from '$lib/server/testResponseCache';
 import { MAX_SEARCH_CHARS } from '$lib/shared/inputLimits';
 
 const SEARCH_RATE_LIMIT = 60;
@@ -69,13 +74,23 @@ export async function GET({ request, url, cookies }) {
 				Math.max(Number.isFinite(Number(offset)) ? Math.trunc(Number(offset)) : 0, 0),
 				MAX_TEST_LIST_OFFSET
 			);
-			const tests = await listTestRecords({
-				search: search.slice(0, MAX_SEARCH_CHARS),
-				limit: requestedLimit + 1,
+			const normalizedSearch = search.slice(0, MAX_SEARCH_CHARS);
+			const cacheKey = testListCacheKey({
+				search: normalizedSearch,
+				limit: requestedLimit,
 				offset: requestedOffset,
 				language,
 				examType,
 			});
+			const { value: tests, cached } = await getCachedTestList(cacheKey, () =>
+				listTestRecords({
+					search: normalizedSearch,
+					limit: requestedLimit + 1,
+					offset: requestedOffset,
+					language,
+					examType,
+				})
+			);
 			const hasMore = tests.length > requestedLimit;
 
 			await logApiEvent({
@@ -88,16 +103,22 @@ export async function GET({ request, url, cookies }) {
 				metadata: {
 					search: search.trim().slice(0, 100),
 					hasMore,
+					cache: cached ? 'hit' : 'miss',
 				},
 			});
 
-			return json({
-				tests: hasMore ? tests.slice(0, requestedLimit) : tests,
-				hasMore,
-			});
+			return json(
+				{
+					tests: hasMore ? tests.slice(0, requestedLimit) : tests,
+					hasMore,
+				},
+				{ headers: { 'X-Cache': cached ? 'HIT' : 'MISS' } }
+			);
 		}
 
-		const testRecord = await getTestRecordById(id);
+		const { value: testRecord, cached } = await getCachedTestRecord(id, () =>
+			getTestRecordById(id)
+		);
 		if (!testRecord) {
 			await logApiEvent({
 				route: '/api/test:get',
@@ -135,13 +156,16 @@ export async function GET({ request, url, cookies }) {
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId: user?.id || null,
-			metadata: { testId: id },
+			metadata: { testId: id, cache: cached ? 'hit' : 'miss' },
 		});
 
-		return json({
-			...stripAnswerKey(testRecord),
-			myAttempt: mappedAttempt,
-		});
+		return json(
+			{
+				...stripAnswerKey(testRecord),
+				myAttempt: mappedAttempt,
+			},
+			{ headers: { 'X-Cache': cached ? 'HIT' : 'MISS' } }
+		);
 	} catch (error) {
 		console.error('Database error:', error);
 		return json(

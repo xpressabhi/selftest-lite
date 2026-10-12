@@ -3,6 +3,7 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { parseRequestBody } from '$lib/server/requestBody';
 import { query } from '$lib/server/storage';
+import { clearTestResponseCaches } from '$lib/server/testResponseCache';
 import { isPgliteUrl } from '$lib/server/testDb';
 
 const MAX_SQL_CHARS = 20000;
@@ -26,6 +27,9 @@ export async function POST({ request }) {
 			return json({ error: 'Invalid SQL' }, { status: 400 });
 		}
 		const result = await query(sql, Array.isArray(params) ? params : []);
+		// Seeding can make any cached read stale; clearing here keeps the e2e
+		// suite deterministic now that GET /api/test serves cached reads.
+		clearTestResponseCaches();
 		return json({ rows: result.rows || [] });
 	} catch (error) {
 		if (error?.code === 'REQUEST_TOO_LARGE') {

@@ -1,6 +1,7 @@
 import { Pool } from '@neondatabase/serverless';
 import { env } from '$env/dynamic/private';
 import { createPglitePool, isPgliteUrl } from './testDb.js';
+import { invalidateTestListCache } from './testResponseCache.js';
 import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
 import {
 	EXAM_NOTIFICATION_SCHEMA_STATEMENTS,
@@ -653,6 +654,11 @@ export async function createTestRecord(test, requestParams = {}) {
 			sectionFocus,
 		]
 	);
+
+	// The list cache is append-only from the reader's perspective, so a fresh
+	// paper only needs this instance's list entries dropped; other instances
+	// catch up within the list TTL.
+	invalidateTestListCache();
 
 	return result.rows[0]?.id;
 }
