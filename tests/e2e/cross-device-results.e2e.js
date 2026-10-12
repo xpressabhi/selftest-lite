@@ -232,3 +232,78 @@ test('an anonymous visitor never receives the answer key or the review', async (
 
 	await context.close();
 });
+
+test('a device that already holds the paper but not the attempt still loads the review', async ({
+	browser,
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+	const testId = await seedPaper(sql);
+
+	// The attempt exists on the server for this device, but the graded result
+	// never landed here: this is a device that opened the result with the
+	// pre-CHG-0013 code, so local history holds the paper while the attempt
+	// only lives on the server.
+	const deviceId = 'e2e-stale-paper-device-01';
+	const submit = await request.post('/api/test/submit', {
+		data: { id: testId, answers: { 0: 'Alpha', 1: 'Delta' }, timeTaken: 42 },
+		headers: { 'x-client-id': deviceId },
+	});
+	expect(submit.ok()).toBeTruthy();
+
+	const context = await browser.newContext();
+	await context.addInitScript(
+		({ id, topic, questions, deviceId }) => {
+			localStorage.setItem('selftest_welcome_tour_done_at', '1759000000000');
+			localStorage.setItem('selftest_client_id', deviceId);
+			localStorage.setItem(
+				'selftest_history',
+				JSON.stringify([
+					{
+						id,
+						topic,
+						timestamp: Date.now(),
+						questions,
+						userAnswers: { 0: 'Alpha', 1: 'Delta' },
+						score: 1,
+						totalQuestions: questions.length,
+						timeTaken: 42,
+					},
+				])
+			);
+		},
+		{
+			id: testId,
+			topic: PROBE_TOPIC,
+			questions: PROBE_QUESTIONS.map(({ question, options }) => ({ question, options })),
+			deviceId,
+		}
+	);
+	const page = await context.newPage();
+	await stubPersonalize(page);
+	await page.goto(`${TEST_ORIGIN}/results?id=${testId}`);
+
+	// The cached paper alone cannot render the review; the page must fetch the
+	// graded attempt for this device and fill it in.
+	await expect(page.locator('.alert.alert-warning')).toHaveCount(0);
+	const first = page.locator('#question-0');
+	const second = page.locator('#question-1');
+	await expect(first.locator('.review-card-head .badge')).toHaveText('Correct');
+	await expect(second.locator('.review-card-head .badge')).toHaveText('Incorrect');
+	await expect(second.locator('p', { hasText: 'Correct Answer' })).toContainText('Beta');
+
+	const seeded = await page.evaluate(
+		(id) => localStorage.getItem(`selftest_attempt_result_${id}`),
+		testId
+	);
+	expect(seeded, 'the graded attempt should be seeded locally for later visits').toBeTruthy();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ testId, deviceId, seededLocally: Boolean(seeded) }, null, 2),
+	});
+
+	await context.close();
+});

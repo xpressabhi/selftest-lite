@@ -330,7 +330,17 @@ export function clearUnsubmittedTest(testId) {
 	}
 }
 
-export async function resolveTestRecord(testId) {
+/**
+ * Resolves the best record for a test on this device: the local paper when it
+ * can stand alone, otherwise the server's copy merged in.
+ *
+ * `fillAttempt` is for the results page: the paper alone cannot render the
+ * review, and a device that once opened a result keeps the paper in local
+ * history while the graded attempt lives on the server, so the early return
+ * is skipped when no local attempt result exists. `/test` and `/print` do not
+ * need the attempt and keep the local-first early return.
+ */
+export async function resolveTestRecord(testId, { fillAttempt = false } = {}) {
 	if (!testId) {
 		const currentPaper = getCurrentPaper();
 		if (currentPaper) {
@@ -340,7 +350,7 @@ export async function resolveTestRecord(testId) {
 	}
 
 	const localRecord = getHistory().find((entry) => String(entry.id) === String(testId));
-	if (localRecord) {
+	if (localRecord && !(fillAttempt && !getAttemptResult(testId))) {
 		return localRecord;
 	}
 
@@ -349,12 +359,12 @@ export async function resolveTestRecord(testId) {
 		headers: getClientHeaders(),
 	});
 	if (!response.ok) {
-		return null;
+		return localRecord || null;
 	}
 
 	const record = await response.json();
 	if (!record?.test) {
-		return null;
+		return localRecord || null;
 	}
 
 	const resolved = {
@@ -389,8 +399,21 @@ export async function resolveTestRecord(testId) {
 			totalMarks: record.myAttempt.totalMarks ?? null,
 		});
 	}
-	upsertHistory(resolved);
-	return resolved;
+	// The local paper wins when present (it may carry cached explanations);
+	// fill only the attempt fields the local copy is missing.
+	const next = localRecord
+		? {
+				...resolved,
+				...localRecord,
+				userAnswers: localRecord.userAnswers ?? resolved.userAnswers,
+				score: localRecord.score ?? resolved.score,
+				totalQuestions: localRecord.totalQuestions ?? resolved.totalQuestions,
+				timeTaken: localRecord.timeTaken ?? resolved.timeTaken,
+				timestamp: localRecord.timestamp ?? resolved.timestamp,
+			}
+		: resolved;
+	upsertHistory(next);
+	return next;
 }
 
 export function getAttemptResultKey(testId) {

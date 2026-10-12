@@ -304,7 +304,7 @@
 			track('results:challenge-accept', {});
 		}
 		try {
-			let resolved = await resolveTestRecord(testId);
+			let resolved = await resolveTestRecord(testId, { fillAttempt: true });
 			if (!resolved) {
 				error = $t('resultNotFound');
 				return;
