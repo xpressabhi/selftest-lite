@@ -1,0 +1,41 @@
+protocol_version: "1.0"
+id: "CHG-0013"
+title: "Re-grade the stored attempt on read so results render on every signed-in device"
+status: "complete"
+created_at: "2026-10-12T16:39:53Z"
+request: "Fetch results on every device the user is logged in so they can see their result everywhere they log in."
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:ae07d3ece4bceb7d8dc1534c276d9db073a147163273dd8966c74d138d1796fb"
+scope:
+  included:
+    - "New src/lib/shared/grading.js: pure gradeAttemptResults(questions, answers) returning the submit-shaped results array."
+    - "POST /api/test/submit grades through the shared helper (behavior-preserving)."
+    - "GET /api/test?id= attaches results and marks/totalMarks to myAttempt when the requester owns an attempt."
+    - "resolveTestRecord seeds the device-local attempt record from myAttempt.results when missing."
+    - "New e2e spec tests/e2e/cross-device-results.e2e.js; one paragraph in docs/architecture.md."
+  excluded:
+    - "Never-linked anonymous attempts (transfer/redeem mechanism out of scope)."
+    - "History sync semantics, newest-attempt-wins, schema changes, stored graded rows."
+    - "Changing guard messages or the paper redaction path."
+    - "Identity-scoped data in the response cache."
+  paths:
+    - ".intent/changes/CHG-0013/**"
+    - "src/lib/shared/grading.js"
+    - "src/routes/api/test/+server.js"
+    - "src/routes/api/test/submit/+server.js"
+    - "src/lib/client/storage.js"
+    - "docs/architecture.md"
+    - "tests/e2e/cross-device-results.e2e.js"
+preserved:
+  - "Anonymous and share-link GET /api/test?id= responses are unchanged: stripped paper, myAttempt null, no answers, no score."
+  - "Submit response shape, status codes and grading semantics are unchanged."
+  - "The security-hardening contract suite stays green as written; no pre-existing test is modified, deleted or skipped."
+test_changes: []
+decisions:
+  - "Re-grade at read time via one shared helper instead of storing graded rows: no schema change, no drift with submit."
+  - "Answers ship only to the owner of a stored attempt (account user_id, including login-backfilled rows, or the same client_id) — the existing trust model."
+  - "Client stays local-first; the server payload only seeds a missing local record."
+  - "Marks NUMERIC columns are exposed with the codebase's usual numeric conversion."
+review_required: false

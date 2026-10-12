@@ -10,6 +10,7 @@ import { parseRequestBody } from '$lib/server/requestBody';
 import { sanitizeHintedIndexes } from '$lib/server/hint';
 import { markTestsSubmitted } from '$lib/server/testStats';
 import { computeAttemptMarks } from '$lib/shared/marks';
+import { gradeAttemptResults } from '$lib/shared/grading';
 import { MAX_ANSWER_TEXT_LENGTH } from '$lib/server/quizConfig';
 import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
 
@@ -93,26 +94,17 @@ export async function POST({ request, cookies }) {
 			gradedAnswers.set(index, value);
 		}
 
-		const results = questions.map((question, index) => {
-			const yourAnswer = gradedAnswers.get(index) || null;
-			const correctAnswer = typeof question?.answer === 'string' ? question.answer : null;
-			return {
-				index,
-				correct:
-					yourAnswer !== null && correctAnswer !== null && yourAnswer === correctAnswer,
-				yourAnswer,
-				correctAnswer,
-			};
-		});
+		const answeredMap = {};
+		for (const [index, value] of gradedAnswers) {
+			answeredMap[index] = value;
+		}
+
+		const results = gradeAttemptResults(questions, answeredMap);
 		const score = results.filter((result) => result.correct).length;
 		const normalizedTimeTaken = Math.min(
 			Math.max(Number(timeTaken) || 0, 0),
 			MAX_TIME_TAKEN_SECONDS
 		);
-		const answeredMap = {};
-		for (const [index, value] of gradedAnswers) {
-			answeredMap[index] = value;
-		}
 		// Hint usage is tracked only: verified against the stored key (a
 		// cheating payload is dropped, grading never fails because of it).
 		const cleanHints = sanitizeHintedIndexes(hintedIndexes, questions);

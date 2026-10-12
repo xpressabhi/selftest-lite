@@ -371,6 +371,24 @@ export async function resolveTestRecord(testId) {
 		resolved.timeTaken = record.myAttempt.time_taken || record.myAttempt.timeTaken;
 		resolved.timestamp = new Date(record.myAttempt.submitted_at || Date.now()).getTime();
 	}
+	// The server re-grades a stored attempt for its owner; seed the local
+	// attempt record from it when this device has none, so the results page
+	// merges through its one existing path and later visits need no refetch.
+	if (
+		!getAttemptResult(testId) &&
+		Array.isArray(record.myAttempt?.results) &&
+		record.myAttempt.results.length > 0
+	) {
+		saveAttemptResult(testId, {
+			score: record.myAttempt.score,
+			totalQuestions: record.myAttempt.totalQuestions ?? record.myAttempt.total_questions,
+			timeTaken: record.myAttempt.timeTaken ?? record.myAttempt.time_taken,
+			timestamp: resolved.timestamp,
+			results: record.myAttempt.results,
+			marks: record.myAttempt.marks ?? null,
+			totalMarks: record.myAttempt.totalMarks ?? null,
+		});
+	}
 	upsertHistory(resolved);
 	return resolved;
 }

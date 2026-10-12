@@ -8,6 +8,7 @@ import {
 import { rateLimiter } from '$lib/server/rateLimiter';
 import { resolveRequestContext } from '$lib/server/apiContext';
 import { stripAnswerKey } from '$lib/server/paperRedaction';
+import { gradeAttemptResults } from '$lib/shared/grading';
 import {
 	getCachedTestList,
 	getCachedTestRecord,
@@ -25,6 +26,14 @@ function rateLimitHeaders(rateLimit) {
 		'X-RateLimit-Remaining': rateLimit.remaining.toString(),
 		'X-RateLimit-Reset': rateLimit.resetTime.toString(),
 	};
+}
+
+// PG NUMERIC columns come back as strings; the review compares numbers.
+function toNumberOrNull(value) {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
 export async function GET({ request, url, cookies }) {
@@ -144,6 +153,12 @@ export async function GET({ request, url, cookies }) {
 				timeTaken: myAttempt.time_taken,
 				submittedAt: myAttempt.submitted_at,
 				userAnswers: myAttempt.user_answers || {},
+				// The review is re-graded on read so a device that never
+				// submitted locally can still render it; the paper above stays
+				// stripped for everyone without a matching attempt.
+				results: gradeAttemptResults(testRecord.test?.questions, myAttempt.user_answers),
+				marks: toNumberOrNull(myAttempt.marks),
+				totalMarks: toNumberOrNull(myAttempt.total_marks),
 			};
 		}
 
