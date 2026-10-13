@@ -1,6 +1,6 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import HomePage from '$lib/client/pages/HomePage.svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import HomePage from '#lib/client/pages/HomePage.svelte';
 
 	// The title lives at route level on purpose: Svelte 5 drops titles emitted
 	// by nested components during streamed SSR, and the home page is the only

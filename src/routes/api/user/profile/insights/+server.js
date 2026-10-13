@@ -1,15 +1,18 @@
-import { json } from '@sveltejs/kit';
-import { getStateForIdentity, logApiEvent } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
-import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
+import { getStateForIdentity, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import {
+	PROFILE_STATE_KEY,
+	isPersonalized,
+	parseProfileStateValue,
+} from '#lib/shared/userProfile.js';
 import {
 	buildTailoredSummary,
 	computeLearnerSignals,
 	mergeFocusTopics,
 	resolveDifficulty,
-} from '$lib/server/profile';
+} from '#lib/server/profile.js';
 
 const INSIGHTS_RATE_LIMIT = 30;
 
@@ -34,7 +37,7 @@ export async function GET({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -77,7 +80,7 @@ export async function GET({ request, cookies }) {
 			},
 		});
 
-		return json({
+		return Response.json({
 			profile,
 			signals,
 			focusTopics,
@@ -97,7 +100,7 @@ export async function GET({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to fetch profile insights', code: 'INSIGHTS_FETCH_ERROR' },
 			{ status: 500 }
 		);

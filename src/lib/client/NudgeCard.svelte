@@ -2,8 +2,8 @@
 	// One quiet, inline nudge row. Presentational only: the page owns the
 	// decision, the ledger writes and the action. Never a modal, never an
 	// animation beyond the switch primitives.
-	import Icon from '$lib/client/Icon.svelte';
-	import { t } from '$lib/client/i18n';
+	import Icon from '#lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
 
 	let { kind, params = {}, busy = false, onselect = () => {}, ondismiss = () => {} } = $props();
 
@@ -13,13 +13,13 @@
 				return {
 					title: $t('nudgeChallengeTitle', params),
 					body: $t('nudgeChallengeBody'),
-					cta: $t('nudgeChallengeCta')
+					cta: $t('nudgeChallengeCta'),
 				};
 			case 'share_streak':
 				return {
 					title: $t('nudgeShareStreakTitle', params),
 					body: $t('nudgeShareStreakBody'),
-					cta: $t('nudgeShareStreakCta')
+					cta: $t('nudgeShareStreakCta'),
 				};
 			case 'enable_reminders':
 				return {
@@ -28,13 +28,13 @@
 							? $t('nudgeEnableRemindersTitle', params)
 							: $t('nudgeEnableRemindersTitleNoStreak'),
 					body: $t('nudgeEnableRemindersBody'),
-					cta: $t('nudgeEnableRemindersCta')
+					cta: $t('nudgeEnableRemindersCta'),
 				};
 			default:
 				return {
 					title: $t('nudgeShareResultTitle'),
 					body: $t('nudgeShareResultBody'),
-					cta: $t('nudgeShareResultCta')
+					cta: $t('nudgeShareResultCta'),
 				};
 		}
 	});

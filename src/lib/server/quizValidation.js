@@ -17,8 +17,8 @@ import {
 	VALID_TEST_TYPES,
 } from './quizConfig';
 import katex from 'katex';
-import { normalizeMathText } from '$lib/shared/latex';
-import { questionTextFor } from '$lib/shared/questionText';
+import { normalizeMathText } from '#lib/shared/latex.js';
+import { questionTextFor } from '#lib/shared/questionText.js';
 import { MATCHING_PAIR_COUNT, parseCombination } from './matchingBuilder';
 import { AR_OPTIONS, optionsForLanguage } from './assertionReasoning';
 import {
@@ -307,7 +307,10 @@ export function validateTestRecordPayload(test) {
 			String(question.assertion || '').length > MAX_QUESTION_TEXT_LENGTH ||
 			String(question.reason || '').length > MAX_QUESTION_TEXT_LENGTH
 		) {
-			return createValidationError('INVALID_TEST_DATA', 'Assertion or reason text is too long');
+			return createValidationError(
+				'INVALID_TEST_DATA',
+				'Assertion or reason text is too long'
+			);
 		}
 		if (
 			(Array.isArray(question.columnA) &&
@@ -315,9 +318,7 @@ export function validateTestRecordPayload(test) {
 					(item) => String(item || '').length > MAX_OPTION_TEXT_LENGTH
 				)) ||
 			(Array.isArray(question.columnB) &&
-				question.columnB.some(
-					(item) => String(item || '').length > MAX_OPTION_TEXT_LENGTH
-				))
+				question.columnB.some((item) => String(item || '').length > MAX_OPTION_TEXT_LENGTH))
 		) {
 			return createValidationError('INVALID_TEST_DATA', 'Column item text is too long');
 		}
@@ -375,7 +376,10 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, l
 				q.columnA.length !== MATCHING_PAIR_COUNT ||
 				q.columnB.length !== MATCHING_PAIR_COUNT
 			) {
-				add('matching-columns', `Question ${index + 1} must have four items in each column`);
+				add(
+					'matching-columns',
+					`Question ${index + 1} must have four items in each column`
+				);
 				return;
 			}
 			const parsedOptions = q.options.map((option) => parseCombination(option));
@@ -390,7 +394,10 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, l
 				q.options.filter((option) => comparableText(option) === comparableText(q.answer))
 					.length !== 1
 			) {
-				add('answer-mismatch', `Question ${index + 1} answer must match exactly one combination`);
+				add(
+					'answer-mismatch',
+					`Question ${index + 1} answer must match exactly one combination`
+				);
 				return;
 			}
 			try {
@@ -404,7 +411,8 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, l
 		if (q.format === 'assertion-reasoning') {
 			const expected = language ? optionsForLanguage(String(language).toLowerCase()) : null;
 			const matchesSet = (set) =>
-				q.options.length === set.length && q.options.every((option, i) => option === set[i]);
+				q.options.length === set.length &&
+				q.options.every((option, i) => option === set[i]);
 			const canonicalOk = expected
 				? matchesSet(expected)
 				: Object.values(AR_OPTIONS).some((set) => matchesSet(set));
@@ -416,7 +424,10 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, l
 				return;
 			}
 			if (!q.options.includes(q.answer)) {
-				add('answer-mismatch', `Question ${index + 1} answer must match one of the options`);
+				add(
+					'answer-mismatch',
+					`Question ${index + 1} answer must match one of the options`
+				);
 				return;
 			}
 			const assertion = typeof q.assertion === 'string' ? q.assertion.trim() : '';
@@ -459,7 +470,8 @@ export function inspectGeneratedPaper({ questionPaper, testType, numQuestions, l
 			const keyNumbers = parseStatementOption(q.answer, normalizedLanguage);
 			if (
 				!keyNumbers ||
-				parsedOptions.filter((numbers) => numbers.join(',') === keyNumbers.join(',')).length !== 1
+				parsedOptions.filter((numbers) => numbers.join(',') === keyNumbers.join(','))
+					.length !== 1
 			) {
 				add(
 					'answer-mismatch',

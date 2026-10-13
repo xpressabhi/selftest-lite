@@ -1,17 +1,16 @@
-import { json } from '@sveltejs/kit';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
+import { getAuthenticatedUser, getClientIdFromRequest } from '#lib/server/auth.js';
 import {
 	archivePushSubscription,
 	getClientKey,
 	logApiEvent,
 	savePushSubscription,
 	updatePushSubscriptionHour,
-} from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
-import { parseReminderHour } from '$lib/shared/reminders';
+} from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { parseReminderHour } from '#lib/shared/reminders.js';
 
 const SUBSCRIBE_RATE_LIMIT = 20;
 
@@ -40,7 +39,7 @@ export async function POST({ request, cookies }) {
 			typeof p256dh !== 'string' ||
 			typeof auth !== 'string'
 		) {
-			return json(
+			return Response.json(
 				{ error: 'Invalid subscription', code: 'INVALID_SUBSCRIPTION' },
 				{ status: 400 }
 			);
@@ -48,7 +47,7 @@ export async function POST({ request, cookies }) {
 
 		const hour = parseReminderHour(body?.hour);
 		if (hour === undefined) {
-			return json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
+			return Response.json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
 		}
 
 		await savePushSubscription({
@@ -73,7 +72,7 @@ export async function POST({ request, cookies }) {
 			userId: user?.id || null,
 		});
 
-		return json({ success: true });
+		return Response.json({ success: true });
 	} catch (error) {
 		console.error('Failed to save push subscription:', error);
 		await logApiEvent({
@@ -86,7 +85,7 @@ export async function POST({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to save subscription', code: 'SUBSCRIPTION_SAVE_ERROR' },
 			{ status: 500 }
 		);
@@ -114,10 +113,10 @@ export async function PATCH({ request, cookies }) {
 		const hour = parseReminderHour(body?.hour);
 
 		if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) {
-			return json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });
+			return Response.json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });
 		}
 		if (hour === undefined) {
-			return json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
+			return Response.json({ error: 'Invalid reminder hour', code: 'INVALID_HOUR' }, { status: 400 });
 		}
 
 		// Older clients only send the hour; language is optional so those
@@ -128,7 +127,7 @@ export async function PATCH({ request, cookies }) {
 			clientId,
 		});
 		if (!updated) {
-			return json(
+			return Response.json(
 				{ error: 'Subscription not found', code: 'SUBSCRIPTION_NOT_FOUND' },
 				{ status: 404 }
 			);
@@ -145,7 +144,7 @@ export async function PATCH({ request, cookies }) {
 			metadata: { hour },
 		});
 
-		return json({ success: true });
+		return Response.json({ success: true });
 	} catch (error) {
 		console.error('Failed to update reminder hour:', error);
 		await logApiEvent({
@@ -158,7 +157,7 @@ export async function PATCH({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to update reminder hour', code: 'SUBSCRIPTION_UPDATE_ERROR' },
 			{ status: 500 }
 		);
@@ -186,7 +185,7 @@ export async function DELETE({ request, cookies }) {
 		const body = await readJsonBody(request);
 		const endpoint = body?.endpoint;
 		if (typeof endpoint !== 'string' || !endpoint) {
-			return json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });
+			return Response.json({ error: 'Invalid endpoint', code: 'INVALID_ENDPOINT' }, { status: 400 });
 		}
 
 		// Archive-first: unsubscribing moves the row, never deletes it. Scoped to
@@ -209,10 +208,10 @@ export async function DELETE({ request, cookies }) {
 			metadata: { archived },
 		});
 
-		return json({ success: true });
+		return Response.json({ success: true });
 	} catch (error) {
 		console.error('Failed to remove push subscription:', error);
-		return json(
+		return Response.json(
 			{ error: 'Failed to remove subscription', code: 'SUBSCRIPTION_REMOVE_ERROR' },
 			{ status: 500 }
 		);

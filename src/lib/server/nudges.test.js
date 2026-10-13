@@ -6,7 +6,7 @@ import {
 	deriveNudge,
 	eligibleNudgeKinds,
 	isNudgeHoldout,
-	sanitizeNudgeState
+	sanitizeNudgeState,
 } from './nudges.js';
 
 // Failure list for the pure nudge engine (written before the module):
@@ -31,7 +31,7 @@ function baseState(overrides = {}) {
 		session: { secondsOnPage: 12, interactionCount: 3, hourLocal: 19 },
 		locale: 'en',
 		candidates: [],
-		...overrides
+		...overrides,
 	};
 }
 
@@ -57,7 +57,7 @@ function candidate(overrides = {}) {
 		status: 'open',
 		daysLeft: 21,
 		match: 'bookmarked',
-		...overrides
+		...overrides,
 	};
 }
 
@@ -99,9 +99,9 @@ describe('eligibleNudgeKinds', () => {
 		expect(eligibleNudgeKinds(baseState({ page: 'home', reminderState: 'on' }))).not.toContain(
 			'enable_reminders'
 		);
-		expect(eligibleNudgeKinds(baseState({ page: 'home', reminderState: 'denied' }))).not.toContain(
-			'enable_reminders'
-		);
+		expect(
+			eligibleNudgeKinds(baseState({ page: 'home', reminderState: 'denied' }))
+		).not.toContain('enable_reminders');
 	});
 
 	it('returns no kinds for the notifications page or unknown pages', () => {
@@ -119,7 +119,7 @@ describe('buildNudgeQuestions', () => {
 			'share_result',
 			'challenge_friend',
 			'wait',
-			'nothing'
+			'nothing',
 		]);
 		expect(questions.nudge_share_pride.type).toBe('score');
 		expect(questions.nudge_reminder_fit).toBeUndefined();
@@ -132,7 +132,7 @@ describe('buildNudgeQuestions', () => {
 			'share_streak',
 			'enable_reminders',
 			'wait',
-			'nothing'
+			'nothing',
 		]);
 		expect(questions.nudge_share_pride.type).toBe('score');
 		expect(questions.nudge_reminder_fit.type).toBe('score');
@@ -148,8 +148,14 @@ describe('buildNudgeQuestions', () => {
 			page: 'notifications',
 			candidates: [
 				candidate(),
-				candidate({ id: '102', org: 'SSC', title: 'CGL 2026', match: 'category', category: 'ssc-central' })
-			]
+				candidate({
+					id: '102',
+					org: 'SSC',
+					title: 'CGL 2026',
+					match: 'category',
+					category: 'ssc-central',
+				}),
+			],
 		});
 		const questions = buildNudgeQuestions(state);
 		expect(questions.nudge_moment).toBeUndefined();
@@ -167,9 +173,9 @@ describe('buildNudgeQuestions', () => {
 		expect(Object.keys(questions.nudge_notify_item.criteria)).toHaveLength(
 			MAX_NOTIFICATION_CANDIDATES + 1
 		);
-		expect(Object.keys(questions).filter((id) => id.startsWith('nudge_relevance_'))).toHaveLength(
-			MAX_NOTIFICATION_CANDIDATES
-		);
+		expect(
+			Object.keys(questions).filter((id) => id.startsWith('nudge_relevance_'))
+		).toHaveLength(MAX_NOTIFICATION_CANDIDATES);
 	});
 
 	it('puts learner topics into the soft-relevance instructions', () => {
@@ -177,23 +183,22 @@ describe('buildNudgeQuestions', () => {
 			baseState({
 				page: 'notifications',
 				topics: ['SSC CGL quantitative aptitude'],
-				candidates: [candidate({ id: '102', match: 'category' })]
+				candidates: [candidate({ id: '102', match: 'category' })],
 			})
 		);
-		expect(questions.nudge_relevance_102.instructions).toContain('SSC CGL quantitative aptitude');
+		expect(questions.nudge_relevance_102.instructions).toContain(
+			'SSC CGL quantitative aptitude'
+		);
 	});
 });
 
 describe('deriveNudge', () => {
 	it('returns the confident share kind', () => {
-		const result = deriveNudge(
-			baseState(),
-			{
-				nudge_moment: choice('challenge_friend', { challenge_friend: 0.8, wait: 0.2 }, 0.8),
-				nudge_share_pride: score(2),
-				nudge_receptivity: noul(0.8)
-			}
-		);
+		const result = deriveNudge(baseState(), {
+			nudge_moment: choice('challenge_friend', { challenge_friend: 0.8, wait: 0.2 }, 0.8),
+			nudge_share_pride: score(2),
+			nudge_receptivity: noul(0.8),
+		});
 		expect(result).toMatchObject({ kind: 'challenge_friend', suppressed: null });
 		expect(result.confidence).toBe('high');
 	});
@@ -201,12 +206,12 @@ describe('deriveNudge', () => {
 	it('suppresses wait and nothing without a guardrail charge', () => {
 		expect(
 			deriveNudge(baseState(), {
-				nudge_moment: choice('wait', { wait: 0.9, nothing: 0.1 })
+				nudge_moment: choice('wait', { wait: 0.9, nothing: 0.1 }),
 			}).suppressed
 		).toBe('wait');
 		expect(
 			deriveNudge(baseState(), {
-				nudge_moment: choice('nothing', { nothing: 0.9, wait: 0.1 })
+				nudge_moment: choice('nothing', { nothing: 0.9, wait: 0.1 }),
 			}).suppressed
 		).toBe('nothing');
 	});
@@ -215,7 +220,7 @@ describe('deriveNudge', () => {
 		expect(
 			deriveNudge(baseState(), {
 				nudge_moment: choice('share_result', { share_result: 0.5 }, 0.3),
-				nudge_share_pride: score(2)
+				nudge_share_pride: score(2),
 			}).suppressed
 		).toBe('low-confidence');
 		expect(deriveNudge(baseState(), {}).suppressed).toBe('low-confidence');
@@ -223,7 +228,7 @@ describe('deriveNudge', () => {
 			deriveNudge(baseState(), {
 				nudge_moment: choice('enable_reminders', { enable_reminders: 0.9 }, 0.9),
 				nudge_reminder_fit: score(2),
-				nudge_receptivity: noul(0.9)
+				nudge_receptivity: noul(0.9),
 			}).suppressed
 		).toBe('unknown-kind');
 	});
@@ -231,7 +236,7 @@ describe('deriveNudge', () => {
 	it('holds share asks below the pride floor', () => {
 		const result = deriveNudge(baseState(), {
 			nudge_moment: choice('share_result', { share_result: 0.9 }, 0.9),
-			nudge_share_pride: score(0.5)
+			nudge_share_pride: score(0.5),
 		});
 		expect(result.kind).toBeNull();
 		expect(result.suppressed).toBe('guardrail');
@@ -243,14 +248,14 @@ describe('deriveNudge', () => {
 			deriveNudge(baseState({ page: 'home' }), {
 				nudge_moment: moment,
 				nudge_reminder_fit: score(1),
-				nudge_receptivity: noul(0.9)
+				nudge_receptivity: noul(0.9),
 			}).suppressed
 		).toBe('guardrail');
 		expect(
 			deriveNudge(baseState({ page: 'home' }), {
 				nudge_moment: moment,
 				nudge_reminder_fit: score(2),
-				nudge_receptivity: noul(0.4)
+				nudge_receptivity: noul(0.4),
 			}).suppressed
 		).toBe('guardrail');
 	});
@@ -259,7 +264,7 @@ describe('deriveNudge', () => {
 		const result = deriveNudge(baseState({ page: 'home' }), {
 			nudge_moment: choice('enable_reminders', { enable_reminders: 0.9 }, 0.9),
 			nudge_reminder_fit: score(2),
-			nudge_receptivity: noul(0.8)
+			nudge_receptivity: noul(0.8),
 		});
 		expect(result.kind).toBe('enable_reminders');
 	});
@@ -268,24 +273,21 @@ describe('deriveNudge', () => {
 		expect(
 			deriveNudge(baseState({ shareSheetOpenedThisResult: true }), {
 				nudge_moment: choice('share_result', { share_result: 0.99 }, 0.99),
-				nudge_share_pride: score(2)
+				nudge_share_pride: score(2),
 			})
 		).toMatchObject({ kind: null, suppressed: 'not-eligible' });
 	});
 });
 
 describe('deriveNotificationRanking', () => {
-	const candidates = [
-		candidate(),
-		candidate({ id: '102', match: 'category' })
-	];
+	const candidates = [candidate(), candidate({ id: '102', match: 'category' })];
 
 	it('picks a real candidate id and reads soft relevance', () => {
 		const result = deriveNotificationRanking(
 			{
 				nudge_notify_item: choice('102', { 102: 0.7, none: 0.3 }, 0.7),
 				nudge_receptivity: noul(0.7),
-				nudge_relevance_102: score(2)
+				nudge_relevance_102: score(2),
 			},
 			candidates
 		);
@@ -298,7 +300,7 @@ describe('deriveNotificationRanking', () => {
 		const hallucinated = deriveNotificationRanking(
 			{
 				nudge_notify_item: choice('999', { 999: 0.9, none: 0.1 }, 0.9),
-				nudge_receptivity: noul(0.9)
+				nudge_receptivity: noul(0.9),
 			},
 			candidates
 		);
@@ -308,7 +310,7 @@ describe('deriveNotificationRanking', () => {
 		const unsure = deriveNotificationRanking(
 			{
 				nudge_notify_item: choice('101', { 101: 0.6, none: 0.4 }, 0.3),
-				nudge_receptivity: noul(0.9)
+				nudge_receptivity: noul(0.9),
 			},
 			candidates
 		);
@@ -320,7 +322,7 @@ describe('deriveNotificationRanking', () => {
 		const result = deriveNotificationRanking(
 			{
 				nudge_notify_item: choice('101', { 101: 0.9, none: 0.1 }, 0.9),
-				nudge_receptivity: noul(0.3)
+				nudge_receptivity: noul(0.3),
 			},
 			candidates
 		);
@@ -331,7 +333,10 @@ describe('deriveNotificationRanking', () => {
 	it('suppresses nothing-picked and empty candidates', () => {
 		expect(
 			deriveNotificationRanking(
-				{ nudge_notify_item: choice('none', { none: 0.9, 101: 0.1 }, 0.9), nudge_receptivity: noul(0.9) },
+				{
+					nudge_notify_item: choice('none', { none: 0.9, 101: 0.1 }, 0.9),
+					nudge_receptivity: noul(0.9),
+				},
 				candidates
 			).suppressed
 		).toBe('nothing');
@@ -343,7 +348,7 @@ describe('deriveNotificationRanking', () => {
 			{
 				nudge_notify_item: choice('none', { none: 0.8, 101: 0.2 }, 0.8),
 				nudge_receptivity: noul(0.9),
-				nudge_relevance_102: { type: 'score', score: 'junk' }
+				nudge_relevance_102: { type: 'score', score: 'junk' },
 			},
 			candidates
 		);
@@ -366,7 +371,7 @@ describe('sanitizeNudgeState', () => {
 				currentStreak: 'NaN',
 				reminderState: 'weird',
 				session: { secondsOnPage: 10 ** 9, hourLocal: 99 },
-				nudgeHistory: { dismissals: -3 }
+				nudgeHistory: { dismissals: -3 },
 			},
 			'home'
 		);
@@ -386,8 +391,8 @@ describe('sanitizeNudgeState', () => {
 				org: 'X'.repeat(500),
 				title: 'T'.repeat(500),
 				status: 'open',
-				match: 'category'
-			}))
+				match: 'category',
+			})),
 		};
 		const state = sanitizeNudgeState(raw, 'notifications');
 		expect(state.candidates).toHaveLength(MAX_NOTIFICATION_CANDIDATES);
@@ -398,7 +403,13 @@ describe('sanitizeNudgeState', () => {
 
 	it('drops malformed candidate entries rather than failing the whole state', () => {
 		const state = sanitizeNudgeState(
-			{ candidates: [candidate(), { nope: true }, candidate({ id: '103', match: 'category' })] },
+			{
+				candidates: [
+					candidate(),
+					{ nope: true },
+					candidate({ id: '103', match: 'category' }),
+				],
+			},
 			'notifications'
 		);
 		expect(state.candidates.map((item) => item.id)).toEqual(['101', '103']);

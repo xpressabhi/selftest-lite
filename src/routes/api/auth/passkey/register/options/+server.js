@@ -1,23 +1,22 @@
-import { json } from '@sveltejs/kit';
 import { randomBytes } from 'crypto';
-import { env } from '$env/dynamic/private';
+import { PASSKEY_ALLOWED_ORIGINS, PASSKEY_RP_ID } from '$app/env/private';
 import {
 	createPasskeyChallenge,
 	ensureWebauthnUserHandle,
 	listPasskeyCredentialsForUser,
-	logApiEvent
-} from '$lib/server/storage';
-import { buildRegistrationOptions } from '$lib/server/passkey';
+	logApiEvent,
+} from '#lib/server/storage.js';
+import { buildRegistrationOptions } from '#lib/server/passkey.js';
 import {
 	bytesToBase64Url,
 	generateDisplayName,
 	normalizeDisplayLanguage,
-	resolvePasskeyContext
-} from '$lib/shared/passkeyPolicy';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
-import { resolveRequestContext } from '$lib/server/apiContext';
+	resolvePasskeyContext,
+} from '#lib/shared/passkeyPolicy.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const REGISTER_OPTIONS_RATE_LIMIT = 20;
 
@@ -33,7 +32,7 @@ export async function POST({ request, url, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/passkey/register/options',
-			limit: REGISTER_OPTIONS_RATE_LIMIT
+			limit: REGISTER_OPTIONS_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
@@ -45,12 +44,12 @@ export async function POST({ request, url, cookies }) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 				userId: user?.id ?? null,
-				metadata: { mode }
+				metadata: { mode },
 			});
 			return rateLimited(rateLimit);
 		}
 
-		const context = resolvePasskeyContext(url, env);
+		const context = resolvePasskeyContext(url, { PASSKEY_RP_ID, PASSKEY_ALLOWED_ORIGINS });
 		if (!context) {
 			await logApiEvent({
 				route: '/api/auth/passkey/register/options',
@@ -61,9 +60,9 @@ export async function POST({ request, url, cookies }) {
 				statusCode: 503,
 				durationMs: Date.now() - startedAt,
 				errorMessage: 'Origin outside the passkey allowlist',
-				metadata: { mode }
+				metadata: { mode },
 			});
-			return json(
+			return Response.json(
 				{ error: 'Passkeys are not available here.', code: 'PASSKEY_UNAVAILABLE' },
 				{ status: 503 }
 			);
@@ -95,7 +94,7 @@ export async function POST({ request, url, cookies }) {
 			userName,
 			displayName,
 			userHandle,
-			existingCredentials
+			existingCredentials,
 		});
 
 		await createPasskeyChallenge({
@@ -103,7 +102,7 @@ export async function POST({ request, url, cookies }) {
 			kind: 'registration',
 			userId: mode === 'add' ? user.id : null,
 			userHandle,
-			displayName
+			displayName,
 		});
 
 		await logApiEvent({
@@ -115,10 +114,10 @@ export async function POST({ request, url, cookies }) {
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId: user?.id ?? null,
-			metadata: { mode }
+			metadata: { mode },
 		});
 
-		return json({ mode, options });
+		return Response.json({ mode, options });
 	} catch (error) {
 		console.error('Failed to build passkey registration options:', error);
 		await logApiEvent({
@@ -130,9 +129,9 @@ export async function POST({ request, url, cookies }) {
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
-			metadata: { mode }
+			metadata: { mode },
 		});
-		return json(
+		return Response.json(
 			{ error: 'Unable to start passkey setup.', code: 'PASSKEY_OPTIONS_ERROR' },
 			{ status: 500 }
 		);

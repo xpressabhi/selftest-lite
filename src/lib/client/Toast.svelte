@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { t } from '$lib/client/i18n';
-	import { dismissToast, runToastAction, runToastDismiss } from '$lib/client/toast';
+	import Icon from '#lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import { dismissToast, runToastAction, runToastDismiss } from '#lib/client/toast.js';
 
 	let { entry } = $props();
 
@@ -77,7 +77,8 @@
 		if (reason === 'swipe') {
 			leaving = true;
 			paused = false;
-			swipeX = (swipeX >= 0 ? 1 : -1) * (typeof window === 'undefined' ? 400 : window.innerWidth);
+			swipeX =
+				(swipeX >= 0 ? 1 : -1) * (typeof window === 'undefined' ? 400 : window.innerWidth);
 			window.clearTimeout(outTimer);
 			outTimer = window.setTimeout(() => dismissToast(entry.id), REDUCED_MOTION() ? 0 : 180);
 			return;
@@ -332,5 +333,4 @@
 			transform: scaleX(0);
 		}
 	}
-
 </style>

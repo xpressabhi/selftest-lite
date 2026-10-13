@@ -12,7 +12,7 @@ import {
 	READ_PUBLISHED_NOTIFICATIONS_SQL,
 	toNotificationItem,
 	UPSERT_EXAM_NOTIFICATION_SQL,
-	UPSERT_SOURCE_SUGGESTION_SQL
+	UPSERT_SOURCE_SUGGESTION_SQL,
 } from './examNotificationSql';
 
 // The store is where every data-loss and visibility rule lives, so each
@@ -44,7 +44,7 @@ function upsertParams(overrides = {}) {
 		vacancies: 100,
 		qualification: 'Graduate',
 		confidence: 0.9,
-		...overrides
+		...overrides,
 	};
 	return [
 		row.dedupeKey,
@@ -62,7 +62,7 @@ function upsertParams(overrides = {}) {
 		row.examDate,
 		row.vacancies,
 		row.qualification,
-		row.confidence
+		row.confidence,
 	];
 }
 
@@ -86,9 +86,13 @@ describe('upsert', () => {
 			upsertParams({ title: 'CGL 2026 Notice (revised)' })
 		);
 		expect(second.rows[0].inserted).toBe(false);
-		const { rows } = await db.query(`SELECT COUNT(*)::int AS n FROM exam_notification WHERE dedupe_key = 'key-1'`);
+		const { rows } = await db.query(
+			`SELECT COUNT(*)::int AS n FROM exam_notification WHERE dedupe_key = 'key-1'`
+		);
 		expect(rows[0].n).toBe(1);
-		const stored = await db.query(`SELECT title FROM exam_notification WHERE dedupe_key = 'key-1'`);
+		const stored = await db.query(
+			`SELECT title FROM exam_notification WHERE dedupe_key = 'key-1'`
+		);
 		expect(stored.rows[0].title).toBe('CGL 2026 Notice (revised)');
 	});
 
@@ -138,7 +142,7 @@ describe('quarantine', () => {
 			null,
 			null,
 			'link_unreachable',
-			JSON.stringify({ title: 'Suspect item' })
+			JSON.stringify({ title: 'Suspect item' }),
 		]);
 		const { rows } = await db.query(READ_PUBLISHED_NOTIFICATIONS_SQL, ['2025-09-26', 500]);
 		expect(rows.some((row) => row.dedupe_key === 'key-quarantine')).toBe(false);
@@ -169,7 +173,7 @@ describe('quarantine', () => {
 			null,
 			null,
 			'low_confidence',
-			null
+			null,
 		]);
 		const { rows } = await db.query(
 			`SELECT review_status, failure_reason FROM exam_notification WHERE dedupe_key = 'key-1'`
@@ -197,14 +201,14 @@ describe('quarantine', () => {
 			null,
 			null,
 			'link_unreachable',
-			JSON.stringify({ title: 'CHSL notice' })
+			JSON.stringify({ title: 'CHSL notice' }),
 		]);
 		await db.query(
 			UPSERT_EXAM_NOTIFICATION_SQL,
 			upsertParams({
 				dedupeKey: 'key-promote',
 				title: 'CHSL notice',
-				notificationUrl: 'https://ssc.gov.in/chsl'
+				notificationUrl: 'https://ssc.gov.in/chsl',
 			})
 		);
 		const { rows } = await db.query(
@@ -224,7 +228,7 @@ describe('published read window', () => {
 				dedupeKey: 'key-old-closed',
 				title: 'Old closed',
 				publishedAt: '2024-01-01',
-				applyEnd: '2024-02-01'
+				applyEnd: '2024-02-01',
 			})
 		);
 		await db.query(
@@ -233,7 +237,7 @@ describe('published read window', () => {
 				dedupeKey: 'key-old-open',
 				title: 'Long running open',
 				publishedAt: '2024-01-01',
-				applyEnd: '2026-10-15'
+				applyEnd: '2026-10-15',
 			})
 		);
 		await db.query(
@@ -253,13 +257,17 @@ describe('published read window', () => {
 
 	it('maps rows to UI items with derived status and new badge', async () => {
 		const { rows } = await db.query(READ_PUBLISHED_NOTIFICATIONS_SQL, ['2025-09-26', 500]);
-		const item = toNotificationItem(rows.find((row) => row.dedupe_key === 'key-1'), TODAY, new Date());
+		const item = toNotificationItem(
+			rows.find((row) => row.dedupe_key === 'key-1'),
+			TODAY,
+			new Date()
+		);
 		expect(item).toMatchObject({
 			sourceId: 'ssc',
 			examId: 'ssc-cgl',
 			applyEnd: '2026-10-01',
 			status: 'closing_soon',
-			isNew: true
+			isNew: true,
 		});
 	});
 });
@@ -276,7 +284,7 @@ describe('sync runs', () => {
 			2,
 			1,
 			0,
-			JSON.stringify([{ source: 'ncs', error: 'timeout' }])
+			JSON.stringify([{ source: 'ncs', error: 'timeout' }]),
 		]);
 		await db.query(INSERT_SYNC_RUN_SQL, [
 			new Date(),
@@ -288,7 +296,7 @@ describe('sync runs', () => {
 			0,
 			0,
 			0,
-			JSON.stringify([])
+			JSON.stringify([]),
 		]);
 		// A discovery-only run has no sources and must not move the stamp.
 		await db.query(INSERT_SYNC_RUN_SQL, [
@@ -301,7 +309,7 @@ describe('sync runs', () => {
 			0,
 			0,
 			4,
-			JSON.stringify([])
+			JSON.stringify([]),
 		]);
 		const { rows } = await db.query(READ_LATEST_SYNC_RUN_SQL);
 		expect(rows).toHaveLength(1);
@@ -316,13 +324,13 @@ describe('source suggestions', () => {
 			'https://www.rbi.org.in/careers',
 			'RBI',
 			'banking',
-			'grounded discovery'
+			'grounded discovery',
 		]);
 		await db.query(UPSERT_SOURCE_SUGGESTION_SQL, [
 			'https://www.rbi.org.in/careers',
 			'RBI',
 			'banking',
-			'seen again'
+			'seen again',
 		]);
 		const pending = await db.query(READ_PENDING_SOURCE_SUGGESTIONS_SQL);
 		expect(pending.rows).toHaveLength(1);
@@ -337,7 +345,9 @@ describe('source suggestions', () => {
 describe('archive moves', () => {
 	it('moves only long-closed published rows and preserves them in the archive', async () => {
 		// Source column layout for both archive targets.
-		await db.query(`CREATE TABLE IF NOT EXISTS exam_notification_archive (LIKE exam_notification INCLUDING DEFAULTS)`);
+		await db.query(
+			`CREATE TABLE IF NOT EXISTS exam_notification_archive (LIKE exam_notification INCLUDING DEFAULTS)`
+		);
 		await db.query(
 			`ALTER TABLE exam_notification_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
 		);
@@ -348,7 +358,7 @@ describe('archive moves', () => {
 				dedupeKey: 'key-archive-me',
 				title: 'Archived notice',
 				publishedAt: '2024-06-01',
-				applyEnd: '2024-07-01'
+				applyEnd: '2024-07-01',
 			})
 		);
 		await db.query(
@@ -357,7 +367,7 @@ describe('archive moves', () => {
 				dedupeKey: 'key-still-seen',
 				title: 'Old but seen recently',
 				publishedAt: '2024-06-01',
-				applyEnd: '2024-07-01'
+				applyEnd: '2024-07-01',
 			})
 		);
 		await db.query(
@@ -369,7 +379,9 @@ describe('archive moves', () => {
 			`UPDATE exam_notification SET last_seen_at = NOW() WHERE dedupe_key = 'key-still-seen'`
 		);
 
-		const movedPublished = await db.query(buildArchiveMoveSql(EXAM_NOTIFICATION_ARCHIVE_TARGETS[0], 100));
+		const movedPublished = await db.query(
+			buildArchiveMoveSql(EXAM_NOTIFICATION_ARCHIVE_TARGETS[0], 100)
+		);
 		expect(movedPublished.rows.map((row) => row.id)).toHaveLength(1);
 
 		const remaining = await db.query(
@@ -389,7 +401,9 @@ describe('archive moves', () => {
 		await db.query(
 			`UPDATE exam_notification SET first_seen_at = NOW() - INTERVAL '200 days' WHERE dedupe_key = 'key-quarantine'`
 		);
-		const moved = await db.query(buildArchiveMoveSql(EXAM_NOTIFICATION_ARCHIVE_TARGETS[1], 100));
+		const moved = await db.query(
+			buildArchiveMoveSql(EXAM_NOTIFICATION_ARCHIVE_TARGETS[1], 100)
+		);
 		expect(moved.rows).toHaveLength(1);
 		const archived = await db.query(
 			`SELECT review_status FROM exam_notification_archive WHERE dedupe_key = 'key-quarantine'`

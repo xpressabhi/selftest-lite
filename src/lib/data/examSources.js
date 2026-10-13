@@ -32,7 +32,7 @@ export const EXAM_SOURCES = [
 			'upsc-capf-ac',
 			'upsc-cds',
 			'nda',
-			'upsc-cms'
+			'upsc-cms',
 		],
 		linkHint: '',
 		enrichPdfs: true,
@@ -42,7 +42,7 @@ export const EXAM_SOURCES = [
 		// Not reachable from GitHub runners at all (TCP connect times out on
 		// both fetch stacks). Fetch it locally with
 		// `npm run exams:sync -- --source=upsc`.
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'ssc',
@@ -52,7 +52,7 @@ export const EXAM_SOURCES = [
 		// Official JSON feed used by ssc.gov.in itself; limit=30 keeps the run
 		// small while covering several weeks of notices.
 		listingUrls: [
-			'https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=30&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id,headline,examId,contentType,redirectUrl,startDate,endDate,language,createdAt'
+			'https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=30&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id,headline,examId,contentType,redirectUrl,startDate,endDate,language,createdAt',
 		],
 		allowedHosts: ['ssc.gov.in'],
 		examIds: [
@@ -62,13 +62,13 @@ export const EXAM_SOURCES = [
 			'ssc-gd-constable',
 			'ssc-stenographer-cd',
 			'ssc-selection-post',
-			'ssc-cpo-si'
+			'ssc-cpo-si',
 		],
 		linkHint:
 			'Attachment paths in the JSON are relative to https://ssc.gov.in/api/attachment/ and use backslashes; build full https://ssc.gov.in URLs from them.',
 		enrichPdfs: true,
 		transport: 'fetch',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'ibps',
@@ -84,7 +84,7 @@ export const EXAM_SOURCES = [
 		// (ERR_SSL_UNEXPECTED_MESSAGE); curl with insecure verification reads
 		// the public listing page. Only this source's own hosts are affected.
 		transport: 'curl-insecure',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'sbi',
@@ -99,7 +99,7 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'rbi',
@@ -112,7 +112,7 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'aiims',
@@ -126,7 +126,7 @@ export const EXAM_SOURCES = [
 			'Dated recruitment notices for posts such as Pharmacist, Nursing Officer and Technician, each with a PDF or detail link.',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'esic',
@@ -142,7 +142,7 @@ export const EXAM_SOURCES = [
 		transport: 'fetch',
 		// GitHub runners cannot connect to esic.gov.in (verified: fetch
 		// UND_ERR_CONNECT_TIMEOUT, curl connect timeout). Local-only.
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'jipmer',
@@ -156,7 +156,7 @@ export const EXAM_SOURCES = [
 		enrichPdfs: false,
 		// Incomplete TLS chain (same class as BPSC): Node cannot verify the leaf.
 		transport: 'curl-insecure',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'tnpsc',
@@ -170,7 +170,7 @@ export const EXAM_SOURCES = [
 		enrichPdfs: false,
 		transport: 'fetch',
 		// GitHub runners cannot connect to tnpsc.gov.in; local-only.
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'kerala-psc',
@@ -183,7 +183,7 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'dsssb',
@@ -198,7 +198,7 @@ export const EXAM_SOURCES = [
 		enrichPdfs: false,
 		transport: 'fetch',
 		// GitHub runners cannot connect to dsssb.delhi.gov.in; local-only.
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'rrb-chandigarh',
@@ -215,7 +215,7 @@ export const EXAM_SOURCES = [
 			'rrb-je',
 			'rrb-technician',
 			'rpf-si',
-			'rpf-constable'
+			'rpf-constable',
 		],
 		linkHint:
 			'Notices are grouped under "Recruitment (CENs)" by CEN number (e.g. 03/2026). Each CEN carries links labelled Notification, Application (Special Notice), Exam Schedule and more; report the latest Notice/Notification link per CEN as that CEN’s notification.',
@@ -223,7 +223,7 @@ export const EXAM_SOURCES = [
 		// Same reachability problem as UPSC from GitHub's US runners;
 		// local-only (`--source=rrb-chandigarh`).
 		transport: 'curl',
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'uppsc',
@@ -236,7 +236,7 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'bpsc',
@@ -251,7 +251,7 @@ export const EXAM_SOURCES = [
 		// Same incomplete-chain problem as IBPS: Node cannot verify the leaf,
 		// curl reads the public listing page.
 		transport: 'curl-insecure',
-		enabled: true
+		enabled: true,
 	},
 	{
 		id: 'employment-news',
@@ -266,7 +266,7 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: false
+		enabled: false,
 	},
 	{
 		id: 'ncs',
@@ -281,8 +281,8 @@ export const EXAM_SOURCES = [
 		linkHint: '',
 		enrichPdfs: false,
 		transport: 'fetch',
-		enabled: false
-	}
+		enabled: false,
+	},
 ];
 
 export function getExamSource(sourceId) {

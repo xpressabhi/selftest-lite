@@ -1,11 +1,11 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import { track } from '$lib/client/telemetry';
+	import { t } from '#lib/client/i18n.js';
+	import { track } from '#lib/client/telemetry.js';
 	import {
 		isNearInputLimit,
 		MAX_INTENT_CHARS,
-		sanitizeInputText
-	} from '$lib/shared/inputLimits';
+		sanitizeInputText,
+	} from '#lib/shared/inputLimits.js';
 	import TestSearchDropdown from './TestSearchDropdown.svelte';
 
 	let {
@@ -349,7 +349,7 @@
 				<button
 					class="composer-clear"
 					type="button"
-					disabled={disabled}
+					{disabled}
 					aria-label={$t('clearTopicInput')}
 					onmousedown={handleClearMouseDown}
 					onclick={clearInput}
@@ -617,8 +617,6 @@
 	.composer-thinking span:nth-child(3) {
 		animation-delay: 0.32s;
 	}
-
-
 
 	@keyframes thinking-dot {
 		0%,

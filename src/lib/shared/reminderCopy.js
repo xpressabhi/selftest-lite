@@ -11,55 +11,55 @@ export const REMINDER_COPY = {
 	en: [
 		{
 			title: 'Yo! Your study buddy called 🎯',
-			body: "The table's set, the chai's warm — 5 quick questions?"
+			body: "The table's set, the chai's warm — 5 quick questions?",
 		},
 		{
 			title: 'I started without you 😤',
-			body: '5 questions. Catch up before I finish first.'
+			body: '5 questions. Catch up before I finish first.',
 		},
 		{
 			title: 'Missed you at the study table 📚',
-			body: "Come back — 5 questions and we're even."
+			body: "Come back — 5 questions and we're even.",
 		},
 		{
 			title: 'Study session? Right now? 🏃',
-			body: 'Yes. 5 questions. Bring your brain.'
+			body: 'Yes. 5 questions. Bring your brain.',
 		},
 		{
 			title: "Don't leave me hanging 📚",
-			body: "One tiny test. 3 minutes. That's the deal."
+			body: "One tiny test. 3 minutes. That's the deal.",
 		},
 		{
 			title: 'Your streak just texted me 🔥',
-			body: "It asked: 'where did they go?' 5 questions. Go."
-		}
+			body: "It asked: 'where did they go?' 5 questions. Go.",
+		},
 	],
 	hi: [
 		{
 			title: 'अरे! स्टडी साथी ने बुलाया 🎯',
-			body: 'मेज़ तैयार है, चाय गरम है — 5 आसान सवाल?'
+			body: 'मेज़ तैयार है, चाय गरम है — 5 आसान सवाल?',
 		},
 		{
 			title: 'मैंने तुम्हारे बिना शुरू कर दिया 😤',
-			body: '5 सवाल। पीछे मत रहो।'
+			body: '5 सवाल। पीछे मत रहो।',
 		},
 		{
 			title: 'स्टडी टेबल पर तुम्हारी कमी महसूस हुई 📚',
-			body: 'आ जाओ — 5 सवाल और बराबरी।'
+			body: 'आ जाओ — 5 सवाल और बराबरी।',
 		},
 		{
 			title: 'स्टडी सेशन? अभी? 🏃',
-			body: 'हाँ। 5 सवाल। दिमाग साथ लाओ।'
+			body: 'हाँ। 5 सवाल। दिमाग साथ लाओ।',
 		},
 		{
 			title: 'छोड़के मत जा, दोस्त 📚',
-			body: 'एक छोटा टेस्ट। 3 मिनट। बस।'
+			body: 'एक छोटा टेस्ट। 3 मिनट। बस।',
 		},
 		{
 			title: 'तुम्हारी स्ट्रीक ने मुझे मैसेज किया 🔥',
-			body: "पूछ रही है — 'वो कहाँ गए?' 5 सवाल। जाओ।"
-		}
-	]
+			body: "पूछ रही है — 'वो कहाँ गए?' 5 सवाल। जाओ।",
+		},
+	],
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

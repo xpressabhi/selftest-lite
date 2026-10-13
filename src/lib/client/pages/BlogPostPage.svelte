@@ -1,11 +1,11 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import CtaBanner from '$lib/client/CtaBanner.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { formatBlogDate, getBlogCategory } from '$lib/data/blogPosts';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import CtaBanner from '#lib/client/CtaBanner.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import { formatBlogDate, getBlogCategory } from '#lib/data/blogPosts.js';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
 
 	let { slug, post, related } = $props();
 
@@ -108,7 +108,11 @@
 					{#each related as post (post.slug)}
 						<article class="post-related-card">
 							<h3 class="post-related-card-title">
-								<a class="post-link" href={localizedPath(`/blog/${post.slug}`, $activeLanguage)}>{$t(post.titleKey)}</a>
+								<a
+									class="post-link"
+									href={localizedPath(`/blog/${post.slug}`, $activeLanguage)}
+									>{$t(post.titleKey)}</a
+								>
 							</h3>
 							<p class="post-related-excerpt">{$t(post.excerptKey)}</p>
 						</article>

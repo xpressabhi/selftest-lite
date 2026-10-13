@@ -1,18 +1,13 @@
-import { json } from '@sveltejs/kit';
-import {
-	getStateForIdentity,
-	upsertStateForIdentity,
-	logApiEvent,
-} from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
+import { getStateForIdentity, upsertStateForIdentity, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
 import {
 	MAX_STATE_KEYS_PER_REQUEST,
 	isSyncedStateKey,
 	validateStateValue,
-} from '$lib/shared/userState';
+} from '#lib/shared/userState.js';
 
 const STATE_GET_RATE_LIMIT = 900;
 const STATE_POST_RATE_LIMIT = 300;
@@ -48,7 +43,7 @@ export async function GET({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -68,7 +63,7 @@ export async function GET({ request, cookies }) {
 			metadata: { keyCount: Object.keys(storage).length },
 		});
 
-		return json({ storage });
+		return Response.json({ storage });
 	} catch (error) {
 		console.error('Failed to fetch user state:', error);
 		await logApiEvent({
@@ -82,7 +77,7 @@ export async function GET({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to fetch user state', code: 'STATE_FETCH_ERROR' },
 			{ status: 500 }
 		);
@@ -120,7 +115,7 @@ export async function POST({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -164,7 +159,7 @@ export async function POST({ request, cookies }) {
 			metadata: { received: entries.length, stored: storedCount },
 		});
 
-		return json({ success: true, storedKeys: storedCount });
+		return Response.json({ success: true, storedKeys: storedCount });
 	} catch (error) {
 		console.error('Failed to update user state:', error);
 		await logApiEvent({
@@ -178,7 +173,7 @@ export async function POST({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to update user state', code: 'STATE_UPDATE_ERROR' },
 			{ status: 500 }
 		);

@@ -46,7 +46,8 @@
 >
 	{#if armed}
 		<span class="fuse-undo">{undoLabel}</span>
-		<span class="fuse-line" aria-hidden="true" style={`--fuse-duration: ${durationMs}ms`}></span>
+		<span class="fuse-line" aria-hidden="true" style={`--fuse-duration: ${durationMs}ms`}
+		></span>
 	{:else}
 		{@render children?.()}
 	{/if}
@@ -99,5 +100,4 @@
 			transform: scaleX(0);
 		}
 	}
-
 </style>

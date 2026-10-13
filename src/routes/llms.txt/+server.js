@@ -1,4 +1,4 @@
-import { buildLlmsTxt } from '$lib/shared/llms';
+import { buildLlmsTxt } from '#lib/shared/llms.js';
 
 export const prerender = true;
 

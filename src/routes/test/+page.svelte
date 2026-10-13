@@ -2,24 +2,24 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { localizedApiError, t } from '$lib/client/i18n';
-	import { track } from '$lib/client/telemetry';
-	import Icon from '$lib/client/Icon.svelte';
-	import { estimateQuestionCardHeight } from '$lib/client/pretextLayout';
-	import { recordStreakActivity, unlockAchievements } from '$lib/client/learning';
-	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
-	import ReviewSheet from '$lib/client/ReviewSheet.svelte';
-	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
-	import { prepareMathTextForRendering } from '$lib/shared/latex';
+	import { localizedApiError, t } from '#lib/client/i18n.js';
+	import { track } from '#lib/client/telemetry.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import { estimateQuestionCardHeight } from '#lib/client/pretextLayout.js';
+	import { recordStreakActivity, unlockAchievements } from '#lib/client/learning.js';
+	import MarkdownContent from '#lib/client/MarkdownContent.svelte';
+	import ReviewSheet from '#lib/client/ReviewSheet.svelte';
+	import SquishSwitch from '#lib/client/SquishSwitch.svelte';
+	import { prepareMathTextForRendering } from '#lib/shared/latex.js';
 	import {
 		HINT_DWELL_SEC,
 		HINT_SKIP_STREAK,
 		MAX_HINTS_PER_TEST as MAX_HINTS,
-	} from '$lib/shared/hint';
-	import { autoAdvance, setAutoAdvance } from '$lib/client/preferences';
-	import { HAPTIC_COMMIT, triggerVibration } from '$lib/client/haptics';
-	import { focusTrap } from '$lib/client/focusTrap';
-	import { keepScreenAwake, stopKeepingScreenAwake } from '$lib/client/screenWake';
+	} from '#lib/shared/hint.js';
+	import { autoAdvance, setAutoAdvance } from '#lib/client/preferences.js';
+	import { HAPTIC_COMMIT, triggerVibration } from '#lib/client/haptics.js';
+	import { focusTrap } from '#lib/client/focusTrap.js';
+	import { keepScreenAwake, stopKeepingScreenAwake } from '#lib/client/screenWake.js';
 	import {
 		clearDraftAnswers,
 		clearDraftFlags,
@@ -38,17 +38,17 @@
 		writeDraftAnswers,
 		writeDraftFlags,
 		writeDraftHints,
-	} from '$lib/client/storage';
-	import { pushAttempt } from '$lib/client/sync';
-	import { showToast } from '$lib/client/toast';
-	import { requestPersonalize } from '$lib/client/personalize';
-	import { parseChallengeParams } from '$lib/client/challenge';
-	import { computeAttemptMarks } from '$lib/shared/marks';
-	import TestBottomBar from '$lib/client/TestBottomBar.svelte';
-	import TestQuestionCard from '$lib/client/TestQuestionCard.svelte';
-	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
-	import { drawTestCard } from '$lib/client/testCard';
-	import { shareCard } from '$lib/client/shareCardFlow';
+	} from '#lib/client/storage.js';
+	import { pushAttempt } from '#lib/client/sync.js';
+	import { showToast } from '#lib/client/toast.js';
+	import { requestPersonalize } from '#lib/client/personalize.js';
+	import { parseChallengeParams } from '#lib/client/challenge.js';
+	import { computeAttemptMarks } from '#lib/shared/marks.js';
+	import TestBottomBar from '#lib/client/TestBottomBar.svelte';
+	import TestQuestionCard from '#lib/client/TestQuestionCard.svelte';
+	import TestStatsCard from '#lib/client/TestStatsCard.svelte';
+	import { drawTestCard } from '#lib/client/testCard.js';
+	import { shareCard } from '#lib/client/shareCardFlow.js';
 
 	let questionPaper = $state(null);
 	let challenge = $state(null);
@@ -100,7 +100,9 @@
 		currentSection ? paperSections.indexOf(currentSection) + 1 : 0
 	);
 	let sectionFirstQuestion = $derived(
-		Boolean(currentSection && (currentSection.questionIndexes || [])[0] === currentQuestionIndex)
+		Boolean(
+			currentSection && (currentSection.questionIndexes || [])[0] === currentQuestionIndex
+		)
 	);
 	let suggestedSectionMinutes = $derived.by(() => {
 		const duration = Number(questionPaper?.examMeta?.durationMinutes);
@@ -236,7 +238,7 @@
 				? window.cancelIdleCallback.bind(window)
 				: window.clearTimeout.bind(window);
 		const idleId = schedule(() => {
-			import('$lib/client/markdownRenderer').then(({ prewarmRichMarkdown }) => {
+			import('#lib/client/markdownRenderer.js').then(({ prewarmRichMarkdown }) => {
 				prewarmRichMarkdown(values);
 			});
 		});
@@ -629,10 +631,7 @@
 				Math.round((Object.keys(answers).length / Math.max(1, totalQuestions)) * 100) / 100,
 		}).then((decision) => {
 			if (!decision?.applied) return;
-			if (
-				decision.promote?.includes('hint') &&
-				!flagged.includes(currentQuestionIndex)
-			) {
+			if (decision.promote?.includes('hint') && !flagged.includes(currentQuestionIndex)) {
 				toggleFlag(currentQuestionIndex);
 			}
 			// Jev agrees the learner is stuck: unlock the 50-50 button too.
@@ -684,7 +683,8 @@
 		}
 		const wrong = [];
 		for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
-			const text = typeof options[optionIndex] === 'string' ? options[optionIndex].trim() : '';
+			const text =
+				typeof options[optionIndex] === 'string' ? options[optionIndex].trim() : '';
 			if (text !== answer) {
 				wrong.push(optionIndex);
 			}
@@ -922,10 +922,7 @@
 					</p>
 					{#if questionPaper.examMeta && (questionPaper.examMeta.schoolName || questionPaper.examMeta.examName)}
 						<p class="test-summary-exam text-muted small">
-							{[
-								questionPaper.examMeta.schoolName,
-								questionPaper.examMeta.examName,
-							]
+							{[questionPaper.examMeta.schoolName, questionPaper.examMeta.examName]
 								.filter(Boolean)
 								.join(' · ')}
 						</p>
@@ -1016,7 +1013,7 @@
 				{answeredCount}
 				{totalQuestions}
 				{flaggedCount}
-				currentQuestionIndex={currentQuestionIndex}
+				{currentQuestionIndex}
 				{submitting}
 				onOpenReview={() => (showReviewSheet = true)}
 				onPrevious={previousQuestion}

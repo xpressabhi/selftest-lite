@@ -1,7 +1,7 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import Icon from '$lib/client/Icon.svelte';
-	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
+	import { t } from '#lib/client/i18n.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import { MAX_SEARCH_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
 	let {
 		examSearchQuery = '',
 		examGroupFilter = 'all',

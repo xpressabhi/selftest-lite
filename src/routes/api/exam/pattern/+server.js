@@ -1,11 +1,10 @@
-import { json } from '@sveltejs/kit';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
-import { getExamPattern, patternKeyFor } from '$lib/server/examPattern';
-import { getIndianExamById } from '$lib/data/indianExams';
-import { isAdminConfigured, isAdminRequest } from '$lib/server/adminAuth';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { VALID_LANGUAGES } from '$lib/server/quizConfig';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { getClientKey, logApiEvent } from '#lib/server/storage.js';
+import { getExamPattern, patternKeyFor } from '#lib/server/examPattern.js';
+import { getIndianExamById } from '#lib/data/indianExams.js';
+import { isAdminConfigured, isAdminRequest } from '#lib/server/adminAuth.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { VALID_LANGUAGES } from '#lib/server/quizConfig.js';
+import { API_LIMIT_ERROR_CODE } from '#lib/shared/apiLimitError.js';
 
 const PATTERN_RATE_LIMIT = 10;
 
@@ -32,7 +31,7 @@ export async function GET({ request, url }) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: API_LIMIT_ERROR_CODE,
@@ -64,7 +63,7 @@ export async function GET({ request, url }) {
 		};
 		const patternKey = patternKeyFor(target);
 		if (!patternKey) {
-			return json(
+			return Response.json(
 				{
 					error: 'Provide an exam, a paper name, or board + class + subject',
 					code: 'INVALID_PATTERN_TARGET',
@@ -73,8 +72,12 @@ export async function GET({ request, url }) {
 			);
 		}
 
-		const requestedLanguage = String(url.searchParams.get('language') || 'english').toLowerCase();
-		const language = VALID_LANGUAGES.includes(requestedLanguage) ? requestedLanguage : 'english';
+		const requestedLanguage = String(
+			url.searchParams.get('language') || 'english'
+		).toLowerCase();
+		const language = VALID_LANGUAGES.includes(requestedLanguage)
+			? requestedLanguage
+			: 'english';
 		// Forced refreshes are an admin tool: public callers are rate-limited
 		// to 10/min and must not turn discovery into a model-call button.
 		const requestedRefresh = url.searchParams.get('refresh') === '1';
@@ -84,7 +87,7 @@ export async function GET({ request, url }) {
 
 		const pattern = await getExamPattern(target, { language, refresh, discover });
 		if (!pattern) {
-			return json(
+			return Response.json(
 				{ error: 'Pattern is not cached yet', code: 'PATTERN_NOT_FOUND' },
 				{ status: 404 }
 			);
@@ -108,7 +111,7 @@ export async function GET({ request, url }) {
 			},
 		});
 
-		return json({ pattern, key: patternKey }, { headers: { 'cache-control': 'no-store' } });
+		return Response.json({ pattern, key: patternKey }, { headers: { 'cache-control': 'no-store' } });
 	} catch (error) {
 		console.error('Exam pattern discovery failed:', error);
 		await logApiEvent({
@@ -120,7 +123,7 @@ export async function GET({ request, url }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: String(error.message || '').slice(0, 500),
 		});
-		return json(
+		return Response.json(
 			{
 				error: 'Could not determine the exam pattern right now. Please retry.',
 				code: 'PATTERN_DISCOVERY_FAILED',

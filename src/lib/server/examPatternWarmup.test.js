@@ -5,7 +5,7 @@ import {
 	patternKeyForExamId,
 	planPatternWarmup,
 	summarizeWarmup,
-	warmupDelayMs
+	warmupDelayMs,
 } from './examPatternWarmup';
 
 /**
@@ -26,7 +26,7 @@ import {
 const registry = [
 	{ id: 'ssc-cgl', name: 'SSC CGL' },
 	{ id: 'neet-ug', name: 'NEET UG' },
-	{ id: 'up-tgt-pgt', name: 'UP TGT/PGT' }
+	{ id: 'up-tgt-pgt', name: 'UP TGT/PGT' },
 ];
 
 describe('patternKeyForExamId', () => {
@@ -40,7 +40,7 @@ describe('patternKeyForExamId', () => {
 			'  spaced-id  ',
 			'Mixed_Case.Id',
 			'a'.repeat(80),
-			'upsc-cse-prelims'
+			'upsc-cse-prelims',
 		];
 		for (const examId of ids) {
 			expect(patternKeyForExamId(examId), `key drift for "${examId}"`).toBe(
@@ -60,11 +60,11 @@ describe('buildWarmupTargets', () => {
 	it('keeps only registered exams, because discovery needs a real name', () => {
 		const targets = buildWarmupTargets({
 			examIds: ['ssc-cgl', 'not-a-real-exam', 'neet-ug'],
-			registry
+			registry,
 		});
 		expect(targets).toEqual([
 			{ examId: 'ssc-cgl', examName: 'SSC CGL', patternKey: 'exam:ssc-cgl' },
-			{ examId: 'neet-ug', examName: 'NEET UG', patternKey: 'exam:neet-ug' }
+			{ examId: 'neet-ug', examName: 'NEET UG', patternKey: 'exam:neet-ug' },
 		]);
 	});
 
@@ -74,13 +74,21 @@ describe('buildWarmupTargets', () => {
 	});
 
 	it('caps the run and treats an explicit zero as none, not unlimited', () => {
-		expect(buildWarmupTargets({ examIds: ['ssc-cgl', 'neet-ug'], registry, limit: 1 })).toHaveLength(1);
-		expect(buildWarmupTargets({ examIds: ['ssc-cgl', 'neet-ug'], registry, limit: 0 })).toEqual([]);
-		expect(buildWarmupTargets({ examIds: ['ssc-cgl', 'neet-ug'], registry, limit: -3 })).toEqual([]);
+		expect(
+			buildWarmupTargets({ examIds: ['ssc-cgl', 'neet-ug'], registry, limit: 1 })
+		).toHaveLength(1);
+		expect(buildWarmupTargets({ examIds: ['ssc-cgl', 'neet-ug'], registry, limit: 0 })).toEqual(
+			[]
+		);
+		expect(
+			buildWarmupTargets({ examIds: ['ssc-cgl', 'neet-ug'], registry, limit: -3 })
+		).toEqual([]);
 	});
 
 	it('ignores empty and non-string ids', () => {
-		expect(buildWarmupTargets({ examIds: ['', null, undefined, 7, '  '], registry })).toEqual([]);
+		expect(buildWarmupTargets({ examIds: ['', null, undefined, 7, '  '], registry })).toEqual(
+			[]
+		);
 	});
 
 	it('returns nothing when there is no demand', () => {
@@ -97,7 +105,7 @@ describe('planPatternWarmup', () => {
 		const plan = planPatternWarmup({
 			targets,
 			rows: [{ pattern_key: 'exam:ssc-cgl', expires_at: '2026-11-16T12:40:09Z' }],
-			now
+			now,
 		});
 		expect(plan.find((entry) => entry.examId === 'ssc-cgl').status).toBe('fresh');
 	});
@@ -106,7 +114,7 @@ describe('planPatternWarmup', () => {
 		const plan = planPatternWarmup({
 			targets,
 			rows: [{ pattern_key: 'exam:ssc-cgl', expires_at: '2026-10-08T12:00:00Z' }],
-			now
+			now,
 		});
 		expect(plan.find((entry) => entry.examId === 'ssc-cgl').status).toBe('expired');
 	});
@@ -116,9 +124,9 @@ describe('planPatternWarmup', () => {
 			targets,
 			rows: [
 				{ pattern_key: 'exam:ssc-cgl', expires_at: null },
-				{ pattern_key: 'exam:neet-ug', expires_at: 'not-a-date' }
+				{ pattern_key: 'exam:neet-ug', expires_at: 'not-a-date' },
 			],
-			now
+			now,
 		});
 		expect(plan.find((entry) => entry.examId === 'ssc-cgl').status).toBe('expired');
 		expect(plan.find((entry) => entry.examId === 'neet-ug').status).toBe('expired');
@@ -133,7 +141,7 @@ describe('planPatternWarmup', () => {
 		const plan = planPatternWarmup({
 			targets,
 			rows: [{ pattern_key: 'exam:ibps-po', expires_at: '2026-11-16T12:40:09Z' }],
-			now
+			now,
 		});
 		expect(plan.every((entry) => entry.status === 'missing')).toBe(true);
 	});
@@ -144,7 +152,7 @@ describe('planPatternWarmup', () => {
 			examId: 'up-tgt-pgt',
 			examName: 'UP TGT/PGT',
 			patternKey: 'exam:up-tgt-pgt',
-			status: 'missing'
+			status: 'missing',
 		});
 	});
 });
@@ -155,13 +163,13 @@ describe('summarizeWarmup', () => {
 			{ examId: 'a', status: 'fresh' },
 			{ examId: 'b', status: 'missing', outcome: 'warmed' },
 			{ examId: 'c', status: 'expired', outcome: 'warmed' },
-			{ examId: 'd', status: 'missing', outcome: 'failed', detail: '404' }
+			{ examId: 'd', status: 'missing', outcome: 'failed', detail: '404' },
 		]);
 		expect(summary).toEqual({
 			total: 4,
 			skippedFresh: 1,
 			warmed: 2,
-			failed: [{ examId: 'd', detail: '404' }]
+			failed: [{ examId: 'd', detail: '404' }],
 		});
 	});
 

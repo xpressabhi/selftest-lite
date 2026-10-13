@@ -8,7 +8,7 @@
 
 import { listAttemptsForIdentity } from './storage';
 import { VALID_DIFFICULTIES } from './quizConfig';
-import { isPersonalized } from '$lib/shared/userProfile';
+import { isPersonalized } from '#lib/shared/userProfile.js';
 
 export const MIN_TOPIC_ATTEMPTS = 2;
 export const HIGH_ACCURACY = 0.85;

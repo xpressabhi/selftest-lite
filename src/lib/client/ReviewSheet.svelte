@@ -1,8 +1,8 @@
 <script>
-	import Icon from '$lib/client/Icon.svelte';
-	import { t } from '$lib/client/i18n';
-	import { focusTrap } from '$lib/client/focusTrap';
-	import HoldButton from '$lib/client/HoldButton.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import { focusTrap } from '#lib/client/focusTrap.js';
+	import HoldButton from '#lib/client/HoldButton.svelte';
 
 	let {
 		total = 0,
@@ -60,12 +60,7 @@
 				<strong>{answeredCount}</strong> / {total}
 				{$t('answeredLabel')}
 			</span>
-			<button
-				class="sheet-close"
-				type="button"
-				aria-label={$t('close')}
-				onclick={onClose}
-			>
+			<button class="sheet-close" type="button" aria-label={$t('close')} onclick={onClose}>
 				<Icon name="close" size={20} />
 			</button>
 		</header>

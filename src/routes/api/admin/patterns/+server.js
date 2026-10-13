@@ -1,10 +1,9 @@
-import { json } from '@sveltejs/kit';
-import { rateLimited } from '$lib/server/apiResponse';
-import { requireAdmin } from '$lib/server/adminAuth';
-import { ensureStorageSchema, query } from '$lib/server/storage';
-import { getExamPattern } from '$lib/server/examPattern';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { readJsonBody } from '$lib/server/requestBody';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { requireAdmin } from '#lib/server/adminAuth.js';
+import { ensureStorageSchema, query } from '#lib/server/storage.js';
+import { getExamPattern } from '#lib/server/examPattern.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
 
 const PATTERNS_RATE_LIMIT = 30;
 
@@ -46,7 +45,7 @@ export async function GET({ request }) {
 			 ORDER BY fetched_at DESC
 			 LIMIT 200`
 		);
-		return json({
+		return Response.json({
 			patterns: result.rows.map((row) => ({
 				patternKey: row.pattern_key,
 				source: row.source,
@@ -61,7 +60,10 @@ export async function GET({ request }) {
 		});
 	} catch (error) {
 		console.error(error);
-		return json({ error: 'Failed to load exam patterns', code: 'PATTERNS_LIST_ERROR' }, { status: 500 });
+		return Response.json(
+			{ error: 'Failed to load exam patterns', code: 'PATTERNS_LIST_ERROR' },
+			{ status: 500 }
+		);
 	}
 }
 
@@ -79,7 +81,10 @@ export async function POST({ request }) {
 		const body = await readJsonBody(request);
 		const patternKey = typeof body?.patternKey === 'string' ? body.patternKey.trim() : '';
 		if (!patternKey) {
-			return json({ error: 'patternKey is required', code: 'PATTERN_KEY_REQUIRED' }, { status: 400 });
+			return Response.json(
+				{ error: 'patternKey is required', code: 'PATTERN_KEY_REQUIRED' },
+				{ status: 400 }
+			);
 		}
 
 		await ensureStorageSchema();
@@ -87,11 +92,14 @@ export async function POST({ request }) {
 			await query(`SELECT target FROM exam_patterns WHERE pattern_key = $1`, [patternKey])
 		).rows[0];
 		if (!row) {
-			return json({ error: 'Pattern not found', code: 'PATTERN_NOT_FOUND' }, { status: 404 });
+			return Response.json({ error: 'Pattern not found', code: 'PATTERN_NOT_FOUND' }, { status: 404 });
 		}
 		if (!row.target) {
-			return json(
-				{ error: 'Pattern has no stored target; rediscover it from the surface instead', code: 'NO_TARGET' },
+			return Response.json(
+				{
+					error: 'Pattern has no stored target; rediscover it from the surface instead',
+					code: 'NO_TARGET',
+				},
 				{ status: 400 }
 			);
 		}
@@ -100,7 +108,7 @@ export async function POST({ request }) {
 			refresh: true,
 			minRefreshAgeMs: 0,
 		});
-		return json({
+		return Response.json({
 			success: true,
 			pattern: {
 				examName: pattern?.examName || null,
@@ -111,7 +119,7 @@ export async function POST({ request }) {
 		});
 	} catch (error) {
 		console.error(error);
-		return json(
+		return Response.json(
 			{ error: 'Failed to refresh the exam pattern', code: 'PATTERN_REFRESH_ERROR' },
 			{ status: 502 }
 		);

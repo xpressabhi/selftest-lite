@@ -1,25 +1,25 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import { loginWithGoogleCredential, user } from '$lib/client/auth';
-	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import SquishSwitch from '$lib/client/SquishSwitch.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import { loginWithGoogleCredential, user } from '#lib/client/auth.js';
+	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import SquishSwitch from '#lib/client/SquishSwitch.svelte';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
 		profileInsights,
 		resetProfile,
 		saveProfile,
-	} from '$lib/client/profile';
-	import { track } from '$lib/client/telemetry';
-	import { INDIAN_EXAMS } from '$lib/data/indianExams';
-	import { createDefaultProfile } from '$lib/shared/userProfile';
+	} from '#lib/client/profile.js';
+	import { track } from '#lib/client/telemetry.js';
+	import { INDIAN_EXAMS } from '#lib/data/indianExams.js';
+	import { createDefaultProfile } from '#lib/shared/userProfile.js';
 	import {
 		MAX_PROFILE_FIELD_CHARS,
 		MAX_SEARCH_CHARS,
 		sanitizeInputText,
-	} from '$lib/shared/inputLimits';
-	import { MAX_DISPLAY_NAME_CHARS, MIN_DISPLAY_NAME_CHARS } from '$lib/shared/displayName';
+	} from '#lib/shared/inputLimits.js';
+	import { MAX_DISPLAY_NAME_CHARS, MIN_DISPLAY_NAME_CHARS } from '#lib/shared/displayName.js';
 
 	const CLASS_OPTIONS = $derived([
 		{ value: 'class-8', label: 'Class 8' },
@@ -144,11 +144,7 @@
 			});
 	});
 
-
-
 	/** Two-step confirm: the first tap arms the second, so no native dialog. */
-
-
 
 	function toggleInList(listKey, value) {
 		const current = draft[listKey] || [];

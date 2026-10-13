@@ -1,6 +1,6 @@
 <script>
 	import { onDestroy, tick } from 'svelte';
-	import { prepareMathTextForRendering } from '$lib/shared/latex';
+	import { prepareMathTextForRendering } from '#lib/shared/latex.js';
 
 	let { content = '', tag = 'div', links = 'allow' } = $props();
 	let html = $state('');
@@ -42,7 +42,7 @@
 		const normalizedValue = prepareMathTextForRendering(value || '');
 		if (needsRichRenderer(normalizedValue)) {
 			if (hasMath(normalizedValue)) {
-				await import('$lib/styles/katex.css');
+				await import('#lib/styles/katex.css');
 			}
 			const { renderRichMarkdown } = await import('./markdownRenderer.js');
 			const rendered = await renderRichMarkdown(normalizedValue);
@@ -227,5 +227,4 @@
 		max-width: 100%;
 		height: auto;
 	}
-
 </style>

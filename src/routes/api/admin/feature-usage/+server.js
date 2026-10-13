@@ -1,8 +1,7 @@
-import { json } from '@sveltejs/kit';
-import { rateLimited } from '$lib/server/apiResponse';
-import { requireAdmin } from '$lib/server/adminAuth';
-import { getFeatureUsageStats } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { requireAdmin } from '#lib/server/adminAuth.js';
+import { getFeatureUsageStats } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
 
 const STATS_RATE_LIMIT = 60;
 
@@ -24,10 +23,10 @@ export async function GET({ request, url }) {
 		const days = Number(url.searchParams.get('days')) || 30;
 		const limit = Number(url.searchParams.get('limit')) || 60;
 		const stats = await getFeatureUsageStats({ days, limit });
-		return json(stats);
+		return Response.json(stats);
 	} catch (error) {
 		console.error(error);
-		return json(
+		return Response.json(
 			{ error: 'Failed to load feature usage', code: 'FEATURE_USAGE_ERROR' },
 			{ status: 500 }
 		);

@@ -8,7 +8,7 @@ export const NOTIFICATION_STATUS = Object.freeze({
 	UPCOMING: 'upcoming',
 	OPEN: 'open',
 	CLOSING_SOON: 'closing_soon',
-	CLOSED: 'closed'
+	CLOSED: 'closed',
 });
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;

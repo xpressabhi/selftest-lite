@@ -14,7 +14,7 @@ import {
 	trigramSimilarity,
 } from './questionQuality';
 import { AR_OPTIONS } from './assertionReasoning';
-import { questionTextFor } from '$lib/shared/questionText';
+import { questionTextFor } from '#lib/shared/questionText.js';
 
 function baseQuestion(overrides = {}) {
 	return {
@@ -28,9 +28,7 @@ function baseQuestion(overrides = {}) {
 describe('shuffleOptions', () => {
 	it('keeps the same set of options and the answer', () => {
 		const shuffled = shuffleOptions(baseQuestion(), () => 0.5);
-		expect([...shuffled.options].sort()).toEqual(
-			[...baseQuestion().options].sort()
-		);
+		expect([...shuffled.options].sort()).toEqual([...baseQuestion().options].sort());
 		expect(shuffled.answer).toBe('Paris');
 	});
 
@@ -46,20 +44,26 @@ describe('inspectQuestion', () => {
 	});
 
 	it('flags duplicate and empty options', () => {
-		expect(inspectQuestion(baseQuestion({ options: ['Paris', 'Paris', 'Rome', 'Berlin'] }))).toContain(
-			'duplicate-options'
-		);
-		expect(inspectQuestion(baseQuestion({ options: ['Paris', '', 'Rome', 'Berlin'] }))).toContain(
-			'empty-option'
-		);
+		expect(
+			inspectQuestion(baseQuestion({ options: ['Paris', 'Paris', 'Rome', 'Berlin'] }))
+		).toContain('duplicate-options');
+		expect(
+			inspectQuestion(baseQuestion({ options: ['Paris', '', 'Rome', 'Berlin'] }))
+		).toContain('empty-option');
 	});
 
 	it('flags an answer that is not one of the options', () => {
-		expect(inspectQuestion(baseQuestion({ answer: 'Lyon' }))).toContain('answer-not-in-options');
+		expect(inspectQuestion(baseQuestion({ answer: 'Lyon' }))).toContain(
+			'answer-not-in-options'
+		);
 	});
 
 	it('flags lazy options', () => {
-		expect(inspectQuestion(baseQuestion({ options: ['Paris', 'All of the above', 'Madrid', 'Berlin'] })));
+		expect(
+			inspectQuestion(
+				baseQuestion({ options: ['Paris', 'All of the above', 'Madrid', 'Berlin'] })
+			)
+		);
 	});
 
 	it('flags an answer that is uniquely much longer than every other option', () => {
@@ -90,7 +94,9 @@ describe('inspectQuestion', () => {
 	});
 
 	it('flags unbalanced LaTeX', () => {
-		expect(inspectQuestion(baseQuestion({ question: 'Solve $x^2' }))).toContain('latex-unbalanced');
+		expect(inspectQuestion(baseQuestion({ question: 'Solve $x^2' }))).toContain(
+			'latex-unbalanced'
+		);
 		expect(
 			inspectQuestion(baseQuestion({ question: 'Solve $x^2$ where $x>0$' }))
 		).not.toContain('latex-unbalanced');
@@ -172,10 +178,12 @@ describe('summarizeQuestionLengths', () => {
 
 describe('trigramSimilarity', () => {
 	it('scores identical text 1 and unrelated text low', () => {
-		expect(trigramSimilarity('What is the capital of France?', 'What is the capital of France?')).toBe(1);
-		expect(trigramSimilarity('What is the capital of France?', 'Explain photosynthesis')).toBeLessThan(
-			NEAR_DUPLICATE_THRESHOLD
-		);
+		expect(
+			trigramSimilarity('What is the capital of France?', 'What is the capital of France?')
+		).toBe(1);
+		expect(
+			trigramSimilarity('What is the capital of France?', 'Explain photosynthesis')
+		).toBeLessThan(NEAR_DUPLICATE_THRESHOLD);
 	});
 });
 
@@ -244,12 +252,12 @@ describe('server-built formats (matching, assertion-reasoning, statement-based)'
 		expect(improveQuestion(matching, { random: () => 0 }).question.options).toEqual(
 			matching.options
 		);
-		expect(
-			improveQuestion(assertionReasoning, { random: () => 0 }).question.options
-		).toEqual(assertionReasoning.options);
-		expect(
-			improveQuestion(statementBased, { random: () => 0 }).question.options
-		).toEqual(statementBased.options);
+		expect(improveQuestion(assertionReasoning, { random: () => 0 }).question.options).toEqual(
+			assertionReasoning.options
+		);
+		expect(improveQuestion(statementBased, { random: () => 0 }).question.options).toEqual(
+			statementBased.options
+		);
 	});
 
 	it('skips the longest-answer tell for server-built option sets', () => {
@@ -280,7 +288,9 @@ describe('server-built formats (matching, assertion-reasoning, statement-based)'
 	});
 
 	it('keeps key-length aggregation blind to server-built formats', () => {
-		expect(summarizeQuestionLengths([assertionReasoning, matching, statementBased]).count).toBe(0);
+		expect(summarizeQuestionLengths([assertionReasoning, matching, statementBased]).count).toBe(
+			0
+		);
 	});
 
 	it('detects statement-based near-duplicates through the composed text', () => {

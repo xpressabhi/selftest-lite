@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BLOG_POSTS_BY_DATE } from '$lib/data/blogPosts';
-import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+import { BLOG_POSTS_BY_DATE } from '#lib/data/blogPosts.js';
+import { OBJECTIVE_ONLY_EXAMS } from '#lib/data/indianExams.js';
 import { SITE_ORIGIN } from './seo.js';
 import { buildLlmsTxt } from './llms.js';
 

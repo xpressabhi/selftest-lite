@@ -16,7 +16,7 @@ import {
 	extractMentionedFields,
 	extractQuestionCount,
 	hasDifficultyContradiction,
-} from '$lib/shared/intentLexicon';
+} from '#lib/shared/intentLexicon.js';
 
 export const PREVIEW_MIN_CHARS = 3;
 export const PREVIEW_MIN_INTERVAL_MS = 700;

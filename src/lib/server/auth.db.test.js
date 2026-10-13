@@ -129,21 +129,19 @@ describe('account display name', () => {
 
 describe('disconnecting Google', () => {
 	function detach(userId) {
-		return db
-			.query(DETACH_GOOGLE_IDENTITY_SQL, [userId])
-			.then((result) => result.rows[0]);
+		return db.query(DETACH_GOOGLE_IDENTITY_SQL, [userId]).then((result) => result.rows[0]);
 	}
 
 	it('clears the identity and keeps the account, its name and its id', async () => {
 		const user = await insertUser({
 			googleSub: 'google-9',
 			email: 'ninth@example.com',
-			name: 'Ninth Learner'
+			name: 'Ninth Learner',
 		});
 		await db.query(`UPDATE app_user SET picture_url = $2, locale = $3 WHERE id = $1`, [
 			user.id,
 			'https://example.com/ninth.jpg',
-			'hi'
+			'hi',
 		]);
 
 		const detached = await detach(user.id);
@@ -163,7 +161,7 @@ describe('disconnecting Google', () => {
 		const user = await insertUser({
 			googleSub: 'google-10',
 			email: 'tenth@example.com',
-			name: 'Tenth'
+			name: 'Tenth',
 		});
 		await detach(user.id);
 
@@ -174,12 +172,12 @@ describe('disconnecting Google', () => {
 			email: 'tenth@example.com',
 			name: 'Tenth Again',
 			pictureUrl: null,
-			locale: null
+			locale: null,
 		});
 		expect(reattached).toBeUndefined();
 
 		const untouched = await db.query('SELECT google_sub, email FROM app_user WHERE id = $1', [
-			user.id
+			user.id,
 		]);
 		expect(untouched.rows[0].google_sub).toBeNull();
 		expect(untouched.rows[0].email).toBeNull();

@@ -1,5 +1,5 @@
 <script>
-	import TermsPage from '$lib/client/pages/TermsPage.svelte';
+	import TermsPage from '#lib/client/pages/TermsPage.svelte';
 </script>
 
 <TermsPage />

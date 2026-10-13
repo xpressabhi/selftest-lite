@@ -8,9 +8,9 @@
 // scripts/send-reminders.mjs), max once per 20 hours.
 
 import { get } from 'svelte/store';
-import { env } from '$env/dynamic/public';
-import { normalizeReminderLanguage } from '$lib/shared/reminderCopy';
-import { parseReminderHour } from '$lib/shared/reminders';
+import { PUBLIC_VAPID_KEY } from '$app/env/public';
+import { normalizeReminderLanguage } from '#lib/shared/reminderCopy.js';
+import { parseReminderHour } from '#lib/shared/reminders.js';
 import { STORAGE_KEYS } from './constants';
 import { language } from './preferences';
 import { track } from './telemetry';
@@ -156,7 +156,7 @@ export async function enableReminders() {
 	if (!remindersSupported()) {
 		return { ok: false, reason: 'unsupported' };
 	}
-	const publicKey = env.PUBLIC_VAPID_KEY;
+	const publicKey = PUBLIC_VAPID_KEY;
 	if (!publicKey) {
 		return { ok: false, reason: 'unconfigured' };
 	}

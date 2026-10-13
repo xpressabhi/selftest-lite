@@ -7,7 +7,7 @@ import {
 	describePasskeyDevice,
 	generateDisplayName,
 	readChallengeFromClientData,
-	resolvePasskeyContext
+	resolvePasskeyContext,
 } from './passkeyPolicy.js';
 
 // These are the parts of the passkey flow the e2e ceremony cannot reach: the
@@ -23,24 +23,28 @@ describe('resolvePasskeyContext', () => {
 	it('accepts the apex and www, both mapped to the registrable domain', () => {
 		expect(resolvePasskeyContext(new URL('https://selftest.in/'), production)).toEqual({
 			rpId: 'selftest.in',
-			expectedOrigin: 'https://selftest.in'
+			expectedOrigin: 'https://selftest.in',
 		});
-		expect(resolvePasskeyContext(new URL('https://www.selftest.in/profile'), production)).toEqual({
+		expect(
+			resolvePasskeyContext(new URL('https://www.selftest.in/profile'), production)
+		).toEqual({
 			rpId: 'selftest.in',
-			expectedOrigin: 'https://www.selftest.in'
+			expectedOrigin: 'https://www.selftest.in',
 		});
 	});
 
 	it('accepts a real subdomain under the same RP ID', () => {
 		expect(resolvePasskeyContext(new URL('https://learn.selftest.in/'), production)).toEqual({
 			rpId: 'selftest.in',
-			expectedOrigin: 'https://learn.selftest.in'
+			expectedOrigin: 'https://learn.selftest.in',
 		});
 	});
 
 	it('rejects a lookalike suffix that is not a subdomain', () => {
 		expect(resolvePasskeyContext(new URL('https://evil-selftest.in/'), production)).toBeNull();
-		expect(resolvePasskeyContext(new URL('https://selftest.in.evil.com/'), production)).toBeNull();
+		expect(
+			resolvePasskeyContext(new URL('https://selftest.in.evil.com/'), production)
+		).toBeNull();
 		expect(resolvePasskeyContext(new URL('https://notselftest.in/'), production)).toBeNull();
 	});
 
@@ -51,11 +55,11 @@ describe('resolvePasskeyContext', () => {
 	it('accepts localhost over http or https, keeping the host as the RP ID', () => {
 		expect(resolvePasskeyContext(new URL('http://localhost:5174/'), production)).toEqual({
 			rpId: 'localhost',
-			expectedOrigin: 'http://localhost:5174'
+			expectedOrigin: 'http://localhost:5174',
 		});
 		expect(resolvePasskeyContext(new URL('http://127.0.0.1:5173/'), production)).toEqual({
 			rpId: '127.0.0.1',
-			expectedOrigin: 'http://127.0.0.1:5173'
+			expectedOrigin: 'http://127.0.0.1:5173',
 		});
 	});
 
@@ -64,11 +68,11 @@ describe('resolvePasskeyContext', () => {
 		expect(resolvePasskeyContext(preview, production)).toBeNull();
 		expect(
 			resolvePasskeyContext(preview, {
-				PASSKEY_ALLOWED_ORIGINS: 'https://selftest-lite-git-main.vercel.app'
+				PASSKEY_ALLOWED_ORIGINS: 'https://selftest-lite-git-main.vercel.app',
 			})
 		).toEqual({
 			rpId: 'selftest-lite-git-main.vercel.app',
-			expectedOrigin: 'https://selftest-lite-git-main.vercel.app'
+			expectedOrigin: 'https://selftest-lite-git-main.vercel.app',
 		});
 	});
 
@@ -76,7 +80,7 @@ describe('resolvePasskeyContext', () => {
 		const preview = new URL('https://selftest-lite-git-main.vercel.app/');
 		expect(
 			resolvePasskeyContext(preview, {
-				PASSKEY_ALLOWED_ORIGINS: ' https://elsewhere.example , https://other.vercel.app '
+				PASSKEY_ALLOWED_ORIGINS: ' https://elsewhere.example , https://other.vercel.app ',
 			})
 		).toBeNull();
 	});
@@ -84,7 +88,7 @@ describe('resolvePasskeyContext', () => {
 	it('honours PASSKEY_RP_ID for production hosts, including a parent domain', () => {
 		expect(
 			resolvePasskeyContext(new URL('https://learn.selftest.in/'), {
-				PASSKEY_RP_ID: 'selftest.in'
+				PASSKEY_RP_ID: 'selftest.in',
 			})
 		).toEqual({ rpId: 'selftest.in', expectedOrigin: 'https://learn.selftest.in' });
 
@@ -97,7 +101,7 @@ describe('resolvePasskeyContext', () => {
 	it('still allows localhost when an RP ID override is configured', () => {
 		expect(
 			resolvePasskeyContext(new URL('http://localhost:5174/'), {
-				PASSKEY_RP_ID: 'selftest.in'
+				PASSKEY_RP_ID: 'selftest.in',
 			})
 		).toEqual({ rpId: 'localhost', expectedOrigin: 'http://localhost:5174' });
 	});
@@ -108,7 +112,7 @@ describe('resolvePasskeyContext', () => {
 		expect(resolvePasskeyContext({}, production)).toBeNull();
 		expect(resolvePasskeyContext(new URL('https://selftest.in/'), null)).toEqual({
 			rpId: 'selftest.in',
-			expectedOrigin: 'https://selftest.in'
+			expectedOrigin: 'https://selftest.in',
 		});
 	});
 });
@@ -139,25 +143,28 @@ describe('describePasskeyDevice', () => {
 	const cases = [
 		[
 			'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-			'iPhone'
+			'iPhone',
 		],
 		[
 			'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
-			'Android device'
+			'Android device',
 		],
 		[
 			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-			'Windows PC'
+			'Windows PC',
 		],
 		[
 			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
-			'Mac'
+			'Mac',
 		],
 		[
 			'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-			'Chromebook'
+			'Chromebook',
 		],
-		['Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', 'Linux device']
+		[
+			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+			'Linux device',
+		],
 	];
 
 	it.each(cases)('labels %s', (userAgent, expected) => {
@@ -173,7 +180,11 @@ describe('describePasskeyDevice', () => {
 });
 
 describe('decideGoogleLink', () => {
-	const base = { currentGoogleSub: null, targetGoogleSub: 'google-1', claimedByAnotherUser: false };
+	const base = {
+		currentGoogleSub: null,
+		targetGoogleSub: 'google-1',
+		claimedByAnotherUser: false,
+	};
 
 	it('attaches to an account with no Google identity', () => {
 		expect(decideGoogleLink(base)).toBe('attach');
@@ -189,7 +200,7 @@ describe('decideGoogleLink', () => {
 			decideGoogleLink({
 				...base,
 				currentGoogleSub: 'google-1',
-				claimedByAnotherUser: true
+				claimedByAnotherUser: true,
 			})
 		).toBe('conflict');
 	});
@@ -228,7 +239,9 @@ describe('canRemoveLoginMethod', () => {
 
 	it('refuses when there is nothing to remove or the count is unusable', () => {
 		expect(canRemoveLoginMethod({ passkeyCount: -1, googleSub: 'google-1' })).toBe(false);
-		expect(canRemoveLoginMethod({ passkeyCount: Number.NaN, googleSub: 'google-1' })).toBe(false);
+		expect(canRemoveLoginMethod({ passkeyCount: Number.NaN, googleSub: 'google-1' })).toBe(
+			false
+		);
 		expect(canRemoveLoginMethod({ passkeyCount: '2', googleSub: 'google-1' })).toBe(false);
 		expect(canRemoveLoginMethod()).toBe(false);
 	});
@@ -238,9 +251,9 @@ describe('readChallengeFromClientData', () => {
 	const encode = (value) => bytesToBase64Url(new TextEncoder().encode(JSON.stringify(value)));
 
 	it('reads the challenge out of a well-formed clientDataJSON', () => {
-		expect(readChallengeFromClientData(encode({ type: 'webauthn.create', challenge: 'abc123' }))).toBe(
-			'abc123'
-		);
+		expect(
+			readChallengeFromClientData(encode({ type: 'webauthn.create', challenge: 'abc123' }))
+		).toBe('abc123');
 	});
 
 	it('never throws on hostile or malformed input', () => {
@@ -248,8 +261,12 @@ describe('readChallengeFromClientData', () => {
 		expect(readChallengeFromClientData(null)).toBeNull();
 		expect(readChallengeFromClientData('')).toBeNull();
 		expect(readChallengeFromClientData('!!!not-base64!!!')).toBeNull();
-		expect(readChallengeFromClientData(bytesToBase64Url(new TextEncoder().encode('not json')))).toBeNull();
-		expect(readChallengeFromClientData(bytesToBase64Url(new Uint8Array([0xff, 0xfe, 0xfd])))).toBeNull();
+		expect(
+			readChallengeFromClientData(bytesToBase64Url(new TextEncoder().encode('not json')))
+		).toBeNull();
+		expect(
+			readChallengeFromClientData(bytesToBase64Url(new Uint8Array([0xff, 0xfe, 0xfd])))
+		).toBeNull();
 	});
 
 	it('rejects payloads where the challenge is missing or not a string', () => {

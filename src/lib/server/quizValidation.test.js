@@ -265,9 +265,9 @@ describe('answerMatchesOption', () => {
 		expect(answerMatchesOption(options, 'Primary chlorophyll', 'Cellular cytoplasm')).toBe(
 			false
 		);
-		expect(
-			answerMatchesOption(options, 'Primary chlorophyll', 'C. Cellular cytoplasm')
-		).toBe(false);
+		expect(answerMatchesOption(options, 'Primary chlorophyll', 'C. Cellular cytoplasm')).toBe(
+			false
+		);
 	});
 
 	it('rejects a label whose attached text matches no option', () => {
@@ -482,7 +482,9 @@ describe('new paper formats', () => {
 		const malformed = inspectGeneratedPaper({
 			questionPaper: {
 				topic: 'Vitamins',
-				questions: [{ ...question, options: [...question.options.slice(1), 'not-a-combination'] }],
+				questions: [
+					{ ...question, options: [...question.options.slice(1), 'not-a-combination'] },
+				],
 			},
 			testType: 'matching',
 			numQuestions: 1,
@@ -619,7 +621,11 @@ describe('new paper formats', () => {
 				questions: [
 					{
 						...question,
-						options: [question.options[0], question.options[0], ...question.options.slice(1, 3)],
+						options: [
+							question.options[0],
+							question.options[0],
+							...question.options.slice(1, 3),
+						],
 					},
 				],
 			},
@@ -632,7 +638,9 @@ describe('new paper formats', () => {
 		const drifted = inspectGeneratedPaper({
 			questionPaper: {
 				topic: 'Polity',
-				questions: [{ ...question, answer: question.answer === 'Only 1' ? 'Only 2' : 'Only 1' }],
+				questions: [
+					{ ...question, answer: question.answer === 'Only 1' ? 'Only 2' : 'Only 1' },
+				],
 			},
 			testType: 'true-false',
 			numQuestions: 1,

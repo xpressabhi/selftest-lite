@@ -1,23 +1,23 @@
 <script>
 	import { onMount } from 'svelte';
-	import { LOCAL_STORAGE_CHANGE_EVENT, STORAGE_KEYS } from '$lib/client/constants';
-	import { t } from '$lib/client/i18n';
-	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
-	import { language } from '$lib/client/preferences';
-	import { formatDate, localeFor } from '$lib/client/formatting';
-	import FuseButton from '$lib/client/FuseButton.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { track, trackDebounced } from '$lib/client/telemetry';
-	import { buildReviewQueue, formatDuration, getStats } from '$lib/client/learning';
-	import { clearAllHistory, getHistory, removeFromHistory } from '$lib/client/storage';
-	import { requestPersonalize } from '$lib/client/personalize';
+	import { LOCAL_STORAGE_CHANGE_EVENT, STORAGE_KEYS } from '#lib/client/constants.js';
+	import { t } from '#lib/client/i18n.js';
+	import { MAX_SEARCH_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
+	import { language } from '#lib/client/preferences.js';
+	import { formatDate, localeFor } from '#lib/client/formatting.js';
+	import FuseButton from '#lib/client/FuseButton.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import { track, trackDebounced } from '#lib/client/telemetry.js';
+	import { buildReviewQueue, formatDuration, getStats } from '#lib/client/learning.js';
+	import { clearAllHistory, getHistory, removeFromHistory } from '#lib/client/storage.js';
+	import { requestPersonalize } from '#lib/client/personalize.js';
 	import {
 		flushPendingAttempts,
 		getPendingAttemptCount,
 		hydrateHistoryFromServer,
 		purgePendingAttemptsForTest,
-	} from '$lib/client/sync';
-	import { showToast } from '$lib/client/toast';
+	} from '#lib/client/sync.js';
+	import { showToast } from '#lib/client/toast.js';
 
 	let history = $state([]);
 	let search = $state('');
@@ -93,7 +93,9 @@
 			historyReranked = true;
 			void requestPersonalize('history', { ids }).then((decision) => {
 				if (!decision?.applied || !decision.action || decision.action === 'none') return;
-				const index = history.findIndex((entry) => String(entry.id) === String(decision.action));
+				const index = history.findIndex(
+					(entry) => String(entry.id) === String(decision.action)
+				);
 				if (index > 0) {
 					const promoted = history[index];
 					history = [promoted, ...history.slice(0, index), ...history.slice(index + 1)];
@@ -224,7 +226,9 @@
 				<strong>{stats.totalQuestions}</strong><span>{$t('questionsHeading')}</span>
 			</div>
 			<div class="stat-cell">
-				<strong>{formatDuration(stats.totalTime, $t('minuteShort'), $t('hourShort'))}</strong>
+				<strong
+					>{formatDuration(stats.totalTime, $t('minuteShort'), $t('hourShort'))}</strong
+				>
 				<span>{$t('timeSpent')}</span>
 			</div>
 		</section>
@@ -313,7 +317,9 @@
 										0}
 								</span>
 							{:else}
-								<span class="score-chip is-unsubmitted">{$t('unsubmittedTest')}</span>
+								<span class="score-chip is-unsubmitted"
+									>{$t('unsubmittedTest')}</span
+								>
 							{/if}
 						</a>
 						<FuseButton
@@ -321,7 +327,9 @@
 							label={`${$t('deleteTest')}: ${entry.topic || $t('untitledTest')}`}
 							undoLabel={$t('undo')}
 							durationMs={4000}
-							class={pendingDelete?.id === entry.id ? 'history-undo' : 'history-delete'}
+							class={pendingDelete?.id === entry.id
+								? 'history-undo'
+								: 'history-delete'}
 							onarm={() => armDelete(entry)}
 							oncancel={undoDelete}
 							onfire={() => performDelete(entry)}

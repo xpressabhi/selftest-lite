@@ -18,7 +18,7 @@ import {
 	titleKey,
 	todayInIst,
 	tokenSetSimilarity,
-	validateNotificationDates
+	validateNotificationDates,
 } from './examNotifications';
 
 // Failure modes this module must refuse:
@@ -38,7 +38,9 @@ describe('sanitizeExtractedTitle', () => {
 	});
 
 	it('strips tags, decodes entities and collapses whitespace', () => {
-		expect(sanitizeExtractedTitle('<b>CGL</b>&nbsp;2026 &amp; CHSL</a>')).toBe('CGL 2026 & CHSL');
+		expect(sanitizeExtractedTitle('<b>CGL</b>&nbsp;2026 &amp; CHSL</a>')).toBe(
+			'CGL 2026 & CHSL'
+		);
 		expect(sanitizeExtractedTitle('  Recruitment\n\tof   Scientists  ')).toBe(
 			'Recruitment of Scientists'
 		);
@@ -53,7 +55,9 @@ describe('sanitizeExtractedTitle', () => {
 describe('titleKey and dedupeKeyFor', () => {
 	it('is stable across casing, punctuation and repeated whitespace', () => {
 		expect(titleKey('CGL 2026 — Notice No. 05/2026')).toBe('cgl 2026 notice no 05 2026');
-		expect(titleKey('cgl   2026 notice no 05/2026')).toBe(titleKey('CGL 2026 — Notice No. 05/2026'));
+		expect(titleKey('cgl   2026 notice no 05/2026')).toBe(
+			titleKey('CGL 2026 — Notice No. 05/2026')
+		);
 	});
 
 	it('keeps distinct titles distinct', () => {
@@ -61,9 +65,13 @@ describe('titleKey and dedupeKeyFor', () => {
 	});
 
 	it('builds a sha256 key scoped by source and returns null without a title', () => {
-		const expected = createHash('sha256').update(`ssc|${titleKey('CGL 2026 Notice')}`).digest('hex');
+		const expected = createHash('sha256')
+			.update(`ssc|${titleKey('CGL 2026 Notice')}`)
+			.digest('hex');
 		expect(dedupeKeyFor('ssc', 'CGL 2026 Notice')).toBe(expected);
-		expect(dedupeKeyFor('upsc', 'CGL 2026 Notice')).not.toBe(dedupeKeyFor('ssc', 'CGL 2026 Notice'));
+		expect(dedupeKeyFor('upsc', 'CGL 2026 Notice')).not.toBe(
+			dedupeKeyFor('ssc', 'CGL 2026 Notice')
+		);
 		expect(dedupeKeyFor('ssc', '   ')).toBe(null);
 		expect(dedupeKeyFor('', 'CGL 2026')).toBe(null);
 	});
@@ -98,7 +106,7 @@ describe('isExcludedScopeTitle', () => {
 			'Answer Key released',
 			'Cut-off marks for MTS',
 			'Merit List of selected candidates',
-			'Score Card download'
+			'Score Card download',
 		]) {
 			expect(isExcludedScopeTitle(title)).toBe(true);
 		}
@@ -110,7 +118,7 @@ describe('isExcludedScopeTitle', () => {
 			'Corrigendum to CGL 2026 notice',
 			'Recruitment of Scientist-B',
 			'Extension of last date for applications',
-			'ADDENDUM: revised vacancies'
+			'ADDENDUM: revised vacancies',
 		]) {
 			expect(isExcludedScopeTitle(title)).toBe(false);
 		}
@@ -131,7 +139,7 @@ describe('stripTrackingParams', () => {
 			'javascript:alert(1)',
 			'ftp://ssc.gov.in/file',
 			'https://user:pass@ssc.gov.in/x',
-			null
+			null,
 		]) {
 			expect(stripTrackingParams(value)).toBe(null);
 		}
@@ -169,7 +177,15 @@ describe('isOfficialHost', () => {
 describe('parseIsoDate and todayInIst', () => {
 	it('accepts exactly YYYY-MM-DD and rejects everything else', () => {
 		expect(parseIsoDate('2026-09-26')).toBe('2026-09-26');
-		for (const value of ['26-09-2026', '2026-9-6', '2026-13-01', '2026-02-30', '', null, 20260926]) {
+		for (const value of [
+			'26-09-2026',
+			'2026-9-6',
+			'2026-13-01',
+			'2026-02-30',
+			'',
+			null,
+			20260926,
+		]) {
 			expect(parseIsoDate(value)).toBe(null);
 		}
 	});
@@ -208,7 +224,7 @@ describe('validateNotificationDates', () => {
 				publishedAt: '2026-09-01',
 				applyStart: '2026-10-01',
 				applyEnd: '2026-09-20',
-				examDate: null
+				examDate: null,
 			},
 			today
 		);
@@ -242,7 +258,7 @@ describe('validateNotificationDates', () => {
 				publishedAt: '2026-09-01',
 				applyStart: '2026-09-05',
 				applyEnd: '2026-10-05',
-				examDate: '2026-12-01'
+				examDate: '2026-12-01',
 			},
 			today
 		);
@@ -251,7 +267,7 @@ describe('validateNotificationDates', () => {
 			applyStart: '2026-09-05',
 			applyEnd: '2026-10-05',
 			examDate: '2026-12-01',
-			problems: []
+			problems: [],
 		});
 	});
 });

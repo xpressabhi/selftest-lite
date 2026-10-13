@@ -14,7 +14,7 @@
 // - `answers`:   authoritative user clarification answers keyed by plan field
 //                (topic, examId, difficulty, ...)
 
-import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
+import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
 import {
 	DEFAULT_EXAM_QUESTIONS,
 	DEFAULT_QUIZ_QUESTIONS,
@@ -28,7 +28,7 @@ import {
 	extractQuestionCount,
 	hasDifficultyContradiction,
 	repairTopicSpan,
-} from '$lib/shared/intentLexicon';
+} from '#lib/shared/intentLexicon.js';
 
 export {
 	MAX_QUESTIONS,
@@ -176,7 +176,8 @@ export function buildIntentQuestions({
 			instructions: INSTRUCTIONS.test_type,
 			criteria: {
 				'multiple-choice': 'Classic multiple-choice questions with four options',
-				'true-false': 'Statement-based questions that list 3-4 statements and ask which are correct',
+				'true-false':
+					'Statement-based questions that list 3-4 statements and ask which are correct',
 				coding: 'Programming problems with code answers',
 				'speed-challenge': 'A rapid-fire quick test against the clock',
 				matching: 'Match the columns / match the following questions',

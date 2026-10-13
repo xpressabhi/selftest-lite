@@ -26,7 +26,9 @@ export const matchingQuestionSchema = z.object({
 		),
 	columnA: z
 		.array(z.string())
-		.describe('Column I: exactly four short items (up to six words each), distinct from one another'),
+		.describe(
+			'Column I: exactly four short items (up to six words each), distinct from one another'
+		),
 	columnB: z
 		.array(z.string())
 		.describe(
@@ -36,7 +38,9 @@ export const matchingQuestionSchema = z.object({
 
 export const assertionReasoningQuestionSchema = z.object({
 	assertion: z.string().describe('Assertion (A): one factual statement'),
-	reason: z.string().describe('Reason (R): one factual statement that does not restate the assertion'),
+	reason: z
+		.string()
+		.describe('Reason (R): one factual statement that does not restate the assertion'),
 	rationale: z
 		.string()
 		.describe(

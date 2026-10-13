@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { ADMIN_UNAUTHORIZED, adminFetch } from '$lib/client/adminApi';
+	import { ADMIN_UNAUTHORIZED, adminFetch } from '#lib/client/adminApi.js';
 	import {
 		agentFamily,
 		dayLabel,
@@ -9,9 +9,13 @@
 		formatTime,
 		formatValue,
 		hourLabel,
-	} from '$lib/client/formatting';
-	import { t } from '$lib/client/i18n';
-	import { clampInputText, MAX_ADMIN_FIELD_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
+	} from '#lib/client/formatting.js';
+	import { t } from '#lib/client/i18n.js';
+	import {
+		clampInputText,
+		MAX_ADMIN_FIELD_CHARS,
+		sanitizeInputText,
+	} from '#lib/shared/inputLimits.js';
 
 	let authed = $state(false);
 	let checking = $state(true);
@@ -957,8 +961,7 @@
 										<table class="admin-table">
 											<thead
 												><tr
-													><th>Tier</th><th>Identities</th><th
-														>Share</th
+													><th>Tier</th><th>Identities</th><th>Share</th
 													></tr
 												></thead
 											>
@@ -1019,16 +1022,15 @@
 											<table class="admin-table">
 												<thead
 													><tr
-														><th>Bucket</th><th>Sessions</th><th
-															>%</th
+														><th>Bucket</th><th>Sessions</th><th>%</th
 														></tr
 													></thead
 												>
 												<tbody>
 													{#each deviceNetwork.network?.[key] || [] as row (row.bucket)}
 														<tr
-															><td class="mono">{row.bucket}</td
-															><td>{formatNumber(row.sessions)}</td
+															><td class="mono">{row.bucket}</td><td
+																>{formatNumber(row.sessions)}</td
 															><td>{row.pct}%</td></tr
 														>
 													{/each}
@@ -1045,18 +1047,17 @@
 										<table class="admin-table">
 											<thead
 												><tr
-													><th>Downlink</th><th>Started</th><th
-														>Failed</th
+													><th>Downlink</th><th>Started</th><th>Failed</th
 													><th>Fail %</th><th>Avg fail s</th></tr
 												></thead
 											>
 											<tbody>
 												{#each deviceNetwork.generateByDownlink || [] as row (row.bucket)}
 													<tr
-														><td class="mono">{row.bucket}</td
-														><td>{formatNumber(row.started)}</td
-														><td>{formatNumber(row.failed)}</td
-														><td>{row.failRate ?? '-'}</td
+														><td class="mono">{row.bucket}</td><td
+															>{formatNumber(row.started)}</td
+														><td>{formatNumber(row.failed)}</td><td
+															>{row.failRate ?? '-'}</td
 														><td>{row.avgFailSeconds ?? '-'}</td></tr
 													>
 												{/each}
@@ -1068,11 +1069,12 @@
 						</div>
 						{#if deviceNetwork.floor}
 							<p class="text-muted small mt-3 mb-0">
-								Supported floor: downlink {deviceNetwork.floor.bucket} Mbps (p10,
-								covers {deviceNetwork.floor.coveragePct}% of sessions with a known
+								Supported floor: downlink {deviceNetwork.floor.bucket} Mbps (p10, covers
+								{deviceNetwork.floor.coveragePct}% of sessions with a known
 								downlink) · RTT p90 {deviceNetwork.floor.rttBucket ?? 'unknown'} ms ·
 								generate failure at or below: {deviceNetwork.floor.failPct ?? '-'}%
-								({deviceNetwork.floor.failedBelow}/{deviceNetwork.floor.startedBelow})
+								({deviceNetwork.floor.failedBelow}/{deviceNetwork.floor
+									.startedBelow})
 							</p>
 						{/if}
 					{:else}
@@ -1088,7 +1090,9 @@
 			<!-- HEALTH TAB -->
 			{#if activeTab === 'patterns'}
 				<div class="bg-body border rounded-3 p-3 mb-4">
-					<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+					<div
+						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
+					>
 						<h2 class="h6 fw-bold mb-0">Exam patterns</h2>
 						<button
 							class="btn btn-sm btn-outline-secondary"
@@ -1119,7 +1123,9 @@
 									<tbody>
 										{#each examPatterns as pattern (pattern.patternKey)}
 											<tr>
-												<td class="text-muted small">{pattern.patternKey}</td>
+												<td class="text-muted small"
+													>{pattern.patternKey}</td
+												>
 												<td>{pattern.examName || '-'}</td>
 												<td>{pattern.patternYear || '-'}</td>
 												<td>{pattern.sectionCount}</td>
@@ -1131,7 +1137,8 @@
 														type="button"
 														disabled={!pattern.refreshable ||
 															patternBusyKey === pattern.patternKey}
-														onclick={() => refreshPatternRow(pattern.patternKey)}
+														onclick={() =>
+															refreshPatternRow(pattern.patternKey)}
 													>
 														Refresh
 													</button>
@@ -1163,7 +1170,9 @@
 							/>
 						</div>
 						<div class="col-md-3">
-							<label class="form-label small" for="premium-expiry">Expires (optional)</label>
+							<label class="form-label small" for="premium-expiry"
+								>Expires (optional)</label
+							>
 							<input
 								id="premium-expiry"
 								class="form-control"
@@ -1182,7 +1191,11 @@
 							/>
 						</div>
 						<div class="col-md-2">
-							<button class="btn btn-sm btn-primary w-full" type="submit" disabled={premiumBusy}>
+							<button
+								class="btn btn-sm btn-primary w-full"
+								type="submit"
+								disabled={premiumBusy}
+							>
 								Grant
 							</button>
 						</div>
@@ -1209,13 +1222,19 @@
 											<td>
 												{grant.email || `user #${grant.user_id}`}
 												{#if grant.name}
-													<span class="text-muted small"> · {grant.name}</span>
+													<span class="text-muted small">
+														· {grant.name}</span
+													>
 												{/if}
 											</td>
 											<td>{grant.feature}</td>
 											<td>{grant.status}</td>
 											<td>{formatTime(grant.granted_at)}</td>
-											<td>{grant.expires_at ? formatTime(grant.expires_at) : 'never'}</td>
+											<td
+												>{grant.expires_at
+													? formatTime(grant.expires_at)
+													: 'never'}</td
+											>
 											<td>
 												{#if grant.status === 'active'}
 													<button
@@ -1284,8 +1303,8 @@
 						<p class="text-muted small mb-3">
 							Deployment:
 							<span class="mono">
-								{health.deployment?.provider || '-'} · {health.deployment?.environment ||
-									'-'}
+								{health.deployment?.provider || '-'} · {health.deployment
+									?.environment || '-'}
 								{#if health.deployment?.region}· {health.deployment.region}{/if}
 								{#if health.deployment?.commit}· {health.deployment.commit}{/if}
 								{#if health.deployment?.branch}· {health.deployment.branch}{/if}
@@ -1322,7 +1341,8 @@
 								<span>Error rate</span>
 							</div>
 							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.system?.cpu?.usagePercent, '%')}</strong>
+								<strong>{formatValue(health.system?.cpu?.usagePercent, '%')}</strong
+								>
 								<span>CPU usage (per core)</span>
 							</div>
 							<div class="bg-body border rounded-3 p-3">
@@ -1350,13 +1370,15 @@
 										<span
 											>Total:
 											<strong
-												>{health.database?.connections?.total ?? '-'}</strong
+												>{health.database?.connections?.total ??
+													'-'}</strong
 											></span
 										>
 										<span
 											>Active:
 											<strong
-												>{health.database?.connections?.active ?? '-'}</strong
+												>{health.database?.connections?.active ??
+													'-'}</strong
 											></span
 										>
 										<span
@@ -1368,8 +1390,10 @@
 									</div>
 									<p class="text-muted small mb-0 mt-2">
 										Instance pool:
-										{health.database?.connections?.instancePool?.total ?? '-'} total ·
-										{health.database?.connections?.instancePool?.idle ?? '-'} idle ·
+										{health.database?.connections?.instancePool?.total ?? '-'} total
+										·
+										{health.database?.connections?.instancePool?.idle ?? '-'} idle
+										·
 										{health.database?.connections?.instancePool?.waiting ?? '-'} waiting
 									</p>
 								</div>
@@ -1378,12 +1402,14 @@
 								<div class="bg-body border rounded-3 p-3">
 									<h3 class="h6 fw-bold mb-2">Health</h3>
 									<p class="text-muted small mb-0">
-										CPU and memory are for the serverless instance that served this
-										request. Requests and database metrics span all instances.
+										CPU and memory are for the serverless instance that served
+										this request. Requests and database metrics span all
+										instances.
 									</p>
 									<p class="text-muted small mb-0 mt-2">
 										Deployment: {health.deployment?.environment || '-'}
-										{#if health.deployment?.region}· {health.deployment.region}{/if}
+										{#if health.deployment?.region}· {health.deployment
+												.region}{/if}
 									</p>
 								</div>
 							</section>

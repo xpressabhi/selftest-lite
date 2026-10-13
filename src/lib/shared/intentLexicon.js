@@ -4,7 +4,7 @@
 // engine (src/lib/server/intentParse.js) and the client live preview
 // (src/lib/client/livePreview.js) so the parsing rules live in one place.
 
-import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+import { OBJECTIVE_ONLY_EXAMS } from '#lib/data/indianExams.js';
 
 export const MIN_QUESTIONS = 5;
 // Matches the server cap (quizConfig MAX_QUESTIONS = 200) so planner-typed
@@ -299,9 +299,7 @@ function isStopwordPrefix(token) {
 
 function isContentToken(token) {
 	const lower = token.toLowerCase();
-	return (
-		!TOPIC_STOPWORDS.has(lower) && !/^\d+$/u.test(token) && !isStopwordPrefix(token)
-	);
+	return !TOPIC_STOPWORDS.has(lower) && !/^\d+$/u.test(token) && !isStopwordPrefix(token);
 }
 
 // Devanagari and other Indic scripts use combining marks (Unicode M category)
@@ -496,11 +494,7 @@ export function repairTopicSpan(intent, span) {
 	}
 
 	const repaired = text.slice(tokens[from].start, tokens[to].end).replace(/\s+/gu, ' ').trim();
-	if (
-		to - from + 1 > REPAIR_MAX_TOKENS ||
-		repaired.length > REPAIR_MAX_CHARS ||
-		!repaired
-	) {
+	if (to - from + 1 > REPAIR_MAX_TOKENS || repaired.length > REPAIR_MAX_CHARS || !repaired) {
 		return chosen;
 	}
 	return repaired;
@@ -584,7 +578,8 @@ const TEST_TYPE_VALUE_PATTERNS = [
 	{ value: 'speed-challenge', pattern: /\b(speed|rapid|timer|timed)\b|तेज़/iu },
 	{
 		value: 'matching',
-		pattern: /\b(match(ing)?\s+(the\s+)?(following|columns?|lists?)|column\s+match)\b|सुमेलित|मिलान/iu,
+		pattern:
+			/\b(match(ing)?\s+(the\s+)?(following|columns?|lists?)|column\s+match)\b|सुमेलित|मिलान/iu,
 	},
 	{
 		value: 'assertion-reasoning',

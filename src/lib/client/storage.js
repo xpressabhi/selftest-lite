@@ -1,6 +1,6 @@
 import { LOCAL_STORAGE_CHANGE_EVENT, LOCAL_STORAGE_SYNC_EVENT, STORAGE_KEYS } from './constants';
 import { getClientHeaders } from './identity';
-import { questionTextFor } from '$lib/shared/questionText';
+import { questionTextFor } from '#lib/shared/questionText.js';
 
 export function emitLocalStorageChange(keys = []) {
 	if (typeof window === 'undefined') {
@@ -226,9 +226,7 @@ export function toggleQuestionBookmark(question, metadata = {}) {
 		(item) => item.question === text && item.answer === question.answer
 	);
 	const nextBookmarks = exists
-		? bookmarks.filter(
-				(item) => item.question !== text || item.answer !== question.answer
-			)
+		? bookmarks.filter((item) => item.question !== text || item.answer !== question.answer)
 		: [
 				{
 					...question,

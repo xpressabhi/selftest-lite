@@ -7,7 +7,7 @@ import {
 	normalizeExtractedItems,
 	runExamSync,
 	runSourceDiscovery,
-	withRetries
+	withRetries,
 } from './examSync';
 
 // Orchestration failure modes, pinned before the implementation existed:
@@ -26,7 +26,7 @@ const SOURCE = {
 	allowedHosts: ['ssc.gov.in'],
 	examIds: ['ssc-cgl'],
 	linkHint: '',
-	enrichPdfs: false
+	enrichPdfs: false,
 };
 
 const TODAY = '2026-09-26';
@@ -37,7 +37,7 @@ function fakeStore({ keys = [], titles = [], suggestions = [] } = {}) {
 		quarantines: [],
 		savedSuggestions: [],
 		pending: suggestions,
-		addedIds: []
+		addedIds: [],
 	};
 	return {
 		state,
@@ -59,7 +59,7 @@ function fakeStore({ keys = [], titles = [], suggestions = [] } = {}) {
 		},
 		async markSuggestionsAdded(ids) {
 			state.addedIds.push(...ids);
-		}
+		},
 	};
 }
 
@@ -78,7 +78,7 @@ function rawItem(overrides = {}) {
 		state: null,
 		examId: 'ssc-cgl',
 		confidence: 0.9,
-		...overrides
+		...overrides,
 	};
 }
 
@@ -90,7 +90,7 @@ function baseRun(overrides = {}) {
 		checkLink: async () => true,
 		store: fakeStore(),
 		todayIso: TODAY,
-		...overrides
+		...overrides,
 	};
 }
 
@@ -100,7 +100,7 @@ describe('buildExtractionPrompt', () => {
 			source: { ...SOURCE, linkHint: 'Attachments are relative to /api/attachment/.' },
 			pageText: 'PAGE BODY',
 			todayIso: TODAY,
-			examOptions: [{ id: 'ssc-cgl', name: 'SSC CGL' }]
+			examOptions: [{ id: 'ssc-cgl', name: 'SSC CGL' }],
 		});
 		expect(prompt).toContain('Staff Selection Commission');
 		expect(prompt).toContain(TODAY);
@@ -117,7 +117,7 @@ describe('buildDiscoveryPrompt', () => {
 	it('asks only for official portals and lists already-known hosts', () => {
 		const prompt = buildDiscoveryPrompt({
 			knownHosts: ['ssc.gov.in', 'upsc.gov.in'],
-			todayIso: TODAY
+			todayIso: TODAY,
 		});
 		expect(prompt).toContain('ssc.gov.in');
 		expect(prompt).toMatch(/official/i);
@@ -143,8 +143,8 @@ describe('normalizeExtractedItems', () => {
 					state: '  Bihar ',
 					examId: 'invented-exam',
 					vacancies: '12256',
-					confidence: 1.4
-				})
+					confidence: 1.4,
+				}),
 			],
 			SOURCE,
 			TODAY
@@ -168,20 +168,29 @@ describe('normalizeExtractedItems', () => {
 
 describe('classifyExtractedItem', () => {
 	const item = normalizeExtractedItems([rawItem()], SOURCE, TODAY)[0];
-	const blank = { knownKeys: [], recentTitles: [], seenKeys: new Set(), allowedHosts: SOURCE.allowedHosts };
+	const blank = {
+		knownKeys: [],
+		recentTitles: [],
+		seenKeys: new Set(),
+		allowedHosts: SOURCE.allowedHosts,
+	};
 
 	it('publishes a validated new item', () => {
 		expect(classifyExtractedItem(item, blank)).toEqual({
 			action: 'publish',
-			reason: null
+			reason: null,
 		});
 	});
 
 	it('drops lifecycle and duplicate-in-batch items', () => {
-		const result = normalizeExtractedItems([rawItem({ title: 'Final Result declared' })], SOURCE, TODAY)[0];
+		const result = normalizeExtractedItems(
+			[rawItem({ title: 'Final Result declared' })],
+			SOURCE,
+			TODAY
+		)[0];
 		expect(classifyExtractedItem(result, blank)).toEqual({
 			action: 'drop',
-			reason: 'out_of_scope'
+			reason: 'out_of_scope',
 		});
 		expect(
 			classifyExtractedItem(item, { ...blank, seenKeys: new Set([item.dedupeKey]) })
@@ -196,19 +205,23 @@ describe('classifyExtractedItem', () => {
 		)[0];
 		expect(classifyExtractedItem(foreign, blank)).toEqual({
 			action: 'quarantine',
-			reason: 'link_not_allowed'
+			reason: 'link_not_allowed',
 		});
 
-		const missing = normalizeExtractedItems([rawItem({ notificationUrl: null })], SOURCE, TODAY)[0];
+		const missing = normalizeExtractedItems(
+			[rawItem({ notificationUrl: null })],
+			SOURCE,
+			TODAY
+		)[0];
 		expect(classifyExtractedItem(missing, blank)).toEqual({
 			action: 'quarantine',
-			reason: 'link_missing'
+			reason: 'link_missing',
 		});
 
 		const unsure = normalizeExtractedItems([rawItem({ confidence: 0.2 })], SOURCE, TODAY)[0];
 		expect(classifyExtractedItem(unsure, blank)).toEqual({
 			action: 'quarantine',
-			reason: 'low_confidence'
+			reason: 'low_confidence',
 		});
 	});
 
@@ -221,13 +234,14 @@ describe('classifyExtractedItem', () => {
 		expect(
 			classifyExtractedItem(near, {
 				...blank,
-				recentTitles: ['Combined Graduate Level Examination 2026 – Notice']
+				recentTitles: ['Combined Graduate Level Examination 2026 – Notice'],
 			})
 		).toEqual({ action: 'quarantine', reason: 'possible_duplicate' });
 
-		expect(
-			classifyExtractedItem(item, { ...blank, knownKeys: [item.dedupeKey] })
-		).toEqual({ action: 'publish', reason: null });
+		expect(classifyExtractedItem(item, { ...blank, knownKeys: [item.dedupeKey] })).toEqual({
+			action: 'publish',
+			reason: null,
+		});
 	});
 });
 
@@ -237,7 +251,7 @@ describe('runExamSync', () => {
 		const report = await runExamSync(
 			baseRun({
 				store,
-				extractItems: async () => [rawItem(), rawItem({ title: 'SSC CHSL 2026 Notice' })]
+				extractItems: async () => [rawItem(), rawItem({ title: 'SSC CHSL 2026 Notice' })],
 			})
 		);
 		expect(report.status).toBe('ok');
@@ -257,7 +271,7 @@ describe('runExamSync', () => {
 				checkLink: async () => {
 					checks += 1;
 					return false;
-				}
+				},
 			})
 		);
 		expect(checks).toBe(0);
@@ -272,7 +286,7 @@ describe('runExamSync', () => {
 		expect(report.totals.itemsQuarantined).toBe(1);
 		expect(store.state.quarantines[0]).toMatchObject({ reason: 'link_unreachable' });
 		expect(report.sources[0].quarantinedItems[0]).toMatchObject({
-			reason: 'link_unreachable'
+			reason: 'link_unreachable',
 		});
 	});
 
@@ -286,7 +300,7 @@ describe('runExamSync', () => {
 						throw new Error('403 blocked');
 					}
 					return 'ok';
-				}
+				},
 			})
 		);
 		expect(report.status).toBe('partial');
@@ -302,7 +316,7 @@ describe('runExamSync', () => {
 			baseRun({
 				fetchSourceText: async () => {
 					throw new Error('network down');
-				}
+				},
 			})
 		);
 		expect(report.status).toBe('failed');
@@ -314,7 +328,7 @@ describe('runExamSync', () => {
 		const report = await runExamSync(
 			baseRun({
 				store,
-				extractItems: async () => [rawItem({ applyEnd: '31/10/2026' })]
+				extractItems: async () => [rawItem({ applyEnd: '31/10/2026' })],
 			})
 		);
 		expect(store.state.upserts[0].applyEnd).toBe(null);
@@ -324,7 +338,10 @@ describe('runExamSync', () => {
 	it('never exceeds the per-source link check cap', async () => {
 		let checks = 0;
 		const items = Array.from({ length: 10 }, (_, index) =>
-			rawItem({ title: `Notice number ${index}`, notificationUrl: `https://ssc.gov.in/n/${index}` })
+			rawItem({
+				title: `Notice number ${index}`,
+				notificationUrl: `https://ssc.gov.in/n/${index}`,
+			})
 		);
 		await runExamSync(
 			baseRun({
@@ -333,7 +350,7 @@ describe('runExamSync', () => {
 				checkLink: async () => {
 					checks += 1;
 					return true;
-				}
+				},
 			})
 		);
 		expect(checks).toBe(3);
@@ -399,7 +416,7 @@ describe('withRetries', () => {
 					baseDelayMs: 100,
 					sleep: async (info) => {
 						waits.push(info);
-					}
+					},
 				}
 			)
 		).rejects.toThrow('rate limit');
@@ -411,21 +428,38 @@ describe('withRetries', () => {
 
 describe('runSourceDiscovery', () => {
 	it('keeps only new, reachable official portals and reconciles added ones', async () => {
-		const store = fakeStore({ suggestions: [{ id: 9, candidate_url: 'https://ssc.gov.in/notices' }] });
+		const store = fakeStore({
+			suggestions: [{ id: 9, candidate_url: 'https://ssc.gov.in/notices' }],
+		});
 		const report = await runSourceDiscovery({
 			suggest: async () => [
-				{ org: 'New PSC', url: 'https://newpsc.gov.in/notices', category: 'state-govt', reason: 'grounded' },
-				{ org: 'Aggregator', url: 'https://freejobalert.com/xyz', category: null, reason: 'x' },
+				{
+					org: 'New PSC',
+					url: 'https://newpsc.gov.in/notices',
+					category: 'state-govt',
+					reason: 'grounded',
+				},
+				{
+					org: 'Aggregator',
+					url: 'https://freejobalert.com/xyz',
+					category: null,
+					reason: 'x',
+				},
 				{ org: 'Known', url: 'https://ssc.gov.in/notices', category: null, reason: 'x' },
-				{ org: 'Duplicate host', url: 'https://newpsc.gov.in/other', category: null, reason: 'x' },
-				{ org: 'Dead', url: 'https://mr.gov.in/dead', category: null, reason: 'x' }
+				{
+					org: 'Duplicate host',
+					url: 'https://newpsc.gov.in/other',
+					category: null,
+					reason: 'x',
+				},
+				{ org: 'Dead', url: 'https://mr.gov.in/dead', category: null, reason: 'x' },
 			],
 			checkLink: async (url) => url !== 'https://mr.gov.in/dead',
 			store,
-			knownHosts: ['ssc.gov.in']
+			knownHosts: ['ssc.gov.in'],
 		});
 		expect(store.state.savedSuggestions.map((suggestion) => suggestion.url)).toEqual([
-			'https://newpsc.gov.in/notices'
+			'https://newpsc.gov.in/notices',
 		]);
 		expect(store.state.addedIds).toEqual([9]);
 		expect(report).toMatchObject({ requested: 5, saved: 1, skipped: 4 });
@@ -441,7 +475,10 @@ describe('discoverySkipReason', () => {
 		);
 		expect(discoverySkipReason(quotaError)).toContain('quota');
 		expect(
-			discoverySkipReason({ status: 503, message: 'This model is currently experiencing high demand' })
+			discoverySkipReason({
+				status: 503,
+				message: 'This model is currently experiencing high demand',
+			})
 		).toBeTruthy();
 	});
 

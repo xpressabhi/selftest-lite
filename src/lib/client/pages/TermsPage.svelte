@@ -1,7 +1,7 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { localizedPath } from '$lib/shared/seo';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { localizedPath } from '#lib/shared/seo.js';
 </script>
 
 <SeoHead

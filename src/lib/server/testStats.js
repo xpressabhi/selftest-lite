@@ -91,7 +91,10 @@ export function buildPublicScores({ rows = [], viewerKey = null, limit = MAX_PUB
 		});
 	}
 
-	const cappedLimit = Math.min(Math.max(Number(limit) || MAX_PUBLIC_SCORES, 1), MAX_PUBLIC_SCORES);
+	const cappedLimit = Math.min(
+		Math.max(Number(limit) || MAX_PUBLIC_SCORES, 1),
+		MAX_PUBLIC_SCORES
+	);
 	return [...byIdentity.values()]
 		.sort((a, b) => b.score - a.score || (a.createdAt < b.createdAt ? -1 : 1))
 		.slice(0, cappedLimit);
@@ -108,7 +111,12 @@ export async function testExists(testId) {
 }
 
 /** Records (or refreshes) a visitor row. A later name never overwrites one. */
-export async function recordTestVisit({ testId, userId = null, clientId = null, displayName = null }) {
+export async function recordTestVisit({
+	testId,
+	userId = null,
+	clientId = null,
+	displayName = null,
+}) {
 	const id = Number(testId);
 	const identityKey = buildVisitIdentityKey({ userId, clientId });
 	if (!Number.isInteger(id) || id <= 0 || !identityKey) {
@@ -224,9 +232,10 @@ export async function getTestStats(testId, viewer = {}) {
 				 WHERE test_id = $1`,
 				[id]
 			),
-			query(`SELECT COUNT(*)::INTEGER AS submissions FROM ai_test_attempts WHERE test_id = $1`, [
-				id,
-			]),
+			query(
+				`SELECT COUNT(*)::INTEGER AS submissions FROM ai_test_attempts WHERE test_id = $1`,
+				[id]
+			),
 			query(
 				`SELECT DISTINCT ON (COALESCE('u:' || a.user_id::text, 'c:' || a.client_id))
 					COALESCE('u:' || a.user_id::text, 'c:' || a.client_id) AS identity_key,
@@ -283,7 +292,9 @@ export async function getTestStats(testId, viewer = {}) {
 					total: viewerAttempt.total_questions,
 					marks: viewerAttempt.marks === null ? null : Number(viewerAttempt.marks),
 					totalMarks:
-						viewerAttempt.total_marks === null ? null : Number(viewerAttempt.total_marks),
+						viewerAttempt.total_marks === null
+							? null
+							: Number(viewerAttempt.total_marks),
 					createdAt: toIso(viewerAttempt.submitted_at),
 				}
 			: null,

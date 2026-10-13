@@ -163,7 +163,15 @@ export function drawStreakCard(canvas, data = {}, logo = null) {
 	if (!ctx) {
 		return false;
 	}
-	const { headline = '', subtitle = '', week = [], stats = {}, labels = {}, badges = [], url = '' } = data;
+	const {
+		headline = '',
+		subtitle = '',
+		week = [],
+		stats = {},
+		labels = {},
+		badges = [],
+		url = '',
+	} = data;
 
 	drawCardBackground(ctx);
 	drawCardLogo(ctx, logo, { x: CARD_WIDTH / 2 - 44, y: 80, size: 88 });

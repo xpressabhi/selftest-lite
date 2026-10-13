@@ -88,8 +88,8 @@ describe('questionTextFor', () => {
 		expect(questionTextFor(undefined)).toBe('');
 		expect(questionTextFor('nope')).toBe('');
 		expect(questionTextFor({})).toBe('');
-		expect(questionTextFor({ format: 'matching', columnA: 'nope', question: 'Only stem' })).toBe(
-			'Only stem'
-		);
+		expect(
+			questionTextFor({ format: 'matching', columnA: 'nope', question: 'Only stem' })
+		).toBe('Only stem');
 	});
 });

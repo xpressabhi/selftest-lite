@@ -7,14 +7,14 @@
 	// the page carries a "verify on the official notice" line and treats every
 	// date as best-effort (null dates simply do not render).
 	import { onMount } from 'svelte';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { track, trackDebounced } from '$lib/client/telemetry';
-	import Icon from '$lib/client/Icon.svelte';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { localizedPath } from '$lib/shared/seo';
-	import { HUB_CATEGORIES, OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
-	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
-	import { NOTIFICATION_STATUS } from '$lib/shared/examNotificationStatus';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { track, trackDebounced } from '#lib/client/telemetry.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { localizedPath } from '#lib/shared/seo.js';
+	import { HUB_CATEGORIES, OBJECTIVE_ONLY_EXAMS } from '#lib/data/indianExams.js';
+	import { MAX_SEARCH_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
+	import { NOTIFICATION_STATUS } from '#lib/shared/examNotificationStatus.js';
 
 	let { notifications = [], lastRunAt = null, lastRunStatus = null } = $props();
 
@@ -86,7 +86,7 @@
 		[NOTIFICATION_STATUS.CLOSING_SOON]: 0,
 		[NOTIFICATION_STATUS.OPEN]: 1,
 		[NOTIFICATION_STATUS.UPCOMING]: 2,
-		[NOTIFICATION_STATUS.CLOSED]: 3
+		[NOTIFICATION_STATUS.CLOSED]: 3,
 	};
 	const sorted = $derived(
 		[...filtered].sort((left, right) => {
@@ -107,7 +107,7 @@
 		return new Date(`${isoDate}T00:00:00`).toLocaleDateString(locale, {
 			day: 'numeric',
 			month: 'short',
-			year: 'numeric'
+			year: 'numeric',
 		});
 	}
 
@@ -172,7 +172,7 @@
 		{ value: 'all', key: 'examsFilterStatusAll' },
 		{ value: 'new', key: 'examsFilterStatusNew' },
 		{ value: 'open', key: 'examsFilterStatusOpen' },
-		{ value: 'closing_soon', key: 'examsFilterStatusClosing' }
+		{ value: 'closing_soon', key: 'examsFilterStatusClosing' },
 	];
 </script>
 
@@ -243,7 +243,11 @@
 				{/each}
 			</div>
 			{#if categories.length > 1}
-				<div class="exams-chip-row" role="group" aria-label={$t('examsFilterCategoryLabel')}>
+				<div
+					class="exams-chip-row"
+					role="group"
+					aria-label={$t('examsFilterCategoryLabel')}
+				>
 					<button
 						type="button"
 						class="exams-chip"
@@ -268,12 +272,15 @@
 			{/if}
 			{#if states.length > 1}
 				<div class="exams-state">
-					<label class="visually-hidden" for="exams-state">{$t('examsFilterStateLabel')}</label>
+					<label class="visually-hidden" for="exams-state"
+						>{$t('examsFilterStateLabel')}</label
+					>
 					<select
 						id="exams-state"
 						class="exams-state-select"
 						bind:value={stateFilter}
-						onchange={() => track('exams:filter', { filter: 'state', value: stateFilter })}
+						onchange={() =>
+							track('exams:filter', { filter: 'state', value: stateFilter })}
 					>
 						<option value="all">{$t('examsFilterStateAll')}</option>
 						{#each states as state (state)}
@@ -292,9 +299,14 @@
 			<div class="exams-list">
 				{#each sorted as item (item.id)}
 					{@const exam = item.examId ? examById.get(item.examId) : null}
-					<article class="exam-card" class:is-closed={item.status === NOTIFICATION_STATUS.CLOSED}>
+					<article
+						class="exam-card"
+						class:is-closed={item.status === NOTIFICATION_STATUS.CLOSED}
+					>
 						<div class="exam-card-head">
-							<span class="exam-status exam-status-{item.status}">{$t(statusKey(item.status))}</span>
+							<span class="exam-status exam-status-{item.status}"
+								>{$t(statusKey(item.status))}</span
+							>
 							{#if item.isNew}
 								<span class="exam-new">{$t('examsNewBadge')}</span>
 							{/if}
@@ -303,15 +315,23 @@
 						<h2 class="exam-card-title">{item.title}</h2>
 						<p class="exam-card-meta">
 							{#if item.publishedAt}
-								<span>{$t('examsPublishedOn', { date: formatDate(item.publishedAt) })}</span>
+								<span
+									>{$t('examsPublishedOn', {
+										date: formatDate(item.publishedAt),
+									})}</span
+								>
 							{/if}
 							{#if item.applyEnd}
-								<span class:is-urgent={item.status === NOTIFICATION_STATUS.CLOSING_SOON}>
+								<span
+									class:is-urgent={item.status ===
+										NOTIFICATION_STATUS.CLOSING_SOON}
+								>
 									{$t('examsApplyBy', { date: formatDate(item.applyEnd) })}
 								</span>
 							{/if}
 							{#if item.examDate}
-								<span>{$t('examsExamOn', { date: formatDate(item.examDate) })}</span>
+								<span>{$t('examsExamOn', { date: formatDate(item.examDate) })}</span
+								>
 							{/if}
 							{#if item.vacancies}
 								<span>{$t('examsVacancies', { count: item.vacancies })}</span>
@@ -326,7 +346,8 @@
 								href={item.notificationUrl}
 								target="_blank"
 								rel="noopener"
-								onclick={() => track('exams:notice-open', { source: item.sourceId })}
+								onclick={() =>
+									track('exams:notice-open', { source: item.sourceId })}
 							>
 								<Icon name="note" size={16} />
 								{$t('examsOfficialNotice')}
@@ -338,7 +359,11 @@
 									href={item.applyUrl}
 									target="_blank"
 									rel="noopener"
-									onclick={() => track('exams:notice-open', { source: item.sourceId, kind: 'apply' })}
+									onclick={() =>
+										track('exams:notice-open', {
+											source: item.sourceId,
+											kind: 'apply',
+										})}
 								>
 									<Icon name="external" size={16} />
 									{$t('examsApplyNow')}
@@ -349,10 +374,12 @@
 								<a
 									class="exam-action exam-action-practice"
 									href={localizedPath(`/practice/${exam.id}`, $activeLanguage)}
-									onclick={() => track('exams:practice-click', { examId: exam.id })}
+									onclick={() =>
+										track('exams:practice-click', { examId: exam.id })}
 								>
 									<Icon name="target" size={16} />
-									{$t('examsPracticePrefix')} {exam.name}
+									{$t('examsPracticePrefix')}
+									{exam.name}
 								</a>
 							{/if}
 						</div>
@@ -363,7 +390,9 @@
 			<div class="exams-empty">
 				<Icon name="note" size={28} />
 				<h2 class="exams-empty-title">
-					{lastRunStatus === 'unavailable' ? $t('examsUnavailableNote') : $t('examsEmptyTitle')}
+					{lastRunStatus === 'unavailable'
+						? $t('examsUnavailableNote')
+						: $t('examsEmptyTitle')}
 				</h2>
 				{#if lastRunStatus !== 'unavailable'}
 					<p class="exams-empty-body">{$t('examsEmptyBody')}</p>

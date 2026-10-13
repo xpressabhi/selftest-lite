@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { examEntries, findExamPage } from '$lib/data/routeLoads';
+import { examEntries, findExamPage } from '#lib/data/routeLoads.js';
 
 export const prerender = true;
 

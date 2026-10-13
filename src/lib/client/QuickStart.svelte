@@ -1,6 +1,6 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import Icon from '$lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import Icon from '#lib/client/Icon.svelte';
 
 	let {
 		bookmarkedExams = [],

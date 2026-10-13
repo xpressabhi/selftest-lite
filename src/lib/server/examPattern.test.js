@@ -119,9 +119,9 @@ describe('patternKeyFor', () => {
 	});
 
 	it('prefers the exam id, then a named paper, then board details', () => {
-		expect(
-			patternKeyFor({ examId: 'ssc-cgl', paperName: 'Ignored', board: 'CBSE' })
-		).toBe('exam:ssc-cgl');
+		expect(patternKeyFor({ examId: 'ssc-cgl', paperName: 'Ignored', board: 'CBSE' })).toBe(
+			'exam:ssc-cgl'
+		);
 		expect(patternKeyFor({ paperName: 'Half Yearly', board: 'CBSE', classLevel: '9' })).toBe(
 			'paper:half-yearly'
 		);

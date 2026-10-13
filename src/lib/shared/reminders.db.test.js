@@ -45,10 +45,34 @@ const cases = [
 	{ id: 11, hour: 17, chosen: null, enabled: true, sentHoursAgo: 10, due: false }, // inside min gap
 	{ id: 12, hour: 17, chosen: null, enabled: true, sentHoursAgo: 21, due: true }, // caught up, gap passed
 	// The already-practiced-today rule: a matching attempt skips the reminder.
-	{ id: 13, hour: 17, chosen: null, enabled: true, sentHoursAgo: null, due: false, clientId: 'c-today' },
-	{ id: 14, hour: 17, chosen: null, enabled: true, sentHoursAgo: null, due: true, clientId: 'c-other' },
+	{
+		id: 13,
+		hour: 17,
+		chosen: null,
+		enabled: true,
+		sentHoursAgo: null,
+		due: false,
+		clientId: 'c-today',
+	},
+	{
+		id: 14,
+		hour: 17,
+		chosen: null,
+		enabled: true,
+		sentHoursAgo: null,
+		due: true,
+		clientId: 'c-other',
+	},
 	{ id: 15, hour: 17, chosen: null, enabled: true, sentHoursAgo: null, due: false, userId: 42 },
-	{ id: 16, hour: 17, chosen: null, enabled: true, sentHoursAgo: null, due: true, clientId: 'c-old' },
+	{
+		id: 16,
+		hour: 17,
+		chosen: null,
+		enabled: true,
+		sentHoursAgo: null,
+		due: true,
+		clientId: 'c-old',
+	},
 	{ id: 17, hour: 17, chosen: null, enabled: true, sentHoursAgo: null, due: true }, // null links never skip
 ];
 
@@ -96,7 +120,10 @@ beforeAll(async () => {
 		params.push(timezoneForLocalHour(row.hour));
 		const tzParam = params.length;
 		params.push(row.clientId ?? null, row.userId ?? null, row.language ?? 'en');
-		const sent = row.sentHoursAgo === null ? 'NULL' : `NOW() - make_interval(hours => ${row.sentHoursAgo})`;
+		const sent =
+			row.sentHoursAgo === null
+				? 'NULL'
+				: `NOW() - make_interval(hours => ${row.sentHoursAgo})`;
 		values.push(
 			`(${row.id}, 'sock-${row.id}', 'p', 'a', $${tzParam}, ${row.enabled}, ${row.chosen ?? 'NULL'}, ${sent}, $${tzParam + 1}, $${tzParam + 2}, $${tzParam + 3})`
 		);
@@ -143,7 +170,12 @@ describe('due subscription query', () => {
 	it('returns the transport fields the sender needs', async () => {
 		const { rows } = await db.query(DUE_SUBSCRIPTIONS_SQL, DUE_SUBSCRIPTION_PARAMS);
 		const caughtUp = rows.find((row) => row.id === 3);
-		expect(caughtUp).toMatchObject({ endpoint: 'sock-3', p256dh: 'p', auth: 'a', language: 'hi' });
+		expect(caughtUp).toMatchObject({
+			endpoint: 'sock-3',
+			p256dh: 'p',
+			auth: 'a',
+			language: 'hi',
+		});
 		expect(caughtUp.timezone).toMatch(/^Etc\/GMT/);
 	});
 });

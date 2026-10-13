@@ -1,20 +1,20 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { getClientHeaders } from '$lib/client/identity';
-	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
-	import { saveCurrentPaper } from '$lib/client/storage';
-	import { streamErrorToError } from '$lib/client/sse';
-	import { readGenerationStream } from '$lib/client/generateStream';
-	import { loginWithGoogleCredential } from '$lib/client/auth';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { getClientHeaders } from '#lib/client/identity.js';
+	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
+	import { saveCurrentPaper } from '#lib/client/storage.js';
+	import { streamErrorToError } from '#lib/client/sse.js';
+	import { readGenerationStream } from '#lib/client/generateStream.js';
+	import { loginWithGoogleCredential } from '#lib/client/auth.js';
 	import {
 		createAccountWithPasskey,
 		isPasskeySupported,
 		passkeyErrorKey,
-		signInWithPasskey
-	} from '$lib/client/passkeys';
-	import { track } from '$lib/client/telemetry';
+		signInWithPasskey,
+	} from '#lib/client/passkeys.js';
+	import { track } from '#lib/client/telemetry.js';
 
 	const BOARDS = ['CBSE', 'ICSE', 'State Board'];
 	const CLASS_LEVELS = ['6', '7', '8', '9', '10', '11', '12'];
@@ -147,7 +147,9 @@
 				language: $activeLanguage === 'hindi' ? 'hindi' : 'english',
 				testType: selectedSectionObject?.questionTypes?.[0] || 'multiple-choice',
 				numQuestions:
-					selectedSectionObject?.questionCount || totalQuestions || pattern.sections.length,
+					selectedSectionObject?.questionCount ||
+					totalQuestions ||
+					pattern.sections.length,
 				difficulty: 'intermediate',
 				durationMinutes: pattern.durationMinutes,
 				paperName: mode === 'paper' ? paperName.trim() : null,
@@ -269,7 +271,9 @@
 			{#if mode === 'board'}
 				<div class="row g-3">
 					<div class="col-6 col-md-3">
-						<label class="form-label small" for="exam-board">{$t('examPaperBoard')}</label>
+						<label class="form-label small" for="exam-board"
+							>{$t('examPaperBoard')}</label
+						>
 						<select id="exam-board" class="form-select" bind:value={board}>
 							{#each BOARDS as option (option)}
 								<option value={option}>{option}</option>
@@ -277,19 +281,19 @@
 						</select>
 					</div>
 					<div class="col-6 col-md-3">
-						<label class="form-label small" for="exam-class">{$t('examPaperClass')}</label>
-						<select
-							id="exam-class"
-							class="form-select"
-							bind:value={classLevel}
+						<label class="form-label small" for="exam-class"
+							>{$t('examPaperClass')}</label
 						>
+						<select id="exam-class" class="form-select" bind:value={classLevel}>
 							{#each CLASS_LEVELS as option (option)}
 								<option value={option}>{option}</option>
 							{/each}
 						</select>
 					</div>
 					<div class="col-12 col-md-3">
-						<label class="form-label small" for="exam-subject">{$t('examPaperSubject')}</label>
+						<label class="form-label small" for="exam-subject"
+							>{$t('examPaperSubject')}</label
+						>
 						<input
 							id="exam-subject"
 							class="form-control"
@@ -382,7 +386,11 @@
 					{/each}
 				</div>
 
-				<div class="section-picker mt-3" role="radiogroup" aria-label={$t('examPaperPickSection')}>
+				<div
+					class="section-picker mt-3"
+					role="radiogroup"
+					aria-label={$t('examPaperPickSection')}
+				>
 					<button
 						class="chip"
 						class:active={selectedSection === 'full'}

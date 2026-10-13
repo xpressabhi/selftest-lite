@@ -1,13 +1,13 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import Icon from '$lib/client/Icon.svelte';
-	import { track } from '$lib/client/telemetry';
-	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
+	import { t } from '#lib/client/i18n.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import { track } from '#lib/client/telemetry.js';
+	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
 	import {
 		MAX_SEARCH_CHARS,
 		MAX_TOPIC_CHARS,
-		sanitizeInputText
-	} from '$lib/shared/inputLimits';
+		sanitizeInputText,
+	} from '#lib/shared/inputLimits.js';
 
 	let {
 		topic = '',
@@ -545,14 +545,16 @@
 									type="button"
 									class="stepper-btn"
 									onclick={() => pickQuestions(numQuestions - 5)}
-									aria-label={$t('fewerQuestions')}><Icon name="minus" size={18} /></button
+									aria-label={$t('fewerQuestions')}
+									><Icon name="minus" size={18} /></button
 								>
 								<span class="stepper-value">{numQuestions}</span>
 								<button
 									type="button"
 									class="stepper-btn"
 									onclick={() => pickQuestions(numQuestions + 5)}
-									aria-label={$t('moreQuestions')}><Icon name="plus" size={18} /></button
+									aria-label={$t('moreQuestions')}
+									><Icon name="plus" size={18} /></button
 								>
 							</div>
 							<div class="picker-presets">
@@ -573,7 +575,9 @@
 											Math.min(selectedExam.fullLengthQuestions, 200)}
 										type="button"
 										onclick={() =>
-											pickQuestions(Math.min(selectedExam.fullLengthQuestions, 200))}
+											pickQuestions(
+												Math.min(selectedExam.fullLengthQuestions, 200)
+											)}
 									>
 										{Math.min(selectedExam.fullLengthQuestions, 200)}
 									</button>

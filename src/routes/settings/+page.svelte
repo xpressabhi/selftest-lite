@@ -1,16 +1,16 @@
 <script>
 	import { onMount } from 'svelte';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { linkGoogleCredential, unlinkGoogle, user } from '$lib/client/auth';
-	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { linkGoogleCredential, unlinkGoogle, user } from '#lib/client/auth.js';
+	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
 	import {
 		addPasskeyToAccount,
 		fetchPasskeys,
 		isPasskeySupported,
 		passkeyErrorKey,
-		removePasskey
-	} from '$lib/client/passkeys';
-	import { track } from '$lib/client/telemetry';
+		removePasskey,
+	} from '#lib/client/passkeys.js';
+	import { track } from '#lib/client/telemetry.js';
 
 	// Sign-in methods live here rather than in the profile: they are account
 	// security, not learner details. Nothing on this page deletes the account —
@@ -80,7 +80,7 @@
 		return new Date(value).toLocaleDateString($activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN', {
 			day: 'numeric',
 			month: 'short',
-			year: 'numeric'
+			year: 'numeric',
 		});
 	}
 
@@ -181,7 +181,10 @@
 			<div class="panel text-center">
 				<p class="text-muted mb-3">{$t('settingsSignInHint')}</p>
 				<div class="d-flex justify-content-center">
-					<GoogleSignInButton onCredential={handleLinkGoogle} disabled={busy === 'link'} />
+					<GoogleSignInButton
+						onCredential={handleLinkGoogle}
+						disabled={busy === 'link'}
+					/>
 				</div>
 				<p class="text-muted small mt-3 mb-0">{$t('signInAnonymousNote')}</p>
 			</div>
@@ -204,7 +207,9 @@
 						<div class="fw-semibold small">{$t('settingsGoogleLabel')}</div>
 						<div class="text-muted small">
 							{#if googleLinked}
-								{$t('settingsGoogleConnected', { email: googleEmail || $user.email || '' })}
+								{$t('settingsGoogleConnected', {
+									email: googleEmail || $user.email || '',
+								})}
 							{:else}
 								{$t('settingsGoogleNotConnected')}
 							{/if}
@@ -233,7 +238,10 @@
 				{#if !googleLinked}
 					<p class="text-muted small mt-3 mb-2">{$t('passkeyLinkGoogleHint')}</p>
 					<div class="d-flex justify-content-center">
-						<GoogleSignInButton onCredential={handleLinkGoogle} disabled={busy === 'link'} />
+						<GoogleSignInButton
+							onCredential={handleLinkGoogle}
+							disabled={busy === 'link'}
+						/>
 					</div>
 				{/if}
 

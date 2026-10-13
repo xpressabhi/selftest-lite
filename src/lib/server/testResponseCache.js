@@ -63,7 +63,7 @@ export function createTtlLruCache({ ttlMs, maxEntries }) {
 		},
 		stats() {
 			return { size: entries.size, hits, misses };
-		}
+		},
 	};
 }
 
@@ -79,14 +79,14 @@ export function testListCacheKey({
 	limit = 10,
 	offset = 0,
 	language = 'all',
-	examType = 'all'
+	examType = 'all',
 } = {}) {
 	return JSON.stringify({
 		search: String(search).trim(),
 		limit: Number(limit) || 10,
 		offset: Number(offset) || 0,
 		language: String(language).trim().toLowerCase(),
-		examType: String(examType).trim().toLowerCase()
+		examType: String(examType).trim().toLowerCase(),
 	});
 }
 

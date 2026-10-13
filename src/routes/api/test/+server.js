@@ -1,20 +1,19 @@
-import { json } from '@sveltejs/kit';
 import {
 	getMyAttemptForIdentity,
 	getTestRecordById,
 	listTestRecords,
 	logApiEvent,
-} from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { stripAnswerKey } from '$lib/server/paperRedaction';
-import { gradeAttemptResults } from '$lib/shared/grading';
+} from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { stripAnswerKey } from '#lib/server/paperRedaction.js';
+import { gradeAttemptResults } from '#lib/shared/grading.js';
 import {
 	getCachedTestList,
 	getCachedTestRecord,
-	testListCacheKey
-} from '$lib/server/testResponseCache';
-import { MAX_SEARCH_CHARS } from '$lib/shared/inputLimits';
+	testListCacheKey,
+} from '#lib/server/testResponseCache.js';
+import { MAX_SEARCH_CHARS } from '#lib/shared/inputLimits.js';
 
 const SEARCH_RATE_LIMIT = 60;
 // Deep paging has no product use and each page costs a DB round trip.
@@ -53,7 +52,7 @@ export async function GET({ request, url, cookies }) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: 'RATE_LIMIT_EXCEEDED',
@@ -116,7 +115,7 @@ export async function GET({ request, url, cookies }) {
 				},
 			});
 
-			return json(
+			return Response.json(
 				{
 					tests: hasMore ? tests.slice(0, requestedLimit) : tests,
 					hasMore,
@@ -138,7 +137,7 @@ export async function GET({ request, url, cookies }) {
 				durationMs: Date.now() - startedAt,
 				metadata: { testId: id },
 			});
-			return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
+			return Response.json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 		}
 
 		const myAttempt = await getMyAttemptForIdentity(testRecord.id, {
@@ -174,7 +173,7 @@ export async function GET({ request, url, cookies }) {
 			metadata: { testId: id, cache: cached ? 'hit' : 'miss' },
 		});
 
-		return json(
+		return Response.json(
 			{
 				...stripAnswerKey(testRecord),
 				myAttempt: mappedAttempt,
@@ -183,7 +182,7 @@ export async function GET({ request, url, cookies }) {
 		);
 	} catch (error) {
 		console.error('Database error:', error);
-		return json(
+		return Response.json(
 			{ error: 'An error occurred while fetching the test', code: 'TEST_FETCH_ERROR' },
 			{ status: 500 }
 		);

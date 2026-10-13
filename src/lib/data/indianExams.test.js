@@ -68,7 +68,9 @@ describe('localizedStream', () => {
 describe('hub categories', () => {
 	it('maps every registry stream to exactly one category', () => {
 		for (const exam of OBJECTIVE_ONLY_EXAMS) {
-			const matches = HUB_CATEGORIES.filter((category) => category.streams.includes(exam.stream));
+			const matches = HUB_CATEGORIES.filter((category) =>
+				category.streams.includes(exam.stream)
+			);
 			expect(matches, `stream "${exam.stream}" (${exam.id})`).toHaveLength(1);
 		}
 	});
@@ -182,7 +184,7 @@ describe('teaching exams', () => {
 		'nvs-tgt-pgt',
 		'dsssb-tgt-pgt',
 		'emrs-tgt-pgt',
-		'awes-prt-tgt-pgt'
+		'awes-prt-tgt-pgt',
 	];
 
 	it('registers the teacher cluster under the Teaching stream', () => {

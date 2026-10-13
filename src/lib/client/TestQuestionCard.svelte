@@ -44,12 +44,7 @@
      the section banner, the question stem, the format-specific body and the
      option list. The page owns state and handlers and passes them in. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="test-card-frame"
-	bind:this={host}
-	ontouchstart={onSwipeStart}
-	ontouchend={onSwipeEnd}
->
+<div class="test-card-frame" bind:this={host} ontouchstart={onSwipeStart} ontouchend={onSwipeEnd}>
 	<div class="test-card-head">
 		<span class="test-question-no">
 			{$t('question')}
@@ -101,7 +96,7 @@
 	</div>
 	<AnimatedHeight
 		class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
-		estimatedHeight={estimatedHeight}
+		{estimatedHeight}
 	>
 		{#key questionIndex}
 			<div

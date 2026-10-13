@@ -72,9 +72,9 @@ describe('buildStreakWeek', () => {
 
 	it('handles empty and non-array history', () => {
 		expect(() => buildStreakWeek(null, { today: WEEK_TODAY })).not.toThrow();
-		expect(buildStreakWeek(undefined, { today: WEEK_TODAY }).every((cell) => !cell.active)).toBe(
-			true
-		);
+		expect(
+			buildStreakWeek(undefined, { today: WEEK_TODAY }).every((cell) => !cell.active)
+		).toBe(true);
 	});
 });
 
@@ -88,11 +88,7 @@ describe('getStats bestScore', () => {
 	});
 
 	it('reports the best single-test accuracy in percent', () => {
-		const stats = getStats([
-			attempt('a', 3, 10),
-			attempt('b', 9, 10),
-			attempt('c', 1, 2),
-		]);
+		const stats = getStats([attempt('a', 3, 10), attempt('b', 9, 10), attempt('c', 1, 2)]);
 		expect(stats.bestScore).toBe(90);
 	});
 

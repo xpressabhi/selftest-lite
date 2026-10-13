@@ -1,12 +1,12 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import CtaBanner from '$lib/client/CtaBanner.svelte';
-	import FaqAccordion from '$lib/client/FaqAccordion.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { getFaqItems } from '$lib/data/faqs';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import CtaBanner from '#lib/client/CtaBanner.svelte';
+	import FaqAccordion from '#lib/client/FaqAccordion.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import { getFaqItems } from '#lib/data/faqs.js';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
 
 	const aboutJsonLd = $derived(
 		jsonLdScript({

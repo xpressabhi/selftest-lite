@@ -1,7 +1,7 @@
 <script>
 	import { onDestroy } from 'svelte';
-	import { HOLD_DURATION_MS, isTapRelease } from '$lib/client/holdCommit.js';
-	import { HAPTIC_COMMIT, triggerVibration } from '$lib/client/haptics';
+	import { HOLD_DURATION_MS, isTapRelease } from '#lib/client/holdCommit.js';
+	import { HAPTIC_COMMIT, triggerVibration } from '#lib/client/haptics.js';
 
 	let {
 		label = '',
@@ -89,7 +89,7 @@
 		class:is-filled={filled}
 		class:is-busy={busy}
 		type="button"
-		disabled={disabled}
+		{disabled}
 		aria-disabled={busy || undefined}
 		aria-busy={busy}
 		aria-describedby={hint ? hintId : undefined}

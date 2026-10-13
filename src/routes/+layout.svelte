@@ -3,21 +3,21 @@
 	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { activeLanguage, t } from '$lib/client/i18n';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import {
 		initializePreferences,
 		language,
 		setLanguage,
 		setThemePreference,
 		themePreference,
-	} from '$lib/client/preferences';
-	import { STORAGE_KEYS } from '$lib/client/constants';
-	import NotificationsBell from '$lib/client/NotificationsBell.svelte';
-	import { initDeepLinks } from '$lib/client/deepLink';
-	import { startDeviceProfileTracking } from '$lib/client/deviceProfile';
-	import { focusTrap } from '$lib/client/focusTrap';
-	import { initNativeShell } from '$lib/client/nativeShell';
-	import { startTelemetry, track } from '$lib/client/telemetry';
+	} from '#lib/client/preferences.js';
+	import { STORAGE_KEYS } from '#lib/client/constants.js';
+	import NotificationsBell from '#lib/client/NotificationsBell.svelte';
+	import { initDeepLinks } from '#lib/client/deepLink.js';
+	import { startDeviceProfileTracking } from '#lib/client/deviceProfile.js';
+	import { focusTrap } from '#lib/client/focusTrap.js';
+	import { initNativeShell } from '#lib/client/nativeShell.js';
+	import { startTelemetry, track } from '#lib/client/telemetry.js';
 	import {
 		handleAuthRedirect,
 		isAuthLoading,
@@ -25,21 +25,21 @@
 		logout,
 		refreshSession,
 		user,
-	} from '$lib/client/auth';
-	import { flushPendingAttempts, startStateSync } from '$lib/client/sync';
-	import { showToast, toast } from '$lib/client/toast';
-	import GoogleSignInButton from '$lib/client/GoogleSignInButton.svelte';
+	} from '#lib/client/auth.js';
+	import { flushPendingAttempts, startStateSync } from '#lib/client/sync.js';
+	import { showToast, toast } from '#lib/client/toast.js';
+	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
 	import {
 		createAccountWithPasskey,
 		isPasskeySupported,
 		passkeyErrorKey,
 		signInWithPasskey,
-	} from '$lib/client/passkeys';
-	import Icon from '$lib/client/Icon.svelte';
-	import Toast from '$lib/client/Toast.svelte';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import { SITE_ORIGIN, languageHref, localizedPath } from '$lib/shared/seo';
-	import '$lib/styles/globals.css';
+	} from '#lib/client/passkeys.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import Toast from '#lib/client/Toast.svelte';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import { SITE_ORIGIN, languageHref, localizedPath } from '#lib/shared/seo.js';
+	import '#lib/styles/globals.css';
 
 	let { children, data } = $props();
 
@@ -646,7 +646,8 @@
 										><Icon name="user" size={18} /> {$t('profileMenuLabel')}</a
 									>
 									<a href="/settings" onclick={() => (showUserMenu = false)}
-										><Icon name="shield" size={18} /> {$t('settingsMenuLabel')}</a
+										><Icon name="shield" size={18} />
+										{$t('settingsMenuLabel')}</a
 									>
 									<a href="/history" onclick={() => (showUserMenu = false)}
 										><Icon name="clock" size={18} /> {$t('history')}</a

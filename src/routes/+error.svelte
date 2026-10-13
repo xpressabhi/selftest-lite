@@ -1,6 +1,6 @@
 <script>
 	import { page } from '$app/state';
-	import { t } from '$lib/client/i18n';
+	import { t } from '#lib/client/i18n.js';
 
 	const isNotFound = $derived(page.status === 404);
 </script>

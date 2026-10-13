@@ -14,7 +14,9 @@ import {
 import { wrapCardText } from './scoreCard.js';
 
 function drawChips(ctx, chips, y) {
-	const labels = (Array.isArray(chips) ? chips : []).map((chip) => String(chip || '')).filter(Boolean);
+	const labels = (Array.isArray(chips) ? chips : [])
+		.map((chip) => String(chip || ''))
+		.filter(Boolean);
 	if (labels.length === 0) {
 		return y;
 	}

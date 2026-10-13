@@ -1,18 +1,13 @@
-import { json } from '@sveltejs/kit';
-import {
-	createTestAttempt,
-	getTestRecordById,
-	logApiEvent,
-} from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { parseRequestBody } from '$lib/server/requestBody';
-import { sanitizeHintedIndexes } from '$lib/server/hint';
-import { markTestsSubmitted } from '$lib/server/testStats';
-import { computeAttemptMarks } from '$lib/shared/marks';
-import { gradeAttemptResults } from '$lib/shared/grading';
-import { MAX_ANSWER_TEXT_LENGTH } from '$lib/server/quizConfig';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { createTestAttempt, getTestRecordById, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { parseRequestBody } from '#lib/server/requestBody.js';
+import { sanitizeHintedIndexes } from '#lib/server/hint.js';
+import { markTestsSubmitted } from '#lib/server/testStats.js';
+import { computeAttemptMarks } from '#lib/shared/marks.js';
+import { gradeAttemptResults } from '#lib/shared/grading.js';
+import { MAX_ANSWER_TEXT_LENGTH } from '#lib/server/quizConfig.js';
+import { API_LIMIT_ERROR_CODE } from '#lib/shared/apiLimitError.js';
 
 const SUBMIT_RATE_LIMIT = 10;
 const MAX_TIME_TAKEN_SECONDS = 6 * 60 * 60;
@@ -35,7 +30,7 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 			});
 
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: API_LIMIT_ERROR_CODE,
@@ -57,11 +52,11 @@ export async function POST({ request, cookies }) {
 
 		const testId = Number(id);
 		if (!Number.isInteger(testId) || testId <= 0) {
-			return json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
+			return Response.json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
 		}
 
 		if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
-			return json(
+			return Response.json(
 				{ error: 'Answers must be an object', code: 'INVALID_ANSWERS' },
 				{ status: 400 }
 			);
@@ -69,12 +64,12 @@ export async function POST({ request, cookies }) {
 
 		const testRecord = await getTestRecordById(testId);
 		if (!testRecord) {
-			return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
+			return Response.json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 		}
 
 		const questions = testRecord.test?.questions;
 		if (!Array.isArray(questions) || questions.length === 0) {
-			return json(
+			return Response.json(
 				{ error: 'Test has no questions', code: 'TEST_INVALID_CONTENT' },
 				{ status: 500 }
 			);
@@ -162,7 +157,7 @@ export async function POST({ request, cookies }) {
 			},
 		});
 
-		return json({
+		return Response.json({
 			id: testId,
 			score,
 			totalQuestions: results.length,
@@ -174,13 +169,13 @@ export async function POST({ request, cookies }) {
 	} catch (error) {
 		console.error(error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {
-			return json(
+			return Response.json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
 				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
-			return json(
+			return Response.json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 				{ status: 400 }
 			);
@@ -198,7 +193,7 @@ export async function POST({ request, cookies }) {
 			errorMessage: error.message,
 		});
 
-		return json(
+		return Response.json(
 			{
 				error: 'An error occurred while submitting the test',
 				code: 'SUBMIT_FAILED',

@@ -107,7 +107,13 @@ describe('buildTopUpInstruction', () => {
 describe('salvageSummary', () => {
 	it('reports counts without question text', () => {
 		expect(
-			salvageSummary({ requested: 10, approved: 8, rounds: 3, rejectedCount: 4, trimmed: true })
+			salvageSummary({
+				requested: 10,
+				approved: 8,
+				rounds: 3,
+				rejectedCount: 4,
+				trimmed: true,
+			})
 		).toEqual({
 			requested: 10,
 			approved: 8,
@@ -123,7 +129,13 @@ describe('salvageSummary', () => {
 		// Without this the report cannot tell "ran out of time" apart from
 		// "would not fill the batch", and those need different fixes.
 		expect(
-			salvageSummary({ requested: 10, approved: 6, rounds: 1, rejectedCount: 4, ranOutOfTime: true })
+			salvageSummary({
+				requested: 10,
+				approved: 6,
+				rounds: 1,
+				rejectedCount: 4,
+				ranOutOfTime: true,
+			})
 		).toMatchObject({ approved: 6, trimmed: false, ranOutOfTime: true });
 	});
 });

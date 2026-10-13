@@ -1,11 +1,10 @@
-import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
-import { createPasskeyChallenge, logApiEvent } from '$lib/server/storage';
-import { buildAuthenticationOptions } from '$lib/server/passkey';
-import { resolvePasskeyContext } from '$lib/shared/passkeyPolicy';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { resolveRequestContext } from '$lib/server/apiContext';
+import { PASSKEY_ALLOWED_ORIGINS, PASSKEY_RP_ID } from '$app/env/private';
+import { createPasskeyChallenge, logApiEvent } from '#lib/server/storage.js';
+import { buildAuthenticationOptions } from '#lib/server/passkey.js';
+import { resolvePasskeyContext } from '#lib/shared/passkeyPolicy.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const LOGIN_OPTIONS_RATE_LIMIT = 30;
 
@@ -20,7 +19,7 @@ export async function POST({ request, url, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/passkey/login/options',
-			limit: LOGIN_OPTIONS_RATE_LIMIT
+			limit: LOGIN_OPTIONS_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
@@ -31,12 +30,12 @@ export async function POST({ request, url, cookies }) {
 				request,
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
-				userId: user?.id ?? null
+				userId: user?.id ?? null,
 			});
 			return rateLimited(rateLimit);
 		}
 
-		const context = resolvePasskeyContext(url, env);
+		const context = resolvePasskeyContext(url, { PASSKEY_RP_ID, PASSKEY_ALLOWED_ORIGINS });
 		if (!context) {
 			await logApiEvent({
 				route: '/api/auth/passkey/login/options',
@@ -46,9 +45,9 @@ export async function POST({ request, url, cookies }) {
 				request,
 				statusCode: 503,
 				durationMs: Date.now() - startedAt,
-				errorMessage: 'Origin outside the passkey allowlist'
+				errorMessage: 'Origin outside the passkey allowlist',
 			});
-			return json(
+			return Response.json(
 				{ error: 'Passkeys are not available here.', code: 'PASSKEY_UNAVAILABLE' },
 				{ status: 503 }
 			);
@@ -65,10 +64,10 @@ export async function POST({ request, url, cookies }) {
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
-			userId: user?.id ?? null
+			userId: user?.id ?? null,
 		});
 
-		return json({ options });
+		return Response.json({ options });
 	} catch (error) {
 		console.error('Failed to build passkey authentication options:', error);
 		await logApiEvent({
@@ -79,9 +78,9 @@ export async function POST({ request, url, cookies }) {
 			request,
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
-			errorMessage: error.message
+			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Unable to start passkey sign-in.', code: 'PASSKEY_OPTIONS_ERROR' },
 			{ status: 500 }
 		);

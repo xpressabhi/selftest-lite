@@ -1,19 +1,14 @@
-import { json } from '@sveltejs/kit';
 import * as z from 'zod';
-import {
-	getMyAttemptForIdentity,
-	getTestRecordById,
-	logApiEvent,
-} from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
+import { getMyAttemptForIdentity, getTestRecordById, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	parseRequestBody,
-} from '$lib/server/requestBody';
-import { pickElimination } from '$lib/server/hint';
+} from '#lib/server/requestBody.js';
+import { pickElimination } from '#lib/server/hint.js';
 
 // Abuse control only; the per-test hint cap (3) is enforced at submit time
 // against the stored attempt, so this bucket can stay generous.
@@ -33,10 +28,13 @@ export async function POST({ request, cookies }) {
 		body = await parseRequestBody(request);
 	} catch (error) {
 		if (error instanceof RequestBodyTooLargeError) {
-			return json({ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' }, { status: 413 });
+			return Response.json(
+				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
+				{ status: 413 }
+			);
 		}
 		if (error instanceof InvalidRequestBodyError) {
-			return json(
+			return Response.json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 				{ status: 400 }
 			);
@@ -48,7 +46,7 @@ export async function POST({ request, cookies }) {
 	const testId = Number(parsed.success ? parsed.data.id : NaN);
 	const index = parsed.success ? parsed.data.index : NaN;
 	if (!parsed.success || !Number.isInteger(testId) || testId <= 0) {
-		return json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
+		return Response.json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
 	}
 
 	const rateLimit = await rateLimiter(request, {
@@ -63,10 +61,10 @@ export async function POST({ request, cookies }) {
 	const testRecord = await getTestRecordById(testId);
 	const questions = testRecord?.test?.questions;
 	if (!testRecord || !Array.isArray(questions) || questions.length === 0) {
-		return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
+		return Response.json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 	}
 	if (!Number.isInteger(index) || index < 0 || index >= questions.length) {
-		return json({ error: 'Invalid question index', code: 'INVALID_INDEX' }, { status: 400 });
+		return Response.json({ error: 'Invalid question index', code: 'INVALID_INDEX' }, { status: 400 });
 	}
 
 	// Hints are for in-progress attempts only; submitted papers keep their key.
@@ -75,7 +73,7 @@ export async function POST({ request, cookies }) {
 		clientId,
 	}).catch(() => null);
 	if (attempt) {
-		return json(
+		return Response.json(
 			{ error: 'Test already submitted', code: 'TEST_ALREADY_SUBMITTED' },
 			{ status: 404 }
 		);
@@ -87,7 +85,7 @@ export async function POST({ request, cookies }) {
 		answer: question?.answer,
 	});
 	if (eliminated.length !== 2) {
-		return json(
+		return Response.json(
 			{ error: 'No hint available for this question', code: 'HINT_UNAVAILABLE' },
 			{ status: 400 }
 		);
@@ -106,5 +104,5 @@ export async function POST({ request, cookies }) {
 		metadata: { testId, index },
 	});
 
-	return json({ eliminated });
+	return Response.json({ eliminated });
 }

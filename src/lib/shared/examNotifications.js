@@ -17,7 +17,7 @@ export {
 	addDays,
 	deriveNotificationStatus,
 	parseIsoDate,
-	todayInIst
+	todayInIst,
 } from './examNotificationStatus.js';
 
 export const KNOWN_EXAM_IDS = new Set(OBJECTIVE_ONLY_EXAMS.map((exam) => exam.id));
@@ -36,7 +36,7 @@ const EXCLUDED_TITLE_PATTERNS = [
 	/\banswer\s*keys?\b/i,
 	/\bcut[\s-]?offs?\b/i,
 	/\bmerit\s*list/i,
-	/\bscore\s*cards?\b/i
+	/\bscore\s*cards?\b/i,
 ];
 
 const TRACKING_PARAMS = new Set([
@@ -49,7 +49,7 @@ const TRACKING_PARAMS = new Set([
 	'gclid',
 	'igshid',
 	'mc_cid',
-	'mc_eid'
+	'mc_eid',
 ]);
 
 const PUBLISHED_MAX_AGE_DAYS = 730;
@@ -228,14 +228,14 @@ export function validateNotificationDates(input, todayIso) {
 		applyStart: null,
 		applyEnd: null,
 		examDate: null,
-		problems
+		problems,
 	};
 
 	const fields = [
 		['publishedAt', 'published_at'],
 		['applyStart', 'apply_start'],
 		['applyEnd', 'apply_end'],
-		['examDate', 'exam_date']
+		['examDate', 'exam_date'],
 	];
 	for (const [field, code] of fields) {
 		const raw = input?.[field] ?? null;
@@ -316,5 +316,7 @@ export function meetsConfidence(value) {
 	if (value === null || value === undefined) {
 		return true;
 	}
-	return typeof value === 'number' && Number.isFinite(value) && value >= MIN_EXTRACTION_CONFIDENCE;
+	return (
+		typeof value === 'number' && Number.isFinite(value) && value >= MIN_EXTRACTION_CONFIDENCE
+	);
 }

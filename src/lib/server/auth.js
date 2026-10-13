@@ -1,15 +1,16 @@
 import { createHash, randomBytes } from 'crypto';
-import { env } from '$env/dynamic/private';
+import { GOOGLE_CLIENT_ID, NODE_ENV } from '$app/env/private';
+import { PUBLIC_GOOGLE_CLIENT_ID } from '$app/env/public';
 import {
 	attachGoogleIdentityToUser,
 	detachGoogleIdentityFromUser,
 	ensureStorageSchema,
 	findAppUserClaimingGoogleIdentity,
 	getAppUserById,
-	query
+	query,
 } from './storage';
-import { decideGoogleLink } from '$lib/shared/passkeyPolicy';
-import { resolveGoogleClientId } from '$lib/shared/googleAuth';
+import { decideGoogleLink } from '#lib/shared/passkeyPolicy.js';
+import { resolveGoogleClientId } from '#lib/shared/googleAuth.js';
 
 export const SESSION_COOKIE_NAME = 'selftest_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -24,13 +25,13 @@ function getGoogleClientId() {
 	// The client id has a built-in fallback (see shared/googleAuth.js) so a
 	// missing env var never breaks sign-in; the audience check below must
 	// always match the id used to render the button.
-	return resolveGoogleClientId(env.GOOGLE_CLIENT_ID || env.PUBLIC_GOOGLE_CLIENT_ID);
+	return resolveGoogleClientId(GOOGLE_CLIENT_ID || PUBLIC_GOOGLE_CLIENT_ID);
 }
 
 function getSessionCookieOptions(expiresAt) {
 	return {
 		httpOnly: true,
-		secure: env.NODE_ENV === 'production',
+		secure: NODE_ENV === 'production',
 		sameSite: 'lax',
 		path: '/',
 		expires: expiresAt,
@@ -65,7 +66,7 @@ export function mapUserRow(row) {
 		pictureUrl: row.picture_url || null,
 		locale: row.locale || null,
 		createdAt: row.created_at,
-		lastLoginAt: row.last_login_at
+		lastLoginAt: row.last_login_at,
 	};
 }
 
@@ -88,7 +89,7 @@ export async function unlinkGoogleFromUser(userId) {
 /**
  * Attaches a verified Google identity to the signed-in account (the recovery
  * path for a passkey-first account). The decision table lives in
- * `$lib/shared/passkeyPolicy`; this only persists the outcome.
+ * `#lib/shared/passkeyPolicy.js`; this only persists the outcome.
  */
 export async function linkGoogleProfileToUser(userId, profile) {
 	const currentRow = await getAppUserById(userId);
@@ -99,13 +100,13 @@ export async function linkGoogleProfileToUser(userId, profile) {
 	const claimedByAnotherUser = await findAppUserClaimingGoogleIdentity({
 		userId,
 		googleSub: profile.googleSub,
-		email: profile.email
+		email: profile.email,
 	});
 
 	const decision = decideGoogleLink({
 		currentGoogleSub: currentRow.google_sub,
 		targetGoogleSub: profile.googleSub,
-		claimedByAnotherUser: Boolean(claimedByAnotherUser)
+		claimedByAnotherUser: Boolean(claimedByAnotherUser),
 	});
 
 	if (decision !== 'attach') {
@@ -118,7 +119,7 @@ export async function linkGoogleProfileToUser(userId, profile) {
 		email: profile.email,
 		name: profile.name,
 		pictureUrl: profile.pictureUrl,
-		locale: profile.locale
+		locale: profile.locale,
 	});
 
 	return { status: 'linked', user: mapUserRow(updatedRow) || mapUserRow(currentRow) };
@@ -233,7 +234,7 @@ export async function upsertGoogleUser(profile) {
 		profile.email,
 		profile.name,
 		profile.pictureUrl,
-		profile.locale
+		profile.locale,
 	]);
 
 	if (updateResult.rows.length > 0) {
@@ -384,6 +385,7 @@ export function normalizeClientId(value) {
 		return null;
 	}
 	const trimmed = value.trim();
+
 	if (
 		trimmed.length < 8 ||
 		trimmed.length > MAX_CLIENT_ID_LENGTH ||

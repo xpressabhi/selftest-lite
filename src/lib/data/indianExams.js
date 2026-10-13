@@ -1425,8 +1425,7 @@ export const SYLLABUS_HI = {
 	'Operating Systems': 'ऑपरेटिंग सिस्टम',
 	DBMS: 'डीबीएमएस',
 	'Computer Networks': 'कंप्यूटर नेटवर्क',
-	'Theory of Computation and Compiler Design':
-		'कंप्यूटेशन का सिद्धांत और कंपाइलर डिज़ाइन',
+	'Theory of Computation and Compiler Design': 'कंप्यूटेशन का सिद्धांत और कंपाइलर डिज़ाइन',
 	'General Aptitude': 'सामान्य योग्यता',
 	'VARC (Verbal Ability and Reading Comprehension)': 'VARC (मौखिक योग्यता और पठन समझ)',
 	'DILR (Data Interpretation and Logical Reasoning)':
@@ -1561,8 +1560,23 @@ export const HUB_CATEGORIES = [
 	{
 		id: 'police-defence',
 		labelKey: 'practiceCategoryPoliceDefence',
-		searchTerms: ['police', 'defence', 'defense', 'army', 'paramilitary', 'पुलिस', 'रक्षा', 'सेना'],
-		streams: ['Police', 'Paramilitary', 'Railway Police', 'Defence Entrance', 'Defence & Security'],
+		searchTerms: [
+			'police',
+			'defence',
+			'defense',
+			'army',
+			'paramilitary',
+			'पुलिस',
+			'रक्षा',
+			'सेना',
+		],
+		streams: [
+			'Police',
+			'Paramilitary',
+			'Railway Police',
+			'Defence Entrance',
+			'Defence & Security',
+		],
 	},
 	{
 		id: 'civil-services',

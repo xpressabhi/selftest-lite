@@ -41,7 +41,10 @@ const arQuestion = {
 
 const statementQuestion = {
 	statements: [
-		{ text: 'The Constituent Assembly adopted the national flag on 22 July 1947.', isTrue: true },
+		{
+			text: 'The Constituent Assembly adopted the national flag on 22 July 1947.',
+			isTrue: true,
+		},
 		{ text: 'The wheel of the national flag has 21 spokes.', isTrue: false },
 		{ text: 'The flag has a length-to-width ratio of 3:4.', isTrue: false },
 	],
@@ -76,7 +79,9 @@ describe('paperSchemaFor', () => {
 	it('accepts a valid matching paper and strips the full-question fields', () => {
 		const result = paperSchemaFor('matching').safeParse({
 			topic: 'Vitamins',
-			questions: [{ ...matchingQuestion, options: ['1-A', '2-B', '3-C', '4-D'], answer: '1-A' }],
+			questions: [
+				{ ...matchingQuestion, options: ['1-A', '2-B', '3-C', '4-D'], answer: '1-A' },
+			],
 		});
 		expect(result.success).toBe(true);
 		expect(result.data.questions[0]).toEqual(matchingQuestion);
@@ -132,8 +137,9 @@ describe('paperSchemaFor', () => {
 			).success
 		).toBe(true);
 		expect(
-			paperSchemaFor('true-false').safeParse(paperWith(statementQuestion.statements.slice(0, 2)))
-				.success
+			paperSchemaFor('true-false').safeParse(
+				paperWith(statementQuestion.statements.slice(0, 2))
+			).success
 		).toBe(false);
 		expect(
 			paperSchemaFor('true-false').safeParse(

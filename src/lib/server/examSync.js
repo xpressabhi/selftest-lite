@@ -25,14 +25,17 @@ import {
 	sanitizeState,
 	stripTrackingParams,
 	tokenSetSimilarity,
-	validateNotificationDates
+	validateNotificationDates,
 } from '../shared/examNotifications.js';
 
 export const DEFAULT_MAX_LINK_CHECKS_PER_SOURCE = 25;
 
 function defaultShouldRetry(error) {
 	const message = String(error?.message || error);
-	return /\b(429|500|502|503|504)\b/.test(message) || /unavailable|high demand|rate limit|timeout/i.test(message);
+	return (
+		/\b(429|500|502|503|504)\b/.test(message) ||
+		/unavailable|high demand|rate limit|timeout/i.test(message)
+	);
 }
 
 /**
@@ -47,7 +50,7 @@ export async function withRetries(
 		attempts = 3,
 		baseDelayMs = 1500,
 		shouldRetry = defaultShouldRetry,
-		sleep = ({ delayMs }) => new Promise((resolve) => setTimeout(resolve, delayMs))
+		sleep = ({ delayMs }) => new Promise((resolve) => setTimeout(resolve, delayMs)),
 	} = {}
 ) {
 	let lastError;
@@ -73,7 +76,7 @@ export function buildExtractionPrompt({
 	source,
 	pageText,
 	todayIso,
-	examOptions = defaultExamOptions()
+	examOptions = defaultExamOptions(),
 }) {
 	const examList = examOptions.map((exam) => `${exam.id} (${exam.name})`).join(', ');
 	return `You extract Indian government recruitment notifications from one fetched web page for selftest.in.
@@ -171,7 +174,7 @@ export function normalizeExtractedItems(rawItems, source, todayIso) {
 				publishedAt: raw.publishedAt ?? null,
 				applyStart: raw.applyStart ?? null,
 				applyEnd: raw.applyEnd ?? null,
-				examDate: raw.examDate ?? null
+				examDate: raw.examDate ?? null,
 			},
 			todayIso
 		);
@@ -192,7 +195,7 @@ export function normalizeExtractedItems(rawItems, source, todayIso) {
 			vacancies: toVacancies(raw.vacancies),
 			qualification: toShortText(raw.qualification, 200),
 			confidence: toConfidence(raw.confidence),
-			dateProblems: dates.problems
+			dateProblems: dates.problems,
 		});
 	}
 	return items;
@@ -206,7 +209,13 @@ export function normalizeExtractedItems(rawItems, source, todayIso) {
  */
 export function classifyExtractedItem(
 	item,
-	{ knownKeys = [], publishedKeys = undefined, recentTitles = [], seenKeys = new Set(), allowedHosts = [] } = {}
+	{
+		knownKeys = [],
+		publishedKeys = undefined,
+		recentTitles = [],
+		seenKeys = new Set(),
+		allowedHosts = [],
+	} = {}
 ) {
 	const knownSet = knownKeys instanceof Set ? knownKeys : new Set(knownKeys || []);
 	const publishedSet =
@@ -256,7 +265,7 @@ function emptySourceReport(source) {
 		dropped: 0,
 		dateProblems: [],
 		quarantinedItems: [],
-		error: null
+		error: null,
 	};
 }
 
@@ -279,7 +288,7 @@ export async function runExamSync({
 	checkLink,
 	store,
 	todayIso,
-	maxLinkChecksPerSource = DEFAULT_MAX_LINK_CHECKS_PER_SOURCE
+	maxLinkChecksPerSource = DEFAULT_MAX_LINK_CHECKS_PER_SOURCE,
 }) {
 	const sourceReports = [];
 	for (const source of sources) {
@@ -306,7 +315,7 @@ export async function runExamSync({
 					publishedKeys,
 					recentTitles: lookup.titles ?? [],
 					seenKeys,
-					allowedHosts: source.allowedHosts
+					allowedHosts: source.allowedHosts,
 				});
 				seenKeys.add(item.dedupeKey);
 
@@ -326,7 +335,9 @@ export async function runExamSync({
 						continue;
 					}
 					linkChecks += 1;
-					const reachable = await Promise.resolve(checkLink(item.notificationUrl)).catch(() => false);
+					const reachable = await Promise.resolve(checkLink(item.notificationUrl)).catch(
+						() => false
+					);
 					if (!reachable) {
 						await store.quarantineNotification({ item, reason: 'link_unreachable' });
 						recordQuarantine(report, item, 'link_unreachable');
@@ -360,7 +371,7 @@ export async function runExamSync({
 			itemsNew: accumulator.itemsNew + report.published,
 			itemsUpdated: accumulator.itemsUpdated + report.updated,
 			itemsQuarantined: accumulator.itemsQuarantined + report.quarantined,
-			itemsDropped: accumulator.itemsDropped + report.dropped
+			itemsDropped: accumulator.itemsDropped + report.dropped,
 		}),
 		{
 			sourcesTotal: 0,
@@ -369,7 +380,7 @@ export async function runExamSync({
 			itemsNew: 0,
 			itemsUpdated: 0,
 			itemsQuarantined: 0,
-			itemsDropped: 0
+			itemsDropped: 0,
 		}
 	);
 	return {
@@ -377,7 +388,7 @@ export async function runExamSync({
 		sourcesOk,
 		sourcesFailed,
 		totals,
-		sources: sourceReports
+		sources: sourceReports,
 	};
 }
 
@@ -426,7 +437,7 @@ export async function runSourceDiscovery({ suggest, checkLink, store, knownHosts
 			org: toShortText(suggestion.org, 120),
 			url,
 			category: sanitizeCategory(suggestion.category, undefined, null),
-			reason: toShortText(suggestion.reason, 300)
+			reason: toShortText(suggestion.reason, 300),
 		});
 		saved += 1;
 	}
@@ -446,5 +457,10 @@ export async function runSourceDiscovery({ suggest, checkLink, store, knownHosts
 		await store.markSuggestionsAdded(addedIds);
 	}
 
-	return { requested: Array.isArray(suggestions) ? suggestions.length : 0, saved, skipped, added: addedIds.length };
+	return {
+		requested: Array.isArray(suggestions) ? suggestions.length : 0,
+		saved,
+		skipped,
+		added: addedIds.length,
+	};
 }

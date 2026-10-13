@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import { getClientHeaders } from '$lib/client/identity';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { formatDate } from '$lib/client/formatting';
+	import { getClientHeaders } from '#lib/client/identity.js';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { formatDate } from '#lib/client/formatting.js';
 
 	let { testId } = $props();
 
@@ -71,7 +71,8 @@
 			<ul class="test-stats-scores">
 				{#each topScores as score (score.createdAt + score.score)}
 					<li class="test-stats-score-row" class:mine={score.isMine}>
-						<span class="test-stats-score-name">{score.name || $t('someoneLabel')}</span>
+						<span class="test-stats-score-name">{score.name || $t('someoneLabel')}</span
+						>
 						<span class="test-stats-score-value">{score.score}/{score.total}</span>
 						<span class="test-stats-score-date"
 							>{formatDate(score.createdAt, $activeLanguage, {

@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { questionTextFor } from '$lib/shared/questionText';
+import { questionTextFor } from '#lib/shared/questionText.js';
 
 // Independent answer verification: after generation, a second model call
 // solves each question without seeing the keyed answer. Questions where the
@@ -19,7 +19,10 @@ export function buildAnswerVerificationPrompt({ questions, language = 'english' 
 	const questionList = questions
 		.map((question, index) => {
 			const options = (question.options || [])
-				.map((option, optionIndex) => `  ${optionLabels[optionIndex] || optionIndex + 1}. ${option}`)
+				.map(
+					(option, optionIndex) =>
+						`  ${optionLabels[optionIndex] || optionIndex + 1}. ${option}`
+				)
 				.join('\n');
 			return `Q${index + 1}: ${questionTextFor(question)}\n${options}`;
 		})

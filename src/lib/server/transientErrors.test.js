@@ -7,9 +7,11 @@ describe('isTransientProviderError', () => {
 		expect(
 			isTransientProviderError({ message: '{"error":{"code":503,"message":"unavailable"}}' })
 		).toBe(true);
-		expect(isTransientProviderError({ message: 'This model is currently experiencing high demand' })).toBe(
-			true
-		);
+		expect(
+			isTransientProviderError({
+				message: 'This model is currently experiencing high demand',
+			})
+		).toBe(true);
 		expect(isTransientProviderError({ status: 429, message: 'Resource exhausted' })).toBe(true);
 		expect(isTransientProviderError({ status: 503, message: '' })).toBe(true);
 		expect(isTransientProviderError({ status: 500, message: 'Internal error' })).toBe(true);
@@ -22,8 +24,12 @@ describe('isTransientProviderError', () => {
 	});
 
 	it('does not retry a permanent failure', () => {
-		expect(isTransientProviderError({ status: 400, message: 'Invalid JSON payload' })).toBe(false);
-		expect(isTransientProviderError(new Error('Invalid explanation response from model'))).toBe(false);
+		expect(isTransientProviderError({ status: 400, message: 'Invalid JSON payload' })).toBe(
+			false
+		);
+		expect(isTransientProviderError(new Error('Invalid explanation response from model'))).toBe(
+			false
+		);
 		expect(isTransientProviderError(null)).toBe(false);
 		expect(isTransientProviderError({})).toBe(false);
 	});

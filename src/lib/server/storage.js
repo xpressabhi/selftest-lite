@@ -1,17 +1,17 @@
 import { Pool } from '@neondatabase/serverless';
-import { env } from '$env/dynamic/private';
+import { DATABASE_URL } from '$app/env/private';
 import { createPglitePool, isPgliteUrl } from './testDb.js';
 import { invalidateTestListCache } from './testResponseCache.js';
-import { ARCHIVE_TABLE_STATEMENTS } from '$lib/shared/dataArchive';
+import { ARCHIVE_TABLE_STATEMENTS } from '#lib/shared/dataArchive.js';
 import {
 	EXAM_NOTIFICATION_SCHEMA_STATEMENTS,
 	READ_LATEST_SYNC_RUN_SQL,
 	READ_PUBLISHED_NOTIFICATIONS_SQL,
-	toNotificationItem
-} from '$lib/shared/examNotificationSql';
-import { addDays, todayInIst } from '$lib/shared/examNotificationStatus';
-import { normalizeReminderLanguage } from '$lib/shared/reminderCopy';
-import { parseReminderHour } from '$lib/shared/reminders';
+	toNotificationItem,
+} from '#lib/shared/examNotificationSql.js';
+import { addDays, todayInIst } from '#lib/shared/examNotificationStatus.js';
+import { normalizeReminderLanguage } from '#lib/shared/reminderCopy.js';
+import { parseReminderHour } from '#lib/shared/reminders.js';
 import { sanitizeHintedIndexes } from './hint.js';
 
 let poolInstance = null;
@@ -28,7 +28,7 @@ function normalizeExamId(value) {
 
 function getPool() {
 	if (!poolPromise) {
-		const connectionString = env.DATABASE_URL;
+		const connectionString = DATABASE_URL;
 		if (!connectionString) {
 			return Promise.reject(new Error('DATABASE_URL is not configured'));
 		}
@@ -1309,7 +1309,7 @@ export async function getLatestExamSyncRun() {
 		status: row.status,
 		sourcesTotal: Number(row.sources_total),
 		sourcesFailed: Number(row.sources_failed),
-		itemsNew: Number(row.items_new)
+		itemsNew: Number(row.items_new),
 	};
 }
 
@@ -1473,7 +1473,7 @@ export async function savePushSubscription({
 			auth,
 			normalizedTimezone,
 			normalizedHour,
-			normalizedLanguage
+			normalizedLanguage,
 		]
 	);
 	return true;
@@ -1484,12 +1484,7 @@ export async function savePushSubscription({
  * language). A changed hour clears the last-send so the new slot can fire the
  * same day, and re-enables the row (a 404/410 send may have disabled it).
  */
-export async function updatePushSubscriptionHour(
-	endpoint,
-	hour,
-	language = null,
-	identity = {}
-) {
+export async function updatePushSubscriptionHour(endpoint, hour, language = null, identity = {}) {
 	await ensureStorageSchema();
 	if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) {
 		return false;
@@ -1932,7 +1927,8 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 	const tiers = tiersResult.rows;
 	const identityTotal = tiers.reduce((sum, row) => sum + row.identities, 0);
 	for (const row of tiers) {
-		row.pct = identityTotal > 0 ? Number(((row.identities / identityTotal) * 100).toFixed(1)) : 0;
+		row.pct =
+			identityTotal > 0 ? Number(((row.identities / identityTotal) * 100).toFixed(1)) : 0;
 	}
 
 	const networkRows = networkResult.rows;
@@ -1986,8 +1982,13 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 				floor = {
 					bucket: row.bucket,
 					rttBucket: null,
-					coveragePct: Number((((downlinkTotal - cumulative) / downlinkTotal) * 100).toFixed(1)),
-					failPct: startedBelow > 0 ? Number(((failedBelow / startedBelow) * 100).toFixed(1)) : null,
+					coveragePct: Number(
+						(((downlinkTotal - cumulative) / downlinkTotal) * 100).toFixed(1)
+					),
+					failPct:
+						startedBelow > 0
+							? Number(((failedBelow / startedBelow) * 100).toFixed(1))
+							: null,
 					startedBelow,
 					failedBelow,
 				};
@@ -2017,7 +2018,11 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 		profileSessions: coverageRow.profile_sessions || 0,
 		sharePct:
 			coverageRow.page_sessions > 0
-				? Number(((coverageRow.profile_sessions / coverageRow.page_sessions) * 100).toFixed(1))
+				? Number(
+						((coverageRow.profile_sessions / coverageRow.page_sessions) * 100).toFixed(
+							1
+						)
+					)
 				: null,
 	};
 
@@ -2237,7 +2242,7 @@ export async function createPasskeyChallenge({
 	userId = null,
 	userHandle = null,
 	displayName = null,
-	ttlMs = PASSKEY_CHALLENGE_TTL_MS
+	ttlMs = PASSKEY_CHALLENGE_TTL_MS,
 }) {
 	await ensureStorageSchema();
 	const expiresAt = new Date(Date.now() + ttlMs);
@@ -2245,7 +2250,14 @@ export async function createPasskeyChallenge({
 		`INSERT INTO passkey_challenge
 		 (challenge, kind, user_id, user_handle, display_name, expires_at)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		[challenge, kind, normalizeUserIdValue(userId), userHandle, displayName, expiresAt.toISOString()]
+		[
+			challenge,
+			kind,
+			normalizeUserIdValue(userId),
+			userHandle,
+			displayName,
+			expiresAt.toISOString(),
+		]
 	);
 	archiveStalePasskeyChallengesMaybe();
 	return { expiresAt };
@@ -2293,7 +2305,7 @@ export async function createPasskeyUserWithCredential({
 	transports = null,
 	deviceType = null,
 	backedUp = null,
-	label = null
+	label = null,
 }) {
 	await ensureStorageSchema();
 	const result = await query(
@@ -2315,7 +2327,7 @@ export async function createPasskeyUserWithCredential({
 			transports,
 			deviceType,
 			backedUp,
-			label
+			label,
 		]
 	);
 
@@ -2330,7 +2342,7 @@ export async function insertPasskeyForUser({
 	transports = null,
 	deviceType = null,
 	backedUp = null,
-	label = null
+	label = null,
 }) {
 	const normalizedUserId = normalizeUserIdValue(userId);
 	if (!normalizedUserId) {
@@ -2351,7 +2363,7 @@ export async function insertPasskeyForUser({
 			transports,
 			deviceType,
 			backedUp,
-			label
+			label,
 		]
 	);
 
@@ -2424,7 +2436,7 @@ export async function listPasskeyCredentialsForUser(userId) {
 
 	return result.rows.map((row) => ({
 		credentialId: row.credential_id,
-		transports: Array.isArray(row.transports) ? row.transports : null
+		transports: Array.isArray(row.transports) ? row.transports : null,
 	}));
 }
 
@@ -2475,7 +2487,7 @@ export async function updatePasskeyUsage({
 	passkeyId,
 	counter,
 	deviceType = null,
-	backedUp = null
+	backedUp = null,
 }) {
 	const normalizedPasskeyId = Number(passkeyId);
 	if (!Number.isInteger(normalizedPasskeyId) || normalizedPasskeyId <= 0) {
@@ -2505,10 +2517,9 @@ export async function ensureWebauthnUserHandle(userId, createHandle) {
 	}
 
 	await ensureStorageSchema();
-	const existing = await query(
-		`SELECT webauthn_user_handle FROM app_user WHERE id = $1`,
-		[normalizedUserId]
-	);
+	const existing = await query(`SELECT webauthn_user_handle FROM app_user WHERE id = $1`, [
+		normalizedUserId,
+	]);
 	const currentHandle = existing.rows[0]?.webauthn_user_handle;
 	if (currentHandle) {
 		return currentHandle;
@@ -2534,7 +2545,7 @@ export async function ensureWebauthnUserHandle(userId, createHandle) {
 	}
 
 	const fallback = await query(`SELECT webauthn_user_handle FROM app_user WHERE id = $1`, [
-		normalizedUserId
+		normalizedUserId,
 	]);
 	return fallback.rows[0]?.webauthn_user_handle || candidate;
 }
@@ -2584,7 +2595,7 @@ export async function attachGoogleIdentityToUser({
 	email,
 	name,
 	pictureUrl,
-	locale
+	locale,
 }) {
 	const normalizedUserId = normalizeUserIdValue(userId);
 	if (!normalizedUserId) {
@@ -2633,7 +2644,7 @@ export async function getPasskeyGuardState(userId) {
 	return {
 		passkeyCount: Number(row?.passkey_count) || 0,
 		googleSub: row?.google_sub || null,
-		email: row?.email || null
+		email: row?.email || null,
 	};
 }
 

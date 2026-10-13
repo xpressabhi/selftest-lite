@@ -4,17 +4,17 @@
 	// it: every badge key is marked seen. No permission, no interruption here
 	// (the toast interrupt is a separate, separately-capped surface).
 	import { onMount } from 'svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { track } from '$lib/client/telemetry';
-	import { getBookmarkedExamIds, getHistory } from '$lib/client/storage';
+	import Icon from '#lib/client/Icon.svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { track } from '#lib/client/telemetry.js';
+	import { getBookmarkedExamIds, getHistory } from '#lib/client/storage.js';
 	import {
 		buildFeedView,
 		buildNotificationCandidates,
 		fetchNotificationFeed,
 		interestsFrom,
-		selectBadges
-	} from '$lib/client/notifications';
+		selectBadges,
+	} from '#lib/client/notifications.js';
 	import {
 		buildNotificationState,
 		getSessionBudget,
@@ -23,11 +23,11 @@
 		markNotificationSeen,
 		readNudgeLedger,
 		requestNudgeDecision,
-		writeNudgeLedger
-	} from '$lib/client/nudge';
-	import { showToastWithAction } from '$lib/client/toast';
-	import { NOTIFICATION_STATUS, todayInIst } from '$lib/shared/examNotificationStatus';
-	import { localizedPath } from '$lib/shared/seo';
+		writeNudgeLedger,
+	} from '#lib/client/nudge.js';
+	import { showToastWithAction } from '#lib/client/toast.js';
+	import { NOTIFICATION_STATUS, todayInIst } from '#lib/shared/examNotificationStatus.js';
+	import { localizedPath } from '#lib/shared/seo.js';
 
 	let feed = $state([]);
 	let rows = $state([]);
@@ -68,7 +68,7 @@
 			now: Date.now(),
 			todayIso: todayInIst(),
 			bookmarkedExamIds: interests.bookmarkedExamIds,
-			practicedExamIds: interests.practicedExamIds
+			practicedExamIds: interests.practicedExamIds,
 		});
 		if (candidates.length === 0) {
 			return;
@@ -78,7 +78,7 @@
 				candidates,
 				topics: interests.topics,
 				hourLocal: new Date().getHours(),
-				locale: $activeLanguage === 'hindi' ? 'hi' : 'en'
+				locale: $activeLanguage === 'hindi' ? 'hi' : 'en',
 			})
 		);
 		if (!ranking) {
@@ -108,7 +108,7 @@
 			ledger: readNudgeLedger(),
 			now: Date.now(),
 			hourLocal: new Date().getHours(),
-			session: getSessionBudget()
+			session: getSessionBudget(),
 		});
 		if (reason) {
 			return;
@@ -128,14 +128,14 @@
 				if (dismissReason !== 'action') {
 					track('notification:toast-dismiss', { id: pickedId, reason: dismissReason });
 				}
-			}
+			},
 		});
 	}
 
 	function interestsNow() {
 		return interestsFrom({
 			bookmarkedExamIds: getBookmarkedExamIds(),
-			history: getHistory()
+			history: getHistory(),
 		});
 	}
 
@@ -145,7 +145,7 @@
 			now: Date.now(),
 			todayIso: todayInIst(),
 			...interestsNow(),
-			relevantIds
+			relevantIds,
 		});
 		if (badges.length > 0 && !badgeTracked) {
 			badgeTracked = true;
@@ -175,7 +175,7 @@
 			now: Date.now(),
 			todayIso: todayInIst(),
 			...interestsNow(),
-			relevantIds
+			relevantIds,
 		});
 	}
 
@@ -262,7 +262,9 @@
 					{#each rows as row (row.item.id)}
 						<li class="notifications-item">
 							<div class="notifications-item-head">
-								<span class="notifications-status notifications-status-{row.status}">
+								<span
+									class="notifications-status notifications-status-{row.status}"
+								>
 									{$t(statusKey(row.status))}
 								</span>
 								{#if row.event === 'new'}
@@ -271,10 +273,12 @@
 							</div>
 							<p class="notifications-item-title">{row.item.title}</p>
 							<p class="notifications-meta">
-								{row.item.org}{#if row.item.applyEnd} · {$t('examsApplyBy', {
-										date: row.item.applyEnd
-									})}{:else if row.item.examDate} · {$t('examsExamOn', {
-										date: row.item.examDate
+								{row.item.org}{#if row.item.applyEnd}
+									· {$t('examsApplyBy', {
+										date: row.item.applyEnd,
+									})}{:else if row.item.examDate}
+									· {$t('examsExamOn', {
+										date: row.item.examDate,
 									})}{/if}
 							</p>
 							<div class="notifications-actions">
@@ -303,7 +307,10 @@
 								{#if row.item.examId}
 									<a
 										class="notifications-link notifications-practice"
-										href={localizedPath(`/practice/${row.item.examId}`, $activeLanguage)}
+										href={localizedPath(
+											`/practice/${row.item.examId}`,
+											$activeLanguage
+										)}
 										onclick={() => handlePracticeClick(row.item)}
 									>
 										{$t('notificationsPracticeCta')}

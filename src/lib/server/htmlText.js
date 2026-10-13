@@ -97,11 +97,7 @@ export function htmlToText(html, { baseUrl = '', maxChars = 40000, maxLinks = 20
 		.replace(/\s+/g, ' ')
 		// Raw newlines are whitespace; only the block sentinel makes a line.
 		.split(NEWLINE_SENTINEL)
-		.map((line) =>
-			decodeEntities(line)
-				.replace(/\s+/g, ' ')
-				.trim()
-		)
+		.map((line) => decodeEntities(line).replace(/\s+/g, ' ').trim())
 		.filter(Boolean)
 		.join('\n')
 		.slice(0, maxChars);

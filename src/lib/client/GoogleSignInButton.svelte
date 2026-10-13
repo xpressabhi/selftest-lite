@@ -1,12 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
-	import { env } from '$env/dynamic/public';
-	import { t, activeLanguage } from '$lib/client/i18n';
-	import { isNativeApp } from '$lib/client/auth';
-	import { resolveGoogleClientId } from '$lib/shared/googleAuth';
+	import { PUBLIC_GOOGLE_CLIENT_ID } from '$app/env/public';
+	import { t, activeLanguage } from '#lib/client/i18n.js';
+	import { isNativeApp } from '#lib/client/auth.js';
+	import { resolveGoogleClientId } from '#lib/shared/googleAuth.js';
 
 	const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
-	const googleClientId = resolveGoogleClientId(env.PUBLIC_GOOGLE_CLIENT_ID);
+	const googleClientId = resolveGoogleClientId(PUBLIC_GOOGLE_CLIENT_ID);
 
 	let { onCredential, oncredential, disabled = false } = $props();
 	const credentialCallback = $derived(onCredential || oncredential || null);

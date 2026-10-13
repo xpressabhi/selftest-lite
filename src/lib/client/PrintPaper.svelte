@@ -113,7 +113,11 @@
 											{String.fromCharCode(65 + optionIndex)}.
 										</span>
 										<span class="print-option-text">
-											<MarkdownContent content={option} links="text" tag="span" />
+											<MarkdownContent
+												content={option}
+												links="text"
+												tag="span"
+											/>
 										</span>
 									</div>
 								{/each}

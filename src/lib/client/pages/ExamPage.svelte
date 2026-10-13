@@ -1,16 +1,19 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import CtaBanner from '$lib/client/CtaBanner.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import { localizedStream, localizedSyllabus } from '$lib/data/indianExams';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import CtaBanner from '#lib/client/CtaBanner.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import { localizedStream, localizedSyllabus } from '#lib/data/indianExams.js';
 
 	let { exam, related } = $props();
 
 	const fullCount = $derived(
-		Math.max(1, Math.min(200, Number(exam.fullLengthQuestions || exam.defaultNumQuestions || 20)))
+		Math.max(
+			1,
+			Math.min(200, Number(exam.fullLengthQuestions || exam.defaultNumQuestions || 20))
+		)
 	);
 	const pageTitle = $derived(`${exam.name} ${$t('practiceH1Suffix')} | selftest.in`);
 	const syllabusUnits = $derived(localizedSyllabus(exam.syllabus, $activeLanguage));
@@ -80,13 +83,22 @@
 		<header class="practice-hero">
 			<h1 class="practice-title">{exam.name} {$t('practiceH1Suffix')}</h1>
 			<p class="practice-lead">
-				{$t('practiceIntro', { name: exam.name, stream: localizedStream(exam.stream, $activeLanguage) })}
+				{$t('practiceIntro', {
+					name: exam.name,
+					stream: localizedStream(exam.stream, $activeLanguage),
+				})}
 			</p>
 			<div class="practice-cta-row">
-				<a class="btn btn-primary" href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&numQuestions=${fullCount}`}>
+				<a
+					class="btn btn-primary"
+					href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&numQuestions=${fullCount}`}
+				>
 					{$t('practiceFullMock', { count: fullCount })}
 				</a>
-				<a class="practice-sectional-link" href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&sections=1`}>
+				<a
+					class="practice-sectional-link"
+					href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&sections=1`}
+				>
 					{$t('practiceSectionalLink')}
 				</a>
 			</div>
@@ -143,10 +155,15 @@
 				<h2 class="practice-section-title">{$t('practiceRelatedTitle')}</h2>
 				<div class="practice-related">
 					{#each related as item (item.id)}
-						<a class="practice-card" href={localizedPath(`/practice/${item.id}`, $activeLanguage)}>
+						<a
+							class="practice-card"
+							href={localizedPath(`/practice/${item.id}`, $activeLanguage)}
+						>
 							<span class="practice-card-copy">
 								<strong>{item.name}</strong>
-								<span class="practice-card-meta">{localizedStream(item.stream, $activeLanguage)}</span>
+								<span class="practice-card-meta"
+									>{localizedStream(item.stream, $activeLanguage)}</span
+								>
 							</span>
 							<span class="practice-card-chevron" aria-hidden="true">
 								<Icon name="chevron-right" size={18} />

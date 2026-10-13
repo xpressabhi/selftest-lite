@@ -14,7 +14,9 @@ describe('parseJsonResponse', () => {
 
 	it('extracts JSON from surrounding prose', () => {
 		expect(
-			parseJsonResponse('Sure! Here is the result:\n{"explanation":"prose"}\nHope that helps.')
+			parseJsonResponse(
+				'Sure! Here is the result:\n{"explanation":"prose"}\nHope that helps.'
+			)
 		).toEqual({ explanation: 'prose' });
 	});
 

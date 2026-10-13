@@ -25,8 +25,8 @@ import {
 	STREAK_SHARE_MIN,
 	eligibleNudgeKinds,
 	nudgeCohort,
-	nudgeKindGroup
-} from '$lib/shared/nudgePolicy.js';
+	nudgeKindGroup,
+} from '#lib/shared/nudgePolicy.js';
 
 export {
 	CHALLENGE_MIN_PCT,
@@ -44,7 +44,7 @@ export {
 	STREAK_SHARE_MIN,
 	eligibleNudgeKinds,
 	nudgeCohort,
-	nudgeKindGroup
+	nudgeKindGroup,
 };
 
 // ---- State sanitizing -------------------------------------------------------
@@ -75,9 +75,7 @@ const candidateSchema = z.object({
 		.catch(null),
 	status: z.enum(['upcoming', 'open', 'closing_soon', 'closed']).catch('upcoming'),
 	daysLeft: z.number().int().min(0).max(3650).nullable().catch(null),
-	match: z
-		.enum(['bookmarked', 'practiced', 'category', 'state', 'level', 'none'])
-		.catch('none')
+	match: z.enum(['bookmarked', 'practiced', 'category', 'state', 'level', 'none']).catch('none'),
 });
 
 const nudgeStateSchema = z.object({
@@ -89,7 +87,7 @@ const nudgeStateSchema = z.object({
 	lastScore: z
 		.object({
 			pct: z.number().min(0).max(100).catch(0),
-			total: clampedInt(1000)
+			total: clampedInt(1000),
 		})
 		.nullable()
 		.catch(null),
@@ -101,21 +99,21 @@ const nudgeStateSchema = z.object({
 		.object({
 			lastShareDaysAgo: z.number().int().min(0).max(3650).nullable().catch(null),
 			lastPushDaysAgo: z.number().int().min(0).max(3650).nullable().catch(null),
-			dismissals: clampedInt(100)
+			dismissals: clampedInt(100),
 		})
 		.catch({ lastShareDaysAgo: null, lastPushDaysAgo: null, dismissals: 0 }),
 	session: z
 		.object({
 			secondsOnPage: clampedInt(86400),
 			interactionCount: clampedInt(10000),
-			hourLocal: clampedInt(23)
+			hourLocal: clampedInt(23),
 		})
 		.catch({ secondsOnPage: 0, interactionCount: 0, hourLocal: 0 }),
 	locale: z.enum(['en', 'hi']).catch('en'),
 	topics: z
 		.array(z.string().transform((value) => value.slice(0, 80)))
 		.catch([])
-		.transform((list) => list.slice(0, 5))
+		.transform((list) => list.slice(0, 5)),
 });
 
 function sanitizeCandidates(raw) {
@@ -150,7 +148,7 @@ export function sanitizeNudgeState(raw, page) {
 	return {
 		page,
 		...parsed.data,
-		candidates: page === 'notifications' ? sanitizeCandidates(raw.candidates) : []
+		candidates: page === 'notifications' ? sanitizeCandidates(raw.candidates) : [],
 	};
 }
 
@@ -168,7 +166,7 @@ const KIND_CRITERIA = {
 	share_streak:
 		'Streak progress of three or more days is the salient win; sharing the streak card fits',
 	enable_reminders:
-		'A returning learner whose practice habit is worth protecting; a daily reminder would be welcome, not pushy'
+		'A returning learner whose practice habit is worth protecting; a daily reminder would be welcome, not pushy',
 };
 
 const WAIT_CRITERIA = 'A later checkpoint (next result, next visit) fits better than this moment';
@@ -177,13 +175,13 @@ const NOTHING_CRITERIA = 'An ask would be unwelcome or pointless right now';
 const PRIDE_LEVELS = [
 	'Not a moment; showing this result to a friend would feel awkward',
 	'Fine; acceptable if offered',
-	'Proud; a strong moment to show off'
+	'Proud; a strong moment to show off',
 ];
 
 const REMINDER_FIT_LEVELS = [
 	'No habit yet; a reminder would be noise',
 	'Some routine; a gentle reminder might land',
-	'Clear habit; a reminder protects something real'
+	'Clear habit; a reminder protects something real',
 ];
 
 const RECEPTIVITY_INSTRUCTIONS =
@@ -197,7 +195,7 @@ function momentInstructions(state, kinds) {
 		hasPush
 			? 'A reminder ask spends a browser permission prompt, so only choose it when the habit clearly justifies it.'
 			: 'Only the listed asks are available; never invent another.',
-		'Choose wait when a later checkpoint will fit better, and nothing when no ask is warranted.'
+		'Choose wait when a later checkpoint will fit better, and nothing when no ask is warranted.',
 	].join(' ');
 }
 
@@ -205,7 +203,7 @@ function notificationInstructions() {
 	return [
 		'Which single exam update, if any, deserves to interrupt this learner in the app right now?',
 		'The candidates are government recruitment notices matched to exams the learner follows or practices.',
-		'Choose none when nothing should interrupt, even if an update is useful.'
+		'Choose none when nothing should interrupt, even if an update is useful.',
 	].join(' ');
 }
 
@@ -223,15 +221,16 @@ function buildNotificationQuestions(state) {
 	}
 	const criteria = {};
 	for (const candidate of candidates) {
-		criteria[String(candidate.id)] = `${candidate.org}: ${candidate.title} — ${candidate.match} match, status ${candidate.status}`;
+		criteria[String(candidate.id)] =
+			`${candidate.org}: ${candidate.title} — ${candidate.match} match, status ${candidate.status}`;
 	}
 	criteria.none = 'Nothing should interrupt right now';
 	const questions = {
 		nudge_notify_item: {
 			type: 'choice',
 			instructions: notificationInstructions(),
-			criteria
-		}
+			criteria,
+		},
 	};
 	for (const candidate of candidates) {
 		if (candidate.match === 'bookmarked' || candidate.match === 'practiced') {
@@ -243,8 +242,8 @@ function buildNotificationQuestions(state) {
 			criteria: [
 				'Unrelated to this learner; surfacing it would be noise',
 				'Worth seeing; same broad area as the learner follows',
-				"Directly matches this learner's exams or stated preparation"
-			]
+				"Directly matches this learner's exams or stated preparation",
+			],
 		};
 	}
 	questions.nudge_receptivity = { type: 'noul', instructions: RECEPTIVITY_INSTRUCTIONS };
@@ -276,15 +275,15 @@ export function buildNudgeQuestions(state) {
 		nudge_moment: {
 			type: 'choice',
 			instructions: momentInstructions(state, kinds),
-			criteria
-		}
+			criteria,
+		},
 	};
 	if (kinds.some((kind) => SHARE_KINDS.includes(kind))) {
 		questions.nudge_share_pride = {
 			type: 'score',
 			instructions:
 				'How comfortable would this learner be showing this result or streak to a friend?',
-			criteria: PRIDE_LEVELS
+			criteria: PRIDE_LEVELS,
 		};
 	}
 	if (kinds.includes('enable_reminders')) {
@@ -292,7 +291,7 @@ export function buildNudgeQuestions(state) {
 			type: 'score',
 			instructions:
 				'How well does a daily practice reminder fit this learner right now? Choose a low level when the habit is too new to protect.',
-			criteria: REMINDER_FIT_LEVELS
+			criteria: REMINDER_FIT_LEVELS,
 		};
 	}
 	questions.nudge_receptivity = { type: 'noul', instructions: RECEPTIVITY_INSTRUCTIONS };
@@ -310,7 +309,7 @@ function readChoice(judgments, id) {
 	return {
 		choice: answer.choice,
 		confidence: Number.isFinite(Number(answer.confidence)) ? Number(answer.confidence) : 0,
-		probability: Number.isFinite(probability) ? probability : 0
+		probability: Number.isFinite(probability) ? probability : 0,
 	};
 }
 
@@ -376,7 +375,11 @@ export function deriveNudge(state, answers = {}) {
 			return suppressed('guardrail');
 		}
 	}
-	return { kind: moment.choice, confidence: classifyConfidence(moment.confidence), suppressed: null };
+	return {
+		kind: moment.choice,
+		confidence: classifyConfidence(moment.confidence),
+		suppressed: null,
+	};
 }
 
 /**
@@ -385,7 +388,10 @@ export function deriveNudge(state, answers = {}) {
  * badge for soft matches; tier-0 (bookmarked/practiced) items badge locally.
  */
 export function deriveNotificationRanking(answers = {}, candidates = []) {
-	const list = (Array.isArray(candidates) ? candidates : []).slice(0, MAX_NOTIFICATION_CANDIDATES);
+	const list = (Array.isArray(candidates) ? candidates : []).slice(
+		0,
+		MAX_NOTIFICATION_CANDIDATES
+	);
 	if (list.length === 0) {
 		return { pickedId: null, relevance: {}, relevantIds: [], suppressed: 'no-candidates' };
 	}

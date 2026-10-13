@@ -26,7 +26,10 @@ export function getSystemMetrics() {
 	const lifetimeCpuPercent =
 		processUptimeSeconds > 0
 			? Number(
-					(((cpuUsage.user + cpuUsage.system) / (processUptimeSeconds * 1e6)) * 100).toFixed(1)
+					(
+						((cpuUsage.user + cpuUsage.system) / (processUptimeSeconds * 1e6)) *
+						100
+					).toFixed(1)
 				)
 			: 0;
 
@@ -72,7 +75,10 @@ export function getSystemMetrics() {
 			systemUsedPercent:
 				systemTotalBytes > 0
 					? Number(
-							(((systemTotalBytes - systemFreeBytes) / systemTotalBytes) * 100).toFixed(1)
+							(
+								((systemTotalBytes - systemFreeBytes) / systemTotalBytes) *
+								100
+							).toFixed(1)
 						)
 					: 0,
 		},

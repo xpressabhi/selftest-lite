@@ -19,9 +19,7 @@ export function beginTour() {
 }
 
 export function setTourStep(step) {
-	welcomeTour.update((state) =>
-		state.status === 'active' ? { ...state, step } : state
-	);
+	welcomeTour.update((state) => (state.status === 'active' ? { ...state, step } : state));
 }
 
 function markDone() {

@@ -1,8 +1,7 @@
-import { json } from '@sveltejs/kit';
-import { clearSessionCookie, getSessionFromRequest, setSessionCookie } from '$lib/server/auth';
-import { logApiEvent } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
+import { clearSessionCookie, getSessionFromRequest, setSessionCookie } from '#lib/server/auth.js';
+import { logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const ME_RATE_LIMIT = 900;
 
@@ -15,7 +14,7 @@ export async function GET({ request, cookies }) {
 			limit: ME_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return json(
+			return Response.json(
 				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
 				{ status: 429 }
 			);
@@ -27,7 +26,7 @@ export async function GET({ request, cookies }) {
 			// with a null user and skip API error telemetry so the admin error
 			// rate reflects real failures only.
 			clearSessionCookie(cookies);
-			return json({ user: null });
+			return Response.json({ user: null });
 		}
 
 		setSessionCookie(cookies, session.rawSessionToken, session.expiresAt);
@@ -41,7 +40,7 @@ export async function GET({ request, cookies }) {
 			userId: session.user.id,
 		});
 
-		return json({ user: session.user });
+		return Response.json({ user: session.user });
 	} catch (error) {
 		console.error('Failed to fetch session:', error);
 		await logApiEvent({
@@ -53,6 +52,6 @@ export async function GET({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json({ error: 'Unable to resolve session', code: 'SESSION_ERROR' }, { status: 500 });
+		return Response.json({ error: 'Unable to resolve session', code: 'SESSION_ERROR' }, { status: 500 });
 	}
 }

@@ -2,16 +2,16 @@
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { get } from 'svelte/store';
-	import { activeLanguage, localizedApiError, t } from '$lib/client/i18n';
-	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
-	import { track } from '$lib/client/telemetry';
+	import { activeLanguage, localizedApiError, t } from '#lib/client/i18n.js';
+	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '#lib/client/haptics.js';
+	import { track } from '#lib/client/telemetry.js';
 	import {
 		PREVIEW_DEBOUNCE_MS,
 		buildLocalPreview,
 		isMeaningfulPreview,
 		needsJevPreview,
 		shouldRunPreview,
-	} from '$lib/client/livePreview';
+	} from '#lib/client/livePreview.js';
 	import {
 		SETTLE_TICK_MS,
 		candidatesFromLocal,
@@ -20,10 +20,10 @@
 		hasPendingChallenger,
 		resetSettleState,
 		settlePreview,
-	} from '$lib/client/previewSettler';
-	import { observeViewportTier } from '$lib/client/viewportTier';
-	import { streamErrorToError } from '$lib/client/sse';
-	import { readGenerationStream } from '$lib/client/generateStream';
+	} from '#lib/client/previewSettler.js';
+	import { observeViewportTier } from '#lib/client/viewportTier.js';
+	import { streamErrorToError } from '#lib/client/sse.js';
+	import { readGenerationStream } from '#lib/client/generateStream.js';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
@@ -32,11 +32,11 @@
 		getUnsubmittedTest,
 		saveBookmarkedExamIds,
 		saveCurrentPaper,
-	} from '$lib/client/storage';
-	import { mergeRecentTests } from '$lib/client/recentTests';
-	import { hydrateHistoryFromServer } from '$lib/client/sync';
-	import { STORAGE_KEYS } from '$lib/client/constants';
-	import { setLanguage } from '$lib/client/preferences';
+	} from '#lib/client/storage.js';
+	import { mergeRecentTests } from '#lib/client/recentTests.js';
+	import { hydrateHistoryFromServer } from '#lib/client/sync.js';
+	import { STORAGE_KEYS } from '#lib/client/constants.js';
+	import { setLanguage } from '#lib/client/preferences.js';
 	import {
 		beginTour,
 		finishTour,
@@ -44,15 +44,15 @@
 		setTourStep,
 		skipTour,
 		welcomeTour,
-	} from '$lib/client/welcomeTour';
-	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '$lib/data/indianExams';
-	import { getStats, getStreak } from '$lib/client/learning';
-	import ChatThread from '$lib/client/ChatThread.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import PlannerComposer from '$lib/client/PlannerComposer.svelte';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import WelcomeTour from '$lib/client/WelcomeTour.svelte';
-	import { languageHref, localizedPath } from '$lib/shared/seo';
+	} from '#lib/client/welcomeTour.js';
+	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
+	import { getStats, getStreak } from '#lib/client/learning.js';
+	import ChatThread from '#lib/client/ChatThread.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import PlannerComposer from '#lib/client/PlannerComposer.svelte';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import WelcomeTour from '#lib/client/WelcomeTour.svelte';
+	import { languageHref, localizedPath } from '#lib/shared/seo.js';
 	import {
 		CLIENT_GENERATION_TIMEOUT_MS,
 		GENERATION_BUDGET_MS,
@@ -60,7 +60,7 @@
 		createTerminalEventGuard,
 		isRetryableGenerationStatus,
 		nextAttemptAllowed,
-	} from '$lib/shared/generationBudget';
+	} from '#lib/shared/generationBudget.js';
 	import {
 		applyTurnFailure,
 		applyTurnResult,
@@ -74,11 +74,11 @@
 		readPlannerDraft,
 		skipClarify,
 		writePlannerDraft,
-	} from '$lib/client/plannerState';
-	import PreviewCard from '$lib/client/PreviewCard.svelte';
-	import QuickStart from '$lib/client/QuickStart.svelte';
-	import StreakCard from '$lib/client/StreakCard.svelte';
-	import NudgeCard from '$lib/client/NudgeCard.svelte';
+	} from '#lib/client/plannerState.js';
+	import PreviewCard from '#lib/client/PreviewCard.svelte';
+	import QuickStart from '#lib/client/QuickStart.svelte';
+	import StreakCard from '#lib/client/StreakCard.svelte';
+	import NudgeCard from '#lib/client/NudgeCard.svelte';
 	import {
 		buildNudgeState,
 		getSessionBudget,
@@ -86,24 +86,28 @@
 		markMomentShown,
 		momentSuppression,
 		readNudgeLedger,
-	} from '$lib/client/nudge';
-	import { eligibleNudgeKinds } from '$lib/shared/nudgePolicy';
-	import { enableReminders, isReminderEnabled, remindersSupported } from '$lib/client/reminders';
-	import { showToast } from '$lib/client/toast';
-	import TopicBrowser from '$lib/client/TopicBrowser.svelte';
-	import ExamBrowser from '$lib/client/ExamBrowser.svelte';
-	import ProfileWizard from '$lib/client/ProfileWizard.svelte';
-	import GenerationTrace from '$lib/client/GenerationTrace.svelte';
-	import { user } from '$lib/client/auth';
-	import { requestPersonalize } from '$lib/client/personalize';
+	} from '#lib/client/nudge.js';
+	import { eligibleNudgeKinds } from '#lib/shared/nudgePolicy.js';
+	import {
+		enableReminders,
+		isReminderEnabled,
+		remindersSupported,
+	} from '#lib/client/reminders.js';
+	import { showToast } from '#lib/client/toast.js';
+	import TopicBrowser from '#lib/client/TopicBrowser.svelte';
+	import ExamBrowser from '#lib/client/ExamBrowser.svelte';
+	import ProfileWizard from '#lib/client/ProfileWizard.svelte';
+	import GenerationTrace from '#lib/client/GenerationTrace.svelte';
+	import { user } from '#lib/client/auth.js';
+	import { requestPersonalize } from '#lib/client/personalize.js';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
 		profile as profileStore,
 		profileInsights,
-	} from '$lib/client/profile';
+	} from '#lib/client/profile.js';
 
-	// Retry policy lives in $lib/shared/generationBudget.js so the numbers that
+	// Retry policy lives in #lib/shared/generationBudget.js so the numbers that
 	// the server deadline and this loop must agree on have one definition.
 	const MAX_RETRIES = MAX_GENERATION_ATTEMPTS;
 	const GENERATION_TIMEOUT_MS = CLIENT_GENERATION_TIMEOUT_MS;
@@ -617,8 +621,7 @@
 		// Land ready to type: the planner input focuses by default (see
 		// focusPlannerInput). The ?focus=search deep link only needs its URL
 		// cleaned up now.
-		const focusRequested =
-			new URL(window.location.href).searchParams.get('focus') === 'search';
+		const focusRequested = new URL(window.location.href).searchParams.get('focus') === 'search';
 		if (focusRequested) {
 			// Plain History API: SvelteKit's replaceState refuses to run this
 			// early in the mount effect (router not initialized yet).
@@ -1025,7 +1028,8 @@
 			plannerDraft = applyTurnResult(plannerDraft, data);
 			persistPlannerDraft();
 			intentStatus = 'done';
-			lastTopicSource = typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
+			lastTopicSource =
+				typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
 			lastFieldConfidence =
 				data.fieldConfidence && typeof data.fieldConfidence === 'object'
 					? data.fieldConfidence
@@ -1296,9 +1300,7 @@
 				: !testType || testType === 'mixed'
 					? 'multiple-choice'
 					: testType,
-			numQuestions: section
-				? section.questionCount
-				: Number(exam.defaultNumQuestions || 20),
+			numQuestions: section ? section.questionCount : Number(exam.defaultNumQuestions || 20),
 			difficulty: exam.defaultDifficulty || 'intermediate',
 			language: paperLanguage,
 			objectiveOnly: true,
@@ -1344,7 +1346,8 @@
 				.map((message) => message.text)
 				.filter(Boolean);
 			const typedText = intentValue.trim();
-			const thread = draftUserTexts.length > 0 ? draftUserTexts : typedText ? [typedText] : [];
+			const thread =
+				draftUserTexts.length > 0 ? draftUserTexts : typedText ? [typedText] : [];
 			const intentCapture =
 				captureEnabled && thread.length > 0
 					? {
@@ -1541,7 +1544,8 @@
 					if (generationTerminal.claim('success')) {
 						track('generate:success', {
 							mode:
-								requestParams.testMode || (isFullExam ? 'full-exam' : 'quiz-practice'),
+								requestParams.testMode ||
+								(isFullExam ? 'full-exam' : 'quiz-practice'),
 						});
 					}
 					if (data?.trimmed) {
@@ -1565,7 +1569,9 @@
 					if (generationCanceled) {
 						if (generationTerminal.claim('cancel')) {
 							track('generate:cancel', {
-								elapsedSeconds: Math.floor((Date.now() - generationStartedAt) / 1000),
+								elapsedSeconds: Math.floor(
+									(Date.now() - generationStartedAt) / 1000
+								),
 							});
 						}
 						error = $t('generationCanceled');
@@ -1782,7 +1788,7 @@
 				parsingFailed={intentParseFailed}
 				draft={plannerDraft.messages.length === 0}
 				checking={previewStatus === 'checking' || intentStatus === 'parsing'}
-				settling={settling}
+				{settling}
 				density={planDensity}
 				changedFields={committedPulseFields}
 				ongenerate={handleGenerate}
@@ -1875,7 +1881,8 @@
 				disabled={status === 'loading'}
 				onclick={startDailyFive}
 			>
-				<Icon name="zap" size={16} /> {$t('dailyFive')}
+				<Icon name="zap" size={16} />
+				{$t('dailyFive')}
 			</button>
 			<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
 		</div>
@@ -1940,14 +1947,18 @@
 			<a href={localizedPath('/practice/upsc-cse-prelims', $activeLanguage)}>UPSC Prelims</a>
 			<a href={localizedPath('/practice/neet-ug', $activeLanguage)}>NEET</a>
 			<a href={localizedPath('/practice/jee-main', $activeLanguage)}>JEE Main</a>
-			<a class="popular-exams-more" href={localizedPath('/practice', $activeLanguage)}>{$t('practiceAllExams')}</a>
+			<a class="popular-exams-more" href={localizedPath('/practice', $activeLanguage)}
+				>{$t('practiceAllExams')}</a
+			>
 		</nav>
 
 		<p class="home-pitch">{$t('homeSeoIntro')}</p>
 
 		{#if tailoredSummary}
 			<div class="tailored-chip">
-				<span class="tailored-badge" aria-hidden="true"><Icon name="target" size={18} /></span>
+				<span class="tailored-badge" aria-hidden="true"
+					><Icon name="target" size={18} /></span
+				>
 				<span class="small">
 					<strong>{$t('profileChipLabel')}:</strong>
 					{tailoredSummary}

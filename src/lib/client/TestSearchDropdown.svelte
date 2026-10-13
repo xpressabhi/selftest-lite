@@ -1,10 +1,10 @@
 <script>
 	import { untrack } from 'svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { t } from '$lib/client/i18n';
-	import { track, trackDebounced } from '$lib/client/telemetry';
-	import { getHiddenHistoryIds, getHistory } from '$lib/client/storage';
-	import { toOwnTestResults } from '$lib/client/recentTests';
+	import Icon from '#lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import { track, trackDebounced } from '#lib/client/telemetry.js';
+	import { getHiddenHistoryIds, getHistory } from '#lib/client/storage.js';
+	import { toOwnTestResults } from '#lib/client/recentTests.js';
 
 	let {
 		query = '',
@@ -220,7 +220,9 @@
 					type="button"
 					onclick={() => handleResultClick(exactTestIdMatch.id)}
 				>
-					<span class="result-icon" aria-hidden="true"><Icon name="search" size={18} /></span>
+					<span class="result-icon" aria-hidden="true"
+						><Icon name="search" size={18} /></span
+					>
 					<span class="result-text">
 						<strong>{exactTestIdMatch.topic || $t('untitledTest')}</strong>
 						<span class="result-meta">
@@ -288,8 +290,13 @@
 							{planTopic}{planCount ? ` · ${planCount} ${$t('questionShort')}` : ''}
 						</span>
 						{#if planState}
-							<span class="dropdown-plan-state" class:is-ready={planState === 'ready'}>
-								{planState === 'ready' ? $t('previewStatusReady') : $t('plannerPreviewDraft')}
+							<span
+								class="dropdown-plan-state"
+								class:is-ready={planState === 'ready'}
+							>
+								{planState === 'ready'
+									? $t('previewStatusReady')
+									: $t('plannerPreviewDraft')}
 							</span>
 						{/if}
 					</div>
@@ -297,9 +304,12 @@
 				<button
 					class="dropdown-generate"
 					type="button"
-					onclick={() => ongenerate(trimmedQuery, hasMatches ? 'overlay-footer' : 'no-matches')}
+					onclick={() =>
+						ongenerate(trimmedQuery, hasMatches ? 'overlay-footer' : 'no-matches')}
 				>
-					<span class="generate-icon" aria-hidden="true"><Icon name="zap" size={18} /></span>
+					<span class="generate-icon" aria-hidden="true"
+						><Icon name="zap" size={18} /></span
+					>
 					<span class="generate-text">
 						<span class="generate-label">{$t('plannerGenerateNew')}</span>
 						<span class="generate-query">{trimmedQuery}</span>

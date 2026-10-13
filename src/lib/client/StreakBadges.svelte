@@ -1,7 +1,7 @@
 <script>
-	import Icon from '$lib/client/Icon.svelte';
-	import { t } from '$lib/client/i18n';
-	import { STREAK_MILESTONES } from '$lib/client/learning';
+	import Icon from '#lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import { STREAK_MILESTONES } from '#lib/client/learning.js';
 
 	let { streak = null } = $props();
 
@@ -65,11 +65,16 @@
 	<ul class="streak-badge-track" bind:this={trackEl} onscroll={onTrackScroll}>
 		{#each badges as badge (badge.days)}
 			<li class="streak-badge" class:earned={badge.earned}>
-				<span class="streak-badge-star" aria-hidden="true"><Icon name="star" size={22} /></span>
+				<span class="streak-badge-star" aria-hidden="true"
+					><Icon name="star" size={22} /></span
+				>
 				<span class="streak-badge-meta">
 					{badge.earned
 						? $t('streakBadgeDays', { count: badge.days })
-						: $t('streakBadgeProgress', { current: badge.progress, target: badge.days })}
+						: $t('streakBadgeProgress', {
+								current: badge.progress,
+								target: badge.days,
+							})}
 				</span>
 				<span class="streak-badge-title">{$t(badge.titleKey)}</span>
 			</li>

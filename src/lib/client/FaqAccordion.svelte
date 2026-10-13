@@ -9,9 +9,9 @@
 	 * - Answer copy with three keys renders the middle one emphasised.
 	 */
 	import { onMount } from 'svelte';
-	import { replaceState } from '$app/navigation';
-	import { t } from '$lib/client/i18n';
-	import { faqAnchorId } from '$lib/data/faqs';
+	import { goto } from '$app/navigation';
+	import { t } from '#lib/client/i18n.js';
+	import { faqAnchorId } from '#lib/data/faqs.js';
 
 	let { items = [] } = $props();
 
@@ -41,7 +41,7 @@
 		url.hash = id ? faqAnchorId(id) : '';
 		// Router-aware replace: plain history.replaceState makes SvelteKit warn
 		// and leaves its internal URL state stale.
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	}
 
 	function answerParts(answerKeys) {
@@ -89,7 +89,7 @@
 							stroke-width="2"
 							stroke-linecap="round"
 							stroke-linejoin="round"
-						/>
+						></path>
 					</svg>
 				</button>
 			</h3>
@@ -101,7 +101,8 @@
 				hidden={!open}
 			>
 				<p>
-					{$t(parts.lead)}{#if parts.highlight}<strong>{$t(parts.highlight)}</strong>{/if}{#if parts.rest}{$t(parts.rest)}{/if}
+					{$t(parts.lead)}{#if parts.highlight}<strong>{$t(parts.highlight)}</strong
+						>{/if}{#if parts.rest}{$t(parts.rest)}{/if}
 				</p>
 			</div>
 		</article>

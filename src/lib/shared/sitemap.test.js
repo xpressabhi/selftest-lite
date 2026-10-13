@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BLOG_POSTS_BY_DATE } from '$lib/data/blogPosts';
-import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+import { BLOG_POSTS_BY_DATE } from '#lib/data/blogPosts.js';
+import { OBJECTIVE_ONLY_EXAMS } from '#lib/data/indianExams.js';
 import { SITE_ORIGIN } from './seo.js';
 import { STATIC_PATHS, buildSitemap } from './sitemap.js';
 
@@ -14,7 +14,8 @@ describe('buildSitemap', () => {
 	});
 
 	it('lists every page in both languages', () => {
-		const expected = (STATIC_PATHS.length + OBJECTIVE_ONLY_EXAMS.length + BLOG_POSTS_BY_DATE.length) * 2;
+		const expected =
+			(STATIC_PATHS.length + OBJECTIVE_ONLY_EXAMS.length + BLOG_POSTS_BY_DATE.length) * 2;
 		expect(urlCount).toBe(expected);
 		expect(new Set(locs).size).toBe(locs.length);
 	});
@@ -35,10 +36,16 @@ describe('buildSitemap', () => {
 	});
 
 	it('emits reciprocal alternates for a sample entry', () => {
-		const entry = xml.split('  <url>').find((chunk) => chunk.includes('/hi/practice/ssc-cgl</loc>'));
+		const entry = xml
+			.split('  <url>')
+			.find((chunk) => chunk.includes('/hi/practice/ssc-cgl</loc>'));
 		expect(entry).toContain('hreflang="en-IN" href="https://www.selftest.in/practice/ssc-cgl"');
-		expect(entry).toContain('hreflang="hi-IN" href="https://www.selftest.in/hi/practice/ssc-cgl"');
-		expect(entry).toContain('hreflang="x-default" href="https://www.selftest.in/practice/ssc-cgl"');
+		expect(entry).toContain(
+			'hreflang="hi-IN" href="https://www.selftest.in/hi/practice/ssc-cgl"'
+		);
+		expect(entry).toContain(
+			'hreflang="x-default" href="https://www.selftest.in/practice/ssc-cgl"'
+		);
 	});
 
 	it('only dates blog entries', () => {

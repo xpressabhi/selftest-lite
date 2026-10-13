@@ -17,11 +17,15 @@ const BASE = {
 describe('generatePrompt originalRequest failure modes', () => {
 	it('P1: omits the block when absent', () => {
 		expect(generatePrompt(BASE)).not.toContain('ORIGINAL REQUEST');
-		expect(generatePrompt({ ...BASE, originalRequest: null })).not.toContain('ORIGINAL REQUEST');
+		expect(generatePrompt({ ...BASE, originalRequest: null })).not.toContain(
+			'ORIGINAL REQUEST'
+		);
 	});
 
 	it('P2: omits the block when blank', () => {
-		expect(generatePrompt({ ...BASE, originalRequest: '   ' })).not.toContain('ORIGINAL REQUEST');
+		expect(generatePrompt({ ...BASE, originalRequest: '   ' })).not.toContain(
+			'ORIGINAL REQUEST'
+		);
 	});
 
 	it('P3: truncates to 1000 characters', () => {
@@ -66,7 +70,9 @@ describe('generatePrompt format contracts', () => {
 		expect(prompt).toContain('"statements"');
 		expect(prompt).toContain('"isTrue"');
 		expect(prompt).toContain('exactly 3 or 4 short factual statements');
-		expect(prompt).toContain('At least one statement must be true and at least one must be false');
+		expect(prompt).toContain(
+			'At least one statement must be true and at least one must be false'
+		);
 		expect(prompt).toContain('platform composes the question text');
 		expect(prompt).not.toContain('"options": ["Option A"');
 		expect(prompt).not.toContain('OPTION LENGTH BALANCE');

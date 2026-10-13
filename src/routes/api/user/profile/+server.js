@@ -1,22 +1,21 @@
-import { json } from '@sveltejs/kit';
 import {
 	deleteStateForIdentity,
 	getStateForIdentity,
 	logApiEvent,
 	updateAppUserName,
 	upsertStateForIdentity,
-} from '$lib/server/storage';
-import { mapUserRow } from '$lib/server/auth';
-import { normalizeDisplayName } from '$lib/shared/displayName';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
+} from '#lib/server/storage.js';
+import { mapUserRow } from '#lib/server/auth.js';
+import { normalizeDisplayName } from '#lib/shared/displayName.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
 import {
 	PROFILE_STATE_KEY,
 	normalizeProfile,
 	parseProfileStateValue,
-} from '$lib/shared/userProfile';
+} from '#lib/shared/userProfile.js';
 
 const PROFILE_GET_RATE_LIMIT = 60;
 const PROFILE_POST_RATE_LIMIT = 30;
@@ -47,7 +46,7 @@ export async function GET({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -68,7 +67,7 @@ export async function GET({ request, cookies }) {
 			metadata: { hasProfile: profile !== null },
 		});
 
-		return json({ profile });
+		return Response.json({ profile });
 	} catch (error) {
 		console.error('Failed to fetch user profile:', error);
 		await logApiEvent({
@@ -82,7 +81,7 @@ export async function GET({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to fetch user profile', code: 'PROFILE_FETCH_ERROR' },
 			{ status: 500 }
 		);
@@ -110,7 +109,7 @@ export async function POST({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -129,7 +128,7 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				userId: user?.id || null,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Invalid profile payload', code: 'INVALID_PROFILE' },
 				{ status: 400 }
 			);
@@ -160,7 +159,7 @@ export async function POST({ request, cookies }) {
 					userId: user.id,
 					errorMessage: 'Invalid display name',
 				});
-				return json(
+				return Response.json(
 					{
 						error: 'Please enter a name between 2 and 40 characters.',
 						code: 'INVALID_DISPLAY_NAME',
@@ -189,7 +188,7 @@ export async function POST({ request, cookies }) {
 			},
 		});
 
-		return json({ success: didUpsert, profile, user: updatedUser });
+		return Response.json({ success: didUpsert, profile, user: updatedUser });
 	} catch (error) {
 		console.error('Failed to update user profile:', error);
 		await logApiEvent({
@@ -203,7 +202,7 @@ export async function POST({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to update user profile', code: 'PROFILE_UPDATE_ERROR' },
 			{ status: 500 }
 		);
@@ -231,7 +230,7 @@ export async function DELETE({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -254,7 +253,7 @@ export async function DELETE({ request, cookies }) {
 			metadata: { deleted: didDelete },
 		});
 
-		return json({ success: true, deleted: didDelete });
+		return Response.json({ success: true, deleted: didDelete });
 	} catch (error) {
 		console.error('Failed to delete user profile:', error);
 		await logApiEvent({
@@ -268,7 +267,7 @@ export async function DELETE({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to delete user profile', code: 'PROFILE_DELETE_ERROR' },
 			{ status: 500 }
 		);

@@ -27,7 +27,11 @@ import {
 
 const TOPIC = 'topic';
 
-function settle(state, candidates, { source = 'local', text = 'some message', explicit = {} } = {}) {
+function settle(
+	state,
+	candidates,
+	{ source = 'local', text = 'some message', explicit = {} } = {}
+) {
 	return settlePreview(state, { source, text, candidates, explicit });
 }
 
@@ -75,16 +79,28 @@ describe('settlePreview', () => {
 
 	it('commits strong evidence immediately', () => {
 		const state = commitTwice(createSettleState(), TOPIC, 'physics').state;
-		const result = settle(state, { [TOPIC]: { value: 'plant biology', strong: true } }, { source: 'jev' });
+		const result = settle(
+			state,
+			{ [TOPIC]: { value: 'plant biology', strong: true } },
+			{ source: 'jev' }
+		);
 		expect(result.committed).toEqual({ [TOPIC]: 'plant biology' });
 		expect(result.status).toBe('ready');
 	});
 
 	it('counts cross-tier agreement as two wins', () => {
 		const state = commitTwice(createSettleState(), TOPIC, 'physics').state;
-		const first = settle(state, { [TOPIC]: { value: 'plant biology', strong: false } }, { source: 'local' });
+		const first = settle(
+			state,
+			{ [TOPIC]: { value: 'plant biology', strong: false } },
+			{ source: 'local' }
+		);
 		expect(first.committed).toEqual({});
-		const second = settle(first.state, { [TOPIC]: { value: 'plant biology', strong: false } }, { source: 'jev' });
+		const second = settle(
+			first.state,
+			{ [TOPIC]: { value: 'plant biology', strong: false } },
+			{ source: 'jev' }
+		);
 		expect(second.committed).toEqual({ [TOPIC]: 'plant biology' });
 	});
 
@@ -114,7 +130,9 @@ describe('settlePreview', () => {
 			expect(call.changedFields).toEqual([]);
 		}
 		// The committed value is still there, and a later same-value result is calm.
-		const confirm = settle(calls.at(-1).state, { [TOPIC]: { value: 'physics', strong: false } });
+		const confirm = settle(calls.at(-1).state, {
+			[TOPIC]: { value: 'physics', strong: false },
+		});
 		expect(confirm.committed).toEqual({});
 		expect(confirm.status).toBe('ready');
 	});
@@ -169,7 +187,9 @@ describe('settlePreview', () => {
 	});
 
 	it('resolves a pending challenger on the repeated local result (settle tick)', () => {
-		let result = settle(createSettleState(), { [TOPIC]: { value: 'photosynthesis', strong: false } });
+		let result = settle(createSettleState(), {
+			[TOPIC]: { value: 'photosynthesis', strong: false },
+		});
 		expect(result.committed).toEqual({});
 		result = settle(result.state, { [TOPIC]: { value: 'photosynthesis', strong: false } });
 		expect(result.committed).toEqual({ [TOPIC]: 'photosynthesis' });
@@ -199,7 +219,11 @@ describe('settlePreview', () => {
 
 	it('clears a Jev challenger only when Jev agrees, not when the local tier does', () => {
 		const state = commitTwice(createSettleState(), TOPIC, 'physics').state;
-		const challenged = settle(state, { [TOPIC]: { value: 'chemistry', strong: false } }, { source: 'jev' });
+		const challenged = settle(
+			state,
+			{ [TOPIC]: { value: 'chemistry', strong: false } },
+			{ source: 'jev' }
+		);
 		expect(challenged.held).toEqual({ [TOPIC]: 'chemistry' });
 		// The local tier still proposes the committed value: the Jev challenger survives.
 		const localAgrees = settle(

@@ -39,6 +39,11 @@ export function buildChallengeUrl(base, score, name) {
 	const [path, query = ''] = String(base || '').split('?');
 	const params = new URLSearchParams(query);
 	params.set('ch', String(Math.max(0, Math.round(Number(score) || 0))));
-	params.set('by', String(name || '').trim().slice(0, MAX_CHALLENGER_NAME));
+	params.set(
+		'by',
+		String(name || '')
+			.trim()
+			.slice(0, MAX_CHALLENGER_NAME)
+	);
 	return `${path}?${params.toString()}`;
 }

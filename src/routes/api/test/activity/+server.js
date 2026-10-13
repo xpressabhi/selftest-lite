@@ -1,15 +1,14 @@
-import { json } from '@sveltejs/kit';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
+import { getClientKey, logApiEvent } from '#lib/server/storage.js';
 import {
 	buildVisitIdentityKey,
 	markTestStarted,
 	recordTestVisit,
 	testExists,
-} from '$lib/server/testStats';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { parseRequestBody } from '$lib/server/requestBody';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+} from '#lib/server/testStats.js';
+import { getAuthenticatedUser, getClientIdFromRequest } from '#lib/server/auth.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { parseRequestBody } from '#lib/server/requestBody.js';
+import { API_LIMIT_ERROR_CODE } from '#lib/shared/apiLimitError.js';
 
 const ACTIVITY_RATE_LIMIT = 60;
 const VALID_EVENTS = new Set(['view', 'start']);
@@ -38,7 +37,7 @@ export async function POST({ request, cookies }) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: API_LIMIT_ERROR_CODE,
@@ -59,20 +58,23 @@ export async function POST({ request, cookies }) {
 		const { testId, event, name } = await parseRequestBody(request);
 		const id = Number(testId);
 		if (!Number.isInteger(id) || id <= 0) {
-			return json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
+			return Response.json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
 		}
 		if (!VALID_EVENTS.has(event)) {
-			return json({ error: 'Invalid activity event', code: 'INVALID_EVENT' }, { status: 400 });
+			return Response.json(
+				{ error: 'Invalid activity event', code: 'INVALID_EVENT' },
+				{ status: 400 }
+			);
 		}
 
 		const user = await getAuthenticatedUser(cookies);
 		const clientId = getClientIdFromRequest(request);
 		if (!buildVisitIdentityKey({ userId: user?.id, clientId })) {
 			// Nothing to attribute to; report success so clients do not retry.
-			return json({ tracked: false });
+			return Response.json({ tracked: false });
 		}
 		if (!(await testExists(id))) {
-			return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
+			return Response.json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 		}
 
 		if (event === 'view') {
@@ -93,18 +95,21 @@ export async function POST({ request, cookies }) {
 			metadata: { testId: id, event },
 		});
 
-		return json({ tracked: true });
+		return Response.json({ tracked: true });
 	} catch (error) {
 		console.error('Test activity tracking failed:', error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {
-			return json({ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' }, { status: 413 });
+			return Response.json(
+				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
+				{ status: 413 }
+			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
-			return json(
+			return Response.json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 				{ status: 400 }
 			);
 		}
-		return json({ tracked: false }, { status: 200 });
+		return Response.json({ tracked: false }, { status: 200 });
 	}
 }

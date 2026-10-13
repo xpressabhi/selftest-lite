@@ -1,24 +1,23 @@
-import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { PASSKEY_ALLOWED_ORIGINS, PASSKEY_RP_ID } from '$app/env/private';
 import {
 	backfillUserIdentity,
 	consumePasskeyChallenge,
 	createPasskeyUserWithCredential,
 	insertPasskeyForUser,
-	logApiEvent
-} from '$lib/server/storage';
-import { createSessionForUser, getUserById, setSessionCookie } from '$lib/server/auth';
-import { verifyRegistration } from '$lib/server/passkey';
+	logApiEvent,
+} from '#lib/server/storage.js';
+import { createSessionForUser, getUserById, setSessionCookie } from '#lib/server/auth.js';
+import { verifyRegistration } from '#lib/server/passkey.js';
 import {
 	bytesToBase64Url,
 	describePasskeyDevice,
 	readChallengeFromClientData,
-	resolvePasskeyContext
-} from '$lib/shared/passkeyPolicy';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
-import { resolveRequestContext } from '$lib/server/apiContext';
+	resolvePasskeyContext,
+} from '#lib/shared/passkeyPolicy.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const REGISTER_VERIFY_RATE_LIMIT = 20;
 
@@ -41,7 +40,7 @@ export async function POST({ request, url, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/passkey/register/verify',
-			limit: REGISTER_VERIFY_RATE_LIMIT
+			limit: REGISTER_VERIFY_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
@@ -52,14 +51,14 @@ export async function POST({ request, url, cookies }) {
 				request,
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
-				userId: user?.id ?? null
+				userId: user?.id ?? null,
 			});
 			return rateLimited(rateLimit);
 		}
 
-		const context = resolvePasskeyContext(url, env);
+		const context = resolvePasskeyContext(url, { PASSKEY_RP_ID, PASSKEY_ALLOWED_ORIGINS });
 		if (!context) {
-			return json(
+			return Response.json(
 				{ error: 'Passkeys are not available here.', code: 'PASSKEY_UNAVAILABLE' },
 				{ status: 503 }
 			);
@@ -68,8 +67,11 @@ export async function POST({ request, url, cookies }) {
 		const body = await readJsonBody(request);
 		const response = body?.response;
 		if (!isUsableResponse(response)) {
-			return json(
-				{ error: 'A registration response is required.', code: 'PASSKEY_RESPONSE_REQUIRED' },
+			return Response.json(
+				{
+					error: 'A registration response is required.',
+					code: 'PASSKEY_RESPONSE_REQUIRED',
+				},
 				{ status: 400 }
 			);
 		}
@@ -81,8 +83,11 @@ export async function POST({ request, url, cookies }) {
 			? await consumePasskeyChallenge(challenge, 'registration')
 			: null;
 		if (!challengeRow) {
-			return json(
-				{ error: 'This passkey setup expired. Please try again.', code: 'PASSKEY_CHALLENGE_EXPIRED' },
+			return Response.json(
+				{
+					error: 'This passkey setup expired. Please try again.',
+					code: 'PASSKEY_CHALLENGE_EXPIRED',
+				},
 				{ status: 400 }
 			);
 		}
@@ -92,16 +97,16 @@ export async function POST({ request, url, cookies }) {
 		// in so a stray ceremony cannot create a second account.
 		const boundUserId = Number(challengeRow.user_id) || null;
 		if (boundUserId && (!user || boundUserId !== user.id)) {
-			return json(
+			return Response.json(
 				{ error: 'Sign in again to add this passkey.', code: 'SESSION_REQUIRED' },
 				{ status: 401 }
 			);
 		}
 		if (!boundUserId && user) {
-			return json(
+			return Response.json(
 				{
 					error: 'You are already signed in. Add the passkey from your profile instead.',
-					code: 'PASSKEY_MODE_MISMATCH'
+					code: 'PASSKEY_MODE_MISMATCH',
 				},
 				{ status: 409 }
 			);
@@ -111,7 +116,7 @@ export async function POST({ request, url, cookies }) {
 			response,
 			expectedChallenge: challengeRow.challenge,
 			expectedOrigin: context.expectedOrigin,
-			expectedRPID: context.rpId
+			expectedRPID: context.rpId,
 		});
 
 		if (!verification.verified || !verification.registrationInfo) {
@@ -124,15 +129,19 @@ export async function POST({ request, url, cookies }) {
 				statusCode: 400,
 				durationMs: Date.now() - startedAt,
 				errorMessage: 'Attestation verification failed',
-				userId: user?.id ?? null
+				userId: user?.id ?? null,
 			});
-			return json(
-				{ error: 'That passkey could not be verified.', code: 'PASSKEY_VERIFICATION_FAILED' },
+			return Response.json(
+				{
+					error: 'That passkey could not be verified.',
+					code: 'PASSKEY_VERIFICATION_FAILED',
+				},
 				{ status: 400 }
 			);
 		}
 
-		const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+		const { credential, credentialDeviceType, credentialBackedUp } =
+			verification.registrationInfo;
 		const credentialArgs = {
 			credentialId: credential.id,
 			publicKey: bytesToBase64Url(credential.publicKey),
@@ -140,7 +149,7 @@ export async function POST({ request, url, cookies }) {
 			transports: Array.isArray(credential.transports) ? credential.transports : null,
 			deviceType: credentialDeviceType || null,
 			backedUp: typeof credentialBackedUp === 'boolean' ? credentialBackedUp : null,
-			label: describePasskeyDevice(request.headers.get('user-agent'))
+			label: describePasskeyDevice(request.headers.get('user-agent')),
 		};
 
 		let userId;
@@ -154,7 +163,7 @@ export async function POST({ request, url, cookies }) {
 			userId = await createPasskeyUserWithCredential({
 				displayName: challengeRow.display_name,
 				userHandle: challengeRow.user_handle,
-				...credentialArgs
+				...credentialArgs,
 			});
 			if (!userId) {
 				throw new Error('Passkey account was not created');
@@ -175,10 +184,10 @@ export async function POST({ request, url, cookies }) {
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId,
-			metadata: { mode, backfilledCount, deviceType: credentialArgs.deviceType }
+			metadata: { mode, backfilledCount, deviceType: credentialArgs.deviceType },
 		});
 
-		return json({ user: authenticatedUser, mode });
+		return Response.json({ user: authenticatedUser, mode });
 	} catch (error) {
 		// A credential that is already registered is a user-recoverable state,
 		// not a server fault.
@@ -196,18 +205,18 @@ export async function POST({ request, url, cookies }) {
 			statusCode: duplicate ? 409 : 500,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
-			userId: user?.id ?? null
+			userId: user?.id ?? null,
 		});
 
 		return duplicate
-			? json(
+			? Response.json(
 					{
 						error: 'This passkey is already registered. Try signing in instead.',
-						code: 'PASSKEY_ALREADY_REGISTERED'
+						code: 'PASSKEY_ALREADY_REGISTERED',
 					},
 					{ status: 409 }
 				)
-			: json(
+			: Response.json(
 					{ error: 'Unable to save this passkey.', code: 'PASSKEY_REGISTRATION_ERROR' },
 					{ status: 500 }
 				);

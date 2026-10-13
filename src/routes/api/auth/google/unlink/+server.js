@@ -1,10 +1,9 @@
-import { json } from '@sveltejs/kit';
-import { logApiEvent, getPasskeyGuardState } from '$lib/server/storage';
-import { unlinkGoogleFromUser } from '$lib/server/auth';
-import { canRemoveLoginMethod, loginMethodCount } from '$lib/shared/passkeyPolicy';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { resolveRequestContext } from '$lib/server/apiContext';
+import { logApiEvent, getPasskeyGuardState } from '#lib/server/storage.js';
+import { unlinkGoogleFromUser } from '#lib/server/auth.js';
+import { canRemoveLoginMethod, loginMethodCount } from '#lib/shared/passkeyPolicy.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const UNLINK_RATE_LIMIT = 10;
 
@@ -19,7 +18,7 @@ export async function POST({ request, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/google/unlink',
-			limit: UNLINK_RATE_LIMIT
+			limit: UNLINK_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
@@ -30,13 +29,13 @@ export async function POST({ request, cookies }) {
 				request,
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
-				userId: user?.id ?? null
+				userId: user?.id ?? null,
 			});
 			return rateLimited(rateLimit);
 		}
 
 		if (!user) {
-			return json(
+			return Response.json(
 				{ error: 'Sign in to manage your sign-in methods.', code: 'SESSION_REQUIRED' },
 				{ status: 401 }
 			);
@@ -44,13 +43,15 @@ export async function POST({ request, cookies }) {
 
 		const guard = await getPasskeyGuardState(user.id);
 		if (!guard.googleSub) {
-			return json(
+			return Response.json(
 				{ error: 'Google is not connected to this account.', code: 'GOOGLE_NOT_LINKED' },
 				{ status: 409 }
 			);
 		}
 
-		if (!canRemoveLoginMethod({ passkeyCount: guard.passkeyCount, googleSub: guard.googleSub })) {
+		if (
+			!canRemoveLoginMethod({ passkeyCount: guard.passkeyCount, googleSub: guard.googleSub })
+		) {
 			await logApiEvent({
 				route: '/api/auth/google/unlink',
 				action: 'google_unlink',
@@ -61,12 +62,12 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				errorMessage: 'Last remaining sign-in method',
 				userId: user.id,
-				metadata: { loginMethodCount: loginMethodCount(guard) }
+				metadata: { loginMethodCount: loginMethodCount(guard) },
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Add a passkey first — Google is the only way into this account.',
-					code: 'LAST_LOGIN_METHOD'
+					code: 'LAST_LOGIN_METHOD',
 				},
 				{ status: 409 }
 			);
@@ -84,10 +85,10 @@ export async function POST({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			userId: user.id,
 			// The released identity is recorded here: the account keeps no copy.
-			metadata: { releasedEmail: guard.email || null, passkeyCount: guard.passkeyCount }
+			metadata: { releasedEmail: guard.email || null, passkeyCount: guard.passkeyCount },
 		});
 
-		return json({ user: updatedUser, googleLinked: false });
+		return Response.json({ user: updatedUser, googleLinked: false });
 	} catch (error) {
 		console.error('Failed to disconnect Google:', error);
 		await logApiEvent({
@@ -99,9 +100,9 @@ export async function POST({ request, cookies }) {
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
-			userId: user?.id ?? null
+			userId: user?.id ?? null,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Unable to disconnect Google right now.', code: 'GOOGLE_UNLINK_ERROR' },
 			{ status: 500 }
 		);

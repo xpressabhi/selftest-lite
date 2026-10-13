@@ -60,9 +60,7 @@ describe('pickElimination', () => {
 			1: [0, 2],
 		});
 		// Drops unknown questions, cheating payloads, and past the cap.
-		expect(
-			sanitizeHintedIndexes({ 0: [1, 2], 5: [0, 2], foo: [0, 1] }, questions)
-		).toEqual({});
+		expect(sanitizeHintedIndexes({ 0: [1, 2], 5: [0, 2], foo: [0, 1] }, questions)).toEqual({});
 		expect(
 			sanitizeHintedIndexes({ 0: [0, 1], 1: [0, 1], 2: [0, 1], 3: [0, 1] }, questions)
 		).toEqual({});
@@ -73,13 +71,23 @@ describe('pickElimination', () => {
 describe('shouldOfferHint', () => {
 	it('offers after a long dwell on an unanswered question', () => {
 		expect(
-			shouldOfferHint({ dwellSec: HINT_DWELL_SEC, consecutiveSkips: 0, offersUsed: 0, answered: false })
+			shouldOfferHint({
+				dwellSec: HINT_DWELL_SEC,
+				consecutiveSkips: 0,
+				offersUsed: 0,
+				answered: false,
+			})
 		).toBe(true);
 	});
 
 	it('offers on a skip streak', () => {
 		expect(
-			shouldOfferHint({ dwellSec: 5, consecutiveSkips: HINT_SKIP_STREAK, offersUsed: 0, answered: false })
+			shouldOfferHint({
+				dwellSec: 5,
+				consecutiveSkips: HINT_SKIP_STREAK,
+				offersUsed: 0,
+				answered: false,
+			})
 		).toBe(true);
 	});
 
@@ -88,7 +96,12 @@ describe('shouldOfferHint', () => {
 			shouldOfferHint({ dwellSec: 120, consecutiveSkips: 5, offersUsed: 0, answered: true })
 		).toBe(false);
 		expect(
-			shouldOfferHint({ dwellSec: 120, consecutiveSkips: 0, offersUsed: MAX_HINTS_PER_TEST, answered: false })
+			shouldOfferHint({
+				dwellSec: 120,
+				consecutiveSkips: 0,
+				offersUsed: MAX_HINTS_PER_TEST,
+				answered: false,
+			})
 		).toBe(false);
 		expect(
 			shouldOfferHint({ dwellSec: 5, consecutiveSkips: 0, offersUsed: 0, answered: false })

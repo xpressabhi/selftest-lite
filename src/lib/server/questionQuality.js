@@ -174,7 +174,10 @@ export function shuffleOptions(question, random = Math.random) {
  * the question is acceptable. `previousQuestionTexts` enables near-duplicate
  * detection (within the paper and against recent papers for the topic).
  */
-export function inspectQuestion(question, { previousQuestionTexts = [], currentPaperTexts = [], language } = {}) {
+export function inspectQuestion(
+	question,
+	{ previousQuestionTexts = [], currentPaperTexts = [], language } = {}
+) {
 	const issues = [];
 	const options = Array.isArray(question?.options) ? question.options : [];
 	const answer = typeof question?.answer === 'string' ? question.answer : '';
@@ -184,7 +187,11 @@ export function inspectQuestion(question, { previousQuestionTexts = [], currentP
 	if (options.length !== 2 && options.length !== 4) {
 		issues.push('option-count');
 	}
-	const normalizedOptions = options.map((option) => String(option || '').trim().toLowerCase());
+	const normalizedOptions = options.map((option) =>
+		String(option || '')
+			.trim()
+			.toLowerCase()
+	);
 	if (normalizedOptions.some((option) => option.length === 0)) {
 		issues.push('empty-option');
 	}
@@ -206,7 +213,11 @@ export function inspectQuestion(question, { previousQuestionTexts = [], currentP
 	) {
 		issues.push('longest-answer-tell');
 	}
-	if (question?.format === 'matching' && Array.isArray(question.columnA) && Array.isArray(question.columnB)) {
+	if (
+		question?.format === 'matching' &&
+		Array.isArray(question.columnA) &&
+		Array.isArray(question.columnB)
+	) {
 		const longItem = [...question.columnA, ...question.columnB].some(
 			(item) => String(item || '').trim().length > MATCHING_ITEM_LONG_CHARS
 		);

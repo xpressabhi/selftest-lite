@@ -1,14 +1,14 @@
 <script>
 	import { onMount } from 'svelte';
-	import { t } from '$lib/client/i18n';
+	import { t } from '#lib/client/i18n.js';
 	import {
 		disableReminders,
 		enableReminders,
 		isReminderEnabled,
 		remindersSupported,
-	} from '$lib/client/reminders';
-	import { STORAGE_KEYS } from '$lib/client/constants';
-	import { showToast } from '$lib/client/toast';
+	} from '#lib/client/reminders.js';
+	import { STORAGE_KEYS } from '#lib/client/constants.js';
+	import { showToast } from '#lib/client/toast.js';
 
 	// Returning visitors (at least one completed test) get one friendly,
 	// one-tap opt-in for daily study nudges. "Not now" is a seven-day
@@ -28,7 +28,9 @@
 
 	function readDismissedAt() {
 		try {
-			const value = Number(window.localStorage.getItem(STORAGE_KEYS.REMINDER_PROMPT_DISMISSED_AT));
+			const value = Number(
+				window.localStorage.getItem(STORAGE_KEYS.REMINDER_PROMPT_DISMISSED_AT)
+			);
 			return Number.isFinite(value) && value > 0 ? value : 0;
 		} catch {
 			return 0;

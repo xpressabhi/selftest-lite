@@ -1,19 +1,18 @@
-import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { TYPESAFE_API_KEY } from '$app/env/private';
 import { TypeSafeClient } from '@typesafe-ai/sdk';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { getStateForIdentity, logApiEvent } from '$lib/server/storage';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
-import { PROFILE_STATE_KEY, parseProfileStateValue } from '$lib/shared/userProfile';
-import { buildStudentContext } from '$lib/server/profile';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { getStateForIdentity, logApiEvent } from '#lib/server/storage.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { PROFILE_STATE_KEY, parseProfileStateValue } from '#lib/shared/userProfile.js';
+import { buildStudentContext } from '#lib/server/profile.js';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	parseRequestBody,
-} from '$lib/server/requestBody';
-import { classifyApiError } from '$lib/shared/apiLimitError';
-import { MAX_INTENT_CHARS } from '$lib/shared/inputLimits';
+} from '#lib/server/requestBody.js';
+import { classifyApiError } from '#lib/shared/apiLimitError.js';
+import { MAX_INTENT_CHARS } from '#lib/shared/inputLimits.js';
 import {
 	INTENT_MODEL,
 	MAX_RECENT_MESSAGES,
@@ -26,7 +25,7 @@ import {
 	buildTopicCandidates,
 	deriveIntentParams,
 	extractMentionedFields,
-} from '$lib/server/intentParse';
+} from '#lib/server/intentParse.js';
 import * as z from 'zod';
 
 const PARSE_TIMEOUT_MS = 15000;
@@ -113,13 +112,13 @@ export async function POST({ request, cookies }) {
 					statusCode: 413,
 					durationMs: Date.now() - startedAt,
 				});
-				return json(
+				return Response.json(
 					{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
 					{ status: 413 }
 				);
 			}
 			if (error instanceof InvalidRequestBodyError) {
-				return json(
+				return Response.json(
 					{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 					{ status: 400 }
 				);
@@ -129,7 +128,7 @@ export async function POST({ request, cookies }) {
 
 		const parsed = requestSchema.safeParse(body);
 		if (!parsed.success) {
-			return json(
+			return Response.json(
 				{
 					error: `Intent must be a string between 2 and ${MAX_INTENT_CHARS} characters`,
 					code: 'INVALID_INTENT',
@@ -160,9 +159,9 @@ export async function POST({ request, cookies }) {
 			return rateLimited(rateLimit);
 		}
 
-		const apiKey = env.TYPESAFE_API_KEY;
+		const apiKey = TYPESAFE_API_KEY;
 		if (!apiKey) {
-			return json({ error: 'TypeSafe API key is not configured' }, { status: 500 });
+			return Response.json({ error: 'TypeSafe API key is not configured' }, { status: 500 });
 		}
 
 		let profile = null;
@@ -264,7 +263,7 @@ export async function POST({ request, cookies }) {
 
 			if (isPreview) {
 				// Previews fire often; only the fields the card needs go back.
-				return json({
+				return Response.json({
 					plan: result.plan,
 					confidence: result.confidence,
 					fieldConfidence: result.fieldConfidence,
@@ -274,7 +273,7 @@ export async function POST({ request, cookies }) {
 				});
 			}
 
-			return json(result);
+			return Response.json(result);
 		} catch (aiError) {
 			console.error('Intent parsing failed:', aiError);
 
@@ -303,7 +302,7 @@ export async function POST({ request, cookies }) {
 				},
 			});
 
-			return json({ error: message, code }, { status: statusCode });
+			return Response.json({ error: message, code }, { status: statusCode });
 		}
 	} catch (error) {
 		console.error('Parse intent unexpected error:', error);
@@ -320,7 +319,7 @@ export async function POST({ request, cookies }) {
 			errorMessage: error.message,
 		});
 
-		return json(
+		return Response.json(
 			{ error: 'An unexpected error occurred', code: 'PARSE_UNEXPECTED' },
 			{ status: 500 }
 		);

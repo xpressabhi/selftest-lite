@@ -4,10 +4,10 @@
 	// answer key server-side) and renders a clean, chrome-free paper.
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import PrintPaper from '$lib/client/PrintPaper.svelte';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { resolveTestRecord } from '$lib/client/storage';
+	import Icon from '#lib/client/Icon.svelte';
+	import PrintPaper from '#lib/client/PrintPaper.svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { resolveTestRecord } from '#lib/client/storage.js';
 
 	let paper = $state(null);
 	let loading = $state(true);
@@ -18,7 +18,11 @@
 	onMount(async () => {
 		try {
 			const resolved = await resolveTestRecord(testId);
-			if (!resolved || !Array.isArray(resolved.questions) || resolved.questions.length === 0) {
+			if (
+				!resolved ||
+				!Array.isArray(resolved.questions) ||
+				resolved.questions.length === 0
+			) {
 				error = $t('resultNotFound');
 				return;
 			}
@@ -41,7 +45,10 @@
 
 <div class="print-page">
 	<div class="print-toolbar no-print">
-		<a class="print-back" href={testId ? `/results?id=${encodeURIComponent(testId)}` : '/history'}>
+		<a
+			class="print-back"
+			href={testId ? `/results?id=${encodeURIComponent(testId)}` : '/history'}
+		>
 			<Icon name="arrow-left" size={16} />
 			{$t('printBack')}
 		</a>

@@ -23,7 +23,9 @@ describe('parseSseBuffer', () => {
 	});
 
 	it('handles CRLF, comments and multi-line data', () => {
-		const { events } = parseSseBuffer(': keep-alive\r\nevent: done\r\ndata: line1\r\ndata: line2\r\n\r\n');
+		const { events } = parseSseBuffer(
+			': keep-alive\r\nevent: done\r\ndata: line1\r\ndata: line2\r\n\r\n'
+		);
 		expect(events).toEqual([{ event: 'done', data: 'line1\nline2' }]);
 	});
 
@@ -40,7 +42,11 @@ describe('parseSseBuffer', () => {
 
 describe('streamErrorToError', () => {
 	it('maps the payload to an Error with retry hints', () => {
-		const error = streamErrorToError({ error: 'Rate limited', code: 'RATE_LIMIT', status: 429 });
+		const error = streamErrorToError({
+			error: 'Rate limited',
+			code: 'RATE_LIMIT',
+			status: 429,
+		});
 		expect(error.message).toBe('Rate limited');
 		expect(error.code).toBe('RATE_LIMIT');
 		expect(error.status).toBe(429);

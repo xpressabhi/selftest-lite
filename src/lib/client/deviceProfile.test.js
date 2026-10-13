@@ -249,7 +249,12 @@ describe('device profile collection', () => {
 	});
 
 	it('reads the full profile from stubbed hardware', async () => {
-		stubBrowser({ deviceMemory: 1, hardwareConcurrency: 4, screenWidth: 360, devicePixelRatio: 2 });
+		stubBrowser({
+			deviceMemory: 1,
+			hardwareConcurrency: 4,
+			screenWidth: 360,
+			devicePixelRatio: 2,
+		});
 		const profile = await deviceProfile.collectDeviceProfile();
 		expect(profile).toMatchObject({
 			tier: 'low',
@@ -279,7 +284,10 @@ describe('device profile collection', () => {
 		stubBrowser({
 			userAgent: REDUCED_UA,
 			userAgentData: {
-				getHighEntropyValues: async () => ({ model: 'Redmi 9A', platformVersion: '11.0.0' }),
+				getHighEntropyValues: async () => ({
+					model: 'Redmi 9A',
+					platformVersion: '11.0.0',
+				}),
 			},
 		});
 		const profile = await deviceProfile.collectDeviceProfile();
@@ -315,7 +323,12 @@ describe('device profile collection', () => {
 
 	it('reports the network snapshot from the connection API', () => {
 		stubBrowser({
-			connection: fakeConnection({ effectiveType: '3g', downlink: 0.7, rtt: 350, saveData: true }),
+			connection: fakeConnection({
+				effectiveType: '3g',
+				downlink: 0.7,
+				rtt: 350,
+				saveData: true,
+			}),
 		});
 		expect(deviceProfile.collectNetworkSnapshot()).toEqual({
 			type: '3g',
@@ -329,7 +342,12 @@ describe('device profile collection', () => {
 	it('omits saveData when the connection API cannot report it', () => {
 		stubBrowser({ connection: undefined });
 		const snapshot = deviceProfile.collectNetworkSnapshot();
-		expect(snapshot).toEqual({ type: 'unknown', down: 'unknown', rtt: 'unknown', wifi: 'unknown' });
+		expect(snapshot).toEqual({
+			type: 'unknown',
+			down: 'unknown',
+			rtt: 'unknown',
+			wifi: 'unknown',
+		});
 		expect('save' in snapshot).toBe(false);
 	});
 });

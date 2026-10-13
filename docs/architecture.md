@@ -2,7 +2,7 @@
 
 ## Overview
 
-Selftest-lite is a SvelteKit 2 application (Svelte 5, Vite 8, Tailwind CSS 4) deployed on Vercel. The Gemini API generates quiz papers; TypeSafe Jev turns the home-page conversation into a structured test plan; Neon PostgreSQL stores papers; the browser caches history locally.
+Selftest-lite is a SvelteKit 3 application (Svelte 5, Vite 8, Tailwind CSS 4) deployed on Vercel. The Gemini API generates quiz papers; TypeSafe Jev turns the home-page conversation into a structured test plan; Neon PostgreSQL stores papers; the browser caches history locally.
 
 ## Data Flow: Generate → Take → Results
 

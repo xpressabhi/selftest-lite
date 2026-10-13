@@ -29,10 +29,7 @@
 			<span class="pill-label">{answeredCount}/{totalQuestions}</span>
 		</button>
 		{#if flaggedCount > 0}
-			<span
-				class="test-flag-badge"
-				aria-label={`${$t('flaggedQuestions')}: ${flaggedCount}`}
-			>
+			<span class="test-flag-badge" aria-label={`${$t('flaggedQuestions')}: ${flaggedCount}`}>
 				<Icon name="flag" size={14} />
 				{flaggedCount}
 			</span>

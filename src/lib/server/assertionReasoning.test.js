@@ -29,8 +29,12 @@ describe('canonical option sets', () => {
 	});
 
 	it('pins the conventional order (both-true-explains first, both-true-explains-not second)', () => {
-		expect(AR_OPTIONS.english[0]).toBe('Both A and R are true, and R is the correct explanation of A');
-		expect(AR_OPTIONS.english[1]).toBe('Both A and R are true, but R is NOT the correct explanation of A');
+		expect(AR_OPTIONS.english[0]).toBe(
+			'Both A and R are true, and R is the correct explanation of A'
+		);
+		expect(AR_OPTIONS.english[1]).toBe(
+			'Both A and R are true, but R is NOT the correct explanation of A'
+		);
 		expect(AR_OPTIONS.english[2]).toBe('A is true, but R is false');
 		expect(AR_OPTIONS.english[3]).toBe('A is false, but R is true');
 		expect(AR_CODE_ORDER).toEqual(['a', 'b', 'c', 'd']);
@@ -88,7 +92,9 @@ describe('buildAssertionReasoningQuestion output contract', () => {
 	});
 
 	it('injects the Hindi statement set for Hindi papers', () => {
-		const result = buildAssertionReasoningQuestion(baseRaw({ answer: 'b' }), { language: 'hindi' });
+		const result = buildAssertionReasoningQuestion(baseRaw({ answer: 'b' }), {
+			language: 'hindi',
+		});
 		expect(result.question.options).toEqual(AR_OPTIONS.hindi);
 		expect(result.question.answer).toBe(AR_OPTIONS.hindi[1]);
 	});

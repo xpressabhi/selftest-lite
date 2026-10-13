@@ -25,8 +25,7 @@ const STORAGE_SOURCE = readFileSync(
 
 // Recorded whenever the DDL intentionally changes. Format:
 //   '<sha256 of the normalized DDL>:<SCHEMA_VERSION it shipped with>'
-const DDL_FINGERPRINT =
-	'553f8fb1b54ed76742ff70f72a10cf61e6d8414d76aa1557c614a1017bcff6de:12';
+const DDL_FINGERPRINT = '553f8fb1b54ed76742ff70f72a10cf61e6d8414d76aa1557c614a1017bcff6de:12';
 
 function normalizeDdl(source) {
 	const start = source.indexOf('CREATE TABLE IF NOT EXISTS app_schema');
@@ -34,10 +33,7 @@ function normalizeDdl(source) {
 	const end = source.indexOf(endMarker);
 	expect(start, 'could not find the start of the DDL block').toBeGreaterThan(-1);
 	expect(end, 'could not find the end of the DDL block').toBeGreaterThan(start);
-	return source
-		.slice(start, end)
-		.replace(/\s+/g, ' ')
-		.trim();
+	return source.slice(start, end).replace(/\s+/g, ' ').trim();
 }
 
 function declaredSchemaVersion(source) {

@@ -53,8 +53,16 @@ describe('buildExplanationCacheKey', () => {
 	});
 
 	it('cannot be confused by field boundaries', () => {
-		const first = buildExplanationCacheKey({ question: 'a\nb', answer: 'c', language: 'english' });
-		const second = buildExplanationCacheKey({ question: 'a', answer: 'b\nc', language: 'english' });
+		const first = buildExplanationCacheKey({
+			question: 'a\nb',
+			answer: 'c',
+			language: 'english',
+		});
+		const second = buildExplanationCacheKey({
+			question: 'a',
+			answer: 'b\nc',
+			language: 'english',
+		});
 		expect(first).not.toBe(second);
 	});
 

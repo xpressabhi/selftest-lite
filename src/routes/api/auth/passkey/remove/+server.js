@@ -1,10 +1,9 @@
-import { json } from '@sveltejs/kit';
-import { getPasskeyGuardState, logApiEvent, removePasskeyForUser } from '$lib/server/storage';
-import { canRemoveLoginMethod, loginMethodCount } from '$lib/shared/passkeyPolicy';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
-import { resolveRequestContext } from '$lib/server/apiContext';
+import { getPasskeyGuardState, logApiEvent, removePasskeyForUser } from '#lib/server/storage.js';
+import { canRemoveLoginMethod, loginMethodCount } from '#lib/shared/passkeyPolicy.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const REMOVE_RATE_LIMIT = 20;
 
@@ -19,7 +18,7 @@ export async function POST({ request, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/passkey/remove',
-			limit: REMOVE_RATE_LIMIT
+			limit: REMOVE_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
@@ -30,13 +29,13 @@ export async function POST({ request, cookies }) {
 				request,
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
-				userId: user?.id ?? null
+				userId: user?.id ?? null,
 			});
 			return rateLimited(rateLimit);
 		}
 
 		if (!user) {
-			return json(
+			return Response.json(
 				{ error: 'Sign in to manage passkeys.', code: 'SESSION_REQUIRED' },
 				{ status: 401 }
 			);
@@ -45,11 +44,16 @@ export async function POST({ request, cookies }) {
 		const body = await readJsonBody(request);
 		const passkeyId = Number(body?.id);
 		if (!Number.isInteger(passkeyId) || passkeyId <= 0) {
-			return json({ error: 'A passkey id is required.', code: 'PASSKEY_ID_REQUIRED' }, { status: 400 });
+			return Response.json(
+				{ error: 'A passkey id is required.', code: 'PASSKEY_ID_REQUIRED' },
+				{ status: 400 }
+			);
 		}
 
 		const guard = await getPasskeyGuardState(user.id);
-		if (!canRemoveLoginMethod({ passkeyCount: guard.passkeyCount, googleSub: guard.googleSub })) {
+		if (
+			!canRemoveLoginMethod({ passkeyCount: guard.passkeyCount, googleSub: guard.googleSub })
+		) {
 			await logApiEvent({
 				route: '/api/auth/passkey/remove',
 				action: 'passkey_remove',
@@ -60,12 +64,12 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 				errorMessage: 'Last remaining sign-in method',
 				userId: user.id,
-				metadata: { loginMethodCount: loginMethodCount(guard) }
+				metadata: { loginMethodCount: loginMethodCount(guard) },
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Connect Google first, or this would be your only way in.',
-					code: 'LAST_LOGIN_METHOD'
+					code: 'LAST_LOGIN_METHOD',
 				},
 				{ status: 409 }
 			);
@@ -73,7 +77,10 @@ export async function POST({ request, cookies }) {
 
 		const removed = await removePasskeyForUser({ userId: user.id, passkeyId });
 		if (!removed) {
-			return json({ error: 'That passkey was not found.', code: 'PASSKEY_NOT_FOUND' }, { status: 404 });
+			return Response.json(
+				{ error: 'That passkey was not found.', code: 'PASSKEY_NOT_FOUND' },
+				{ status: 404 }
+			);
 		}
 
 		await logApiEvent({
@@ -85,10 +92,10 @@ export async function POST({ request, cookies }) {
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId: user.id,
-			metadata: { passkeyId }
+			metadata: { passkeyId },
 		});
 
-		return json({ removed: true });
+		return Response.json({ removed: true });
 	} catch (error) {
 		console.error('Failed to remove passkey:', error);
 		await logApiEvent({
@@ -100,8 +107,11 @@ export async function POST({ request, cookies }) {
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
-			userId: user?.id ?? null
+			userId: user?.id ?? null,
 		});
-		return json({ error: 'Unable to remove that passkey.', code: 'PASSKEY_REMOVE_ERROR' }, { status: 500 });
+		return Response.json(
+			{ error: 'Unable to remove that passkey.', code: 'PASSKEY_REMOVE_ERROR' },
+			{ status: 500 }
+		);
 	}
 }

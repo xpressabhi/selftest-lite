@@ -1,16 +1,16 @@
 <script>
-	import Icon from '$lib/client/Icon.svelte';
+	import Icon from '#lib/client/Icon.svelte';
 	import { t } from './i18n';
 	import { saveProfile } from './profile';
 	import { track } from './telemetry';
 	import { focusTrap } from './focusTrap';
-	import { INDIAN_EXAMS } from '$lib/data/indianExams';
-	import { createDefaultProfile, normalizeProfile } from '$lib/shared/userProfile';
+	import { INDIAN_EXAMS } from '#lib/data/indianExams.js';
+	import { createDefaultProfile, normalizeProfile } from '#lib/shared/userProfile.js';
 	import {
 		MAX_PROFILE_FIELD_CHARS,
 		MAX_SEARCH_CHARS,
-		sanitizeInputText
-	} from '$lib/shared/inputLimits';
+		sanitizeInputText,
+	} from '#lib/shared/inputLimits.js';
 
 	let { initial = null, onclose, onafterfinish } = $props();
 
@@ -341,7 +341,8 @@
 				{/if}
 				{#if draft.examTarget}
 					<button type="button" class="selected-exam" onclick={clearExam}>
-						{draft.examTarget.name} <Icon name="close" size={14} />
+						{draft.examTarget.name}
+						<Icon name="close" size={14} />
 					</button>
 				{/if}
 			</section>
@@ -443,7 +444,8 @@
 								aria-pressed="true"
 								onclick={() => toggleFocus(topic)}
 							>
-								{topic} <Icon name="close" size={14} />
+								{topic}
+								<Icon name="close" size={14} />
 							</button>
 						{/each}
 					</div>

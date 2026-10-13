@@ -1,9 +1,8 @@
-import { json } from '@sveltejs/kit';
-import { rateLimited } from '$lib/server/apiResponse';
-import { requireAdmin } from '$lib/server/adminAuth';
-import { getDatabaseHealth, getRequestHealthMetrics } from '$lib/server/storage';
-import { getSystemMetrics } from '$lib/server/systemMetrics';
-import { rateLimiter } from '$lib/server/rateLimiter';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { requireAdmin } from '#lib/server/adminAuth.js';
+import { getDatabaseHealth, getRequestHealthMetrics } from '#lib/server/storage.js';
+import { getSystemMetrics } from '#lib/server/systemMetrics.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
 
 const HEALTH_RATE_LIMIT = 60;
 const DEFAULT_WINDOW_SECONDS = 60;
@@ -52,7 +51,7 @@ export async function GET({ request, url }) {
 			safely(() => getDatabaseHealth()),
 		]);
 
-		return json(
+		return Response.json(
 			{
 				generatedAt: new Date().toISOString(),
 				status: requests && system && database ? 'ok' : 'degraded',
@@ -65,7 +64,7 @@ export async function GET({ request, url }) {
 		);
 	} catch (error) {
 		console.error(error);
-		return json(
+		return Response.json(
 			{ error: 'Failed to load health metrics', code: 'ADMIN_HEALTH_ERROR' },
 			{ status: 500 }
 		);

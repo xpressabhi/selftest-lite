@@ -7,7 +7,7 @@
 	// `title` is optional on purpose: Svelte 5 drops titles emitted by nested
 	// components during streamed SSR, so runtime-rendered pages (home) put the
 	// title in their route component instead. Prerendered pages are unaffected.
-	import { buildSeo } from '$lib/shared/seo';
+	import { buildSeo } from '#lib/shared/seo.js';
 
 	let {
 		path,

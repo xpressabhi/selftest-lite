@@ -8,7 +8,7 @@ import {
 	resolveDifficulty,
 	resolveWarmUpDifficulty,
 } from './profile';
-import { createDefaultProfile } from '$lib/shared/userProfile';
+import { createDefaultProfile } from '#lib/shared/userProfile.js';
 
 function attemptRow({
 	topic = 'Trigonometry',

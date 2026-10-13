@@ -1,11 +1,11 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import CtaBanner from '$lib/client/CtaBanner.svelte';
-	import { BLOG_CATEGORIES, BLOG_POSTS_BY_DATE, getBlogCategory } from '$lib/data/blogPosts';
-	import { formatDate as formatLocalizedDate } from '$lib/client/formatting';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import CtaBanner from '#lib/client/CtaBanner.svelte';
+	import { BLOG_CATEGORIES, BLOG_POSTS_BY_DATE, getBlogCategory } from '#lib/data/blogPosts.js';
+	import { formatDate as formatLocalizedDate } from '#lib/client/formatting.js';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
 
 	let activeCategory = $state('all');
 
@@ -102,7 +102,11 @@
 						</span>
 					</div>
 					<h2 class="blog-featured-title">
-						<a class="blog-link" href={localizedPath(`/blog/${featured.slug}`, $activeLanguage)}>{$t(featured.titleKey)}</a>
+						<a
+							class="blog-link"
+							href={localizedPath(`/blog/${featured.slug}`, $activeLanguage)}
+							>{$t(featured.titleKey)}</a
+						>
 					</h2>
 					<p class="blog-excerpt">{$t(featured.excerptKey)}</p>
 				</div>
@@ -115,10 +119,16 @@
 					<article class="blog-card">
 						<div class="blog-meta">
 							<span class="blog-badge">{categoryLabel(post)}</span>
-							<span class="blog-meta-text">{formatDate(post.date)} · {$t(post.readTimeKey)}</span>
+							<span class="blog-meta-text"
+								>{formatDate(post.date)} · {$t(post.readTimeKey)}</span
+							>
 						</div>
 						<h2 class="blog-card-title">
-							<a class="blog-link" href={localizedPath(`/blog/${post.slug}`, $activeLanguage)}>{$t(post.titleKey)}</a>
+							<a
+								class="blog-link"
+								href={localizedPath(`/blog/${post.slug}`, $activeLanguage)}
+								>{$t(post.titleKey)}</a
+							>
 						</h2>
 						<p class="blog-excerpt">{$t(post.excerptKey)}</p>
 					</article>

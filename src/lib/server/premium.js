@@ -106,10 +106,7 @@ export async function grantPremiumEntitlement({
 	return { ok: true, userId: user.id };
 }
 
-export async function revokePremiumEntitlement({
-	userId,
-	feature = PREMIUM_FEATURE_EXAM_PAPER,
-}) {
+export async function revokePremiumEntitlement({ userId, feature = PREMIUM_FEATURE_EXAM_PAPER }) {
 	const normalizedUserId = normalizeUserIdValue(userId);
 	if (!normalizedUserId) {
 		return { ok: false, code: 'INVALID_USER' };

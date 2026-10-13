@@ -13,9 +13,9 @@ import {
 	cardFilename,
 	loadCardLogo,
 	shareCardFile,
-} from '$lib/client/cardKit';
-import { t } from '$lib/client/i18n';
-import { showToast } from '$lib/client/toast';
+} from '#lib/client/cardKit.js';
+import { t } from '#lib/client/i18n.js';
+import { showToast } from '#lib/client/toast.js';
 
 /**
  * Renders `card` with `draw(canvas, card, logo)` and shares the resulting PNG.

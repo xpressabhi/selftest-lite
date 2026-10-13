@@ -8,7 +8,7 @@ Selftest-lite is a private SvelteKit web app (English/Hindi, installable PWA) th
 
 ## Architecture
 
-SvelteKit 2 (Svelte 5, Vite 8, Tailwind CSS 4) deployed on Vercel; Google Gemini generates papers; TypeSafe Jev turns the home-page conversation into a structured test plan; Neon PostgreSQL stores papers; the browser caches history.
+SvelteKit 3 (Svelte 5, Vite 8, Tailwind CSS 4) deployed on Vercel; Google Gemini generates papers; TypeSafe Jev turns the home-page conversation into a structured test plan; Neon PostgreSQL stores papers; the browser caches history.
 
 - `src/routes/` — pages and server endpoints (`/api/*`).
 - `src/lib/server/` — server-only logic: prompts, Zod validation, rate limiting, storage, admin auth, exam sync.
@@ -21,7 +21,7 @@ Flow: home conversation → `/api/parse-intent` (stateless turns against client-
 ## Constraints
 
 - Compatibility: mobile-first from 320px; iOS safe-area insets; ≥44×44px tap targets; low-end Android on slow networks is the optimization baseline; Node 22.x (`engines`).
-- Security/privacy: model output is sanitized (`rehype-sanitize`) before rendering; answer keys never leave the server and grading is server-side; secrets live in `src/lib/server/` via `$env/dynamic/private`; do not break Google Adsense or PWA behavior.
+- Security/privacy: model output is sanitized (`rehype-sanitize`) before rendering; answer keys never leave the server and grading is server-side; secrets live in `src/lib/server/` via `$app/env/private` (`src/env.js`); do not break Google Adsense or PWA behavior.
 - Localization: all user-facing UI text needs English and Hindi entries in `src/lib/locales/`; `/admin` and `/api/admin/*` are English-only by exception.
 - Telemetry: every tracked event must be allowlisted in `src/lib/shared/telemetryEvents.js`; telemetry rows are archived, never deleted; `docs/telemetry.md` is the runbook.
 - Content quality: generation shuffle/validation/dedupe/verification steps must not be bypassed (`docs/content-quality.md`); content changes run `npm run eval:content -- --strict`.

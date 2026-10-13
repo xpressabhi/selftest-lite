@@ -41,7 +41,8 @@ export function buildPersonalizeQuestions(page, context = {}) {
 					instructions:
 						'What single entry point should the home page promote for this learner right now?',
 					criteria: choiceCriteria({
-						resume_unfinished: 'An unfinished test is waiting; resuming beats starting over',
+						resume_unfinished:
+							'An unfinished test is waiting; resuming beats starting over',
 						review_due: 'Spaced-repetition reviews are due; revision beats novelty',
 						daily_five: 'A light daily habit fits best; a 5-question warm-up',
 						new_quiz: 'The learner wants something new; the composer is the priority',
@@ -141,12 +142,20 @@ export function buildPersonalizeQuestions(page, context = {}) {
 				hint_depth: {
 					type: 'score',
 					instructions: 'How much help fits this moment?',
-					criteria: ['A small nudge suffices', 'A worked hint fits', 'A full reteach fits'],
+					criteria: [
+						'A small nudge suffices',
+						'A worked hint fits',
+						'A full reteach fits',
+					],
 				},
 				fatigue: {
 					type: 'score',
 					instructions: 'How fatigued does the learner appear?',
-					criteria: ['Fresh; full chrome is fine', 'Tiring; simplify chrome', 'Exhausted; minimal chrome'],
+					criteria: [
+						'Fresh; full chrome is fine',
+						'Tiring; simplify chrome',
+						'Exhausted; minimal chrome',
+					],
 				},
 			};
 		case 'onboarding':
@@ -276,7 +285,14 @@ export function derivePersonalize(page, judgments = {}) {
 			return fallback('low-confidence');
 		}
 		if (recommended.choice === 'none') {
-			return { applied: false, action: 'none', confidence: 'medium', hide: [], promote: [], reason: null };
+			return {
+				applied: false,
+				action: 'none',
+				confidence: 'medium',
+				hide: [],
+				promote: [],
+				reason: null,
+			};
 		}
 		return {
 			applied: true,
@@ -318,7 +334,14 @@ export function derivePersonalize(page, judgments = {}) {
 			return fallback('low-confidence');
 		}
 		if (recommended.choice === 'none') {
-			return { applied: false, action: 'none', confidence: 'medium', hide: [], promote: [], reason: null };
+			return {
+				applied: false,
+				action: 'none',
+				confidence: 'medium',
+				hide: [],
+				promote: [],
+				reason: null,
+			};
 		}
 		return {
 			applied: true,
@@ -347,13 +370,22 @@ export function derivePersonalize(page, judgments = {}) {
 		if (promote.length === 0 && hide.length === 0) {
 			return fallback('no-action');
 		}
-		return { applied: true, action: 'adapt-chrome', confidence: 'medium', hide, promote, reason: null };
+		return {
+			applied: true,
+			action: 'adapt-chrome',
+			confidence: 'medium',
+			hide,
+			promote,
+			reason: null,
+		};
 	}
 
 	if (page === 'onboarding') {
 		const level = readChoice(judgments, 'class');
 		const language = readChoice(judgments, 'language');
-		const best = [level, language].filter(Boolean).sort((a, b) => b.confidence - a.confidence)[0];
+		const best = [level, language]
+			.filter(Boolean)
+			.sort((a, b) => b.confidence - a.confidence)[0];
 		if (!best || best.confidence < PERSONALIZE_CONFIDENCE_MEDIUM || best.choice === 'none') {
 			return fallback('low-confidence');
 		}

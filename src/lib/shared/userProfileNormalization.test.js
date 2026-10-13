@@ -83,13 +83,15 @@ describe('normalizeProfile class and profession rules', () => {
 			})
 		).toBe(null);
 		expect(
-			normalizeProfile({ preferences: { personalized: 'nope', language: 'french' } }).preferences
-				.personalized
+			normalizeProfile({ preferences: { personalized: 'nope', language: 'french' } })
+				.preferences.personalized
 		).toBe(true);
 	});
 
 	it('marks setupComplete only on a strict true', () => {
-		expect(normalizeProfile({ preferences: {}, setupComplete: 'yes' }).setupComplete).toBe(false);
+		expect(normalizeProfile({ preferences: {}, setupComplete: 'yes' }).setupComplete).toBe(
+			false
+		);
 		expect(normalizeProfile({ preferences: {}, setupComplete: true }).setupComplete).toBe(true);
 	});
 });
@@ -159,7 +161,9 @@ describe('updatedAt normalization', () => {
 			'2026-01-15T00:00:00.000Z'
 		);
 		expect(normalizeProfile({ preferences: {}, updatedAt: 'not-a-date' }).updatedAt).toBe(null);
-		expect(normalizeProfile({ preferences: {}, updatedAt: 1767225600000 }).updatedAt).toBe(null);
+		expect(normalizeProfile({ preferences: {}, updatedAt: 1767225600000 }).updatedAt).toBe(
+			null
+		);
 		expect(normalizeProfile({ preferences: {} }).updatedAt).toBe(null);
 	});
 });
@@ -173,9 +177,9 @@ describe('parseProfileStateValue edge cases', () => {
 	});
 
 	it('drops payloads that normalize to nothing and resets the version', () => {
-		expect(parseProfileStateValue(JSON.stringify({ preferences: { personalized: false } }))).toBe(
-			null
-		);
+		expect(
+			parseProfileStateValue(JSON.stringify({ preferences: { personalized: false } }))
+		).toBe(null);
 		const parsed = parseProfileStateValue(
 			JSON.stringify({ preferences: {}, class: 'class-99', version: 99 })
 		);

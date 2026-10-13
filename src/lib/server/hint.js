@@ -4,9 +4,9 @@
 // src/routes/api/test/hint/+server.js owns I/O, and the test page owns the
 // dwell/skip signals. Everything here is deterministic and unit-testable.
 
-// Eligibility thresholds live in $lib/shared/hint so the test page and this
+// Eligibility thresholds live in #lib/shared/hint.js so the test page and this
 // module cannot drift; re-exported here for existing server-side imports.
-import { HINT_DWELL_SEC, HINT_SKIP_STREAK, MAX_HINTS_PER_TEST } from '$lib/shared/hint';
+import { HINT_DWELL_SEC, HINT_SKIP_STREAK, MAX_HINTS_PER_TEST } from '#lib/shared/hint.js';
 
 export { HINT_DWELL_SEC, HINT_SKIP_STREAK, MAX_HINTS_PER_TEST };
 

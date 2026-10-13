@@ -1,6 +1,6 @@
-import { BLOG_POSTS_BY_DATE } from '$lib/data/blogPosts';
-import english from '$lib/locales/english.json';
-import { SITE_ORIGIN } from '$lib/shared/seo';
+import { BLOG_POSTS_BY_DATE } from '#lib/data/blogPosts.js';
+import english from '#lib/locales/english.json';
+import { SITE_ORIGIN } from '#lib/shared/seo.js';
 
 export const prerender = true;
 

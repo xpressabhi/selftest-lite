@@ -1,15 +1,14 @@
-import { json } from '@sveltejs/kit';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { parseRequestBody } from '$lib/server/requestBody';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { logApiEvent } from '$lib/server/storage';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { parseRequestBody } from '#lib/server/requestBody.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { logApiEvent } from '#lib/server/storage.js';
 import {
 	ADMIN_COOKIE_NAME,
 	ADMIN_SESSION_TTL_MS,
 	createSessionToken,
 	isAdminConfigured,
 	verifyAdminCredentials,
-} from '$lib/server/adminAuth';
+} from '#lib/server/adminAuth.js';
 
 const LOGIN_RATE_LIMIT = 5;
 
@@ -22,7 +21,7 @@ export async function POST({ request, cookies }) {
 			limit: LOGIN_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return json(
+			return Response.json(
 				{
 					error: 'Too many login attempts. Please try again later.',
 					code: 'ADMIN_LOGIN_RATE_LIMITED',
@@ -33,7 +32,7 @@ export async function POST({ request, cookies }) {
 		}
 
 		if (!isAdminConfigured()) {
-			return json(
+			return Response.json(
 				{
 					error: 'Admin access is not configured',
 					code: 'ADMIN_NOT_CONFIGURED',
@@ -55,7 +54,7 @@ export async function POST({ request, cookies }) {
 				metadata: { success: false },
 				request,
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Invalid username or password',
 					code: 'ADMIN_INVALID_CREDENTIALS',
@@ -82,22 +81,22 @@ export async function POST({ request, cookies }) {
 			request,
 		});
 
-		return json({ ok: true });
+		return Response.json({ ok: true });
 	} catch (error) {
 		console.error(error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {
-			return json(
+			return Response.json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
 				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
-			return json(
+			return Response.json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 				{ status: 400 }
 			);
 		}
-		return json(
+		return Response.json(
 			{
 				error: 'An error occurred during login',
 				code: 'ADMIN_LOGIN_FAILED',

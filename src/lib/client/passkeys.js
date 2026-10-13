@@ -61,7 +61,7 @@ async function requestJson(url, body) {
 		method: 'POST',
 		cache: 'no-store',
 		headers: { ...getClientHeaders(), 'content-type': 'application/json' },
-		body: JSON.stringify(body || {})
+		body: JSON.stringify(body || {}),
 	});
 	const data = await response.json().catch(() => ({}));
 	if (!response.ok) {
@@ -121,8 +121,8 @@ function registrationResponseJson(credential) {
 		response: {
 			clientDataJSON: bytesToBase64Url(credential.response.clientDataJSON),
 			attestationObject: bytesToBase64Url(credential.response.attestationObject),
-			transports: credential.response.getTransports?.() || []
-		}
+			transports: credential.response.getTransports?.() || [],
+		},
 	};
 }
 
@@ -139,14 +139,14 @@ function assertionResponseJson(assertion) {
 			signature: bytesToBase64Url(assertion.response.signature),
 			userHandle: assertion.response.userHandle
 				? bytesToBase64Url(assertion.response.userHandle)
-				: undefined
-		}
+				: undefined,
+		},
 	};
 }
 
 async function runRegistrationCeremony(language) {
 	const { mode, options } = await requestJson('/api/auth/passkey/register/options', {
-		language
+		language,
 	});
 
 	const credential = await navigator.credentials.create({
@@ -156,9 +156,9 @@ async function runRegistrationCeremony(language) {
 			user: { ...options.user, id: base64UrlToBytes(options.user.id) },
 			excludeCredentials: (options.excludeCredentials || []).map((entry) => ({
 				...entry,
-				id: base64UrlToBytes(entry.id)
-			}))
-		}
+				id: base64UrlToBytes(entry.id),
+			})),
+		},
 	});
 
 	if (!credential) {
@@ -203,9 +203,9 @@ export async function signInWithPasskey() {
 				challenge: base64UrlToBytes(options.challenge),
 				allowCredentials: (options.allowCredentials || []).map((entry) => ({
 					...entry,
-					id: base64UrlToBytes(entry.id)
-				}))
-			}
+					id: base64UrlToBytes(entry.id),
+				})),
+			},
 		});
 
 		if (!assertion) {
@@ -213,7 +213,7 @@ export async function signInWithPasskey() {
 		}
 
 		const data = await requestJson('/api/auth/passkey/login/verify', {
-			response: assertionResponseJson(assertion)
+			response: assertionResponseJson(assertion),
 		});
 		const resolvedUser = await applySignedInUser(data);
 		track('auth:passkey-login-success');
@@ -241,7 +241,7 @@ export async function addPasskeyToAccount({ language = 'english' } = {}) {
 export async function fetchPasskeys() {
 	const response = await fetch('/api/auth/passkey/list', {
 		cache: 'no-store',
-		headers: getClientHeaders()
+		headers: getClientHeaders(),
 	});
 	const data = await response.json().catch(() => ({}));
 	if (!response.ok) {
@@ -253,7 +253,7 @@ export async function fetchPasskeys() {
 	return {
 		passkeys: data?.passkeys || [],
 		googleLinked: Boolean(data?.googleLinked),
-		googleEmail: data?.googleEmail || null
+		googleEmail: data?.googleEmail || null,
 	};
 }
 

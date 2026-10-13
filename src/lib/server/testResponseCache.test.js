@@ -6,7 +6,7 @@ import {
 	getCachedTestRecord,
 	invalidateTestListCache,
 	testListCacheKey,
-	testResponseCacheStats
+	testResponseCacheStats,
 } from './testResponseCache';
 
 // The cache must never be load-bearing for correctness: a miss is always
@@ -57,7 +57,7 @@ describe('test response caches', () => {
 			limit: 10,
 			offset: 0,
 			language: 'EN',
-			examType: 'All'
+			examType: 'All',
 		});
 		expect(key).toBe(
 			testListCacheKey({
@@ -65,7 +65,7 @@ describe('test response caches', () => {
 				limit: 10,
 				offset: 0,
 				language: 'en',
-				examType: 'all'
+				examType: 'all',
 			})
 		);
 		expect(key).not.toBe(testListCacheKey({ search: 'Fractions', limit: 5 }));

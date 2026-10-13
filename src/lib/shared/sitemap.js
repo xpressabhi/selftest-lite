@@ -2,8 +2,8 @@
 // alternates, generated from the same registries as the pages themselves.
 // Pure so it can be unit-tested.
 
-import { BLOG_POSTS_BY_DATE } from '$lib/data/blogPosts';
-import { OBJECTIVE_ONLY_EXAMS } from '$lib/data/indianExams';
+import { BLOG_POSTS_BY_DATE } from '#lib/data/blogPosts.js';
+import { OBJECTIVE_ONLY_EXAMS } from '#lib/data/indianExams.js';
 import { SITE_ORIGIN, localizedPath } from './seo.js';
 
 export const STATIC_PATHS = [

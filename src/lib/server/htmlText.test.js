@@ -39,7 +39,7 @@ describe('htmlToText', () => {
 		);
 		expect(links.map((link) => link.href)).toEqual([
 			'https://ssc.gov.in/notice/1.pdf',
-			'https://upsc.gov.in/whats-new'
+			'https://upsc.gov.in/whats-new',
 		]);
 		expect(links[0].label).toBe('Notice PDF');
 		// The numbered link list must appear in the text the model reads.

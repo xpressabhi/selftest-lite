@@ -1,16 +1,15 @@
-import { json } from '@sveltejs/kit';
 import {
 	createSessionForUser,
 	linkGoogleProfileToUser,
 	setSessionCookie,
 	upsertGoogleUser,
 	verifyGoogleCredential,
-} from '$lib/server/auth';
-import { backfillUserIdentity, logApiEvent } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { readJsonBody } from '$lib/server/requestBody';
-import { rateLimited } from '$lib/server/apiResponse';
-import { resolveRequestContext } from '$lib/server/apiContext';
+} from '#lib/server/auth.js';
+import { backfillUserIdentity, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const GOOGLE_AUTH_RATE_LIMIT = 10;
 
@@ -60,7 +59,7 @@ export async function POST({ request, cookies }) {
 		const credential = body?.credential;
 
 		if (!credential) {
-			return json(
+			return Response.json(
 				{ error: 'Google credential is required', code: 'GOOGLE_CREDENTIAL_REQUIRED' },
 				{ status: 400 }
 			);
@@ -85,10 +84,9 @@ export async function POST({ request, cookies }) {
 					errorMessage: 'Google identity already belongs to another account',
 					userId: user.id,
 				});
-				return json(
+				return Response.json(
 					{
-						error:
-							'That Google account already has a Selftest account. Sign in with Google to use it, then add a passkey there.',
+						error: 'That Google account already has a Selftest account. Sign in with Google to use it, then add a passkey there.',
 						code: 'GOOGLE_LINK_CONFLICT',
 					},
 					{ status: 409 }
@@ -107,7 +105,7 @@ export async function POST({ request, cookies }) {
 				metadata: { status: linkResult.status, email: profile.email },
 			});
 
-			return json({ user: linkResult.user, linked: true, status: linkResult.status });
+			return Response.json({ user: linkResult.user, linked: true, status: linkResult.status });
 		}
 
 		const signedInUser = await upsertGoogleUser(profile);
@@ -130,7 +128,7 @@ export async function POST({ request, cookies }) {
 			},
 		});
 
-		return json({ user: signedInUser });
+		return Response.json({ user: signedInUser });
 	} catch (error) {
 		const statusCode = getStatusCode(error);
 
@@ -144,7 +142,7 @@ export async function POST({ request, cookies }) {
 			errorMessage: error.message,
 		});
 
-		return json(
+		return Response.json(
 			{
 				error:
 					statusCode === 401

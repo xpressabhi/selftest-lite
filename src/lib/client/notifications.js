@@ -6,8 +6,8 @@
 // last_seen_at: the daily sync refreshes last_seen_at and that would re-badge
 // every morning. Closed rows never badge and never reach the model.
 
-import { deriveNotificationStatus, todayInIst } from '$lib/shared/examNotificationStatus.js';
-import { MAX_NOTIFICATION_CANDIDATES } from '$lib/shared/nudgePolicy.js';
+import { deriveNotificationStatus, todayInIst } from '#lib/shared/examNotificationStatus.js';
+import { MAX_NOTIFICATION_CANDIDATES } from '#lib/shared/nudgePolicy.js';
 import { emptyLedger, isNotificationSeen } from './nudge.js';
 
 export { MAX_NOTIFICATION_CANDIDATES };
@@ -64,7 +64,9 @@ function daysBetween(todayIso, isoDate) {
 }
 
 function recencyStamp(item) {
-	return item?.firstSeenAt ? Date.parse(item.firstSeenAt) || 0 : Date.parse(`${item?.publishedAt}T00:00:00Z`) || 0;
+	return item?.firstSeenAt
+		? Date.parse(item.firstSeenAt) || 0
+		: Date.parse(`${item?.publishedAt}T00:00:00Z`) || 0;
 }
 
 /**
@@ -73,7 +75,14 @@ function recencyStamp(item) {
  */
 export function classifyNotification(
 	item,
-	{ ledger = emptyLedger(), now = Date.now(), todayIso = todayInIst(new Date(now)), bookmarkedExamIds = [], practicedExamIds = [], relevantIds = [] } = {}
+	{
+		ledger = emptyLedger(),
+		now = Date.now(),
+		todayIso = todayInIst(new Date(now)),
+		bookmarkedExamIds = [],
+		practicedExamIds = [],
+		relevantIds = [],
+	} = {}
 ) {
 	if (!item || !Number.isFinite(Number(item.id)) || typeof item.title !== 'string') {
 		return null;
@@ -82,7 +91,10 @@ export function classifyNotification(
 	const tier = notificationTier(item, { bookmarkedExamIds, practicedExamIds });
 	const relevant = tier !== 'none' || relevantIds.map(String).includes(String(item.id));
 	const seenNew = isNotificationSeen({ ledger, key: notificationEventKey(item.id, 'new') });
-	const seenClosing = isNotificationSeen({ ledger, key: notificationEventKey(item.id, 'closing_soon') });
+	const seenClosing = isNotificationSeen({
+		ledger,
+		key: notificationEventKey(item.id, 'closing_soon'),
+	});
 	let event = null;
 	if (status !== 'closed' && relevant) {
 		if (!seenNew && isNotificationFresh(item, now, todayIso)) {
@@ -97,7 +109,7 @@ export function classifyNotification(
 		tier,
 		relevant,
 		event,
-		key: event ? notificationEventKey(item.id, event) : null
+		key: event ? notificationEventKey(item.id, event) : null,
 	};
 }
 
@@ -112,8 +124,10 @@ function compareFeedRows(left, right, relevantIds) {
 	if (status !== 0) {
 		return status;
 	}
-	const leftRelevant = left.tier !== 'none' || relevantIds.map(String).includes(String(left.item.id));
-	const rightRelevant = right.tier !== 'none' || relevantIds.map(String).includes(String(right.item.id));
+	const leftRelevant =
+		left.tier !== 'none' || relevantIds.map(String).includes(String(left.item.id));
+	const rightRelevant =
+		right.tier !== 'none' || relevantIds.map(String).includes(String(right.item.id));
 	if (leftRelevant !== rightRelevant) {
 		return leftRelevant ? -1 : 1;
 	}
@@ -139,12 +153,27 @@ export function buildFeedView(items, options = {}) {
  * fresh or deadline-near rows, hard matches first.
  */
 export function buildNotificationCandidates(items, options = {}) {
-	const { now = Date.now(), todayIso = todayInIst(new Date(now)), bookmarkedExamIds = [], practicedExamIds = [] } =
-		options;
+	const {
+		now = Date.now(),
+		todayIso = todayInIst(new Date(now)),
+		bookmarkedExamIds = [],
+		practicedExamIds = [],
+	} = options;
 	return (Array.isArray(items) ? items : [])
-		.map((item) => classifyNotification(item, { ...options, ledger: options.ledger, now, todayIso, bookmarkedExamIds, practicedExamIds }))
+		.map((item) =>
+			classifyNotification(item, {
+				...options,
+				ledger: options.ledger,
+				now,
+				todayIso,
+				bookmarkedExamIds,
+				practicedExamIds,
+			})
+		)
 		.filter((row) => row && row.status !== 'closed')
-		.filter((row) => row.status === 'closing_soon' || isNotificationFresh(row.item, now, todayIso))
+		.filter(
+			(row) => row.status === 'closing_soon' || isNotificationFresh(row.item, now, todayIso)
+		)
 		.sort((left, right) => compareFeedRows(left, right, []))
 		.slice(0, MAX_NOTIFICATION_CANDIDATES)
 		.map((row) => ({
@@ -155,7 +184,7 @@ export function buildNotificationCandidates(items, options = {}) {
 			state: row.item.state || null,
 			status: row.status,
 			daysLeft: row.item.applyEnd ? daysBetween(todayIso, row.item.applyEnd) : null,
-			match: row.tier
+			match: row.tier,
 		}));
 }
 
@@ -168,7 +197,9 @@ export function interestsFrom({ bookmarkedExamIds = [], history = [] } = {}) {
 		if (entry?.examId && !practiced.includes(entry.examId)) {
 			practiced.push(entry.examId);
 		}
-		const topic = String(entry?.topic || '').trim().slice(0, 80);
+		const topic = String(entry?.topic || '')
+			.trim()
+			.slice(0, 80);
 		if (topic && !seenTopics.has(topic)) {
 			seenTopics.add(topic);
 			topics.push(topic);
@@ -177,7 +208,7 @@ export function interestsFrom({ bookmarkedExamIds = [], history = [] } = {}) {
 	return {
 		bookmarkedExamIds: (Array.isArray(bookmarkedExamIds) ? bookmarkedExamIds : []).slice(0, 20),
 		practicedExamIds: practiced.slice(0, 20),
-		topics: topics.slice(0, 5)
+		topics: topics.slice(0, 5),
 	};
 }
 

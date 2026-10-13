@@ -49,7 +49,12 @@ describe('statementBuilder failure modes', () => {
 			undefined,
 			{},
 			{ statements: [] },
-			{ statements: [{ text: 'A', isTrue: true }, { text: 'B', isTrue: false }] },
+			{
+				statements: [
+					{ text: 'A', isTrue: true },
+					{ text: 'B', isTrue: false },
+				],
+			},
 			{
 				statements: Array.from({ length: 5 }, (_, index) => ({
 					text: `Statement ${index + 1}`,
@@ -65,7 +70,11 @@ describe('statementBuilder failure modes', () => {
 
 	it('rejects blanks, duplicates, and non-boolean truth values', () => {
 		for (const statements of [
-			[{ text: '  ', isTrue: true }, { text: 'B', isTrue: false }, { text: 'C', isTrue: false }],
+			[
+				{ text: '  ', isTrue: true },
+				{ text: 'B', isTrue: false },
+				{ text: 'C', isTrue: false },
+			],
 			[
 				{ text: 'Same', isTrue: true },
 				{ text: 'same', isTrue: false },
@@ -82,7 +91,10 @@ describe('statementBuilder failure modes', () => {
 				{ text: 'C', isTrue: false },
 			],
 		]) {
-			const result = buildStatementQuestion({ statements, rationale: '' }, { random: () => 0 });
+			const result = buildStatementQuestion(
+				{ statements, rationale: '' },
+				{ random: () => 0 }
+			);
 			expect(result.ok).toBe(false);
 			expect(result.issues).toContain(STATEMENT_ISSUE_INVALID);
 		}
@@ -129,9 +141,9 @@ describe('statementBuilder option grammar', () => {
 			['english', [[1], [1, 2], [1, 2, 3], [2, 4]]],
 		]) {
 			for (const numbers of sets) {
-				expect(parseStatementOption(formatStatementOption(numbers, language), language)).toEqual(
-					numbers
-				);
+				expect(
+					parseStatementOption(formatStatementOption(numbers, language), language)
+				).toEqual(numbers);
 			}
 		}
 	});
@@ -218,7 +230,9 @@ describe('statementBuilder builds', () => {
 			const question = result.question;
 			const key = parseStatementOption(question.answer, 'english');
 			expect(key).toEqual([1, 4]);
-			const parsed = question.options.map((option) => parseStatementOption(option, 'english'));
+			const parsed = question.options.map((option) =>
+				parseStatementOption(option, 'english')
+			);
 			expect(parsed.every((numbers) => numbers !== null)).toBe(true);
 			expect(parsed.filter((numbers) => numbers.join(',') === key.join(','))).toHaveLength(1);
 			for (const numbers of parsed) {

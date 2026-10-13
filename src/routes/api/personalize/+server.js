@@ -1,29 +1,28 @@
-import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { NUDGE_ENABLED, TYPESAFE_API_KEY } from '$app/env/private';
 import { TypeSafeClient } from '@typesafe-ai/sdk';
 import * as z from 'zod';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { logApiEvent } from '$lib/server/storage';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { logApiEvent } from '#lib/server/storage.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
 import {
 	InvalidRequestBodyError,
 	RequestBodyTooLargeError,
 	parseRequestBody,
-} from '$lib/server/requestBody';
-import { classifyApiError } from '$lib/shared/apiLimitError';
+} from '#lib/server/requestBody.js';
+import { classifyApiError } from '#lib/shared/apiLimitError.js';
 import {
 	PERSONALIZE_PAGES,
 	buildPersonalizeQuestions,
 	derivePersonalize,
-} from '$lib/server/personalize';
+} from '#lib/server/personalize.js';
 import {
 	buildNudgeQuestions,
 	deriveNotificationRanking,
 	deriveNudge,
 	isNudgeHoldout,
 	sanitizeNudgeState,
-} from '$lib/server/nudges';
+} from '#lib/server/nudges.js';
 
 const PERSONALIZE_TIMEOUT_MS = 5000;
 const PERSONALIZE_RATE_LIMIT = 30;
@@ -63,24 +62,30 @@ export async function POST({ request, cookies }) {
 		body = await parseRequestBody(request);
 	} catch (error) {
 		if (error instanceof RequestBodyTooLargeError) {
-			return json({ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' }, { status: 413 });
+			return Response.json(
+				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
+				{ status: 413 }
+			);
 		}
 		if (error instanceof InvalidRequestBodyError) {
-			return json({ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' }, { status: 400 });
+			return Response.json(
+				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
+				{ status: 400 }
+			);
 		}
 		throw error;
 	}
 
 	const parsed = requestSchema.safeParse(body);
 	if (!parsed.success) {
-		return json({ error: 'Unknown personalize page', code: 'INVALID_PAGE' }, { status: 400 });
+		return Response.json({ error: 'Unknown personalize page', code: 'INVALID_PAGE' }, { status: 400 });
 	}
 	const { page, state = {} } = parsed.data;
 
 	// Nudge engine: dark unless explicitly enabled. The client slice is
 	// validated and clamped here; ineligible moments build no questions and
 	// the holdout never sees one.
-	const nudgeEnabled = env.NUDGE_ENABLED === 'true';
+	const nudgeEnabled = NUDGE_ENABLED === 'true';
 	const nudgeState = nudgeEnabled ? sanitizeNudgeState(state.nudge, page) : null;
 	const nudgeHoldout = Boolean(nudgeState) && isNudgeHoldout(clientId || clientKey);
 	const nudgeQuestions = nudgeState && !nudgeHoldout ? buildNudgeQuestions(nudgeState) : {};
@@ -95,16 +100,18 @@ export async function POST({ request, cookies }) {
 		return rateLimited(rateLimit);
 	}
 
-	const apiKey = env.TYPESAFE_API_KEY;
+	const apiKey = TYPESAFE_API_KEY;
 	if (!apiKey) {
-		return json({ error: 'TypeSafe API key is not configured' }, { status: 500 });
+		return Response.json({ error: 'TypeSafe API key is not configured' }, { status: 500 });
 	}
 
 	try {
-		const ids = Array.isArray(state.ids) ? state.ids.filter((id) => typeof id === 'string').slice(0, 12) : [];
+		const ids = Array.isArray(state.ids)
+			? state.ids.filter((id) => typeof id === 'string').slice(0, 12)
+			: [];
 		const questions = { ...buildPersonalizeQuestions(page, { ids }), ...nudgeQuestions };
 		if (Object.keys(questions).length === 0) {
-			return json({ applied: false, action: null, hide: [], promote: [], nudge: null });
+			return Response.json({ applied: false, action: null, hide: [], promote: [], nudge: null });
 		}
 		const client = new TypeSafeClient({
 			apiKey,
@@ -142,7 +149,7 @@ export async function POST({ request, cookies }) {
 			},
 		});
 
-		return json({ ...result, nudge });
+		return Response.json({ ...result, nudge });
 	} catch (aiError) {
 		console.error('Personalization failed (fail-open):', aiError?.message);
 		const { statusCode: upstreamStatus, code } = classifyApiError(aiError, {
@@ -166,6 +173,6 @@ export async function POST({ request, cookies }) {
 			metadata: { page, failOpen: true, upstreamStatus },
 		});
 		// Fail-open: keep the current UI instead of surfacing an error.
-		return json({ applied: false, action: null, hide: [], promote: [], nudge: null, code });
+		return Response.json({ applied: false, action: null, hide: [], promote: [], nudge: null, code });
 	}
 }

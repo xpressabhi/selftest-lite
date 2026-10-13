@@ -1,13 +1,12 @@
-import { json } from '@sveltejs/kit';
-import { rateLimited } from '$lib/server/apiResponse';
-import { requireAdmin } from '$lib/server/adminAuth';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { requireAdmin } from '#lib/server/adminAuth.js';
 import {
 	grantPremiumEntitlement,
 	listPremiumEntitlements,
 	revokePremiumEntitlement,
-} from '$lib/server/premium';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { readJsonBody } from '$lib/server/requestBody';
+} from '#lib/server/premium.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
 
 const PREMIUM_ADMIN_RATE_LIMIT = 30;
 
@@ -34,10 +33,13 @@ export async function GET({ request }) {
 			return limited;
 		}
 		const grants = await listPremiumEntitlements();
-		return json({ grants });
+		return Response.json({ grants });
 	} catch (error) {
 		console.error(error);
-		return json({ error: 'Failed to load premium grants', code: 'PREMIUM_LIST_ERROR' }, { status: 500 });
+		return Response.json(
+			{ error: 'Failed to load premium grants', code: 'PREMIUM_LIST_ERROR' },
+			{ status: 500 }
+		);
 	}
 }
 
@@ -60,9 +62,9 @@ export async function POST({ request }) {
 				feature: body.feature,
 			});
 			if (!result.ok) {
-				return json({ error: 'Invalid user', code: result.code }, { status: 400 });
+				return Response.json({ error: 'Invalid user', code: result.code }, { status: 400 });
 			}
-			return json({ success: true, revoked: result.revoked });
+			return Response.json({ success: true, revoked: result.revoked });
 		}
 
 		const result = await grantPremiumEntitlement({
@@ -74,12 +76,12 @@ export async function POST({ request }) {
 		});
 		if (!result.ok) {
 			const status = result.code === 'USER_NOT_FOUND' ? 404 : 400;
-			return json({ error: 'Could not grant premium access', code: result.code }, { status });
+			return Response.json({ error: 'Could not grant premium access', code: result.code }, { status });
 		}
-		return json({ success: true, userId: result.userId });
+		return Response.json({ success: true, userId: result.userId });
 	} catch (error) {
 		console.error(error);
-		return json(
+		return Response.json(
 			{ error: 'Failed to update premium access', code: 'PREMIUM_UPDATE_ERROR' },
 			{ status: 500 }
 		);

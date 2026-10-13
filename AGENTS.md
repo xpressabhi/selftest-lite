@@ -16,7 +16,7 @@ Welcome, Agent! This guide is designed to help you quickly understand the **Self
 
 ### Tech Stack Highlights:
 
-- **Framework**: SvelteKit 2 (Vite 8, Svelte 5)
+- **Framework**: SvelteKit 3 (Vite 8, Svelte 5)
 - **AI**: Gemini Flash Lite (`gemini-flash-lite-latest`) for paper generation (`/api/generate`), answer verification, and explanations (`/api/explain`); TypeSafe Jev (`jev-latest`) for conversational intent parsing (`/api/parse-intent`)
 - **Database**: Neon PostgreSQL (via `@neondatabase/serverless`)
 - **UI**: Tailwind CSS 4 + Custom CSS (Mobile-first)
@@ -139,7 +139,7 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 - **Semicolons**: **Required**. Use `npm run lint` to verify.
 - **Single Quotes**: Preferred.
 - **Client/Server Boundary**:
-    - Server-only code (DB, API keys, secrets) lives in `src/lib/server/` and `src/routes/**/+server.js`, reading secrets via `$env/dynamic/private`.
+    - Server-only code (DB, API keys, secrets) lives in `src/lib/server/` and `src/routes/**/+server.js`, reading secrets via `$app/env/private` (declared in `src/env.js`).
     - Browser-only code (localStorage, `window`/`navigator`) lives in `src/lib/client/` and `+page.svelte` files; always guard with `typeof window !== 'undefined'` or `typeof navigator !== 'undefined'` for SSR safety.
 - **CSS-in-JS**: Use scoped `<style>` blocks within components for component-specific styles when `globals.css` isn't enough.
 - **Localization (Mandatory)**:

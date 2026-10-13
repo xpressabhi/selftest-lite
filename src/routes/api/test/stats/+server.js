@@ -1,9 +1,8 @@
-import { json } from '@sveltejs/kit';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
-import { getTestStats, recordTestVisit } from '$lib/server/testStats';
-import { getAuthenticatedUser, getClientIdFromRequest } from '$lib/server/auth';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { getClientKey, logApiEvent } from '#lib/server/storage.js';
+import { getTestStats, recordTestVisit } from '#lib/server/testStats.js';
+import { getAuthenticatedUser, getClientIdFromRequest } from '#lib/server/auth.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { API_LIMIT_ERROR_CODE } from '#lib/shared/apiLimitError.js';
 
 const STATS_RATE_LIMIT = 120;
 
@@ -30,7 +29,7 @@ export async function GET({ request, url, cookies }) {
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: API_LIMIT_ERROR_CODE,
@@ -52,7 +51,7 @@ export async function GET({ request, url, cookies }) {
 		const clientId = getClientIdFromRequest(request);
 		const testId = Number(url.searchParams.get('id'));
 		if (!Number.isInteger(testId) || testId <= 0) {
-			return json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
+			return Response.json({ error: 'Invalid test ID', code: 'INVALID_TEST_ID' }, { status: 400 });
 		}
 
 		// Loading the stats is itself a way of opening the test, and recording
@@ -66,7 +65,7 @@ export async function GET({ request, url, cookies }) {
 
 		const stats = await getTestStats(testId, { userId: user?.id, clientId });
 		if (!stats) {
-			return json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
+			return Response.json({ error: 'Test not found', code: 'TEST_NOT_FOUND' }, { status: 404 });
 		}
 
 		await logApiEvent({
@@ -81,7 +80,7 @@ export async function GET({ request, url, cookies }) {
 			metadata: { testId },
 		});
 
-		return json(stats, { headers: { 'cache-control': 'no-store' } });
+		return Response.json(stats, { headers: { 'cache-control': 'no-store' } });
 	} catch (error) {
 		console.error('Failed to load test stats:', error);
 		await logApiEvent({
@@ -93,7 +92,7 @@ export async function GET({ request, url, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to load test stats', code: 'STATS_FETCH_ERROR' },
 			{ status: 500 }
 		);

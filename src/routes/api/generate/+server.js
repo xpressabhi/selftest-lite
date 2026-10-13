@@ -1,8 +1,7 @@
-import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
-import { env } from '$env/dynamic/private';
-import { DEFAULT_RATE_LIMIT, rateLimiter } from '$lib/server/rateLimiter';
-import { generatePrompt } from '$lib/server/prompt';
+import { GEMINI_API_KEY } from '$app/env/private';
+import { DEFAULT_RATE_LIMIT, rateLimiter } from '#lib/server/rateLimiter.js';
+import { generatePrompt } from '#lib/server/prompt.js';
 import * as z from 'zod';
 import {
 	createTestRecord,
@@ -12,23 +11,27 @@ import {
 	getTestRecordsByIds,
 	logApiEvent,
 	saveTestIntentRecord,
-} from '$lib/server/storage';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { paperSchemaFor } from '$lib/server/quizSchema';
-import { parseJsonResponse } from '$lib/server/jsonResponse';
-import { normalizeMathText } from '$lib/shared/latex';
-import { questionTextFor } from '$lib/shared/questionText';
-import { buildMatchingQuestion } from '$lib/server/matchingBuilder';
-import { buildAssertionReasoningQuestion } from '$lib/server/assertionReasoning';
-import { buildStatementQuestion } from '$lib/server/statementBuilder';
-import { PROFILE_STATE_KEY, isPersonalized, parseProfileStateValue } from '$lib/shared/userProfile';
+} from '#lib/server/storage.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { paperSchemaFor } from '#lib/server/quizSchema.js';
+import { parseJsonResponse } from '#lib/server/jsonResponse.js';
+import { normalizeMathText } from '#lib/shared/latex.js';
+import { questionTextFor } from '#lib/shared/questionText.js';
+import { buildMatchingQuestion } from '#lib/server/matchingBuilder.js';
+import { buildAssertionReasoningQuestion } from '#lib/server/assertionReasoning.js';
+import { buildStatementQuestion } from '#lib/server/statementBuilder.js';
+import {
+	PROFILE_STATE_KEY,
+	isPersonalized,
+	parseProfileStateValue,
+} from '#lib/shared/userProfile.js';
 import {
 	buildProfileContext,
 	buildTailoredSummary,
 	computeLearnerSignals,
 	resolveDifficulty,
 	resolveWarmUpDifficulty,
-} from '$lib/server/profile';
+} from '#lib/server/profile.js';
 import {
 	sanitizePreviousTestIds,
 	validateGenerateRequest,
@@ -36,21 +39,19 @@ import {
 	inspectGeneratedPaper,
 	comparableText,
 	answerMatchesOption,
-} from '$lib/server/quizValidation';
-import { parseRequestBody } from '$lib/server/requestBody';
-import { stripAnswerKey } from '$lib/server/paperRedaction';
+} from '#lib/server/quizValidation.js';
+import { parseRequestBody } from '#lib/server/requestBody.js';
+import { stripAnswerKey } from '#lib/server/paperRedaction.js';
 import {
 	assignSectionsToPaper,
 	buildPatternConstraint,
 	getExamPattern,
-} from '$lib/server/examPattern';
-import { hasPremiumAccess } from '$lib/server/premium';
-import { resolveGenerationParams } from '$lib/server/generationParams';
-import { buildOriginalRequest, sanitizeIntentCapture } from '$lib/server/intentCapture';
-import {
-	applyQualityFixes,
-	inspectQuestionBatch,
-} from '$lib/server/questionQuality';
+} from '#lib/server/examPattern.js';
+import { hasPremiumAccess } from '#lib/server/premium.js';
+import { resolveGenerationParams } from '#lib/server/generationParams.js';
+import { buildOriginalRequest, sanitizeIntentCapture } from '#lib/server/intentCapture.js';
+import { applyQualityFixes, inspectQuestionBatch } from '#lib/server/questionQuality.js';
+
 import {
 	BATCH_SIZE,
 	GENERATION_RESERVE_MS,
@@ -60,19 +61,20 @@ import {
 	salvageSummary,
 	shouldReturnTrimmed,
 	topUpBatchSize,
-} from '$lib/server/generationSalvage';
-import { MAX_GENERATION_OUTPUT_TOKENS } from '$lib/server/quizConfig';
+} from '#lib/server/generationSalvage.js';
+import { MAX_GENERATION_OUTPUT_TOKENS } from '#lib/server/quizConfig.js';
 import {
 	answerVerificationSchema,
 	buildAnswerVerificationPrompt,
-} from '$lib/server/answerVerifier';
+} from '#lib/server/answerVerifier.js';
+
 import {
 	API_LIMIT_ERROR_CODE,
 	API_TIMEOUT_ERROR_CODE,
 	isApiLimitExceededError,
 	isApiTimeoutError,
 	classifyApiError,
-} from '$lib/shared/apiLimitError';
+} from '#lib/shared/apiLimitError.js';
 
 const MODEL_NAME = 'gemini-flash-lite-latest';
 const MODEL_ATTEMPTS = 2;
@@ -184,12 +186,8 @@ function normalizeGeneratedPaper(questionPaper) {
 			// model output has no `format` yet, so detect by shape.
 			const structured = {};
 			if (Array.isArray(question.columnA) && Array.isArray(question.columnB)) {
-				structured.columnA = question.columnA.map((item) =>
-					normalizeMathText(item).trim()
-				);
-				structured.columnB = question.columnB.map((item) =>
-					normalizeMathText(item).trim()
-				);
+				structured.columnA = question.columnA.map((item) => normalizeMathText(item).trim());
+				structured.columnB = question.columnB.map((item) => normalizeMathText(item).trim());
 			}
 			if (typeof question.assertion === 'string' || typeof question.reason === 'string') {
 				structured.assertion = normalizeMathText(question.assertion).trim();
@@ -468,7 +466,9 @@ async function generatePaper({
 				round > 0
 					? buildTopUpInstruction({
 							rejected,
-							approvedTexts: approvedSoFar.map((question) => questionTextFor(question)),
+							approvedTexts: approvedSoFar.map((question) =>
+								questionTextFor(question)
+							),
 							round,
 							ask,
 						})
@@ -616,6 +616,7 @@ async function generatePaper({
 			if (ranOutOfTime && generatedQuestions.length > 0) {
 				break;
 			}
+
 			throw (
 				lastError ||
 				new GenerationFailureError('Failed to validate generated batch', {
@@ -1042,9 +1043,7 @@ function streamGenerate(context) {
 
 export async function POST({ request, cookies }) {
 	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
-	const wantsStream = String(request.headers.get('accept') || '').includes(
-		'text/event-stream'
-	);
+	const wantsStream = String(request.headers.get('accept') || '').includes('text/event-stream');
 
 	try {
 		const {
@@ -1095,7 +1094,7 @@ export async function POST({ request, cookies }) {
 			school,
 		});
 		if (validationError) {
-			return json(
+			return Response.json(
 				{ error: validationError.message, code: validationError.code },
 				{ status: 400 }
 			);
@@ -1129,7 +1128,7 @@ export async function POST({ request, cookies }) {
 					userId: user?.id || null,
 					metadata: { code: 'PREMIUM_REQUIRED', reason: access.reason },
 				});
-				return json(
+				return Response.json(
 					{
 						error: 'Full exam papers are an early-access feature.',
 						code: 'PREMIUM_REQUIRED',
@@ -1167,7 +1166,7 @@ export async function POST({ request, cookies }) {
 				},
 			});
 
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: API_LIMIT_ERROR_CODE,
@@ -1263,7 +1262,7 @@ export async function POST({ request, cookies }) {
 					null;
 			}
 			if (normalizedSectionFocus && !focusSection) {
-				return json(
+				return Response.json(
 					{
 						error: 'That section is not available for this exam',
 						code: 'SECTION_NOT_FOUND',
@@ -1365,7 +1364,7 @@ export async function POST({ request, cookies }) {
 						},
 					});
 
-					return json({
+					return Response.json({
 						...stripAnswerKey(reusablePaper),
 						id: reusableRecord.id,
 						reusedExisting: true,
@@ -1430,13 +1429,18 @@ export async function POST({ request, cookies }) {
 				if (value && typeof value === 'object') {
 					return { ...value, answer: value.answer ?? row.answer };
 				}
-				return { question: typeof value === 'string' ? value : '', answer: row?.answer };
+
+				return {
+					question: typeof value === 'string' ? value : '',
+					answer: row?.answer,
+				};
 			})
 			.filter((question) => questionTextFor(question));
 
-		const apiKey = env.GEMINI_API_KEY;
+		const apiKey = GEMINI_API_KEY;
+
 		if (!apiKey) {
-			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
+			return Response.json({ error: 'Gemini API key is not configured' }, { status: 500 });
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
@@ -1481,17 +1485,17 @@ export async function POST({ request, cookies }) {
 			return streamGenerate(generationContext);
 		}
 		const result = await runGenerationAndStore(generationContext);
-		return json(result.payload, { status: result.status });
+		return Response.json(result.payload, { status: result.status });
 	} catch (error) {
 		console.error(error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {
-			return json(
+			return Response.json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
 				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
-			return json(
+			return Response.json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 				{ status: 400 }
 			);
@@ -1511,7 +1515,7 @@ export async function POST({ request, cookies }) {
 			errorMessage: String(error.message || '').slice(0, 500),
 		});
 
-		return json(
+		return Response.json(
 			{
 				error: message,
 				code,

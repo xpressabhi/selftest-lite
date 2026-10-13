@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { track } from '$lib/client/telemetry';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { track } from '#lib/client/telemetry.js';
 	import {
 		getBookmarkedExamIds,
 		getBookmarkedQuizPresets,
@@ -9,11 +9,11 @@
 		saveBookmarkedExamIds,
 		saveBookmarkedQuizPresets,
 		saveQuestionBookmarks,
-	} from '$lib/client/storage';
-	import Icon from '$lib/client/Icon.svelte';
-	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
-	import { hydrateUserState } from '$lib/client/sync';
-	import { getIndianExamById, localizedStream } from '$lib/data/indianExams';
+	} from '#lib/client/storage.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import MarkdownContent from '#lib/client/MarkdownContent.svelte';
+	import { hydrateUserState } from '#lib/client/sync.js';
+	import { getIndianExamById, localizedStream } from '#lib/data/indianExams.js';
 
 	let examIds = $state([]);
 	let presets = $state([]);

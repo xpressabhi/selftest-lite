@@ -75,7 +75,15 @@ export function drawScoreCard(canvas, data = {}, logo = null) {
 	if (!context) {
 		return false;
 	}
-	const { topic = '', score = 0, total = 0, pct = 0, timeLabel = '', challenge = '', link = '' } = data;
+	const {
+		topic = '',
+		score = 0,
+		total = 0,
+		pct = 0,
+		timeLabel = '',
+		challenge = '',
+		link = '',
+	} = data;
 	context.save();
 	context.clearRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
 	drawCardBackground(context);
@@ -93,7 +101,13 @@ export function drawScoreCard(canvas, data = {}, logo = null) {
 	context.strokeStyle = CARD_PALETTE.brand600;
 	context.lineCap = 'round';
 	context.beginPath();
-	context.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, Math.max(0, pct / 100)));
+	context.arc(
+		centerX,
+		centerY,
+		radius,
+		-Math.PI / 2,
+		-Math.PI / 2 + Math.PI * 2 * Math.min(1, Math.max(0, pct / 100))
+	);
 	context.stroke();
 	context.textAlign = 'center';
 	context.fillStyle = CARD_PALETTE.text;

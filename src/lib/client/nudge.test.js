@@ -20,7 +20,7 @@ import {
 	registerMomentShown,
 	registerShareUsed,
 	unseenNotificationCount,
-	writeNudgeLedger
+	writeNudgeLedger,
 } from './nudge.js';
 
 // Failure list for the client nudge ledger (written before the module):
@@ -39,8 +39,8 @@ function installBrowserGlobals() {
 		localStorage: {
 			getItem: vi.fn((key) => (store.has(key) ? store.get(key) : null)),
 			setItem: vi.fn((key, value) => store.set(key, String(value))),
-			removeItem: vi.fn((key) => store.delete(key))
-		}
+			removeItem: vi.fn((key) => store.delete(key)),
+		},
 	});
 }
 
@@ -61,7 +61,11 @@ describe('ledger normalization and persistence', () => {
 	});
 
 	it('round-trips a written ledger', () => {
-		const ledger = registerMomentShown({ kind: 'share_result', ledger: emptyLedger(), now: NOW });
+		const ledger = registerMomentShown({
+			kind: 'share_result',
+			ledger: emptyLedger(),
+			now: NOW,
+		});
 		writeNudgeLedger(ledger);
 		expect(readNudgeLedger()).toEqual(ledger);
 	});
@@ -73,7 +77,7 @@ describe('ledger normalization and persistence', () => {
 				lastMomentAt: 'later',
 				lastShownAt: { share: NOW, push: 'nope', evil: NOW },
 				dismissals: { share: -2, push: 1 },
-				seen: 'not-a-list'
+				seen: 'not-a-list',
 			})
 		);
 		const ledger = readNudgeLedger();
@@ -90,7 +94,12 @@ describe('ledger normalization and persistence', () => {
 describe('momentSuppression', () => {
 	it('allows a share ask on a fresh ledger', () => {
 		expect(
-			momentSuppression({ kind: 'share_result', ledger: emptyLedger(), now: NOW, session: createSessionBudget() })
+			momentSuppression({
+				kind: 'share_result',
+				ledger: emptyLedger(),
+				now: NOW,
+				session: createSessionBudget(),
+			})
 		).toBeNull();
 	});
 
@@ -103,16 +112,25 @@ describe('momentSuppression', () => {
 	});
 
 	it('holds the global 24h cooldown across ask groups', () => {
-		const ledger = registerMomentShown({ kind: 'enable_reminders', ledger: emptyLedger(), now: NOW - HOUR });
-		expect(momentSuppression({ kind: 'share_result', ledger, now: NOW, session: createSessionBudget() })).toBe(
-			'cooldown'
-		);
+		const ledger = registerMomentShown({
+			kind: 'enable_reminders',
+			ledger: emptyLedger(),
+			now: NOW - HOUR,
+		});
+		expect(
+			momentSuppression({
+				kind: 'share_result',
+				ledger,
+				now: NOW,
+				session: createSessionBudget(),
+			})
+		).toBe('cooldown');
 		expect(
 			momentSuppression({
 				kind: 'share_result',
 				ledger,
 				now: NOW + MOMENT_GLOBAL_COOLDOWN_MS,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 	});
@@ -121,14 +139,14 @@ describe('momentSuppression', () => {
 		const shareShown = registerMomentShown({
 			kind: 'challenge_friend',
 			ledger: emptyLedger(),
-			now: NOW - 2 * DAY
+			now: NOW - 2 * DAY,
 		});
 		expect(
 			momentSuppression({
 				kind: 'share_result',
 				ledger: shareShown,
 				now: NOW,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBe('cooldown');
 		expect(
@@ -136,21 +154,21 @@ describe('momentSuppression', () => {
 				kind: 'share_result',
 				ledger: shareShown,
 				now: NOW + 2 * SHARE_COOLDOWN_MS,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 
 		const pushShown = registerMomentShown({
 			kind: 'enable_reminders',
 			ledger: emptyLedger(),
-			now: NOW - 6 * DAY
+			now: NOW - 6 * DAY,
 		});
 		expect(
 			momentSuppression({
 				kind: 'enable_reminders',
 				ledger: pushShown,
 				now: NOW,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBe('cooldown');
 		expect(
@@ -158,35 +176,49 @@ describe('momentSuppression', () => {
 				kind: 'enable_reminders',
 				ledger: pushShown,
 				now: NOW + 2 * PUSH_COOLDOWN_MS,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 	});
 
 	it('escalates the dismissal backoff from 14 to 30 to 90 days', () => {
-		let ledger = registerMomentDismissed({ kind: 'share_result', ledger: emptyLedger(), now: NOW - 7 * DAY });
+		let ledger = registerMomentDismissed({
+			kind: 'share_result',
+			ledger: emptyLedger(),
+			now: NOW - 7 * DAY,
+		});
 		expect(
-			momentSuppression({ kind: 'share_result', ledger, now: NOW, session: createSessionBudget() })
+			momentSuppression({
+				kind: 'share_result',
+				ledger,
+				now: NOW,
+				session: createSessionBudget(),
+			})
 		).toBe('backoff');
 		expect(
 			momentSuppression({
 				kind: 'share_result',
 				ledger,
 				now: NOW + 8 * DAY,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 
 		ledger = registerMomentDismissed({ kind: 'share_result', ledger, now: NOW - 20 * DAY });
 		expect(
-			momentSuppression({ kind: 'share_result', ledger, now: NOW, session: createSessionBudget() })
+			momentSuppression({
+				kind: 'share_result',
+				ledger,
+				now: NOW,
+				session: createSessionBudget(),
+			})
 		).toBe('backoff');
 		expect(
 			momentSuppression({
 				kind: 'share_result',
 				ledger,
 				now: NOW + 11 * DAY,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 
@@ -197,7 +229,7 @@ describe('momentSuppression', () => {
 				kind: 'share_result',
 				ledger,
 				now: NOW,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBe('backoff');
 		expect(
@@ -205,7 +237,7 @@ describe('momentSuppression', () => {
 				kind: 'share_result',
 				ledger,
 				now: NOW + 51 * DAY,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 	});
@@ -215,12 +247,22 @@ describe('interruptSuppression', () => {
 	it('keeps quiet hours from 21:00 to 07:00', () => {
 		for (const hourLocal of [21, 22, 23, 0, 3, 6]) {
 			expect(
-				interruptSuppression({ ledger: emptyLedger(), now: NOW, hourLocal, session: createSessionBudget() })
+				interruptSuppression({
+					ledger: emptyLedger(),
+					now: NOW,
+					hourLocal,
+					session: createSessionBudget(),
+				})
 			).toBe('quiet-hours');
 		}
 		for (const hourLocal of [7, 12, 20]) {
 			expect(
-				interruptSuppression({ ledger: emptyLedger(), now: NOW, hourLocal, session: createSessionBudget() })
+				interruptSuppression({
+					ledger: emptyLedger(),
+					now: NOW,
+					hourLocal,
+					session: createSessionBudget(),
+				})
 			).toBeNull();
 		}
 	});
@@ -234,14 +276,19 @@ describe('interruptSuppression', () => {
 
 		const ledger = registerInterrupt({ ledger: emptyLedger(), now: NOW - HOUR });
 		expect(
-			interruptSuppression({ ledger, now: NOW, hourLocal: 12, session: createSessionBudget() })
+			interruptSuppression({
+				ledger,
+				now: NOW,
+				hourLocal: 12,
+				session: createSessionBudget(),
+			})
 		).toBe('recent');
 		expect(
 			interruptSuppression({
 				ledger,
 				now: NOW + INTERRUPT_COOLDOWN_MS,
 				hourLocal: 12,
-				session: createSessionBudget()
+				session: createSessionBudget(),
 			})
 		).toBeNull();
 	});
@@ -255,7 +302,7 @@ describe('buildNudgeState', () => {
 			{ timestamp: NOW - HOUR },
 			{ timestamp: new Date(2026, 8, 24, 10, 0, 0).getTime() },
 			{ timestamp: new Date(2026, 8, 24, 16, 0, 0).getTime() },
-			{ timestamp: new Date(2026, 8, 10, 16, 0, 0).getTime() }
+			{ timestamp: new Date(2026, 8, 10, 16, 0, 0).getTime() },
 		];
 		const state = buildNudgeState({
 			page: 'results',
@@ -270,7 +317,7 @@ describe('buildNudgeState', () => {
 			secondsOnPage: 9,
 			interactionCount: 2,
 			hourLocal: 19,
-			locale: 'en'
+			locale: 'en',
 		});
 		expect(state).toMatchObject({
 			page: 'results',
@@ -283,12 +330,12 @@ describe('buildNudgeState', () => {
 			bestBeaten: true,
 			reminderState: 'off',
 			shareSheetOpenedThisResult: false,
-			locale: 'en'
+			locale: 'en',
 		});
 		expect(state.session).toEqual({
 			secondsOnPage: 9,
 			interactionCount: 2,
-			hourLocal: 19
+			hourLocal: 19,
 		});
 	});
 
@@ -296,9 +343,13 @@ describe('buildNudgeState', () => {
 		let seenLedger = registerMomentShown({
 			kind: 'share_result',
 			ledger: emptyLedger(),
-			now: NOW - 2 * DAY
+			now: NOW - 2 * DAY,
 		});
-		seenLedger = registerMomentDismissed({ kind: 'share_result', ledger: seenLedger, now: NOW - DAY });
+		seenLedger = registerMomentDismissed({
+			kind: 'share_result',
+			ledger: seenLedger,
+			now: NOW - DAY,
+		});
 		seenLedger = registerShareUsed({ ledger: seenLedger, now: NOW - 3 * DAY });
 		const state = buildNudgeState({
 			page: 'home',
@@ -306,9 +357,13 @@ describe('buildNudgeState', () => {
 			streak: null,
 			ledger: seenLedger,
 			now: NOW,
-			hourLocal: 12
+			hourLocal: 12,
 		});
-		expect(state.nudgeHistory).toEqual({ lastShareDaysAgo: 2, lastPushDaysAgo: null, dismissals: 1 });
+		expect(state.nudgeHistory).toEqual({
+			lastShareDaysAgo: 2,
+			lastPushDaysAgo: null,
+			dismissals: 1,
+		});
 		expect(state.shareUsed).toBe(true);
 		expect(state.testsTotal).toBe(0);
 		expect(state.distinctTestDays).toBe(0);
@@ -322,7 +377,7 @@ describe('buildNudgeState', () => {
 			history: [{ timestamp: NOW }, { timestamp: 'nope' }, {}],
 			ledger,
 			now: NOW,
-			hourLocal: 12
+			hourLocal: 12,
 		});
 		expect(state.testsTotal).toBe(3);
 		expect(state.distinctTestDays).toBe(1);
@@ -336,7 +391,7 @@ describe('buildNotificationState', () => {
 			candidates: Array.from({ length: 9 }, (_, index) => ({ id: String(index) })),
 			topics: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
 			now: NOW,
-			hourLocal: 12
+			hourLocal: 12,
 		});
 		expect(state.page).toBe('notifications');
 		expect(state.candidates).toHaveLength(6);
@@ -367,7 +422,9 @@ describe('notification seen state', () => {
 
 	it('counts only unseen keys among candidates', () => {
 		const ledger = markNotificationSeen({ ledger: emptyLedger(), key: 'a:new' });
-		expect(unseenNotificationCount({ ledger, keys: ['a:new', 'b:new', 'c:closing_soon'] })).toBe(2);
+		expect(
+			unseenNotificationCount({ ledger, keys: ['a:new', 'b:new', 'c:closing_soon'] })
+		).toBe(2);
 		expect(unseenNotificationCount({ ledger, keys: [] })).toBe(0);
 	});
 });

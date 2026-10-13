@@ -21,8 +21,7 @@ export const SERVER_GENERATION_TIMEOUT_MS = 180_000;
 /** Slack so the server's 408 arrives before the client's own abort. */
 export const CLIENT_TIMEOUT_SLACK_MS = 15_000;
 
-export const CLIENT_GENERATION_TIMEOUT_MS =
-	SERVER_GENERATION_TIMEOUT_MS + CLIENT_TIMEOUT_SLACK_MS;
+export const CLIENT_GENERATION_TIMEOUT_MS = SERVER_GENERATION_TIMEOUT_MS + CLIENT_TIMEOUT_SLACK_MS;
 
 /** Ceiling across every attempt of one generation. */
 export const GENERATION_BUDGET_MS = 300_000;

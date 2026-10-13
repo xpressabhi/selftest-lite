@@ -1,9 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { getClientHeaders } from '$lib/client/identity';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import { formatDate } from '$lib/client/formatting';
+	import { getClientHeaders } from '#lib/client/identity.js';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { formatDate } from '#lib/client/formatting.js';
 
 	let stats = $state(null);
 	let loading = $state(true);
@@ -11,10 +11,7 @@
 
 	const testId = $derived(page.url.searchParams.get('id'));
 	const maxDaily = $derived(
-		Math.max(
-			1,
-			...(stats?.daily || []).map((day) => Math.max(day.visits, day.submissions))
-		)
+		Math.max(1, ...(stats?.daily || []).map((day) => Math.max(day.visits, day.submissions)))
 	);
 
 	onMount(async () => {
@@ -91,7 +88,8 @@
 			<ul class="test-stats-scores">
 				{#each stats.scores as score (score.createdAt + score.score)}
 					<li class="test-stats-score-row" class:mine={score.isMine}>
-						<span class="test-stats-score-name">{score.name || $t('someoneLabel')}</span>
+						<span class="test-stats-score-name">{score.name || $t('someoneLabel')}</span
+						>
 						<span class="test-stats-score-value">{score.score}/{score.total}</span>
 						<span class="test-stats-score-date"
 							>{formatDate(score.createdAt, $activeLanguage, {
@@ -106,7 +104,10 @@
 			<p class="text-muted small">{$t('testStatsNoScores')}</p>
 		{/if}
 
-		<a class="btn btn-outline-primary mt-4" href={`/test?id=${encodeURIComponent(testId || '')}`}>
+		<a
+			class="btn btn-outline-primary mt-4"
+			href={`/test?id=${encodeURIComponent(testId || '')}`}
+		>
 			{$t('openTest')}
 		</a>
 	{/if}

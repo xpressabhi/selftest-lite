@@ -190,14 +190,16 @@ describe('topic span repair (failure modes F1-F8)', () => {
 
 	it('does not absorb exam-name tokens', () => {
 		expect(repairTopicSpan('jee main physics', 'physics')).toBe('physics');
-		expect(repairTopicSpan('upsc prelims modern history', 'modern history')).toBe('modern history');
+		expect(repairTopicSpan('upsc prelims modern history', 'modern history')).toBe(
+			'modern history'
+		);
 	});
 
 	// F4: punctuation and newlines are hard boundaries.
 	it('does not cross punctuation or line breaks', () => {
-		expect(
-			repairTopicSpan('python, built in data structures', 'data structures')
-		).toBe('built in data structures');
+		expect(repairTopicSpan('python, built in data structures', 'data structures')).toBe(
+			'built in data structures'
+		);
 		expect(repairTopicSpan('python\nbuilt in data structures', 'data structures')).toBe(
 			'built in data structures'
 		);

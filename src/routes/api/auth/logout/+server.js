@@ -1,12 +1,11 @@
-import { json } from '@sveltejs/kit';
 import {
 	clearSessionCookie,
 	getRawSessionTokenFromRequest,
 	revokeSessionByToken,
-} from '$lib/server/auth';
-import { logApiEvent } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
+} from '#lib/server/auth.js';
+import { logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const LOGOUT_RATE_LIMIT = 10;
 
@@ -19,7 +18,7 @@ export async function POST({ request, cookies }) {
 			limit: LOGOUT_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
-			return json(
+			return Response.json(
 				{ error: 'Rate limit exceeded', code: 'RATE_LIMIT_EXCEEDED' },
 				{ status: 429 }
 			);
@@ -40,7 +39,7 @@ export async function POST({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 		});
 
-		return json({ success: true });
+		return Response.json({ success: true });
 	} catch (error) {
 		console.error('Failed to sign out:', error);
 		clearSessionCookie(cookies);
@@ -53,6 +52,6 @@ export async function POST({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
 		});
-		return json({ error: 'Failed to sign out', code: 'LOGOUT_FAILED' }, { status: 500 });
+		return Response.json({ error: 'Failed to sign out', code: 'LOGOUT_FAILED' }, { status: 500 });
 	}
 }

@@ -1,8 +1,8 @@
-import { injectAnalytics } from '@vercel/analytics/sveltekit';
+import { injectAnalytics } from '#lib/client/vercelAnalytics.svelte.js';
 import { get } from 'svelte/store';
-import { activeLanguage } from '$lib/client/i18n';
-import { loadDictionary } from '$lib/client/locales';
-import { isNoindexPath, splitLang } from '$lib/shared/seo';
+import { activeLanguage } from '#lib/client/i18n.js';
+import { loadDictionary } from '#lib/client/locales.js';
+import { isNoindexPath, splitLang } from '#lib/shared/seo.js';
 
 // Language for this render. Indexable pages take it from the URL so SSR and
 // prerender are deterministic (and Hindi is fetched before anything renders);

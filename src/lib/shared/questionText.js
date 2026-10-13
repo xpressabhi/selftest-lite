@@ -24,7 +24,9 @@ export function questionTextFor(question) {
 			.map((item, index) => `${index + 1}. ${String(item ?? '').trim()}`)
 			.join(' ');
 		const columnB = question.columnB
-			.map((item, index) => `${String.fromCharCode(65 + index)}. ${String(item ?? '').trim()}`)
+			.map(
+				(item, index) => `${String.fromCharCode(65 + index)}. ${String(item ?? '').trim()}`
+			)
 			.join(' ');
 		return [stem, `Column I: ${columnA}`, `Column II: ${columnB}`].filter(Boolean).join('\n');
 	}

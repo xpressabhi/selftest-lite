@@ -4,7 +4,7 @@
 	 * Keeps the About / Blog / FAQ / Contact pages visually consistent without
 	 * duplicating gradient markup in every route.
 	 */
-	import { t } from '$lib/client/i18n';
+	import { t } from '#lib/client/i18n.js';
 
 	let {
 		titleKey,

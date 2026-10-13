@@ -67,7 +67,7 @@ export function resolveGenerationParams({
 
 	const durationMinutes = explicit.has('durationMinutes')
 		? request.durationMinutes
-		: pattern?.durationMinutes ?? request.durationMinutes;
+		: (pattern?.durationMinutes ?? request.durationMinutes);
 
 	return {
 		difficulty: difficulty ?? null,

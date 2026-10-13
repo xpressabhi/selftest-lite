@@ -1,19 +1,18 @@
-import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { PASSKEY_ALLOWED_ORIGINS, PASSKEY_RP_ID } from '$app/env/private';
 import {
 	backfillUserIdentity,
 	consumePasskeyChallenge,
 	getPasskeyWithUserByCredentialId,
 	logApiEvent,
-	updatePasskeyUsage
-} from '$lib/server/storage';
-import { createSessionForUser, getUserById, setSessionCookie } from '$lib/server/auth';
-import { toWebAuthnCredential, verifyAuthentication } from '$lib/server/passkey';
-import { readChallengeFromClientData, resolvePasskeyContext } from '$lib/shared/passkeyPolicy';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
-import { resolveRequestContext } from '$lib/server/apiContext';
+	updatePasskeyUsage,
+} from '#lib/server/storage.js';
+import { createSessionForUser, getUserById, setSessionCookie } from '#lib/server/auth.js';
+import { toWebAuthnCredential, verifyAuthentication } from '#lib/server/passkey.js';
+import { readChallengeFromClientData, resolvePasskeyContext } from '#lib/shared/passkeyPolicy.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const LOGIN_VERIFY_RATE_LIMIT = 30;
 
@@ -31,7 +30,7 @@ function isUsableResponse(response) {
 
 /** Unknown credential and failed verification answer identically on purpose. */
 function rejected() {
-	return json(
+	return Response.json(
 		{ error: 'That passkey was not accepted.', code: 'PASSKEY_UNKNOWN_CREDENTIAL' },
 		{ status: 401 }
 	);
@@ -43,7 +42,7 @@ export async function POST({ request, url, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/passkey/login/verify',
-			limit: LOGIN_VERIFY_RATE_LIMIT
+			limit: LOGIN_VERIFY_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			await logApiEvent({
@@ -54,14 +53,14 @@ export async function POST({ request, url, cookies }) {
 				request,
 				statusCode: 429,
 				durationMs: Date.now() - startedAt,
-				userId: user?.id ?? null
+				userId: user?.id ?? null,
 			});
 			return rateLimited(rateLimit);
 		}
 
-		const context = resolvePasskeyContext(url, env);
+		const context = resolvePasskeyContext(url, { PASSKEY_RP_ID, PASSKEY_ALLOWED_ORIGINS });
 		if (!context) {
-			return json(
+			return Response.json(
 				{ error: 'Passkeys are not available here.', code: 'PASSKEY_UNAVAILABLE' },
 				{ status: 503 }
 			);
@@ -70,7 +69,7 @@ export async function POST({ request, url, cookies }) {
 		const body = await readJsonBody(request);
 		const response = body?.response;
 		if (!isUsableResponse(response)) {
-			return json(
+			return Response.json(
 				{ error: 'A passkey response is required.', code: 'PASSKEY_RESPONSE_REQUIRED' },
 				{ status: 400 }
 			);
@@ -81,8 +80,11 @@ export async function POST({ request, url, cookies }) {
 			? await consumePasskeyChallenge(challenge, 'authentication')
 			: null;
 		if (!challengeRow) {
-			return json(
-				{ error: 'This sign-in attempt expired. Please try again.', code: 'PASSKEY_CHALLENGE_EXPIRED' },
+			return Response.json(
+				{
+					error: 'This sign-in attempt expired. Please try again.',
+					code: 'PASSKEY_CHALLENGE_EXPIRED',
+				},
 				{ status: 400 }
 			);
 		}
@@ -97,7 +99,7 @@ export async function POST({ request, url, cookies }) {
 				request,
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
-				errorMessage: 'Unknown credential'
+				errorMessage: 'Unknown credential',
 			});
 			return rejected();
 		}
@@ -107,7 +109,7 @@ export async function POST({ request, url, cookies }) {
 			expectedChallenge: challengeRow.challenge,
 			expectedOrigin: context.expectedOrigin,
 			expectedRPID: context.rpId,
-			credential: toWebAuthnCredential(passkeyRow)
+			credential: toWebAuthnCredential(passkeyRow),
 		});
 
 		if (!verification.verified) {
@@ -120,7 +122,7 @@ export async function POST({ request, url, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 				errorMessage: 'Assertion verification failed',
-				userId: Number(passkeyRow.user_id) || null
+				userId: Number(passkeyRow.user_id) || null,
 			});
 			return rejected();
 		}
@@ -135,7 +137,7 @@ export async function POST({ request, url, cookies }) {
 			passkeyId: passkeyRow.id,
 			counter: info.newCounter,
 			deviceType: info.credentialDeviceType || null,
-			backedUp: typeof info.credentialBackedUp === 'boolean' ? info.credentialBackedUp : null
+			backedUp: typeof info.credentialBackedUp === 'boolean' ? info.credentialBackedUp : null,
 		});
 
 		const userId = Number(passkeyRow.user_id);
@@ -156,11 +158,11 @@ export async function POST({ request, url, cookies }) {
 			metadata: {
 				backfilledCount,
 				counterAnomaly,
-				deviceType: info.credentialDeviceType || null
-			}
+				deviceType: info.credentialDeviceType || null,
+			},
 		});
 
-		return json({ user: authenticatedUser });
+		return Response.json({ user: authenticatedUser });
 	} catch (error) {
 		console.error('Passkey sign-in failed:', error);
 		await logApiEvent({
@@ -172,8 +174,11 @@ export async function POST({ request, url, cookies }) {
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
-			userId: user?.id ?? null
+			userId: user?.id ?? null,
 		});
-		return json({ error: 'Unable to sign in right now.', code: 'PASSKEY_LOGIN_ERROR' }, { status: 500 });
+		return Response.json(
+			{ error: 'Unable to sign in right now.', code: 'PASSKEY_LOGIN_ERROR' },
+			{ status: 500 }
+		);
 	}
 }

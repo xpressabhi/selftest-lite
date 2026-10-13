@@ -6,8 +6,8 @@
 //
 // Shape: { thread: [{ role: 'user', text }], plan, provenance }.
 
-import { normalizePlan } from '$lib/server/intentParse';
-import { MAX_INTENT_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
+import { normalizePlan } from '#lib/server/intentParse.js';
+import { MAX_INTENT_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
 
 export const MAX_THREAD_MESSAGES = 8;
 export const MAX_THREAD_CHARS = 4000;
@@ -117,9 +117,7 @@ export function sanitizeIntentCapture(raw) {
 		}
 	}
 
-	let thread = texts
-		.slice(-MAX_THREAD_MESSAGES)
-		.map((text) => ({ role: 'user', text }));
+	let thread = texts.slice(-MAX_THREAD_MESSAGES).map((text) => ({ role: 'user', text }));
 	let total = thread.reduce((sum, message) => sum + message.text.length, 0);
 	while (thread.length > 1 && total > MAX_THREAD_CHARS) {
 		total -= thread[0].text.length;

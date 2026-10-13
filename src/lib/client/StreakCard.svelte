@@ -1,7 +1,7 @@
 <script>
-	import Icon from '$lib/client/Icon.svelte';
-	import { t } from '$lib/client/i18n';
-	import { buildStreakWeek, STREAK_MILESTONES } from '$lib/client/learning';
+	import Icon from '#lib/client/Icon.svelte';
+	import { t } from '#lib/client/i18n.js';
+	import { buildStreakWeek, STREAK_MILESTONES } from '#lib/client/learning.js';
 	import {
 		CARD_HEIGHT,
 		CARD_WIDTH,
@@ -9,13 +9,13 @@
 		cardFilename,
 		loadCardLogo,
 		shareCardFile,
-	} from '$lib/client/cardKit';
-	import { drawStreakCard } from '$lib/client/streakCard';
-	import { track } from '$lib/client/telemetry';
-	import { showToast } from '$lib/client/toast';
-	import StreakBadges from '$lib/client/StreakBadges.svelte';
-	import StreakReminderRow from '$lib/client/StreakReminderRow.svelte';
-	import { markShareUsed } from '$lib/client/nudge';
+	} from '#lib/client/cardKit.js';
+	import { drawStreakCard } from '#lib/client/streakCard.js';
+	import { track } from '#lib/client/telemetry.js';
+	import { showToast } from '#lib/client/toast.js';
+	import StreakBadges from '#lib/client/StreakBadges.svelte';
+	import StreakReminderRow from '#lib/client/StreakReminderRow.svelte';
+	import { markShareUsed } from '#lib/client/nudge.js';
 
 	let { streak = null, stats = null, historyCount = 0, locale = 'en' } = $props();
 
@@ -37,7 +37,9 @@
 					: $t('streakSubtitleRecord')
 	);
 
-	const dateFormatter = $derived(new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }));
+	const dateFormatter = $derived(
+		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
+	);
 
 	// Badge copy for the share image; the carousel keeps its own markup.
 	const shareBadges = $derived(

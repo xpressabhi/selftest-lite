@@ -1,32 +1,31 @@
-import { json } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
 import * as z from 'zod';
-import { env } from '$env/dynamic/private';
-import { DEFAULT_RATE_LIMIT, rateLimiter } from '$lib/server/rateLimiter';
-import { generateExplanationPrompt } from '$lib/server/prompt';
-import { getClientKey, logApiEvent } from '$lib/server/storage';
+import { GEMINI_API_KEY } from '$app/env/private';
+import { DEFAULT_RATE_LIMIT, rateLimiter } from '#lib/server/rateLimiter.js';
+import { generateExplanationPrompt } from '#lib/server/prompt.js';
+import { getClientKey, logApiEvent } from '#lib/server/storage.js';
 import {
 	buildExplanationCacheKey,
 	getCachedExplanation,
 	saveExplanation,
 	touchExplanation,
-} from '$lib/server/explanationCache';
-import { parseRequestBody } from '$lib/server/requestBody';
-import { explanationSchema } from '$lib/server/quizSchema';
-import { parseJsonResponse } from '$lib/server/jsonResponse';
-import { backoffBeforeRetry, isTransientProviderError } from '$lib/server/transientErrors';
+} from '#lib/server/explanationCache.js';
+import { parseRequestBody } from '#lib/server/requestBody.js';
+import { explanationSchema } from '#lib/server/quizSchema.js';
+import { parseJsonResponse } from '#lib/server/jsonResponse.js';
+import { backoffBeforeRetry, isTransientProviderError } from '#lib/server/transientErrors.js';
 import {
 	MAX_ANSWER_TEXT_LENGTH,
 	MAX_EXPLANATION_OUTPUT_TOKENS,
 	MAX_QUESTION_TEXT_LENGTH,
 	MAX_TOPIC_LENGTH,
 	VALID_LANGUAGES,
-} from '$lib/server/quizConfig';
+} from '#lib/server/quizConfig.js';
 import {
 	API_LIMIT_ERROR_CODE,
 	API_TIMEOUT_ERROR_CODE,
 	classifyApiError,
-} from '$lib/shared/apiLimitError';
+} from '#lib/shared/apiLimitError.js';
 
 const EXPLANATION_MODEL = 'gemini-flash-lite-latest';
 const EXPLANATION_TIMEOUT_MS = 45000;
@@ -79,7 +78,7 @@ export async function POST({ request }) {
 		const { topic, question, answer, language } = await parseRequestBody(request);
 
 		if (!topic || !question || !answer) {
-			return json(
+			return Response.json(
 				{
 					error: 'Topic, question, and answer are required',
 					code: 'EXPLAIN_FIELDS_REQUIRED',
@@ -93,7 +92,7 @@ export async function POST({ request }) {
 			String(question).length > MAX_QUESTION_TEXT_LENGTH ||
 			String(answer).length > MAX_ANSWER_TEXT_LENGTH
 		) {
-			return json(
+			return Response.json(
 				{
 					error: 'The question or answer is too long',
 					code: 'EXPLAIN_FIELDS_TOO_LONG',
@@ -107,7 +106,7 @@ export async function POST({ request }) {
 			typeof language === 'string' &&
 			!VALID_LANGUAGES.includes(language.toLowerCase())
 		) {
-			return json(
+			return Response.json(
 				{
 					error: 'Invalid language selection',
 					code: 'INVALID_LANGUAGE',
@@ -120,7 +119,11 @@ export async function POST({ request }) {
 			typeof language === 'string' && VALID_LANGUAGES.includes(language.toLowerCase())
 				? language.toLowerCase()
 				: 'english';
-		const cacheKey = buildExplanationCacheKey({ question, answer, language: effectiveLanguage });
+		const cacheKey = buildExplanationCacheKey({
+			question,
+			answer,
+			language: effectiveLanguage,
+		});
 
 		// Cache hits are served before the rate limiter: they only cost a hash
 		// and an indexed read, so repeat explanations stay instant and free.
@@ -151,7 +154,7 @@ export async function POST({ request }) {
 					explanationCached: true,
 				},
 			});
-			return json({ ...cached.explanation, cached: true });
+			return Response.json({ ...cached.explanation, cached: true });
 		}
 
 		// Only generation requests consume rate-limit quota.
@@ -166,7 +169,7 @@ export async function POST({ request }) {
 				durationMs: Date.now() - startedAt,
 			});
 
-			return json(
+			return Response.json(
 				{
 					error: 'Rate limit exceeded. Please try again later.',
 					code: API_LIMIT_ERROR_CODE,
@@ -184,10 +187,10 @@ export async function POST({ request }) {
 			);
 		}
 
-		const apiKey = env.GEMINI_API_KEY;
+		const apiKey = GEMINI_API_KEY;
 
 		if (!apiKey) {
-			return json({ error: 'Gemini API key is not configured' }, { status: 500 });
+			return Response.json({ error: 'Gemini API key is not configured' }, { status: 500 });
 		}
 
 		const ai = new GoogleGenAI({ apiKey });
@@ -224,6 +227,7 @@ export async function POST({ request }) {
 				if (error instanceof ExplanationTimeoutError) {
 					throw error;
 				}
+
 				if (
 					attempt >= MAX_EXPLANATION_ATTEMPTS ||
 					!isTransientProviderError(error) ||
@@ -265,17 +269,17 @@ export async function POST({ request }) {
 			},
 		});
 
-		return json({ ...parsed, cached: false });
+		return Response.json({ ...parsed, cached: false });
 	} catch (error) {
 		console.error(error);
 		if (error?.code === 'REQUEST_TOO_LARGE') {
-			return json(
+			return Response.json(
 				{ error: 'Request is too large', code: 'REQUEST_TOO_LARGE' },
 				{ status: 413 }
 			);
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
-			return json(
+			return Response.json(
 				{ error: 'Request body must be valid JSON', code: 'INVALID_REQUEST_BODY' },
 				{ status: 400 }
 			);
@@ -295,7 +299,7 @@ export async function POST({ request }) {
 			errorMessage: error.message,
 		});
 
-		return json(
+		return Response.json(
 			{
 				error: message,
 				code,

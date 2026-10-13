@@ -27,7 +27,10 @@ describe('getClientIp', () => {
 	});
 
 	it('ignores a spoofed x-real-ip', () => {
-		const request = requestWith({ address: '203.0.113.9', headers: { 'x-real-ip': '1.2.3.4' } });
+		const request = requestWith({
+			address: '203.0.113.9',
+			headers: { 'x-real-ip': '1.2.3.4' },
+		});
 		expect(getClientIp(request)).toBe('203.0.113.9');
 	});
 
@@ -140,7 +143,9 @@ describe('getClientKey', () => {
 	it('buckets a raw request by the address the lifecycle recorded', () => {
 		const rawRequest = { headers: new Headers() };
 		rememberClientAddress(rawRequest, '203.0.113.9');
-		expect(getClientKey(rawRequest)).toBe(getClientKey(requestWith({ address: '203.0.113.9' })));
+		expect(getClientKey(rawRequest)).toBe(
+			getClientKey(requestWith({ address: '203.0.113.9' }))
+		);
 	});
 
 	it('a spoofed prefix in an appended list does not mint a new bucket', () => {

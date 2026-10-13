@@ -1,4 +1,4 @@
-import { questionTextFor } from '$lib/shared/questionText';
+import { questionTextFor } from '#lib/shared/questionText.js';
 import { canvasFont } from './fontStack.js';
 
 const preparedTextCache = new Map();
@@ -114,10 +114,7 @@ export async function estimateQuestionCardHeight(question, cardWidth) {
 		0
 	);
 	const optionGaps = Math.max(0, optionResults.length - 1) * 8;
-	const columnsHeight =
-		columnResults.length > 0
-			? getMatchingColumnsHeight(columnResults)
-			: 0;
+	const columnsHeight = columnResults.length > 0 ? getMatchingColumnsHeight(columnResults) : 0;
 
 	return Math.ceil(32 + questionHeight + 12 + columnsHeight + optionsHeight + optionGaps);
 }

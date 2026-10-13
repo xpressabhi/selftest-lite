@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { blogEntries, findBlogPostPage } from '$lib/data/routeLoads';
+import { blogEntries, findBlogPostPage } from '#lib/data/routeLoads.js';
 
 export const prerender = true;
 

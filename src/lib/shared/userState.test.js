@@ -25,10 +25,7 @@ describe('mergeStateSnapshots (streak)', () => {
 				{ date: '2026-09-22', quizCount: 1 },
 			],
 		};
-		const merged = mergeStateSnapshots(
-			{ selftest_streak: remote },
-			{ selftest_streak: local }
-		);
+		const merged = mergeStateSnapshots({ selftest_streak: remote }, { selftest_streak: local });
 		const streak = JSON.parse(merged.selftest_streak);
 		expect(streak.lastActiveDate).toBe('2026-09-24');
 		expect(streak.currentStreak).toBe(4);
@@ -65,16 +62,10 @@ describe('mergeStateSnapshots (streak)', () => {
 	});
 
 	it('keeps whichever side exists, and nothing when both are missing', () => {
-		const onlyRemote = mergeStateSnapshots(
-			{ selftest_streak: { currentStreak: 5 } },
-			{}
-		);
+		const onlyRemote = mergeStateSnapshots({ selftest_streak: { currentStreak: 5 } }, {});
 		expect(JSON.parse(onlyRemote.selftest_streak).currentStreak).toBe(5);
 
-		const onlyLocal = mergeStateSnapshots(
-			{},
-			{ selftest_streak: { currentStreak: 2 } }
-		);
+		const onlyLocal = mergeStateSnapshots({}, { selftest_streak: { currentStreak: 2 } });
 		expect(JSON.parse(onlyLocal.selftest_streak).currentStreak).toBe(2);
 
 		const empty = mergeStateSnapshots({}, {});

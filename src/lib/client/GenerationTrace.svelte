@@ -1,9 +1,15 @@
 <script>
-	import { t } from '$lib/client/i18n';
-	import Icon from '$lib/client/Icon.svelte';
-	import { deriveGenerationTrace } from '$lib/client/generationTrace.js';
+	import { t } from '#lib/client/i18n.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import { deriveGenerationTrace } from '#lib/client/generationTrace.js';
 
-	let { progress = null, elapsedSeconds = 0, done = false, failed = false, onCancel = null } = $props();
+	let {
+		progress = null,
+		elapsedSeconds = 0,
+		done = false,
+		failed = false,
+		onCancel = null,
+	} = $props();
 
 	const STEP_LABEL_KEYS = {
 		reading: 'genTraceReading',
@@ -32,7 +38,9 @@
 				);
 			}
 			if (trace.batch) {
-				parts.push($t('genTraceBatch', { index: trace.batch.index, total: trace.batch.total }));
+				parts.push(
+					$t('genTraceBatch', { index: trace.batch.index, total: trace.batch.total })
+				);
 			}
 			return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
 		}
@@ -62,7 +70,11 @@
 				>{/if}
 		</span>
 		{#if onCancel && trace.phase === 'working'}
-			<button class="btn btn-outline-secondary btn-sm trace-cancel" type="button" onclick={onCancel}>
+			<button
+				class="btn btn-outline-secondary btn-sm trace-cancel"
+				type="button"
+				onclick={onCancel}
+			>
 				{$t('cancel')}
 			</button>
 		{/if}
@@ -214,5 +226,4 @@
 		transform: rotate(-45deg) scale(1);
 		opacity: 1;
 	}
-
 </style>

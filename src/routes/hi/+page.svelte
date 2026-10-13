@@ -1,6 +1,6 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import HomePage from '$lib/client/pages/HomePage.svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import HomePage from '#lib/client/pages/HomePage.svelte';
 
 	// Same route-level title rule as the English home page.
 	const title = $derived(

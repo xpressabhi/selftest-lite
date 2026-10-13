@@ -16,7 +16,14 @@ describe('seo constants', () => {
 
 	it('lists only app-shell prefixes', () => {
 		expect(NOINDEX_PREFIXES).toEqual(
-			expect.arrayContaining(['/test', '/results', '/history', '/bookmarks', '/profile', '/admin'])
+			expect.arrayContaining([
+				'/test',
+				'/results',
+				'/history',
+				'/bookmarks',
+				'/profile',
+				'/admin',
+			])
 		);
 	});
 });

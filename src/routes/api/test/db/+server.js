@@ -1,10 +1,9 @@
-import { json } from '@sveltejs/kit';
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
-import { parseRequestBody } from '$lib/server/requestBody';
-import { query } from '$lib/server/storage';
-import { clearTestResponseCaches } from '$lib/server/testResponseCache';
-import { isPgliteUrl } from '$lib/server/testDb';
+import { dev } from '$app/env';
+import { E2E_DB_BRIDGE, DATABASE_URL } from '$app/env/private';
+import { parseRequestBody } from '#lib/server/requestBody.js';
+import { query } from '#lib/server/storage.js';
+import { clearTestResponseCaches } from '#lib/server/testResponseCache.js';
+import { isPgliteUrl } from '#lib/server/testDb.js';
 
 const MAX_SQL_CHARS = 20000;
 
@@ -17,27 +16,27 @@ const MAX_SQL_CHARS = 20000;
  * adapter, so a production deployment can never expose it.
  */
 export async function POST({ request }) {
-	if (!((dev || env.E2E_DB_BRIDGE === '1') && isPgliteUrl(env.DATABASE_URL))) {
-		return json({ error: 'Not found' }, { status: 404 });
+	if (!((dev || E2E_DB_BRIDGE === '1') && isPgliteUrl(DATABASE_URL))) {
+		return Response.json({ error: 'Not found' }, { status: 404 });
 	}
 
 	try {
 		const { sql, params } = await parseRequestBody(request);
 		if (typeof sql !== 'string' || sql.trim().length === 0 || sql.length > MAX_SQL_CHARS) {
-			return json({ error: 'Invalid SQL' }, { status: 400 });
+			return Response.json({ error: 'Invalid SQL' }, { status: 400 });
 		}
 		const result = await query(sql, Array.isArray(params) ? params : []);
 		// Seeding can make any cached read stale; clearing here keeps the e2e
 		// suite deterministic now that GET /api/test serves cached reads.
 		clearTestResponseCaches();
-		return json({ rows: result.rows || [] });
+		return Response.json({ rows: result.rows || [] });
 	} catch (error) {
 		if (error?.code === 'REQUEST_TOO_LARGE') {
-			return json({ error: 'Request is too large' }, { status: 413 });
+			return Response.json({ error: 'Request is too large' }, { status: 413 });
 		}
 		if (error?.code === 'INVALID_REQUEST_BODY') {
-			return json({ error: 'Request body must be valid JSON' }, { status: 400 });
+			return Response.json({ error: 'Request body must be valid JSON' }, { status: 400 });
 		}
-		return json({ error: error?.message || 'Query failed' }, { status: 400 });
+		return Response.json({ error: error?.message || 'Query failed' }, { status: 400 });
 	}
 }

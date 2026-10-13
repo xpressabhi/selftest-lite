@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { API_LIMIT_ERROR_CODE } from '$lib/shared/apiLimitError';
+import { API_LIMIT_ERROR_CODE } from '#lib/shared/apiLimitError.js';
 import { rateLimited } from './apiResponse';
 
 // Fixed instant: no clock reads, so the body is byte-for-byte predictable.

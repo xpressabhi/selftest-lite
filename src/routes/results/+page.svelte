@@ -2,19 +2,19 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onDestroy, onMount, tick } from 'svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { localizedApiError, t } from '$lib/client/i18n';
-	import { language } from '$lib/client/preferences';
-	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '$lib/client/countUp.js';
-	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '$lib/client/haptics';
-	import { track } from '$lib/client/telemetry';
+	import Icon from '#lib/client/Icon.svelte';
+	import { localizedApiError, t } from '#lib/client/i18n.js';
+	import { language } from '#lib/client/preferences.js';
+	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '#lib/client/countUp.js';
+	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '#lib/client/haptics.js';
+	import { track } from '#lib/client/telemetry.js';
 	import {
 		buildScoreComparison,
 		formatDuration,
 		getAchievements,
 		getStreak,
-	} from '$lib/client/learning';
-	import NudgeCard from '$lib/client/NudgeCard.svelte';
+	} from '#lib/client/learning.js';
+	import NudgeCard from '#lib/client/NudgeCard.svelte';
 	import {
 		buildNudgeState,
 		getSessionBudget,
@@ -23,13 +23,13 @@
 		markShareUsed,
 		momentSuppression,
 		readNudgeLedger,
-	} from '$lib/client/nudge';
-	import { eligibleNudgeKinds } from '$lib/shared/nudgePolicy';
-	import MarkdownContent from '$lib/client/MarkdownContent.svelte';
-	import ResultReviewList from '$lib/client/ResultReviewList.svelte';
-	import TestStatsCard from '$lib/client/TestStatsCard.svelte';
-	import { questionTextFor } from '$lib/shared/questionText';
-	import { REMINDER_EARLIEST_HOUR } from '$lib/shared/reminders';
+	} from '#lib/client/nudge.js';
+	import { eligibleNudgeKinds } from '#lib/shared/nudgePolicy.js';
+	import MarkdownContent from '#lib/client/MarkdownContent.svelte';
+	import ResultReviewList from '#lib/client/ResultReviewList.svelte';
+	import TestStatsCard from '#lib/client/TestStatsCard.svelte';
+	import { questionTextFor } from '#lib/shared/questionText.js';
+	import { REMINDER_EARLIEST_HOUR } from '#lib/shared/reminders.js';
 	import {
 		disableReminders,
 		enableReminders,
@@ -37,13 +37,17 @@
 		isReminderEnabled,
 		remindersSupported,
 		setReminderHour,
-	} from '$lib/client/reminders';
-	import { showToast } from '$lib/client/toast';
-	import { user } from '$lib/client/auth';
-	import { requestPersonalize } from '$lib/client/personalize';
-	import { buildChallengeUrl, compareScores, parseChallengeParams } from '$lib/client/challenge';
-	import { drawScoreCard } from '$lib/client/scoreCard';
-	import { shareCard } from '$lib/client/shareCardFlow';
+	} from '#lib/client/reminders.js';
+	import { showToast } from '#lib/client/toast.js';
+	import { user } from '#lib/client/auth.js';
+	import { requestPersonalize } from '#lib/client/personalize.js';
+	import {
+		buildChallengeUrl,
+		compareScores,
+		parseChallengeParams,
+	} from '#lib/client/challenge.js';
+	import { drawScoreCard } from '#lib/client/scoreCard.js';
+	import { shareCard } from '#lib/client/shareCardFlow.js';
 	import {
 		clearAttemptResult,
 		clearDraftAnswers,
@@ -56,7 +60,7 @@
 		saveCurrentPaper,
 		toggleQuestionBookmark,
 		upsertHistory,
-	} from '$lib/client/storage';
+	} from '#lib/client/storage.js';
 
 	let questionPaper = $state(null);
 	let loading = $state(true);
@@ -434,7 +438,8 @@
 			page: 'results',
 			history: getHistory(),
 			streak: getStreak(),
-			lastResult: total > 0 ? { score: questionPaper?.score ?? 0, totalQuestions: total } : null,
+			lastResult:
+				total > 0 ? { score: questionPaper?.score ?? 0, totalQuestions: total } : null,
 			bestBeaten: comparison?.state === 'best',
 			reminderState: reminderStateForNudge(),
 			shareSheetOpenedThisResult: shareSheetEverOpened,
@@ -1332,11 +1337,7 @@
 		</div>
 
 		<label class="auto-explain-row no-print">
-			<input
-				type="checkbox"
-				checked={autoExplainEnabled}
-				onchange={toggleAutoExplain}
-			/>
+			<input type="checkbox" checked={autoExplainEnabled} onchange={toggleAutoExplain} />
 			<span class="small text-muted">
 				{$t('autoExplainWrong')}
 				{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}

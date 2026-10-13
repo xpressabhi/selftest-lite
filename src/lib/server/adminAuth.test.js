@@ -1,33 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const envState = {
-	ADMIN_USERNAME: 'admin',
-	ADMIN_PASSWORD: 'hunter2',
-	ADMIN_SESSION_SECRET: '',
-};
-
-vi.mock('$env/dynamic/private', () => ({
-	env: envState,
-}));
-
-const {
-	ADMIN_COOKIE_NAME,
-	ADMIN_SESSION_TTL_MS,
-	createSessionToken,
-	getAdminTokenFromRequest,
-	isAdminConfigured,
-	verifyAdminCredentials,
-	verifySessionToken,
-} = await import('./adminAuth');
+// SvelteKit 3 resolves environment variables per build (src/env.js), so each
+// test loads the module with its own validated env values instead of mutating
+// a dynamic env object at runtime.
+async function loadAdminAuth(overrides = {}) {
+	vi.resetModules();
+	vi.doMock('$app/env/private', () => ({
+		ADMIN_USERNAME: 'admin',
+		ADMIN_PASSWORD: 'hunter2',
+		ADMIN_SESSION_SECRET: '',
+		...overrides,
+	}));
+	return import('./adminAuth');
+}
 
 const NOW = 1_700_000_000_000;
 
 beforeEach(() => {
-	Object.assign(envState, {
-		ADMIN_USERNAME: 'admin',
-		ADMIN_PASSWORD: 'hunter2',
-		ADMIN_SESSION_SECRET: '',
-	});
 	vi.useFakeTimers();
 	vi.setSystemTime(NOW);
 });
@@ -37,40 +26,50 @@ afterEach(() => {
 });
 
 describe('verifyAdminCredentials', () => {
-	it('accepts correct credentials', () => {
+	it('accepts correct credentials', async () => {
+		const { verifyAdminCredentials } = await loadAdminAuth();
 		expect(verifyAdminCredentials('admin', 'hunter2')).toBe(true);
 	});
 
-	it('rejects wrong credentials', () => {
+	it('rejects wrong credentials', async () => {
+		const { verifyAdminCredentials } = await loadAdminAuth();
 		expect(verifyAdminCredentials('admin', 'wrong')).toBe(false);
 		expect(verifyAdminCredentials('root', 'hunter2')).toBe(false);
 	});
 
-	it('rejects when admin is not configured', () => {
-		envState.ADMIN_USERNAME = '';
-		envState.ADMIN_PASSWORD = '';
+	it('rejects when admin is not configured', async () => {
+		const { verifyAdminCredentials, isAdminConfigured } = await loadAdminAuth({
+			ADMIN_USERNAME: '',
+			ADMIN_PASSWORD: '',
+		});
 		expect(verifyAdminCredentials('', '')).toBe(false);
 		expect(isAdminConfigured()).toBe(false);
 	});
 
-	it('is configured when credentials exist', () => {
+	it('is configured when credentials exist', async () => {
+		const { isAdminConfigured } = await loadAdminAuth();
 		expect(isAdminConfigured()).toBe(true);
 	});
 });
 
 describe('session tokens', () => {
-	it('creates a token that verifies', () => {
+	it('creates a token that verifies', async () => {
+		const { createSessionToken, verifySessionToken } = await loadAdminAuth();
 		const token = createSessionToken(NOW);
 		expect(verifySessionToken(token)).toBe(true);
 	});
 
-	it('rejects expired tokens', () => {
+	it('rejects expired tokens', async () => {
+		const { ADMIN_SESSION_TTL_MS, createSessionToken, verifySessionToken } =
+			await loadAdminAuth();
 		const token = createSessionToken(NOW);
 		vi.setSystemTime(NOW + ADMIN_SESSION_TTL_MS + 1);
 		expect(verifySessionToken(token)).toBe(false);
 	});
 
-	it('rejects tampered tokens', () => {
+	it('rejects tampered tokens', async () => {
+		const { ADMIN_SESSION_TTL_MS, createSessionToken, verifySessionToken } =
+			await loadAdminAuth();
 		const token = createSessionToken(NOW);
 		const [, signature] = token.split('.');
 		const tamperedBody = Buffer.from(
@@ -81,22 +80,27 @@ describe('session tokens', () => {
 		expect(verifySessionToken('')).toBe(false);
 	});
 
-	it('invalidates tokens when the password rotates', () => {
-		const token = createSessionToken(NOW);
-		envState.ADMIN_PASSWORD = 'new-password';
-		expect(verifySessionToken(token)).toBe(false);
+	it('invalidates tokens when the password rotates', async () => {
+		const before = await loadAdminAuth();
+		const token = before.createSessionToken(NOW);
+		const after = await loadAdminAuth({ ADMIN_PASSWORD: 'new-password' });
+		expect(after.verifySessionToken(token)).toBe(false);
 	});
 
-	it('uses the session secret when configured', () => {
-		envState.ADMIN_SESSION_SECRET = 'stable-secret';
-		const token = createSessionToken(NOW);
-		envState.ADMIN_PASSWORD = 'rotated';
-		expect(verifySessionToken(token)).toBe(true);
+	it('uses the session secret when configured', async () => {
+		const before = await loadAdminAuth({ ADMIN_SESSION_SECRET: 'stable-secret' });
+		const token = before.createSessionToken(NOW);
+		const after = await loadAdminAuth({
+			ADMIN_PASSWORD: 'rotated',
+			ADMIN_SESSION_SECRET: 'stable-secret',
+		});
+		expect(after.verifySessionToken(token)).toBe(true);
 	});
 });
 
 describe('getAdminTokenFromRequest', () => {
-	it('extracts the admin cookie from the header', () => {
+	it('extracts the admin cookie from the header', async () => {
+		const { ADMIN_COOKIE_NAME, getAdminTokenFromRequest } = await loadAdminAuth();
 		const request = {
 			headers: new Headers({
 				cookie: `other=1; ${ADMIN_COOKIE_NAME}=abc.123; lang=en`,
@@ -105,7 +109,8 @@ describe('getAdminTokenFromRequest', () => {
 		expect(getAdminTokenFromRequest(request)).toBe('abc.123');
 	});
 
-	it('returns null when the cookie is missing', () => {
+	it('returns null when the cookie is missing', async () => {
+		const { getAdminTokenFromRequest } = await loadAdminAuth();
 		const request = { headers: new Headers({ cookie: 'other=1' }) };
 		expect(getAdminTokenFromRequest(request)).toBeNull();
 	});

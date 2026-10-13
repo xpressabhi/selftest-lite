@@ -62,7 +62,7 @@ export const EXAM_NOTIFICATION_SCHEMA_STATEMENTS = [
 		status TEXT NOT NULL DEFAULT 'pending',
 		first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-	)`
+	)`,
 ];
 
 // Upsert a validated notification. Dates/links only fill in, never erase: a
@@ -203,15 +203,15 @@ export const EXAM_NOTIFICATION_ARCHIVE_TARGETS = [
 		archive: 'exam_notification_archive',
 		ageColumn: 'COALESCE(apply_end, published_at, first_seen_at::date)',
 		days: 180,
-		filter: `AND review_status = 'published' AND last_seen_at < NOW() - INTERVAL '90 days'`
+		filter: `AND review_status = 'published' AND last_seen_at < NOW() - INTERVAL '90 days'`,
 	},
 	{
 		table: 'exam_notification',
 		archive: 'exam_notification_archive',
 		ageColumn: 'first_seen_at',
 		days: 90,
-		filter: `AND review_status = 'quarantined'`
-	}
+		filter: `AND review_status = 'quarantined'`,
+	},
 ];
 
 /**
@@ -270,10 +270,13 @@ export function toNotificationItem(row, todayIso, now = new Date()) {
 		applyStart: isoDateFromRow(row.apply_start),
 		applyEnd,
 		examDate,
-		vacancies: row.vacancies === null || row.vacancies === undefined ? null : Number(row.vacancies),
+		vacancies:
+			row.vacancies === null || row.vacancies === undefined ? null : Number(row.vacancies),
 		qualification: row.qualification,
 		status: deriveNotificationStatus({ applyEnd, examDate }, todayIso),
 		firstSeenAt: firstSeenAt ? firstSeenAt.toISOString() : null,
-		isNew: firstSeenAt ? now.getTime() - firstSeenAt.getTime() <= 7 * 24 * 60 * 60 * 1000 : false
+		isNew: firstSeenAt
+			? now.getTime() - firstSeenAt.getTime() <= 7 * 24 * 60 * 60 * 1000
+			: false,
 	};
 }

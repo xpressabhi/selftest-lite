@@ -1,4 +1,4 @@
-import { TELEMETRY_EVENTS } from '$lib/shared/telemetryEvents';
+import { TELEMETRY_EVENTS } from '#lib/shared/telemetryEvents.js';
 import { ensureStorageSchema, normalizeUserIdValue, query } from './storage';
 
 export { TELEMETRY_EVENTS };

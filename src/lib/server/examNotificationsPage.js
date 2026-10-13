@@ -9,18 +9,18 @@ export async function loadExamNotificationsPage(setHeaders) {
 	// Browser revalidates (max-age=0) so a reload is never stale; the CDN
 	// absorbs traffic with s-maxage.
 	setHeaders({
-		'cache-control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600'
+		'cache-control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600',
 	});
 
 	try {
 		const [notifications, lastRun] = await Promise.all([
 			listExamNotifications(),
-			getLatestExamSyncRun()
+			getLatestExamSyncRun(),
 		]);
 		return {
 			notifications,
 			lastRunAt: lastRun?.finishedAt ?? null,
-			lastRunStatus: lastRun?.status ?? null
+			lastRunStatus: lastRun?.status ?? null,
 		};
 	} catch {
 		return { notifications: [], lastRunAt: null, lastRunStatus: 'unavailable' };

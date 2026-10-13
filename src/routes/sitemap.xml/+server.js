@@ -1,4 +1,4 @@
-import { buildSitemap } from '$lib/shared/sitemap';
+import { buildSitemap } from '#lib/shared/sitemap.js';
 
 export const prerender = true;
 

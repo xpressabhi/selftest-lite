@@ -1,18 +1,18 @@
 <script>
 	import { onMount } from 'svelte';
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import Icon from '$lib/client/Icon.svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import Icon from '#lib/client/Icon.svelte';
 	import {
 		getIndianExamById,
 		groupExamsByCategory,
 		localizedStream,
-		searchExams
-	} from '$lib/data/indianExams';
-	import { requestPersonalize } from '$lib/client/personalize';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
-	import { MAX_SEARCH_CHARS, sanitizeInputText } from '$lib/shared/inputLimits';
+		searchExams,
+	} from '#lib/data/indianExams.js';
+	import { requestPersonalize } from '#lib/client/personalize.js';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
+	import { MAX_SEARCH_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
 
 	// Grouping is registry-driven and static; search is the only client state.
 	// With an empty query the page renders every card in SSR HTML, so crawlers
@@ -31,7 +31,7 @@
 		// Practice promote (fail-open, once): pin the Jev-picked exam above the
 		// categories; it is removed from its own section to avoid duplicates.
 		void requestPersonalize('practice', {
-			ids: categories.flatMap((category) => category.exams.map((exam) => exam.id))
+			ids: categories.flatMap((category) => category.exams.map((exam) => exam.id)),
 		}).then((decision) => {
 			if (!decision?.applied || !decision.action || decision.action === 'none') return;
 			if (getIndianExamById(decision.action)) {
@@ -46,7 +46,7 @@
 			'@type': 'CollectionPage',
 			name: $t('practiceTitle'),
 			description: $t('practiceHeroBody'),
-			url: `${SITE_ORIGIN}${localizedPath('/practice', $activeLanguage)}`
+			url: `${SITE_ORIGIN}${localizedPath('/practice', $activeLanguage)}`,
 		})
 	);
 </script>

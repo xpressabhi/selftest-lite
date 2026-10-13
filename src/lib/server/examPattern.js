@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import * as z from 'zod';
-import { env } from '$env/dynamic/private';
+import { GEMINI_API_KEY } from '$app/env/private';
 import { ensureStorageSchema, query } from './storage.js';
 import { parseJsonResponse } from './jsonResponse.js';
 import { MAX_PATTERN_OUTPUT_TOKENS } from './quizConfig.js';
@@ -80,7 +80,9 @@ export function normalizeExamPattern(pattern) {
 		return {
 			id: count === 1 ? base : `${base}-${count}`,
 			name: section.name.trim(),
-			questionTypes: [...new Set(section.questionTypes.map((type) => type.trim()).filter(Boolean))],
+			questionTypes: [
+				...new Set(section.questionTypes.map((type) => type.trim()).filter(Boolean)),
+			],
 			questionCount: section.questionCount,
 			marksPerQuestion: section.marksPerQuestion,
 			negativeMarks: section.negativeMarks ?? null,
@@ -101,7 +103,13 @@ export function normalizeExamPattern(pattern) {
 }
 
 /** Stable cache key for the different ways a paper can be identified. */
-export function patternKeyFor({ examId = null, board = null, classLevel = null, subject = null, paperName = null } = {}) {
+export function patternKeyFor({
+	examId = null,
+	board = null,
+	classLevel = null,
+	subject = null,
+	paperName = null,
+} = {}) {
 	if (examId) {
 		return `exam:${slugify(examId)}`;
 	}
@@ -157,7 +165,11 @@ function patternSource({ examId = null, paperName = null } = {}) {
  * are sequential (the batch plan generates section by section); the last
  * section absorbs any extra questions, empty sections are dropped.
  */
-export function assignSectionsToPaper(questions = [], pattern = null, { section = null, now = new Date() } = {}) {
+export function assignSectionsToPaper(
+	questions = [],
+	pattern = null,
+	{ section = null, now = new Date() } = {}
+) {
 	const normalizedQuestions = Array.isArray(questions) ? questions : [];
 	if (normalizedQuestions.length === 0 || (!pattern && !section)) {
 		return { questions: normalizedQuestions, sections: [], examMeta: null };
@@ -169,7 +181,10 @@ export function assignSectionsToPaper(questions = [], pattern = null, { section 
 	const sections = [];
 	let index = 0;
 	for (const entry of sourceSections) {
-		const count = Math.max(0, Math.min(Number(entry.questionCount) || 0, normalizedQuestions.length - index));
+		const count = Math.max(
+			0,
+			Math.min(Number(entry.questionCount) || 0, normalizedQuestions.length - index)
+		);
 		if (count <= 0) {
 			continue;
 		}
@@ -261,7 +276,10 @@ export function buildPatternConstraint(pattern, section = null) {
 }
 
 /** The generic research prompt: the model must state the real current format. */
-export function buildPatternResearchPrompt(target, { language = 'english', researchNotes = null } = {}) {
+export function buildPatternResearchPrompt(
+	target,
+	{ language = 'english', researchNotes = null } = {}
+) {
 	const label = [
 		target.paperName || target.examName || null,
 		target.board ? `${target.board} board` : null,
@@ -327,8 +345,11 @@ async function requestPatternText(ai, prompt, deadlineMs) {
 }
 
 /** One model call that returns a normalized, validated pattern. */
-export async function discoverExamPattern(target, { language = 'english', researchNotes = null } = {}) {
-	const apiKey = env.GEMINI_API_KEY;
+export async function discoverExamPattern(
+	target,
+	{ language = 'english', researchNotes = null } = {}
+) {
+	const apiKey = GEMINI_API_KEY;
 	if (!apiKey) {
 		throw new Error('Gemini API key is not configured');
 	}

@@ -1,3 +1,4 @@
+import adapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -17,11 +18,22 @@ export default defineConfig(({ command }) => {
 
 	return {
 		plugins: [
-			sveltekit(),
+			sveltekit({
+				adapter: adapter({ runtime: 'nodejs22.x' }),
+				// Inline stylesheet chunks into the SSR HTML. Saves a network round trip
+				// on slow connections (FCP win) at the cost of a larger document; the
+				// document is cached by the service worker on repeat visits.
+				inlineStyleThreshold: 100000,
+			}),
 			VitePWA({
 				registerType: 'autoUpdate',
 				includeAssets: ['icons/*.png', 'icons/*.ico', 'ads.txt'],
 				manifest: false,
+				// SvelteKit 3 builds the client bundle into the Vite `client`
+				// environment; the plugin's default (root `build.outDir` → `dist`)
+				// points at a directory nothing is written to. This must match
+				// kit's client output or sw.js is never copied into the deployment.
+				outDir: '.svelte-kit/output/client',
 				workbox: {
 					cleanupOutdatedCaches: true,
 					// Custom push notification handlers; loaded into the generated
@@ -39,10 +51,7 @@ export default defineConfig(({ command }) => {
 					// Route and renderer chunks cache at runtime after their first use.
 					// This keeps the install-time cache small on slow networks without removing
 					// offline availability for pages and renderers the user has opened.
-					globIgnores: [
-						'**/_app/immutable/chunks/**',
-						'**/_app/immutable/assets/**',
-					],
+					globIgnores: ['**/_app/immutable/chunks/**', '**/_app/immutable/assets/**'],
 					runtimeCaching: [
 						{
 							// Hashed, immutable build assets (JS/CSS chunks, entry files):

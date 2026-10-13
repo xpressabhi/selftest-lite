@@ -8,7 +8,7 @@
 
 import { STORAGE_KEYS } from './constants.js';
 import { requestPersonalize } from './personalize.js';
-import { MAX_NOTIFICATION_CANDIDATES, nudgeKindGroup } from '$lib/shared/nudgePolicy.js';
+import { MAX_NOTIFICATION_CANDIDATES, nudgeKindGroup } from '#lib/shared/nudgePolicy.js';
 
 export const NUDGE_LEDGER_VERSION = 1;
 
@@ -33,7 +33,7 @@ export function emptyLedger() {
 		dismissals: { share: 0, push: 0 },
 		lastInterruptAt: null,
 		shareUsedAt: null,
-		seen: []
+		seen: [],
 	};
 }
 
@@ -54,7 +54,8 @@ export function normalizeLedger(raw) {
 		return base;
 	}
 	const shown = raw.lastShownAt && typeof raw.lastShownAt === 'object' ? raw.lastShownAt : {};
-	const dismissed = raw.lastDismissedAt && typeof raw.lastDismissedAt === 'object' ? raw.lastDismissedAt : {};
+	const dismissed =
+		raw.lastDismissedAt && typeof raw.lastDismissedAt === 'object' ? raw.lastDismissedAt : {};
 	const dismissals = raw.dismissals && typeof raw.dismissals === 'object' ? raw.dismissals : {};
 	return {
 		version: NUDGE_LEDGER_VERSION,
@@ -62,14 +63,17 @@ export function normalizeLedger(raw) {
 		lastShownAt: { share: finiteTimestamp(shown.share), push: finiteTimestamp(shown.push) },
 		lastDismissedAt: {
 			share: finiteTimestamp(dismissed.share),
-			push: finiteTimestamp(dismissed.push)
+			push: finiteTimestamp(dismissed.push),
 		},
-		dismissals: { share: positiveCount(dismissals.share), push: positiveCount(dismissals.push) },
+		dismissals: {
+			share: positiveCount(dismissals.share),
+			push: positiveCount(dismissals.push),
+		},
 		lastInterruptAt: finiteTimestamp(raw.lastInterruptAt),
 		shareUsedAt: finiteTimestamp(raw.shareUsedAt),
 		seen: Array.isArray(raw.seen)
 			? raw.seen.filter((key) => typeof key === 'string').slice(-MAX_SEEN_KEYS)
-			: []
+			: [],
 	};
 }
 
@@ -94,7 +98,10 @@ export function writeNudgeLedger(ledger) {
 		return;
 	}
 	try {
-		window.localStorage.setItem(STORAGE_KEYS.NUDGE_LEDGER, JSON.stringify(normalizeLedger(ledger)));
+		window.localStorage.setItem(
+			STORAGE_KEYS.NUDGE_LEDGER,
+			JSON.stringify(normalizeLedger(ledger))
+		);
 	} catch (error) {
 		console.error('Failed to write the nudge ledger:', error);
 	}
@@ -144,7 +151,11 @@ export function momentSuppression({ kind, ledger, now, session }) {
 
 /** `null` when an interrupt (toast) may be shown; otherwise the reason. */
 export function interruptSuppression({ ledger, now, hourLocal, session }) {
-	if (!Number.isFinite(hourLocal) || hourLocal >= QUIET_START_HOUR || hourLocal < QUIET_END_HOUR) {
+	if (
+		!Number.isFinite(hourLocal) ||
+		hourLocal >= QUIET_START_HOUR ||
+		hourLocal < QUIET_END_HOUR
+	) {
 		return 'quiet-hours';
 	}
 	if (session?.interruptShown) {
@@ -163,7 +174,7 @@ export function registerMomentShown({ kind, ledger, now }) {
 	return {
 		...ledger,
 		lastMomentAt: now,
-		lastShownAt: { ...ledger.lastShownAt, [group]: now }
+		lastShownAt: { ...ledger.lastShownAt, [group]: now },
 	};
 }
 
@@ -172,7 +183,7 @@ export function registerMomentDismissed({ kind, ledger, now }) {
 	return {
 		...ledger,
 		lastDismissedAt: { ...ledger.lastDismissedAt, [group]: now },
-		dismissals: { ...ledger.dismissals, [group]: (ledger.dismissals[group] || 0) + 1 }
+		dismissals: { ...ledger.dismissals, [group]: (ledger.dismissals[group] || 0) + 1 },
 	};
 }
 
@@ -225,7 +236,7 @@ export function buildNudgeState({
 	secondsOnPage = 0,
 	interactionCount = 0,
 	hourLocal = new Date(now).getHours(),
-	locale = 'en'
+	locale = 'en',
 } = {}) {
 	const entries = Array.isArray(history) ? history : [];
 	const timestamps = entries
@@ -243,8 +254,9 @@ export function buildNudgeState({
 		page,
 		testsTotal: entries.length,
 		distinctTestDays: days.size,
-		testsThisWeek: timestamps.filter((timestamp) => timestamp >= weekStart && timestamp <= now + DAY_MS)
-			.length,
+		testsThisWeek: timestamps.filter(
+			(timestamp) => timestamp >= weekStart && timestamp <= now + DAY_MS
+		).length,
 		currentStreak: Number(streak?.currentStreak) || 0,
 		daysSinceLastTest: lastTimestamp === null ? null : daysAgo(now, lastTimestamp),
 		lastScore: pct === null ? null : { pct, total },
@@ -255,14 +267,14 @@ export function buildNudgeState({
 		nudgeHistory: {
 			lastShareDaysAgo: daysAgo(now, ledger.lastShownAt.share),
 			lastPushDaysAgo: daysAgo(now, ledger.lastShownAt.push),
-			dismissals: (ledger.dismissals.share || 0) + (ledger.dismissals.push || 0)
+			dismissals: (ledger.dismissals.share || 0) + (ledger.dismissals.push || 0),
 		},
 		session: {
 			secondsOnPage: Number(secondsOnPage) || 0,
 			interactionCount: Number(interactionCount) || 0,
-			hourLocal
+			hourLocal,
 		},
-		locale
+		locale,
 	};
 }
 
@@ -275,11 +287,14 @@ export function buildNotificationState({
 	now = Date.now(),
 	secondsOnPage = 0,
 	hourLocal = new Date(now).getHours(),
-	locale = 'en'
+	locale = 'en',
 } = {}) {
 	return {
 		page: 'notifications',
-		candidates: (Array.isArray(candidates) ? candidates : []).slice(0, MAX_NOTIFICATION_CANDIDATES),
+		candidates: (Array.isArray(candidates) ? candidates : []).slice(
+			0,
+			MAX_NOTIFICATION_CANDIDATES
+		),
 		topics: (Array.isArray(topics) ? topics : [])
 			.map((topic) => String(topic ?? '').slice(0, 80))
 			.filter(Boolean)
@@ -287,9 +302,9 @@ export function buildNotificationState({
 		session: {
 			secondsOnPage: Number(secondsOnPage) || 0,
 			interactionCount: 0,
-			hourLocal
+			hourLocal,
 		},
-		locale
+		locale,
 	};
 }
 

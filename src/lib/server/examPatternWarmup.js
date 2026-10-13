@@ -124,7 +124,7 @@ export function planPatternWarmup({ targets = [], rows = [], now = new Date() } 
 		}
 		return {
 			...target,
-			status: isFuture(expiresByKey.get(target.patternKey), now) ? 'fresh' : 'expired'
+			status: isFuture(expiresByKey.get(target.patternKey), now) ? 'fresh' : 'expired',
 		};
 	});
 }
@@ -137,7 +137,7 @@ export function summarizeWarmup(entries = []) {
 		warmed: entries.filter((entry) => entry.outcome === 'warmed').length,
 		failed: entries
 			.filter((entry) => entry.status !== 'fresh' && entry.outcome === 'failed')
-			.map((entry) => ({ examId: entry.examId, detail: entry.detail ?? null }))
+			.map((entry) => ({ examId: entry.examId, detail: entry.detail ?? null })),
 	};
 }
 

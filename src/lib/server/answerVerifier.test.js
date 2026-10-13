@@ -86,7 +86,9 @@ describe('buildAnswerVerificationPrompt', () => {
 
 describe('answerVerificationSchema', () => {
 	it('accepts one string per question, including an empty list', () => {
-		expect(answerVerificationSchema.safeParse({ answers: ['Newton', 'Joule'] }).success).toBe(true);
+		expect(answerVerificationSchema.safeParse({ answers: ['Newton', 'Joule'] }).success).toBe(
+			true
+		);
 		expect(answerVerificationSchema.safeParse({ answers: [] }).success).toBe(true);
 	});
 

@@ -14,7 +14,7 @@
  * Pure and injectable: pass a seeded `random` for exact tests.
  */
 
-import { normalizeMathText } from '$lib/shared/latex';
+import { normalizeMathText } from '#lib/shared/latex.js';
 
 export const STATEMENT_MIN_COUNT = 3;
 export const STATEMENT_MAX_COUNT = 4;
@@ -196,7 +196,10 @@ export function buildStatementQuestion(raw, { language = 'english', random = Mat
 		candidates.push(subset);
 	}
 	const distractors = shuffle(candidates, random)
-		.sort((a, b) => symmetricDifferenceSize(a, keyNumbers) - symmetricDifferenceSize(b, keyNumbers))
+		.sort(
+			(a, b) =>
+				symmetricDifferenceSize(a, keyNumbers) - symmetricDifferenceSize(b, keyNumbers)
+		)
 		.slice(0, STATEMENT_OPTION_COUNT - 1)
 		.map((subset) => formatStatementOption(subset, language));
 

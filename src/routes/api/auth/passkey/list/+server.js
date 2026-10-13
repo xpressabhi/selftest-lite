@@ -1,8 +1,7 @@
-import { json } from '@sveltejs/kit';
-import { listPasskeysForUser, logApiEvent } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { rateLimited } from '$lib/server/apiResponse';
-import { resolveRequestContext } from '$lib/server/apiContext';
+import { listPasskeysForUser, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 
 const LIST_RATE_LIMIT = 120;
 
@@ -16,14 +15,17 @@ export async function GET({ request, cookies }) {
 	try {
 		const rateLimit = await rateLimiter(request, {
 			bucket: '/api/auth/passkey/list',
-			limit: LIST_RATE_LIMIT
+			limit: LIST_RATE_LIMIT,
 		});
 		if (rateLimit.limited) {
 			return rateLimited(rateLimit);
 		}
 
 		if (!user) {
-			return json({ error: 'Sign in to manage passkeys.', code: 'SESSION_REQUIRED' }, { status: 401 });
+			return Response.json(
+				{ error: 'Sign in to manage passkeys.', code: 'SESSION_REQUIRED' },
+				{ status: 401 }
+			);
 		}
 
 		const rows = await listPasskeysForUser(user.id);
@@ -33,7 +35,7 @@ export async function GET({ request, cookies }) {
 			deviceType: row.device_type || null,
 			backedUp: Boolean(row.backed_up),
 			createdAt: row.created_at,
-			lastUsedAt: row.last_used_at
+			lastUsedAt: row.last_used_at,
 		}));
 
 		await logApiEvent({
@@ -45,13 +47,13 @@ export async function GET({ request, cookies }) {
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
 			userId: user.id,
-			metadata: { count: passkeys.length }
+			metadata: { count: passkeys.length },
 		});
 
-		return json({
+		return Response.json({
 			passkeys,
 			googleLinked: Boolean(user.googleSub),
-			googleEmail: user.email || null
+			googleEmail: user.email || null,
 		});
 	} catch (error) {
 		console.error('Failed to list passkeys:', error);
@@ -64,8 +66,11 @@ export async function GET({ request, cookies }) {
 			statusCode: 500,
 			durationMs: Date.now() - startedAt,
 			errorMessage: error.message,
-			userId: user?.id ?? null
+			userId: user?.id ?? null,
 		});
-		return json({ error: 'Unable to load passkeys.', code: 'PASSKEY_LIST_ERROR' }, { status: 500 });
+		return Response.json(
+			{ error: 'Unable to load passkeys.', code: 'PASSKEY_LIST_ERROR' },
+			{ status: 500 }
+		);
 	}
 }

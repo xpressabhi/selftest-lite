@@ -1,5 +1,5 @@
 <script>
-	import { t } from '$lib/client/i18n';
+	import { t } from '#lib/client/i18n.js';
 
 	let {
 		messages = [],

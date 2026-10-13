@@ -1,10 +1,10 @@
 <script>
 	import { onMount, tick } from 'svelte';
-	import { focusTrap } from '$lib/client/focusTrap';
-	import Icon from '$lib/client/Icon.svelte';
-	import { activeLanguage, t, translate } from '$lib/client/i18n';
-	import { getDictionary, loadDictionary } from '$lib/client/locales';
-	import { track } from '$lib/client/telemetry';
+	import { focusTrap } from '#lib/client/focusTrap.js';
+	import Icon from '#lib/client/Icon.svelte';
+	import { activeLanguage, t, translate } from '#lib/client/i18n.js';
+	import { getDictionary, loadDictionary } from '#lib/client/locales.js';
+	import { track } from '#lib/client/telemetry.js';
 
 	let {
 		step = 1,
@@ -266,7 +266,12 @@
 		bind:this={cardEl}
 	>
 		<div class="welcome-tour-head">
-			<h2 class="welcome-tour-title" id="welcome-tour-title" tabindex="-1" bind:this={titleEl}>
+			<h2
+				class="welcome-tour-title"
+				id="welcome-tour-title"
+				tabindex="-1"
+				bind:this={titleEl}
+			>
 				{$t(meta.titleKey)}
 			</h2>
 			<button class="welcome-tour-skip" type="button" onclick={onskip}>

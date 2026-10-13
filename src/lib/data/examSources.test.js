@@ -4,12 +4,12 @@ import {
 	EXAM_SOURCES,
 	examSourceIds,
 	getExamSource,
-	insecureFetchHosts
+	insecureFetchHosts,
 } from './examSources';
 import {
 	isUrlOnAllowedHosts,
 	KNOWN_CATEGORY_IDS,
-	KNOWN_EXAM_IDS
+	KNOWN_EXAM_IDS,
 } from '../shared/examNotifications';
 
 // The registry is data the pipeline trusts. A typo here means either a source

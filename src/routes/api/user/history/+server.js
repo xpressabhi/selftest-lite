@@ -1,15 +1,14 @@
-import { json } from '@sveltejs/kit';
 import {
 	listAttemptsForIdentity,
 	upsertUserTestAttempts,
 	logApiEvent,
-} from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { resolveRequestContext } from '$lib/server/apiContext';
-import { rateLimited } from '$lib/server/apiResponse';
-import { readJsonBody } from '$lib/server/requestBody';
-import { stripAnswerKey } from '$lib/server/paperRedaction';
-import { markTestsSubmitted } from '$lib/server/testStats';
+} from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
+import { rateLimited } from '#lib/server/apiResponse.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { stripAnswerKey } from '#lib/server/paperRedaction.js';
+import { markTestsSubmitted } from '#lib/server/testStats.js';
 
 const HISTORY_GET_RATE_LIMIT = 60;
 const HISTORY_POST_RATE_LIMIT = 30;
@@ -62,7 +61,7 @@ export async function GET({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -85,7 +84,7 @@ export async function GET({ request, cookies }) {
 			metadata: { attemptCount: attempts.length },
 		});
 
-		return json({
+		return Response.json({
 			attempts: attempts.map(mapAttemptRow),
 		});
 	} catch (error) {
@@ -101,7 +100,7 @@ export async function GET({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to fetch user history', code: 'HISTORY_FETCH_ERROR' },
 			{ status: 500 }
 		);
@@ -139,7 +138,7 @@ export async function POST({ request, cookies }) {
 				statusCode: 401,
 				durationMs: Date.now() - startedAt,
 			});
-			return json(
+			return Response.json(
 				{ error: 'Authentication required', code: 'AUTH_REQUIRED' },
 				{ status: 401 }
 			);
@@ -170,7 +169,7 @@ export async function POST({ request, cookies }) {
 			metadata: { received: attempts.length, stored: storedCount },
 		});
 
-		return json({ success: true, stored: storedCount });
+		return Response.json({ success: true, stored: storedCount });
 	} catch (error) {
 		console.error('Failed to update user history:', error);
 		await logApiEvent({
@@ -184,7 +183,7 @@ export async function POST({ request, cookies }) {
 			userId: user?.id || null,
 			errorMessage: error.message,
 		});
-		return json(
+		return Response.json(
 			{ error: 'Failed to update user history', code: 'HISTORY_UPDATE_ERROR' },
 			{ status: 500 }
 		);

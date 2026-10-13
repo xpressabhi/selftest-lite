@@ -3,15 +3,15 @@
 // The verification library is imported in exactly one place: these thin
 // wrappers, which the routes call. Swapping the implementation (or hand-rolling
 // it) touches this file and nothing else. All the decisions that must not
-// depend on the library live in `$lib/shared/passkeyPolicy`.
+// depend on the library live in `#lib/shared/passkeyPolicy.js`.
 
 import {
 	generateAuthenticationOptions,
 	generateRegistrationOptions,
 	verifyAuthenticationResponse,
-	verifyRegistrationResponse
+	verifyRegistrationResponse,
 } from '@simplewebauthn/server';
-import { base64UrlToBytes } from '$lib/shared/passkeyPolicy';
+import { base64UrlToBytes } from '#lib/shared/passkeyPolicy.js';
 
 export const PASSKEY_RP_NAME = 'Selftest';
 export const PASSKEY_CHALLENGE_TTL_MS = 5 * 60 * 1000;
@@ -25,7 +25,7 @@ export async function buildRegistrationOptions({
 	userName,
 	displayName,
 	userHandle,
-	existingCredentials = []
+	existingCredentials = [],
 }) {
 	return generateRegistrationOptions({
 		rpName: PASSKEY_RP_NAME,
@@ -36,13 +36,13 @@ export async function buildRegistrationOptions({
 		attestationType: 'none',
 		excludeCredentials: existingCredentials.map((credential) => ({
 			id: credential.credentialId,
-			transports: Array.isArray(credential.transports) ? credential.transports : undefined
+			transports: Array.isArray(credential.transports) ? credential.transports : undefined,
 		})),
 		authenticatorSelection: {
 			residentKey: 'required',
-			userVerification: 'required'
+			userVerification: 'required',
 		},
-		supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS
+		supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS,
 	});
 }
 
@@ -55,7 +55,7 @@ export async function buildAuthenticationOptions({ rpId }) {
 	return generateAuthenticationOptions({
 		rpID: rpId,
 		userVerification: 'required',
-		allowCredentials: []
+		allowCredentials: [],
 	});
 }
 
@@ -63,7 +63,7 @@ export async function verifyRegistration({
 	response,
 	expectedChallenge,
 	expectedOrigin,
-	expectedRPID
+	expectedRPID,
 }) {
 	return verifyRegistrationResponse({
 		response,
@@ -71,7 +71,7 @@ export async function verifyRegistration({
 		expectedOrigin,
 		expectedRPID,
 		requireUserVerification: true,
-		supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS
+		supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS,
 	});
 }
 
@@ -80,7 +80,7 @@ export async function verifyAuthentication({
 	expectedChallenge,
 	expectedOrigin,
 	expectedRPID,
-	credential
+	credential,
 }) {
 	return verifyAuthenticationResponse({
 		response,
@@ -88,7 +88,7 @@ export async function verifyAuthentication({
 		expectedOrigin,
 		expectedRPID,
 		credential,
-		requireUserVerification: true
+		requireUserVerification: true,
 	});
 }
 
@@ -98,6 +98,6 @@ export function toWebAuthnCredential(row) {
 		id: row.credential_id,
 		publicKey: base64UrlToBytes(row.public_key),
 		counter: Number(row.counter) || 0,
-		transports: Array.isArray(row.transports) ? row.transports : undefined
+		transports: Array.isArray(row.transports) ? row.transports : undefined,
 	};
 }

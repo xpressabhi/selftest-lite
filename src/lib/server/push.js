@@ -29,9 +29,7 @@ export async function sendPushNotification(subscription, payload, config = {}) {
 	if (!endpoint || !p256dh || !auth) {
 		throw new Error('Invalid push subscription');
 	}
-	return webpush.sendNotification(
-		{ endpoint, keys: { p256dh, auth } },
-		JSON.stringify(payload),
-		{ TTL: 12 * 60 * 60 }
-	);
+	return webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, JSON.stringify(payload), {
+		TTL: 12 * 60 * 60,
+	});
 }

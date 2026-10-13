@@ -6,7 +6,7 @@
 // trim the paper to a smaller-but-valid size when the remaining drafts never
 // pass. Everything here is deterministic and unit-tested.
 
-import { questionTextFor } from '$lib/shared/questionText';
+import { questionTextFor } from '#lib/shared/questionText.js';
 
 export const BATCH_SIZE = 25;
 export const MAX_GENERATION_ROUNDS = 5;
@@ -67,7 +67,8 @@ export function partitionRound({
 		list.push(issue);
 		issuesByIndex.set(key, list);
 	};
-	for (const entry of structuralIssues) addIssue(entry?.index, entry?.issue || 'invalid-structure');
+	for (const entry of structuralIssues)
+		addIssue(entry?.index, entry?.issue || 'invalid-structure');
 	for (const entry of qualityIssues) addIssue(entry?.index, entry?.issue || 'quality');
 	for (const index of mismatchIndexes) addIssue(index, 'verification-disagreement');
 
@@ -100,12 +101,10 @@ export function buildTopUpInstruction({ rejected = [], approvedTexts = [], round
 		`Replacement round ${round}: generate exactly ${ask} NEW questions that replace the rejected drafts below.`,
 		'Use different facts, sub-topics, or angles than the rejected ones.',
 	];
-		const rejectedHints = rejected
-		.slice(0, MAX_REJECTED_HINTS)
-		.map((entry, index) => {
-			const reasons = [...new Set(entry?.issues || [])].join(', ');
-			return `${index + 1}. "${truncateText(questionTextFor(entry?.question))}" (rejected: ${reasons || 'quality'})`;
-		});
+	const rejectedHints = rejected.slice(0, MAX_REJECTED_HINTS).map((entry, index) => {
+		const reasons = [...new Set(entry?.issues || [])].join(', ');
+		return `${index + 1}. "${truncateText(questionTextFor(entry?.question))}" (rejected: ${reasons || 'quality'})`;
+	});
 	if (rejectedHints.length > 0) {
 		lines.push('Rejected drafts (do not repeat these questions or facts):');
 		lines.push(...rejectedHints);

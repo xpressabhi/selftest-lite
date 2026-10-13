@@ -1,10 +1,10 @@
 <script>
-	import { activeLanguage, t } from '$lib/client/i18n';
-	import CtaBanner from '$lib/client/CtaBanner.svelte';
-	import Icon from '$lib/client/Icon.svelte';
-	import { jsonLdScript } from '$lib/shared/jsonLd';
-	import SeoHead from '$lib/client/SeoHead.svelte';
-	import { SITE_ORIGIN, localizedPath } from '$lib/shared/seo';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import CtaBanner from '#lib/client/CtaBanner.svelte';
+	import Icon from '#lib/client/Icon.svelte';
+	import { jsonLdScript } from '#lib/shared/jsonLd.js';
+	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
 
 	const contactJsonLd = $derived(
 		jsonLdScript({
@@ -135,7 +135,10 @@
 						</a>
 					</li>
 					<li>
-						<a class="contact-pill" href={`${localizedPath('/faq', $activeLanguage)}#q-wrong-answer`}>
+						<a
+							class="contact-pill"
+							href={`${localizedPath('/faq', $activeLanguage)}#q-wrong-answer`}
+						>
 							{$t('contactQuickHelpReport')}
 						</a>
 					</li>

@@ -97,8 +97,9 @@ describe('stripAnswerKey', () => {
 	});
 
 	it('tolerates a paper with no requestParams, or a null one', () => {
-		expect(stripAnswerKey({ topic: 'x', questions: [{ answer: 'A' }] }).questions[0].answer)
-			.toBeUndefined();
+		expect(
+			stripAnswerKey({ topic: 'x', questions: [{ answer: 'A' }] }).questions[0].answer
+		).toBeUndefined();
 		const nulled = stripAnswerKey({ ...withIdentity, requestParams: null });
 		expect(nulled.requestParams).toBeNull();
 		const empty = stripAnswerKey({ ...withIdentity, requestParams: {} });

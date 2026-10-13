@@ -4,11 +4,11 @@ import {
 	setSessionCookie,
 	upsertGoogleUser,
 	verifyGoogleCredential,
-} from '$lib/server/auth';
-import { backfillUserIdentity, logApiEvent } from '$lib/server/storage';
-import { rateLimiter } from '$lib/server/rateLimiter';
-import { readJsonBody } from '$lib/server/requestBody';
-import { resolveRequestContext } from '$lib/server/apiContext';
+} from '#lib/server/auth.js';
+import { backfillUserIdentity, logApiEvent } from '#lib/server/storage.js';
+import { rateLimiter } from '#lib/server/rateLimiter.js';
+import { readJsonBody } from '#lib/server/requestBody.js';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 import { isRedirect } from '@sveltejs/kit';
 
 const REDIRECT_AUTH_RATE_LIMIT = 10;

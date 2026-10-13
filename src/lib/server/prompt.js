@@ -126,7 +126,7 @@ export function generatePrompt({
 		'Match the requested language and script: a Hindi paper uses Devanagari for question, statements, columns and options (standard English technical terms are allowed).',
 		...(usesOptions
 			? [
-					'FINAL LENGTH CHECK: before returning, compare the character length of the correct option with the longest distractor for every question. If the correct option is longer, rewrite that question\'s options until it is not.',
+					"FINAL LENGTH CHECK: before returning, compare the character length of the correct option with the longest distractor for every question. If the correct option is longer, rewrite that question's options until it is not.",
 				]
 			: []),
 	];

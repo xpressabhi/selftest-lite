@@ -57,9 +57,12 @@ describe('buildMatchingQuestion input guards', () => {
 	});
 
 	it('rejects blank or non-string items', () => {
-		const blank = buildMatchingQuestion(baseRaw({ columnA: ['Vitamin A', '   ', 'Vitamin C', 'Vitamin D'] }), {
-			random: seededRandom(1),
-		});
+		const blank = buildMatchingQuestion(
+			baseRaw({ columnA: ['Vitamin A', '   ', 'Vitamin C', 'Vitamin D'] }),
+			{
+				random: seededRandom(1),
+			}
+		);
 		expect(blank.ok).toBe(false);
 		expect(blank.issues).toContain('matching-pairs-invalid');
 
@@ -89,9 +92,12 @@ describe('buildMatchingQuestion input guards', () => {
 
 	it('rejects items over the structural length cap', () => {
 		const longItem = `Vitamin ${'A'.repeat(MATCHING_ITEM_MAX_CHARS)}`;
-		const result = buildMatchingQuestion(baseRaw({ columnA: [longItem, 'Vitamin B1', 'Vitamin C', 'Vitamin D'] }), {
-			random: seededRandom(1),
-		});
+		const result = buildMatchingQuestion(
+			baseRaw({ columnA: [longItem, 'Vitamin B1', 'Vitamin C', 'Vitamin D'] }),
+			{
+				random: seededRandom(1),
+			}
+		);
 		expect(result.ok).toBe(false);
 		expect(result.issues).toContain('matching-item-too-long');
 	});
@@ -114,7 +120,9 @@ describe('buildMatchingQuestion output contract', () => {
 
 	it('keeps exactly one correct option', () => {
 		const result = buildMatchingQuestion(baseRaw(), { random: seededRandom(3) });
-		const correct = result.question.options.filter((option) => option === result.question.answer);
+		const correct = result.question.options.filter(
+			(option) => option === result.question.answer
+		);
 		expect(correct).toHaveLength(1);
 	});
 

@@ -1,14 +1,13 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SESSION_SECRET } from '$app/env/private';
 
 export const ADMIN_COOKIE_NAME = 'selftest_admin';
 export const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 function getCredentials() {
 	return {
-		username: env.ADMIN_USERNAME || '',
-		password: env.ADMIN_PASSWORD || '',
+		username: ADMIN_USERNAME || '',
+		password: ADMIN_PASSWORD || '',
 	};
 }
 
@@ -18,8 +17,8 @@ export function isAdminConfigured() {
 }
 
 function sessionSecret() {
-	if (env.ADMIN_SESSION_SECRET) {
-		return env.ADMIN_SESSION_SECRET;
+	if (ADMIN_SESSION_SECRET) {
+		return ADMIN_SESSION_SECRET;
 	}
 	// Derive a stable secret from the credentials so sessions are invalidated
 	// when the password rotates, without requiring an extra env var.
@@ -98,7 +97,7 @@ export function isAdminRequest(request) {
  */
 export function requireAdmin(request) {
 	if (!isAdminConfigured() || !isAdminRequest(request)) {
-		return json({ error: 'Unauthorized', code: 'ADMIN_UNAUTHORIZED' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized', code: 'ADMIN_UNAUTHORIZED' }, { status: 401 });
 	}
 	return null;
 }
