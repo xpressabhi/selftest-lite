@@ -9,9 +9,6 @@ import { flushPendingAttempts, hydrateHistoryFromServer, hydrateUserState } from
 export const user = writable(null);
 export const isAuthLoading = writable(true);
 
-export const isNativeApp =
-	typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.() === true;
-
 async function fetchJson(url, options = {}) {
 	const response = await fetch(url, {
 		cache: 'no-store',
@@ -121,37 +118,5 @@ export async function logout() {
 			window.google.accounts.id.disableAutoSelect();
 		}
 		user.set(null);
-	}
-}
-
-/**
- * Handles the GIS `ux_mode: 'redirect'` return: the id_token arrives in the
- * URL fragment (#id_token=...). Consumes it, strips it from the URL and
- * exchanges it for a server session. Needed on the Capacitor Android app
- * where popup-based sign-in is unreliable in the WebView.
- */
-export async function handleAuthRedirect() {
-	if (typeof window === 'undefined') {
-		return;
-	}
-
-	const hash = window.location.hash || '';
-	let idToken = null;
-	if (hash.startsWith('#id_token=')) {
-		idToken = hash.slice('#id_token='.length);
-	} else if (hash.includes('id_token=')) {
-		const match = hash.match(/[#&]id_token=([^&]+)/);
-		idToken = match?.[1] || null;
-	}
-
-	if (!idToken || !idToken.trim()) {
-		return;
-	}
-
-	try {
-		window.history.replaceState(null, '', window.location.pathname + window.location.search);
-		await loginWithGoogleCredential(decodeURIComponent(idToken));
-	} catch (error) {
-		console.error('Google sign-in redirect handling failed:', error);
 	}
 }

@@ -42,17 +42,10 @@ npm_output.log
 *.tsbuildinfo
 /.playwright-cli
 
-# android (capacitor) build artifacts
-/android
-
 # test artifacts
 /coverage
 /playwright-report
 /.playwright-mcp
-
-# capacitor local web assets
-/dist
-/www
 
 # brainstorming visual companion mockups
 /.superpowers

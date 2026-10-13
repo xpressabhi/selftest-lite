@@ -122,7 +122,6 @@ export const TELEMETRY_EVENTS = new Set([
 	'pwa:install-prompt',
 	'pwa:install-accepted',
 	'pwa:install-dismissed',
-	'apk:download',
 
 	// Auth / profile
 	'auth:google-sign-in',
@@ -163,9 +162,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'notification:toast-click',
 	'notification:toast-dismiss',
 
-	// Native shell / interaction quality
-	'app:open',
-	'app:deep-link',
+	// Interaction quality
 	'ui:rage-tap',
 
 	// Device & network profile

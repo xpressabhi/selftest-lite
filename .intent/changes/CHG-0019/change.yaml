@@ -1,0 +1,51 @@
+protocol_version: "1.0"
+id: "CHG-0019"
+title: "Remove the Capacitor Android app and its repo footprint"
+status: "complete"
+created_at: "2026-10-13T06:02:53Z"
+request: "cleanup android related setup and apk and related thing from this repo"
+proposal:
+  path: "proposal.md"
+  revision: 1
+  digest: "sha256:fec3eb593fca55fd43f8f5a0431442ed285f912dc60e0144a56875d901fef5a8"
+scope:
+  included:
+    - "Deleted the 54-file android/ Gradle project, capacitor.config.json, scripts/generate-android-assets.mjs, static/apk/selftest.apk, static/.well-known/assetlinks.json."
+    - "Deleted the Capacitor-only server endpoint src/routes/auth/redirect/+server.js and the native-only modules deepLink.js and nativeShell.js."
+    - "Removed Capacitor code paths from haptics.js, screenWake.js, deviceProfile.js, auth.js, GoogleSignInButton.svelte, HomePage.svelte and +layout.svelte."
+    - "Removed telemetry events apk:download, app:open, app:deep-link and the androidAppDownload locale key (EN + HI)."
+    - "Removed cap:*, apk:* and assets:android npm scripts and all @capacitor/* and @capgo/* dependencies; lockfile regenerated."
+    - "Removed the /apk/(.*) Vercel cache header, the Android .gitignore entries and the .env.example redirect-URI instructions."
+  excluded:
+    - "No git-history rewrite; the APK and android/ remain in past commits."
+    - "Dated historical records (.intent/changes/CHG-0009, docs/superpowers/specs) keep their references; editing them would falsify history."
+    - "PWA Android install-guide strings and low-end-Android performance guidance are web/PWA material and stay."
+  paths:
+    - ".intent/changes/CHG-0019/**"
+    - "android/**"
+    - "capacitor.config.json"
+    - "scripts/generate-android-assets.mjs"
+    - "static/apk/**"
+    - "static/.well-known/**"
+    - "src/routes/auth/redirect/**"
+    - "src/lib/client/**"
+    - "src/lib/locales/**"
+    - "src/lib/shared/telemetryEvents.js"
+    - "src/lib/styles/globals.css"
+    - "src/routes/+layout.svelte"
+    - "package.json"
+    - "package-lock.json"
+    - "vercel.json"
+    - ".gitignore"
+    - ".env.example"
+preserved:
+  - "Browser behaviour is unchanged: every removed branch was gated on window.Capacitor, undefined in browsers, and web fallbacks stay."
+  - "Google and passkey sign-in for the web are untouched."
+test_changes:
+  - path: "src/lib/client/deviceProfile.test.js"
+    kind: "modified"
+    reason: "Dropped the native-shell case from the standalone test (renamed to 'marks standalone when installed as a PWA') and removed the now-unused Capacitor stubs. No other test file changed; nothing skipped or deleted."
+decisions:
+  - "Operator chose full removal over keeping an installed-APK compatibility layer (question answered 2026-10-13); already-installed APKs degrade after deploy."
+  - "The Capacitor-only /auth/redirect endpoint was deleted with its client trigger; Google Cloud Console URI cleanup is external."
+review_required: false

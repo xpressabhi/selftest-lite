@@ -51,7 +51,6 @@ function stubBrowser({
 		vi.stubGlobal('window', {
 			devicePixelRatio: devicePixelRatio === null ? undefined : devicePixelRatio,
 			matchMedia: () => ({ matches: standalone }),
-			Capacitor: undefined,
 		});
 	} else {
 		vi.stubGlobal('window', undefined);
@@ -269,14 +268,8 @@ describe('device profile collection', () => {
 		});
 	});
 
-	it('marks standalone when installed or running in the native shell', async () => {
+	it('marks standalone when installed as a PWA', async () => {
 		stubBrowser({ standalone: true });
-		expect((await deviceProfile.collectDeviceProfile()).standalone).toBe(true);
-		vi.stubGlobal('window', {
-			devicePixelRatio: 2,
-			matchMedia: () => ({ matches: false }),
-			Capacitor: { isNativePlatform: () => true },
-		});
 		expect((await deviceProfile.collectDeviceProfile()).standalone).toBe(true);
 	});
 

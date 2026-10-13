@@ -23,10 +23,6 @@
 		{
 			"source": "/icons/(.*)",
 			"headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }]
-		},
-		{
-			"source": "/apk/(.*)",
-			"headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
 		}
 	]
 }

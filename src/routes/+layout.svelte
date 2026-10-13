@@ -13,13 +13,10 @@
 	} from '#lib/client/preferences.js';
 	import { STORAGE_KEYS } from '#lib/client/constants.js';
 	import NotificationsBell from '#lib/client/NotificationsBell.svelte';
-	import { initDeepLinks } from '#lib/client/deepLink.js';
 	import { startDeviceProfileTracking } from '#lib/client/deviceProfile.js';
 	import { focusTrap } from '#lib/client/focusTrap.js';
-	import { initNativeShell } from '#lib/client/nativeShell.js';
 	import { startTelemetry, track } from '#lib/client/telemetry.js';
 	import {
-		handleAuthRedirect,
 		isAuthLoading,
 		loginWithGoogleCredential,
 		logout,
@@ -142,9 +139,6 @@
 		// Capability detection is the only gate on the passkey affordance: it
 		// stays hidden in a browser without WebAuthn (Android WebView).
 		passkeySupported = isPasskeySupported();
-		void initDeepLinks();
-		void initNativeShell();
-		void handleAuthRedirect();
 		// Session, state, and history hydration wait until the browser is idle
 		// so the first paint and first tap are never blocked by cold API calls.
 		let stopStateSync = () => {};
@@ -1013,9 +1007,8 @@
 	.app-header {
 		position: sticky;
 		top: 0;
-		/* Installed PWA / Capacitor: keep the header content below the
-		   status bar. --sat comes from env() (iOS) or the injected
-		   --safe-area-inset-* (Android WebView). */
+		/* Installed PWA: keep the header content below the status bar.
+		   --sat resolves to env(safe-area-inset-top) on notched devices. */
 		padding-top: var(--sat, env(safe-area-inset-top, 0px));
 		z-index: var(--z-header);
 	}

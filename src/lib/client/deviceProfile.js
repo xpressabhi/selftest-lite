@@ -247,9 +247,6 @@ export function detectStandalone() {
 	const win = getWindow();
 	const nav = getNavigator();
 	try {
-		if (win?.Capacitor?.isNativePlatform?.()) {
-			return true;
-		}
 		if (win?.matchMedia?.('(display-mode: standalone)')?.matches) {
 			return true;
 		}

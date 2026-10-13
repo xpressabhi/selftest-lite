@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$app/env/public';
 	import { t, activeLanguage } from '#lib/client/i18n.js';
-	import { isNativeApp } from '#lib/client/auth.js';
 	import { resolveGoogleClientId } from '#lib/shared/googleAuth.js';
 
 	const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
@@ -104,25 +103,11 @@
 		const container = buttonRef;
 		container.innerHTML = '';
 
-		// The Capacitor Android app loads this site in a WebView where popup
-		// sign-in is unreliable; full-page redirect works there. In redirect
-		// mode GSI uses `login_uri` (defaults to the current page URL when
-		// omitted), so we pin it to a dedicated server endpoint that must be
-		// registered as an authorized redirect URI in Google Cloud Console.
-		// The URI must be absolute — Google rejects relative login_uris.
-		const useRedirectMode = isNativeApp;
-
 		window.google.accounts.id.initialize({
 			client_id: googleClientId,
 			callback: handleCredential,
 			auto_select: false,
 			cancel_on_tap_outside: true,
-			...(useRedirectMode
-				? {
-						ux_mode: 'redirect',
-						login_uri: window.location.origin + '/auth/redirect',
-					}
-				: {}),
 		});
 
 		window.google.accounts.id.renderButton(container, {

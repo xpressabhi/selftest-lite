@@ -217,8 +217,6 @@
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
 
-	let isAndroidDevice = $state(false);
-	let isInCapacitorApp = $state(false);
 	let showManualConfig = $state(false);
 	let generationAbort = null;
 	let generationTimer = null;
@@ -494,9 +492,6 @@
 
 	onMount(() => {
 		homeOpenedAt = Date.now();
-		const ua = window.navigator.userAgent || '';
-		isAndroidDevice = /android/i.test(ua);
-		isInCapacitorApp = Boolean(window.Capacitor?.isNativePlatform?.());
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
@@ -2018,18 +2013,6 @@
 		{#if error}
 			<div class="alert alert-danger mt-3 mb-0" role="alert">{error}</div>
 		{/if}
-
-		{#if isAndroidDevice && !isInCapacitorApp}
-			<p class="android-link-row">
-				<a
-					href="/apk/selftest.apk"
-					download="selftest.apk"
-					onclick={() => track('apk:download')}
-				>
-					{$t('androidAppDownload')}
-				</a>
-			</p>
-		{/if}
 	</div>
 </section>
 
@@ -2166,12 +2149,6 @@
 	.popular-exams-more {
 		text-decoration: underline !important;
 		text-underline-offset: 3px;
-	}
-
-	.android-link-row {
-		margin: 20px 0 0;
-		text-align: center;
-		font-size: 0.82rem;
 	}
 
 	.exam-paper-cta {
