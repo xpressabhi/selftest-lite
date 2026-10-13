@@ -6,6 +6,10 @@ import { connectOrSkip, sqlClient } from './testDb.js';
 // attributes, the practice CTA only for mapped exams, the last-updated stamp
 // and the Hindi twin. Seeded through the dev-only test database bridge.
 
+// Runs in file order (not fullyParallel): the tests search a shared seeded set
+// that a concurrent sync could mutate mid-assertion.
+test.describe.configure({ mode: 'default' });
+
 async function collectErrors(page) {
 	const errors = [];
 	page.on('console', (message) => {

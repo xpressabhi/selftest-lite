@@ -16,6 +16,11 @@ export default defineConfig({
 	// Web push needs a production build, a headed Chrome and FCM access; it
 	// runs from its own opt-in config (npm run test:e2e:push).
 	testIgnore: 'reminders.e2e.js',
+	// Tests are isolated (fresh context + per-test seeding; no shared module
+	// state), and the dev server is the bottleneck, so intra-file parallelism
+	// lets the five workers pack the suite tighter. Files that rely on
+	// cross-test timing of the shared server opt out with mode: 'default'.
+	fullyParallel: true,
 	timeout: 30000,
 	retries: 0,
 	reporter: [

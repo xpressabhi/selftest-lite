@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { connectOrSkip, sqlClient } from './testDb.js';
 import {
 	TEST_USER_AGENT,
@@ -21,12 +22,19 @@ test.beforeEach(async ({ page, request }) => {
 	await page.setExtraHTTPHeaders({ 'user-agent': TEST_USER_AGENT });
 });
 
-async function seedGoogleLink(sql, userId, { sub = 'e2e-google-sub', email = 'e2e@example.com' } = {}) {
+async function seedGoogleLink(sql, userId) {
+	// Both google_sub and email are UNIQUE columns and the file runs under
+	// fullyParallel, so every call links a fresh identity: two tests must never
+	// race for the same sub or email on different accounts.
+	const suffix = randomUUID().slice(0, 8);
+	const sub = `e2e-google-sub-${suffix}`;
+	const email = `e2e-${suffix}@example.com`;
 	await sql.query('UPDATE app_user SET google_sub = $1, email = $2 WHERE id = $3', [
 		sub,
 		email,
 		userId
 	]);
+	return { sub, email };
 }
 
 test('a second passkey can be added from another device, and revoking one archives it', async ({
@@ -109,10 +117,10 @@ test('Google can be disconnected once a passkey exists, and the account survives
 	await addVirtualAuthenticator(page);
 
 	const user = await signUpWithPasskey(page);
-	await seedGoogleLink(sql, user.id);
+	const { email } = await seedGoogleLink(sql, user.id);
 
 	await openSignInMethods(page);
-	await expect(page.getByText(/connected as e2e@example\.com/i)).toBeVisible();
+	await expect(page.getByText(new RegExp(`connected as ${email}`, 'i'))).toBeVisible();
 
 	await page.getByRole('button', { name: /^disconnect$/i }).click();
 	// The warning about a later Google sign-in starts a new account is shown
@@ -171,7 +179,7 @@ test('Google cannot be disconnected while it is the only way in', async ({ page,
 		FROM moved`,
 		[user.id]
 	);
-	await seedGoogleLink(sql, user.id);
+	const { sub, email } = await seedGoogleLink(sql, user.id);
 
 	await openSignInMethods(page);
 	await expect(page.getByRole('button', { name: /^disconnect$/i })).toBeDisabled();
@@ -183,8 +191,8 @@ test('Google cannot be disconnected while it is the only way in', async ({ page,
 	const row = (
 		await sql.query('SELECT google_sub, email FROM app_user WHERE id = $1', [user.id])
 	)[0];
-	expect(row.google_sub, 'the identity is still linked').toBe('e2e-google-sub');
-	expect(row.email).toBe('e2e@example.com');
+	expect(row.google_sub, 'the identity is still linked').toBe(sub);
+	expect(row.email).toBe(email);
 });
 
 test('the settings page is reachable from the desktop menu and names what exists', async ({

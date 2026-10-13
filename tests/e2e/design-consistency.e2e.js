@@ -465,7 +465,12 @@ function auditHorizontalSafeArea() {
 
 async function settled(page) {
 	await page.evaluate(() => document.fonts?.ready);
-	await page.waitForTimeout(200);
+	// Two frames after the fonts settle is enough for layout to flush; every
+	// caller freezes motion first, so there is no animation left to wait for.
+	// A fixed 200ms sleep here meant ~19s of pure waiting in the shell matrix.
+	await page.evaluate(
+		() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+	);
 }
 
 /** Freeze entry animations so measurements never catch a mid-flight scale. */
@@ -530,34 +535,34 @@ test('shared shell and fixed chrome honor horizontal safe areas', async ({ page 
 	]);
 });
 
-test('every non-immersive route uses the 1280px shell at every breakpoint', async ({
-	page,
-}, testInfo) => {
-	test.setTimeout(240000);
-	await freezeMotion(page);
-	await stubBackend(page);
-	const report = [];
-	for (const width of SHELL_WIDTHS) {
+for (const width of SHELL_WIDTHS) {
+	test(`every non-immersive route uses the 1280px shell at ${width}px`, async ({
+		page,
+	}, testInfo) => {
+		test.setTimeout(120000);
+		await freezeMotion(page);
+		await stubBackend(page);
 		await page.setViewportSize({ width, height: 900 });
+		const report = [];
 		for (const route of SHELL_ROUTES) {
 			await page.goto(route, { waitUntil: 'load' });
 			await settled(page);
 			report.push({ route, ...(await page.evaluate(auditDesktopShell)) });
 		}
-	}
-	await testInfo.attach('evidence', {
-		contentType: 'application/json',
-		body: JSON.stringify(report, null, 2),
+		await testInfo.attach('evidence', {
+			contentType: 'application/json',
+			body: JSON.stringify(report, null, 2),
+		});
+		const shellFailures = report
+			.filter((entry) => entry.issues.length > 0)
+			.map((entry) => ({
+				route: entry.route,
+				viewportWidth: entry.viewportWidth,
+				issueCodes: [...new Set(entry.issues.map((issue) => issue.code))],
+			}));
+		expect(shellFailures).toEqual([]);
 	});
-	const shellFailures = report
-		.filter((entry) => entry.issues.length > 0)
-		.map((entry) => ({
-			route: entry.route,
-			viewportWidth: entry.viewportWidth,
-			issueCodes: [...new Set(entry.issues.map((issue) => issue.code))],
-		}));
-	expect(shellFailures).toEqual([]);
-});
+}
 
 test('authenticated admin uses the shared desktop shell', async ({ page }, testInfo) => {
 	test.skip(

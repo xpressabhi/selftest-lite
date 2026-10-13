@@ -59,6 +59,13 @@ describe('backoffBeforeRetry', () => {
 	});
 
 	it('waits when there is room in the budget', async () => {
-		expect(await backoffBeforeRetry(1, { deadlineMs: Date.now() + 30000 })).toBe(true);
+		vi.useFakeTimers();
+		try {
+			const pending = backoffBeforeRetry(1, { deadlineMs: Date.now() + 30000 });
+			await vi.advanceTimersByTimeAsync(800);
+			expect(await pending).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

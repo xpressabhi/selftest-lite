@@ -13,6 +13,10 @@ import { expect, test } from '@playwright/test';
 //   - rate-limit buckets cannot be minted by rotating a header
 //   - a push subscription cannot be mutated by someone else's endpoint
 
+// Runs in file order (not fullyParallel): several tests intentionally consume
+// rate-limit budget on the shared dev server, and they are cheap (~0.4s total).
+test.describe.configure({ mode: 'default' });
+
 const MAX_PROMPT_FIELD_LENGTH = 200;
 
 test.describe('identity disclosure', () => {

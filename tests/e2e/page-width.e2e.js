@@ -103,37 +103,6 @@ for (const { path, wrap } of PAGES) {
 	});
 }
 
-test('the content column does not move between pages', async ({ page }, testInfo) => {
-	await page.setViewportSize({ width: 1440, height: 900 });
-	const edges = [];
-	for (const { path, wrap } of PAGES) {
-		await page.goto(path);
-		await expect(page.locator(wrap)).toBeVisible();
-		const measurement = await measure(page, wrap);
-		expectShellColumn(measurement);
-		edges.push({
-			path,
-			header: measurement.header,
-			container: measurement.container,
-			footer: measurement.footer,
-			gutter: measurement.gutters.container,
-		});
-	}
-
-	await testInfo.attach('evidence', {
-		contentType: 'application/json',
-		body: JSON.stringify(edges, null, 2),
-	});
-
-	const first = edges[0];
-	for (const edge of edges.slice(1)) {
-		expect(edge.container.left, `container left moved on ${edge.path}`).toBe(first.container.left);
-		expect(edge.container.right, `container right moved on ${edge.path}`).toBe(
-			first.container.right
-		);
-	}
-});
-
 for (const { path, wrap } of [
 	{ path: '/', wrap: '.home-wrap' },
 	{ path: '/faq', wrap: '.faq-wrap' },

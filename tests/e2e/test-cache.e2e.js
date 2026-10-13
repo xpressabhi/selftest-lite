@@ -12,6 +12,10 @@ import { sqlClient } from './testDb';
 // immediately before reading because another worker's bridge seed clears the
 // cache, which is safe (a miss is always correct) but would flip a single
 // back-to-back assertion.
+//
+// Runs in file order (not fullyParallel): the re-warm/re-read pair still races
+// a concurrent bridge seed, and the whole file costs well under a second.
+test.describe.configure({ mode: 'default' });
 
 test.describe('GET /api/test response cache', () => {
 	test('list pages MISS then HIT with identical bodies', async ({ request }) => {
