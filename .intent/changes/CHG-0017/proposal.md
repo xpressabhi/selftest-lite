@@ -1,3 +1,35 @@
+---
+protocol_version: "2.0"
+id: "CHG-0017"
+title: "Update all dependencies to latest, including the SvelteKit 3 major migration"
+status: "complete"
+created_at: "2026-10-13T04:45:31Z"
+request: "Update all dependencies in package.json to their latest versions and validate the application afterwards."
+proposal:
+  revision: 1
+  digest: "sha256:a0ddef5c404405b9d823863f5e362f9018eb1cd1306986cd809a7fe9f6517428"
+scope:
+  paths:
+    - ".intent/changes/CHG-0017/**"
+    - ".intent/PROJECT.md"
+    - "AGENTS.md"
+    - "README.md"
+    - "docs/architecture.md"
+    - "package.json"
+    - "package-lock.json"
+    - "svelte.config.js"
+    - "vite.config.js"
+    - "src/**"
+test_changes:
+  - path: "src/lib/server/adminAuth.test.js"
+    kind: "modified"
+    reason: "Kit 3 resolves $app/env/private per build, so the old vi.mock('$env/dynamic/private') runtime mutation no longer reaches the module. The same eleven cases assert the same behavior; the file now loads the module per test with mocked $app/env/private values and verifies password rotation across two module instances."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

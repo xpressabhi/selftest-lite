@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Intent repository configuration v1",
+  "title": "Intent repository configuration v2",
   "type": "object",
   "additionalProperties": false,
   "required": ["protocol_version", "review"],
   "properties": {
     "protocol_version": {
-      "const": "1.0",
+      "const": "2.0",
       "description": "Intent protocol version used by this repository."
     },
     "review": {
@@ -41,7 +41,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "Path globs whose existing files may not change unless the proposal declares them."
+          "description": "Path globs whose existing files may not change unless the change declares them."
         },
         "verify_command": {
           "type": "string",
@@ -51,6 +51,20 @@
           "type": "boolean",
           "default": false,
           "description": "Set true to require a passing baseline run at the change's base revision."
+        },
+        "warn_unused_paths": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when a declared scope path matches no changed file."
+        },
+        "record_exempt_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Path globs a change may touch without carrying a record (documentation and the Intent bundle by default)."
         }
       }
     }

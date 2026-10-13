@@ -1,3 +1,28 @@
+---
+protocol_version: "2.0"
+id: "CHG-0002"
+title: "Silence remaining Svelte compiler warnings"
+status: "complete"
+created_at: "2026-09-29T10:08:42Z"
+request: "Local dev and builds print no Svelte compiler warnings, with behavior and copy unchanged."
+proposal:
+  revision: 1
+  digest: "sha256:544defec9f525987b0abf13bf5cea263b4884b11935e9d972f87fba42b2a5ed3"
+scope:
+  paths:
+    - "AGENTS.md"
+    - ".github/**"
+    - "docs/**"
+    - "playwright.config.js"
+    - "src/**"
+    - "tests/**"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 > Keep routine changes short. Add detail only when complexity, risk, ambiguity, or repository policy needs it.

@@ -1,3 +1,28 @@
+---
+protocol_version: "2.0"
+id: "CHG-0001"
+title: "First-visit welcome tour on the home page"
+status: "complete"
+created_at: "2026-09-28T15:48:29Z"
+request: "A first-time visitor gets a one-time guided tour: choose language, then see the composer, examples, and Daily 5 spotlighted, ending with an example filled into the composer."
+proposal:
+  revision: 2
+  digest: "sha256:2a0981c35e9d5a8c3280e4620f74676eafb59403ae5ef9d335626c3846a09fca"
+scope:
+  paths:
+    - "AGENTS.md"
+    - ".github/**"
+    - "docs/**"
+    - "playwright.config.js"
+    - "src/**"
+    - "tests/**"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 > Keep routine changes short. Add detail only when complexity, risk, ambiguity, or repository policy needs it.

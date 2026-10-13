@@ -1,3 +1,29 @@
+---
+protocol_version: "2.0"
+id: "CHG-0015"
+title: "Load the review when the device holds the cached paper but not the graded attempt"
+status: "complete"
+created_at: "2026-10-12T17:19:17Z"
+request: "The results page still shows resultNotAvailable on production for a linked attempt on a device that has viewed the result before."
+proposal:
+  revision: 1
+  digest: "sha256:1d7029986d9f2b7c453c2e133803e231759150ff7b68964ef612f048dfc8bd0f"
+scope:
+  paths:
+    - ".intent/changes/CHG-0015/**"
+    - "src/lib/client/storage.js"
+    - "src/routes/results/+page.svelte"
+    - "tests/e2e/cross-device-results.e2e.js"
+test_changes:
+  - path: "tests/e2e/cross-device-results.e2e.js"
+    kind: "modified"
+    reason: "Adds the regression spec for a device holding the paper without the graded attempt."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

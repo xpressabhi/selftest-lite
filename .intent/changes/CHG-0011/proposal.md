@@ -1,3 +1,57 @@
+---
+protocol_version: "2.0"
+id: "CHG-0011"
+title: "Manage passkeys and the Google identity on a settings page, with one way in always kept"
+status: "complete"
+created_at: "2026-10-09T17:58:00Z"
+request: "Manage passkey and Google auth outside the profile, via a settings page; allow removing a passkey or the Google identity only while another way in exists, and never delete the user."
+proposal:
+  revision: 1
+  digest: "sha256:3a5a89b5264cb5c5c80c6837ce373afc63c75f62e099b6b0d8fc507c35a53f00"
+scope:
+  paths:
+    - ".intent/changes/CHG-0011/**"
+    - "README.md"
+    - "docs/architecture.md"
+    - "src/lib/client/auth.js"
+    - "src/lib/client/passkeys.js"
+    - "src/lib/client/sync.js"
+    - "src/lib/locales/english.json"
+    - "src/lib/locales/hindi.json"
+    - "src/lib/server/auth.db.test.js"
+    - "src/lib/server/auth.js"
+    - "src/lib/server/storage.js"
+    - "src/lib/shared/passkeyPolicy.js"
+    - "src/lib/shared/passkeyPolicy.test.js"
+    - "src/lib/shared/telemetryEvents.js"
+    - "src/routes/+layout.svelte"
+    - "src/routes/api/auth/google/unlink/+server.js"
+    - "src/routes/api/auth/passkey/list/+server.js"
+    - "src/routes/api/auth/passkey/remove/+server.js"
+    - "src/routes/profile/+page.svelte"
+    - "src/routes/settings/+page.svelte"
+    - "tests/e2e/passkeySignIn.js"
+    - "tests/e2e/passkeys.e2e.js"
+    - "tests/e2e/sign-in-methods.e2e.js"
+test_changes:
+  - path: "src/lib/shared/passkeyPolicy.test.js"
+    kind: "modified"
+    reason: "canRemovePasskey was renamed to canRemoveLoginMethod (the rule now covers Google too) and gained cases for the Google side of the count. No case was removed or weakened."
+  - path: "tests/e2e/passkeys.e2e.js"
+    kind: "modified"
+    reason: "Four panel tests moved to tests/e2e/sign-in-methods.e2e.js because the panel moved to /settings; they were retargeted, not dropped. The ceremony tests stay."
+  - path: "src/lib/server/auth.db.test.js"
+    kind: "modified"
+    reason: "Adds three disconnect cases: identity cleared while the account row, name and id survive; the released identity no longer matches a Google sign-in; an unknown id writes nothing."
+  - path: "tests/e2e/passkeySignIn.js"
+    kind: "modified"
+    reason: "Adds openSignInMethods for the settings page."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

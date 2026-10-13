@@ -1,3 +1,29 @@
+---
+protocol_version: "2.0"
+id: "CHG-0012"
+title: "Cache GET /api/test reads in process memory (list pages and immutable papers)"
+status: "complete"
+created_at: "2026-10-12T04:35:14Z"
+request: "Implement in-memory caching for test reads to speed up the GET /api/test endpoint."
+proposal:
+  revision: 1
+  digest: "sha256:9f1864d9858f9209d89bce590fd583b577fa09fcc3cdd0c6d34f587cf5df6936"
+scope:
+  paths:
+    - ".intent/changes/CHG-0012/**"
+    - "src/lib/server/testResponseCache.js"
+    - "src/lib/server/testResponseCache.test.js"
+    - "src/lib/server/storage.js"
+    - "src/routes/api/test/+server.js"
+    - "src/routes/api/test/db/+server.js"
+    - "tests/e2e/test-cache.e2e.js"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

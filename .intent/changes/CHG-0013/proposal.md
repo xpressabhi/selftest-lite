@@ -1,3 +1,29 @@
+---
+protocol_version: "2.0"
+id: "CHG-0013"
+title: "Re-grade the stored attempt on read so results render on every signed-in device"
+status: "complete"
+created_at: "2026-10-12T16:39:53Z"
+request: "Fetch results on every device the user is logged in so they can see their result everywhere they log in."
+proposal:
+  revision: 1
+  digest: "sha256:ae07d3ece4bceb7d8dc1534c276d9db073a147163273dd8966c74d138d1796fb"
+scope:
+  paths:
+    - ".intent/changes/CHG-0013/**"
+    - "src/lib/shared/grading.js"
+    - "src/routes/api/test/+server.js"
+    - "src/routes/api/test/submit/+server.js"
+    - "src/lib/client/storage.js"
+    - "docs/architecture.md"
+    - "tests/e2e/cross-device-results.e2e.js"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

@@ -1,3 +1,45 @@
+---
+protocol_version: "2.0"
+id: "CHG-0010"
+title: "Let a user set the name they are shown by, from the profile page"
+status: "complete"
+created_at: "2026-10-09T17:25:00Z"
+request: "Allow updating the user name and the profile user name in the profile page, along with the other details."
+proposal:
+  revision: 1
+  digest: "sha256:4bd14f22b613c3d5a7bfc7fc4fc40a3be022cb89e15062f8eea1dd94188fe909"
+scope:
+  paths:
+    - ".intent/changes/CHG-0010/**"
+    - "README.md"
+    - "docs/architecture.md"
+    - "src/lib/client/ProfileWizard.svelte"
+    - "src/lib/client/profile.js"
+    - "src/lib/locales/english.json"
+    - "src/lib/locales/hindi.json"
+    - "src/lib/server/auth.db.test.js"
+    - "src/lib/server/auth.js"
+    - "src/lib/server/schemaMigrations.test.js"
+    - "src/lib/server/storage.js"
+    - "src/lib/shared/displayName.js"
+    - "src/routes/api/user/profile/+server.js"
+    - "src/routes/profile/+page.svelte"
+    - "tests/e2e/passkeySignIn.js"
+    - "tests/e2e/passkeys.e2e.js"
+    - "tests/e2e/profile-name.e2e.js"
+test_changes:
+  - path: "src/lib/server/schemaMigrations.test.js"
+    kind: "modified"
+    reason: "DDL_FINGERPRINT moves to 553f8fb1...:12 because this change adds app_user.name_edited_at and bumps SCHEMA_VERSION from 11 to 12; the guard requires the fingerprint and the version to move together. No assertion weakened."
+  - path: "tests/e2e/passkeys.e2e.js"
+    kind: "modified"
+    reason: "Its sign-in helpers moved to tests/e2e/passkeySignIn.js so the new profile spec reuses them instead of duplicating the ceremony. No assertion changed."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

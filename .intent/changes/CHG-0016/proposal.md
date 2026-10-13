@@ -1,3 +1,26 @@
+---
+protocol_version: "2.0"
+id: "CHG-0016"
+title: "Move the results share control below the score as a labeled button"
+status: "complete"
+created_at: "2026-10-12T17:32:09Z"
+request: "Make the share button on the test result page more prominent; move it from the top-right corner to below the score."
+proposal:
+  revision: 1
+  digest: "sha256:93664b526525d8dc125c25226f8a5bc3120c96f9c69e13bd8155e39a184bdf82"
+scope:
+  paths:
+    - ".intent/changes/CHG-0016/**"
+    - "src/routes/results/+page.svelte"
+    - "src/lib/locales/english.json"
+    - "src/lib/locales/hindi.json"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

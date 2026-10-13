@@ -1,3 +1,29 @@
+---
+protocol_version: "2.0"
+id: "CHG-0008"
+title: "Make full-exam papers carry a marking scheme so the marks view works"
+status: "complete"
+created_at: "2026-10-09T09:45:04Z"
+request: "Full-exam papers must carry the marking scheme their pattern defines, so submitted attempts store marks and the results marks row can render."
+proposal:
+  revision: 1
+  digest: "sha256:198db185504a35b0ceb169db35c3fa7da4c52c6e60da7dff1e1db1c37ac4a46e"
+scope:
+  paths:
+    - ".intent/changes/CHG-0008/**"
+    - ".github/workflows/exam-patterns.yml"
+    - "package.json"
+    - "scripts/warm-exam-patterns.mjs"
+    - "src/lib/server/examPatternWarmup.js"
+    - "src/lib/server/examPatternWarmup.test.js"
+    - "src/routes/api/generate/+server.js"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

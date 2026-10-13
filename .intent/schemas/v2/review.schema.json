@@ -1,12 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Intent review evidence v1",
+  "title": "Intent review evidence v2",
   "type": "object",
   "additionalProperties": false,
   "required": ["protocol_version", "change_id", "reviews"],
   "properties": {
     "protocol_version": {
-      "const": "1.0"
+      "type": "string",
+      "minLength": 1,
+      "description": "The protocol version the evidence was written under; migrated v1 evidence keeps 1.0."
     },
     "change_id": {
       "type": "string",

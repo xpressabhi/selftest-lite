@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Intent change record v1",
+  "title": "Intent change record v2 (proposal.md front matter)",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,13 +11,11 @@
     "created_at",
     "request",
     "proposal",
-    "scope",
-    "decisions",
     "review_required"
   ],
   "properties": {
     "protocol_version": {
-      "const": "1.0"
+      "const": "2.0"
     },
     "id": {
       "type": "string",
@@ -36,7 +34,8 @@
         "approved",
         "implementing",
         "conformance_review",
-        "complete"
+        "complete",
+        "withdrawn"
       ]
     },
     "created_at": {
@@ -45,48 +44,29 @@
     },
     "request": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "One line: the requested observable outcome."
     },
     "proposal": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "revision", "digest"],
+      "required": ["revision", "digest"],
       "properties": {
-        "path": {
-          "const": "proposal.md"
-        },
         "revision": {
           "type": "integer",
           "minimum": 1
         },
         "digest": {
           "type": "string",
-          "pattern": "^sha256:[a-f0-9]{64}$"
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 of the body bytes (after the front matter) with all CR bytes removed."
         }
       }
     },
     "scope": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["included", "excluded"],
       "properties": {
-        "included": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "excluded": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
         "paths": {
           "type": "array",
           "uniqueItems": true,
@@ -98,15 +78,6 @@
         }
       }
     },
-    "preserved": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1
-      },
-      "description": "Behavior and tests that remain unchanged; exceptions belong in test_changes and the proposal."
-    },
     "test_changes": {
       "type": "array",
       "items": {
@@ -116,10 +87,12 @@
         "properties": {
           "path": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Exact path or glob of a pre-existing test the change edits, deletes, or skips."
           },
           "kind": {
-            "enum": ["added", "modified", "deleted", "skipped"]
+            "enum": ["added", "modified", "deleted", "skipped"],
+            "description": "Documentation of the expected edit; verification matches paths."
           },
           "reason": {
             "type": "string",
@@ -128,12 +101,37 @@
         }
       }
     },
-    "decisions": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "related": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Change IDs whose decisions or context this change depends on."
+        },
+        "supersedes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Change IDs this change replaces or re-opens."
+        },
+        "decisions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Project decision IDs (DEC-*) that constrain this change."
+        }
       }
     },
     "review_required": {

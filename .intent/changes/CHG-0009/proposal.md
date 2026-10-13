@@ -1,3 +1,57 @@
+---
+protocol_version: "2.0"
+id: "CHG-0009"
+title: "Add passkey sign-up and sign-in to the existing account model"
+status: "complete"
+created_at: "2026-10-09T13:10:00Z"
+request: "Let a new user create an account and sign in with a passkey instead of a Google account, and let a signed-in user manage those passkeys with Google as the recovery path."
+proposal:
+  revision: 1
+  digest: "sha256:291bf5395659e2a49f8a7864018b2e898014a861d961728da3f129ee9efa296d"
+scope:
+  paths:
+    - ".intent/changes/CHG-0009/**"
+    - ".env.example"
+    - "README.md"
+    - "docs/architecture.md"
+    - "docs/superpowers/specs/2026-10-09-passkeys-design.md"
+    - "package.json"
+    - "package-lock.json"
+    - "scripts/check-unused-locale-keys.mjs"
+    - "src/lib/client/auth.js"
+    - "src/lib/client/passkeys.js"
+    - "src/lib/locales/english.json"
+    - "src/lib/locales/hindi.json"
+    - "src/lib/server/auth.js"
+    - "src/lib/server/passkey.js"
+    - "src/lib/server/schemaMigrations.test.js"
+    - "src/lib/server/storage.js"
+    - "src/lib/shared/dataArchive.js"
+    - "src/lib/shared/passkeyPolicy.js"
+    - "src/lib/shared/passkeyPolicy.test.js"
+    - "src/lib/shared/telemetryEvents.js"
+    - "src/routes/+layout.svelte"
+    - "src/routes/api/auth/google/+server.js"
+    - "src/routes/api/auth/passkey/**"
+    - "src/routes/exam-paper/+page.svelte"
+    - "src/routes/profile/+page.svelte"
+    - "tests/e2e/passkeys.e2e.js"
+test_changes:
+  - path: "src/lib/server/schemaMigrations.test.js"
+    kind: "modified"
+    reason: "DDL_FINGERPRINT records the hash of the DDL in ensureStorageSchema together with the SCHEMA_VERSION it ships with. This change adds DDL and bumps the version 10 -> 11, so the recorded pair moves to b8140dda...:11. No assertion was weakened; the guard failed until the version bump was made."
+  - path: "src/lib/shared/passkeyPolicy.test.js"
+    kind: "added"
+    reason: "New 35-test file for the pure passkey policy, written before the module existed."
+  - path: "tests/e2e/passkeys.e2e.js"
+    kind: "added"
+    reason: "New seven-spec file driving the ceremony through a CDP virtual authenticator."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

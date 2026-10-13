@@ -1,3 +1,28 @@
+---
+protocol_version: "2.0"
+id: "CHG-0004"
+title: "Visible statement numbers in rendered markdown lists"
+status: "complete"
+created_at: "2026-10-01T05:00:03Z"
+request: "Statement-based questions show their statement numbers; test 1822 and every rendered markdown list keep visible list markers."
+proposal:
+  revision: 1
+  digest: "sha256:e7e9771de40ea189097466ffc8d64a3f9c6f0f41289ebd0af30ec32c94342c30"
+scope:
+  paths:
+    - ".intent/**"
+    - "src/**"
+    - "tests/**"
+test_changes:
+  - path: "tests/e2e/question-formats.e2e.js"
+    kind: "modified"
+    reason: "Assert visible decimal markers and indent on statement lists."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

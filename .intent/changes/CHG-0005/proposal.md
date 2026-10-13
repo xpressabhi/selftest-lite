@@ -1,3 +1,30 @@
+---
+protocol_version: "2.0"
+id: "CHG-0005"
+title: "Mobile shell: Practice tab in the bottom bar and a denser hamburger menu"
+status: "complete"
+created_at: "2026-10-01T05:15:03Z"
+request: "Mobile footer gains a Practice Exams tab next to the gray Create quick-test link, and the right-side hamburger navigation display is optimized."
+proposal:
+  revision: 1
+  digest: "sha256:3dc2a85a4834882b8fd1c37e39526be93bb5536ddcbd685d1f17db0723059f1d"
+scope:
+  paths:
+    - ".intent/changes/CHG-0005/**"
+    - "src/routes/+layout.svelte"
+    - "src/lib/locales/english.json"
+    - "src/lib/locales/hindi.json"
+    - "tests/e2e/taste-pass.e2e.js"
+test_changes:
+  - path: "tests/e2e/taste-pass.e2e.js"
+    kind: "modified"
+    reason: "The shell contract pins the bottom-nav item count at 4; the requested Practice tab makes it 5, and the new tab's destination is asserted."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

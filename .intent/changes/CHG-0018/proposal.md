@@ -1,3 +1,47 @@
+---
+protocol_version: "2.0"
+id: "CHG-0018"
+title: "Speed up and de-duplicate the test suites"
+status: "complete"
+created_at: "2026-10-13T05:23:38Z"
+request: "Refactor or remove unit tests or e2e tests if they are too much and double check the same thing, ideally i want them to run faster."
+proposal:
+  revision: 1
+  digest: "sha256:b48c59f29737a3dc6aee787bcf61487bf640e5bda5058beb65a65a680187ac8b"
+scope:
+  paths:
+    - ".intent/changes/CHG-0018/**"
+    - "playwright.config.js"
+    - "tests/e2e/**"
+    - "src/lib/server/transientErrors.test.js"
+test_changes:
+  - path: "tests/e2e/page-width.e2e.js"
+    kind: "modified"
+    reason: "Deleted 'the content column does not move between pages': the per-page tests already pin absolute container left/right to the centered-column formula, so cross-page movement is impossible without an individual page failing."
+  - path: "tests/e2e/design-consistency.e2e.js"
+    kind: "modified"
+    reason: "settled() waits two animation frames after fonts instead of a flat 200ms (~25s of pure sleeping removed); the five-breakpoint shell test was split into five per-width tests so tests can run in parallel. Same matrix and audits."
+  - path: "tests/e2e/sign-in-methods.e2e.js"
+    kind: "modified"
+    reason: "Google-link seeds use a unique sub/email per call; the previous constant identity violated UNIQUE constraints when tests ran in parallel. Assertions now use the seeded values."
+  - path: "tests/e2e/test-cache.e2e.js"
+    kind: "modified"
+    reason: "mode: 'default' opt-out from fullyParallel (documented cache re-warm race). No test body change."
+  - path: "tests/e2e/security-hardening.e2e.js"
+    kind: "modified"
+    reason: "mode: 'default' opt-out from fullyParallel (tests intentionally consume shared rate-limit budget). No test body change."
+  - path: "tests/e2e/exam-notifications.e2e.js"
+    kind: "modified"
+    reason: "mode: 'default' opt-out from fullyParallel (tests share a seeded set a concurrent sync could mutate). No test body change."
+  - path: "src/lib/server/transientErrors.test.js"
+    kind: "modified"
+    reason: "One case used fake timers instead of sleeping 750ms of real time; identical assertion."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

@@ -1,3 +1,50 @@
+---
+protocol_version: "2.0"
+id: "CHG-0003"
+title: "Statement-based true/false question format"
+status: "complete"
+created_at: "2026-10-01T04:32:01Z"
+request: "The true-false test type generates the Hindi-exam statement format: 3-4 numbered statements, a which-are-correct closing line, and four combination options, replacing the binary satya/asatya output for new papers."
+proposal:
+  revision: 3
+  digest: "sha256:c27784295aace7d05688c2f2acbef38ebd319e4f354aeccef9f16989073642ca"
+scope:
+  paths:
+    - ".intent/**"
+    - "docs/**"
+    - "src/**"
+    - "tests/**"
+test_changes:
+  - path: "src/lib/shared/intentLexicon.test.js"
+    kind: "added"
+    reason: "True/false intent wording in both languages."
+  - path: "src/lib/server/statementBuilder.test.js"
+    kind: "added"
+    reason: "New builder failure-mode and option-grammar tests."
+  - path: "src/lib/server/quizSchema.test.js"
+    kind: "modified"
+    reason: "true-false now has a dedicated statements schema instead of the legacy shape."
+  - path: "src/lib/server/quizValidation.test.js"
+    kind: "modified"
+    reason: "Binary true/false expectations replaced with statement-based validation coverage."
+  - path: "src/lib/server/prompt.test.js"
+    kind: "modified"
+    reason: "Assert the statements-only contract for true-false; legacy formats keep the option contract."
+  - path: "src/lib/shared/questionText.test.js"
+    kind: "modified"
+    reason: "Raw statement-draft composition for salvage quotes."
+  - path: "src/lib/server/questionQuality.test.js"
+    kind: "modified"
+    reason: "statement-based questions are server-built: no reshuffle and no longest-answer tell."
+  - path: "tests/e2e/question-formats.e2e.js"
+    kind: "modified"
+    reason: "New Hindi and English statement-paper render/score scenarios."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

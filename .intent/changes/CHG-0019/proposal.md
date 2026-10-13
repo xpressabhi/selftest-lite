@@ -1,3 +1,42 @@
+---
+protocol_version: "2.0"
+id: "CHG-0019"
+title: "Remove the Capacitor Android app and its repo footprint"
+status: "complete"
+created_at: "2026-10-13T06:02:53Z"
+request: "cleanup android related setup and apk and related thing from this repo"
+proposal:
+  revision: 1
+  digest: "sha256:fec3eb593fca55fd43f8f5a0431442ed285f912dc60e0144a56875d901fef5a8"
+scope:
+  paths:
+    - ".intent/changes/CHG-0019/**"
+    - "android/**"
+    - "capacitor.config.json"
+    - "scripts/generate-android-assets.mjs"
+    - "static/apk/**"
+    - "static/.well-known/**"
+    - "src/routes/auth/redirect/**"
+    - "src/lib/client/**"
+    - "src/lib/locales/**"
+    - "src/lib/shared/telemetryEvents.js"
+    - "src/lib/styles/globals.css"
+    - "src/routes/+layout.svelte"
+    - "package.json"
+    - "package-lock.json"
+    - "vercel.json"
+    - ".gitignore"
+    - ".env.example"
+test_changes:
+  - path: "src/lib/client/deviceProfile.test.js"
+    kind: "modified"
+    reason: "Dropped the native-shell case from the standalone test (renamed to 'marks standalone when installed as a PWA') and removed the now-unused Capacitor stubs. No other test file changed; nothing skipped or deleted."
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

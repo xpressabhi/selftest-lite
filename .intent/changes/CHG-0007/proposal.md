@@ -1,3 +1,24 @@
+---
+protocol_version: "2.0"
+id: "CHG-0007"
+title: "Pin serverless functions to the database region (sin1) in vercel.json"
+status: "complete"
+created_at: "2026-10-09T08:50:59Z"
+request: "Remove the cross-region round trip that makes every DB-backed request slow: run the functions in the same region as the Neon database."
+proposal:
+  revision: 1
+  digest: "sha256:b1be375e645b1736469e76096a4cbcecf4c28e49fe8bdbfc7ab85c23a2121dbb"
+scope:
+  paths:
+    - ".intent/changes/CHG-0007/**"
+    - "vercel.json"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome

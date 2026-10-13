@@ -1,3 +1,25 @@
+---
+protocol_version: "2.0"
+id: "CHG-0014"
+title: "Backfill attempt-to-account links for anonymous attempts on provably owned devices"
+status: "complete"
+created_at: "2026-10-12T17:04:47Z"
+request: "Old tests taken while signed in must show results everywhere; backfill the account link where we know who took the test."
+proposal:
+  revision: 1
+  digest: "sha256:582e4634ee316b09aa545b3cea390191af11d74fbdaf8b46ce03a09787a140df"
+scope:
+  paths:
+    - ".intent/changes/CHG-0014/**"
+    - "scripts/backfill-attempt-links.mjs"
+    - "package.json"
+test_changes: []
+links:
+  related: []
+  supersedes: []
+  decisions: []
+review_required: false
+---
 # Change intent
 
 ## Request and outcome
