@@ -83,7 +83,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -516,6 +516,30 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_question_explanations_last_used
 			ON question_explanations (last_used_at DESC)
+		`);
+
+		// Cross-user concept explainer cache: one composed artifact per
+		// concept+context+language+versions, reused by every later request.
+		// Payload is the model fragment; the served document is composed at
+		// read time so the viewer's theme is honored. Append/update only;
+		// nothing is deleted (see AGENTS.md).
+		await query(`
+			CREATE TABLE IF NOT EXISTS concept_explainers (
+				id BIGSERIAL PRIMARY KEY,
+				cache_key TEXT NOT NULL UNIQUE,
+				language TEXT NOT NULL DEFAULT 'english',
+				concept TEXT,
+				payload JSONB NOT NULL,
+				model TEXT,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				use_count INTEGER NOT NULL DEFAULT 0
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_concept_explainers_last_used
+			ON concept_explainers (last_used_at DESC)
 		`);
 
 		// Per-test visitor ledger: who opened a test, who started it, and who

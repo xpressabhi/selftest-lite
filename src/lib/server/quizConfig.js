@@ -55,3 +55,9 @@ export const MAX_ARTIFACT_HTML_BYTES = 96 * 1024;
 export const MAX_ARTIFACT_CSS_BYTES = 32 * 1024;
 export const MAX_ARTIFACT_JS_BYTES = 24 * 1024;
 export const MAX_ARTIFACT_DOCUMENT_BYTES = 150 * 1024;
+
+/**
+ * Prompt semantics version for the explainer cache key. Bump when the brief or
+ * artifact prompts change in a way that should supersede cached artifacts.
+ */
+export const ARTIFACT_PROMPT_VERSION = 'prompt-v1';

@@ -6,8 +6,8 @@ status: "draft"
 created_at: "2026-10-14T11:30:00Z"
 request: "Research HTML in question explanations or build a playground that explains a topic via a detailed HTML artifact with CSS/JS animation; the playground direction was chosen"
 proposal:
-  revision: 1
-  digest: "sha256:5168c5d35120ead0b4b0a06d0459f78fe8fa876c7a587ae23eef2267f8b923e4"
+  revision: 2
+  digest: "sha256:744063d81b87431c34aabb24462fbf1eb66fef7635fde34ab544a25f69a0ac7f"
 scope:
   paths:
     - ".intent/changes/CHG-0020/**"
@@ -33,7 +33,9 @@ scope:
     - "scripts/eval-artifact*"
     - "package.json"
     - "package-lock.json"
-test_changes: []
+test_changes:
+  - path: "src/lib/server/schemaMigrations.test.js"
+    reason: "Recorded DDL fingerprint update required by the intentional ensureStorageSchema change (new concept_explainers table); SCHEMA_VERSION bumped 12 to 13. The guard's assertions are unchanged."
 links:
   related: []
   supersedes: []
@@ -67,7 +69,9 @@ The markdown explanation pipeline (`markdownRenderer.js`, `MarkdownContent.svelt
 
 ## Test changes
 
-None. New tests only: `src/lib/shared/playgroundLink.test.js`, `src/lib/server/artifactValidation.test.js`, `src/lib/server/artifactScaffold.test.js`, `src/lib/server/explainerCache.test.js`, `src/lib/server/artifactSchema.test.js`, `src/lib/server/artifactPrompt.test.js`, `tests/e2e/playground.e2e.js`.
+`src/lib/server/schemaMigrations.test.js`: the recorded `DDL_FINGERPRINT` is updated and unchanged assertions now cover the new `concept_explainers` DDL, paired with the `SCHEMA_VERSION` 12 → 13 bump in `storage.js`. This is the guard's designed workflow, not a weakened test.
+
+New tests only otherwise: `src/lib/shared/playgroundLink.test.js`, `src/lib/server/artifactValidation.test.js`, `src/lib/server/artifactScaffold.test.js`, `src/lib/server/explainerCache.test.js`, `src/lib/server/artifactSchema.test.js`, `src/lib/server/artifactPrompt.test.js`, `tests/e2e/playground.e2e.js`.
 
 ## Decisions and constraints
 
