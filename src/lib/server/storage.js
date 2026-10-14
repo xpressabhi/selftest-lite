@@ -83,7 +83,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -542,6 +542,41 @@ export async function ensureStorageSchema() {
 			ON concept_explainers (last_used_at DESC)
 		`);
 
+		// Per-identity explainer library: which cached explainers a user or
+		// device has seen, so the playground can list and reopen them without
+		// spending tokens. Rows reference the shared cache by cache_key and
+		// are append/update only; nothing is deleted (see AGENTS.md).
+		await query(`
+			CREATE TABLE IF NOT EXISTS user_explainers (
+				id BIGSERIAL PRIMARY KEY,
+				user_id BIGINT,
+				client_id TEXT,
+				cache_key TEXT NOT NULL,
+				concept TEXT,
+				title TEXT,
+				summary TEXT,
+				language TEXT NOT NULL DEFAULT 'english',
+				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				open_count INTEGER NOT NULL DEFAULT 0
+			)
+		`);
+
+		await query(`
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_user_explainers_user_key
+			ON user_explainers (user_id, cache_key) WHERE user_id IS NOT NULL
+		`);
+
+		await query(`
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_user_explainers_client_key
+			ON user_explainers (client_id, cache_key) WHERE user_id IS NULL
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_user_explainers_last_opened
+			ON user_explainers (last_opened_at DESC)
+		`);
+
 		// Per-test visitor ledger: who opened a test, who started it, and who
 		// submitted. Counters shown publicly derive from this table; rows are
 		// upserted by identity and never deleted (see AGENTS.md).
@@ -786,7 +821,7 @@ export async function createTestAttempt({
 	return result.rows[0]?.id;
 }
 
-function normalizeAttemptIdentity({ userId = null, clientId = null } = {}) {
+export function normalizeAttemptIdentity({ userId = null, clientId = null } = {}) {
 	const normalizedUserId = normalizeUserIdValue(userId);
 	const normalizedClientId =
 		typeof clientId === 'string' && clientId.trim().length >= 8
