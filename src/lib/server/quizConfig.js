@@ -43,3 +43,15 @@ export const MAX_REQUEST_BODY_BYTES = 2 * 1024 * 1024;
 export const MAX_GENERATION_OUTPUT_TOKENS = 8192;
 export const MAX_EXPLANATION_OUTPUT_TOKENS = 2048;
 export const MAX_PATTERN_OUTPUT_TOKENS = 4096;
+
+/**
+ * Concept playground artifact ceilings. The model writes a body fragment
+ * (html/css/js); the composed document cap bounds what an iframe ever parses
+ * on a low-end device, and the per-field caps bound what one billed call can
+ * produce before validation and repair run. See
+ * docs/superpowers/specs/2026-10-14-playground-explainer-design.md.
+ */
+export const MAX_ARTIFACT_HTML_BYTES = 96 * 1024;
+export const MAX_ARTIFACT_CSS_BYTES = 32 * 1024;
+export const MAX_ARTIFACT_JS_BYTES = 24 * 1024;
+export const MAX_ARTIFACT_DOCUMENT_BYTES = 150 * 1024;
