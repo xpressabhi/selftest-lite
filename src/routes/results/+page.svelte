@@ -1371,6 +1371,7 @@
 
 		<ResultReviewList
 			questions={filteredQuestions}
+			topic={questionPaper.topic}
 			userAnswers={questionPaper.userAnswers}
 			{expanded}
 			{bookmarkPulse}

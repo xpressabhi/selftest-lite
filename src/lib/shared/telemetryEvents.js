@@ -59,6 +59,7 @@ export const TELEMETRY_EVENTS = new Set([
 
 	// Concept playground (animated HTML explainers)
 	'playground:open',
+	'playground:entry-from-review',
 	'playground:generate-requested',
 	'playground:generate-result',
 

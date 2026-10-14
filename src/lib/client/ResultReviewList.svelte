@@ -2,6 +2,7 @@
 	import ResultReviewItem from './ResultReviewItem.svelte';
 
 	let {
+		topic = '',
 		questions,
 		userAnswers,
 		expanded,
@@ -25,6 +26,7 @@
 		<ResultReviewItem
 			{question}
 			{index}
+			{topic}
 			{userAnswers}
 			{expanded}
 			{bookmarkPulse}

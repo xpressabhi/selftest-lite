@@ -981,5 +981,6 @@
 	"playgroundDrawing": "Drawing and animating…",
 	"playgroundFromYourQuestion": "From your question",
 	"playgroundNewConcept": "New concept",
-	"playgroundErrorIntro": "The explainer could not be created."
+	"playgroundErrorIntro": "The explainer could not be created.",
+	"explainVisually": "Explain visually"
 }
