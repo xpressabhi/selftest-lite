@@ -56,6 +56,18 @@ export const MAX_ARTIFACT_CSS_BYTES = 32 * 1024;
 export const MAX_ARTIFACT_JS_BYTES = 24 * 1024;
 export const MAX_ARTIFACT_DOCUMENT_BYTES = 150 * 1024;
 
+export const ARTIFACT_BRIEF_MODEL = 'gemini-flash-lite-latest';
+/**
+ * Artifact model. The value is settled by the `npm run eval:artifact` report
+ * (validity ≥ 7/8, animation ≥ 6/8, zero external requests, size budget); a
+ * stronger Flash alias replaces the lite default only with that evidence.
+ */
+export const ARTIFACT_MODEL = 'gemini-flash-lite-latest';
+export const MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS = 1024;
+export const MAX_ARTIFACT_OUTPUT_TOKENS = 8192;
+export const ARTIFACT_DEADLINE_MS = 90000;
+export const ARTIFACT_RATE_LIMIT = 5;
+
 /**
  * Prompt semantics version for the explainer cache key. Bump when the brief or
  * artifact prompts change in a way that should supersede cached artifacts.
