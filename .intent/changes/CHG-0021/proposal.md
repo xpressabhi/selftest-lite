@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0021"
 title: "Per-identity explainer library on the playground"
-status: "draft"
+status: "complete"
 created_at: "2026-10-14T13:05:00Z"
 request: "store generated explainers per user and list them on the playground page so they can be reviewed and reused without spending tokens again"
 proposal:

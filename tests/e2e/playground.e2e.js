@@ -319,6 +319,130 @@ test('keeps the artifact display inside the phone viewport', async ({ page }) =>
 	expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test('records a served explainer in the caller library and isolates identities', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const topic = 'e2e-library-record';
+	const clientId = 'e2e-library-client-alpha';
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Library title',
+			summary: 'Library summary',
+			recipes: ['step-reveal'],
+			html: '<p id="e2e-library-marker">library body</p>',
+			css: '',
+			js: '',
+		},
+	});
+
+	// A cache hit is enough to land in the library: the caller received it.
+	const served = await request.post('/api/playground', {
+		data: { topic, theme: 'light', profile: { viewport: 'wide', budget: 'full' } },
+		headers: { 'x-client-id': clientId },
+	});
+	expect(served.status()).toBe(200);
+	expect((await served.json()).cached).toBe(true);
+
+	const listed = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	expect(listed.status()).toBe(200);
+	const items = (await listed.json()).items;
+	const item = items.find((entry) => entry.concept === 'Library title');
+	expect(item).toBeTruthy();
+	expect(item.title).toBe('Library title');
+	expect(item.language).toBe('english');
+
+	// Another device sees none of it.
+	const otherIdentity = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': 'e2e-library-client-beta' },
+	});
+	const otherItems = (await otherIdentity.json()).items;
+	expect(otherItems.some((entry) => entry.concept === 'Library title')).toBe(false);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			listed: items.length,
+			itemFound: Boolean(item),
+			isolatedFromOtherIdentity: !otherItems.some(
+				(entry) => entry.concept === 'Library title'
+			),
+		}),
+	});
+});
+
+test('opens a saved explainer from the cache and counts the open', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const topic = 'e2e-library-open';
+	const clientId = 'e2e-library-client-gamma';
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Open me',
+			summary: 's',
+			recipes: [],
+			html: '<p id="e2e-open-marker">open body</p>',
+			css: '',
+			js: '',
+		},
+	});
+	await request.post('/api/playground', {
+		data: { topic, theme: 'light', profile: { viewport: 'wide', budget: 'full' } },
+		headers: { 'x-client-id': clientId },
+	});
+
+	const listed = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	const item = (await listed.json()).items.find((entry) => entry.title === 'Open me');
+	expect(item).toBeTruthy();
+
+	const opened = await request.get(`/api/playground/library?id=${item.id}&theme=dark`, {
+		headers: { 'x-client-id': clientId },
+	});
+	expect(opened.status()).toBe(200);
+	const payload = await opened.json();
+	expect(payload.cached).toBe(true);
+	expect(payload.html.startsWith('<!doctype html>')).toBe(true);
+	expect(payload.html).toContain('e2e-open-marker');
+	expect(payload.html).toContain('data-theme="dark"');
+
+	// Another identity cannot open it by guessing the id.
+	const stranger = await request.get(`/api/playground/library?id=${item.id}`, {
+		headers: { 'x-client-id': 'e2e-library-client-delta' },
+	});
+	expect(stranger.status()).toBe(404);
+
+	const relisted = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	const reopened = (await relisted.json()).items.find((entry) => entry.title === 'Open me');
+	expect(reopened.openCount).toBe(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			openedCached: payload.cached,
+			themeServed: payload.html.includes('data-theme="dark"'),
+			strangerStatus: stranger.status(),
+			openCount: reopened.openCount,
+		}),
+	});
+});
+
 test('rejects malformed playground requests', async ({ request }) => {
 	const missingTopic = await request.post('/api/playground', { data: { question: 'Q' } });
 	expect(missingTopic.status()).toBe(400);
