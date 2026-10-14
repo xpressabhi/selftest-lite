@@ -50,6 +50,10 @@ const SCRIPT_BREAKOUT = /<\/script/i;
 const STYLE_BREAKOUT = /<\/style/i;
 const CSS_IMPORT = /@import/i;
 const EXTERNAL_URL = /https?:\/\//i;
+// Pure-black colours break the theming contract: a black border or shadow is
+// off-system in light mode and invisible in dark mode. Rejected so the repair
+// loop can swap them for tokens.
+const HARDCODED_BLACK = /(#000(000)?\b|\bblack\b|rgba?\(\s*0\s*,\s*0\s*,\s*0\b)/i;
 
 /** Returns the first url() target that is not a data: URL, or null. */
 function findNonDataUrl(css) {
@@ -149,6 +153,9 @@ export function validateArtifactPayload(payload, limits = {}) {
 	}
 	if (STYLE_BREAKOUT.test(css)) {
 		issues.push({ code: 'css-breakout', detail: '</style' });
+	}
+	if (HARDCODED_BLACK.test(css)) {
+		issues.push({ code: 'css-hardcoded-colour', detail: 'pure black colour' });
 	}
 
 	for (const token of JS_DENYLIST) {

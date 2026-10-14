@@ -87,3 +87,23 @@ animated, 25–73 s per concept. The gates require ≥ 7/8 valid and ≥ 6/8 ani
 `deepseek-v4.1-flash` remains **not** a validated artifact model and the repo defaults stay
 Gemini + the Gemini provider. The gateway remains selectable via `EXPLAINER_PROVIDER=opencode`
 (used locally on request); re-run the eval before making it a deployment default.
+
+## Styling pass (scaffold-v3, prompt-v2)
+
+The artifact shell now follows docs/design-system.md directly: token names mirror globals.css
+(--surface, --surface-muted, --text, --text-muted, --line, --brand, --ok, --warn, --danger), the
+three radius tokens are the only radii, spacing uses the 4px grid with the documented 480/768
+breakpoints (body padding 12→16→24px, .stage 16→24px), header/main cap at 720px, and prose
+defaults style h2/h3, lists, code/pre, blockquote, tables, figures, links and range inputs. The
+prompt adds a styling contract (tokens only — no raw colour values, not even the token values;
+borders 1px solid var(--line); never repeat the shell title/summary) and the validator now
+rejects pure-black colours (#000 / black / rgb(0,0,0)) so the repair loop swaps them for tokens —
+the first live screenshot showed the model hardcoding a near-black border that read off-system in
+light mode and disappeared in dark mode.
+
+Visual verification (live Gemini artifact, both themes at 390×844 and 1280×800): tokens flip
+with the theme, spacing follows the grid, the phone layout is a clean single column, and the
+desktop column centers at 720px; the duplicate-title issue from the first screenshot is gone.
+Post-change eval (`--strict`): 7/8 valid, 7/8 measurably animated, 0 external requests,
+0 over budget — the single failure is a model-authored JS null-reference in the DNA-replication
+artifact (nondeterministic sloppiness of the same class recorded earlier).

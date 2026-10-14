@@ -131,6 +131,24 @@ describe('validateArtifactPayload', () => {
 			expect(codesFor({ ...goodPayload, css: '.a { content: "</style>"; }' })).toContain('css-breakout');
 			expect(codesFor({ ...goodPayload, css: '.a { content: "</STYLE >"; }' })).toContain('css-breakout');
 		});
+
+		it('rejects hardcoded black colours but allows token usage and other hexes', () => {
+			expect(codesFor({ ...goodPayload, css: '.a { border: 2px solid #000; }' })).toContain(
+				'css-hardcoded-colour'
+			);
+			expect(codesFor({ ...goodPayload, css: '.a { color: black; }' })).toContain(
+				'css-hardcoded-colour'
+			);
+			expect(codesFor({ ...goodPayload, css: '.a { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4); }' })).toContain(
+				'css-hardcoded-colour'
+			);
+			expect(
+				validateArtifactPayload({
+					...goodPayload,
+					css: '.a { border: 1px solid var(--line); color: #0000ff; }',
+				}).ok
+			).toBe(true);
+		});
 	});
 
 	describe('js', () => {

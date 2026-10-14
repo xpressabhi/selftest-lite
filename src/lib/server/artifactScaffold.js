@@ -1,11 +1,13 @@
 // Server-owned shell for concept artifacts. The model writes only a body
 // fragment ({ html, css, js }); everything structural — doctype, language,
 // theme, CSP, base CSS, sizing script — is composed here so it can never be
-// model-controlled. Bump ARTIFACT_SCAFFOLD_VERSION when this template changes:
-// it is part of the explainer cache key, so a bump supersedes old rows without
+// model-controlled. The base styling follows docs/design-system.md: app token
+// names, the 480/768 breakpoints, the 4px spacing grid, and the three radius
+// tokens only. Bump ARTIFACT_SCAFFOLD_VERSION when this template changes: it
+// is part of the explainer cache key, so a bump supersedes old rows without
 // deleting them.
 
-export const ARTIFACT_SCAFFOLD_VERSION = 'scaffold-v2';
+export const ARTIFACT_SCAFFOLD_VERSION = 'scaffold-v3';
 
 /** Animation vocabulary the brief may pick from. Ids are validated by schema. */
 export const ARTIFACT_RECIPES = [
@@ -41,70 +43,145 @@ const CSP_CONTENT =
 	"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; base-uri 'none'";
 
 const BASE_CSS = `
+/* Theme tokens mirror src/lib/styles/globals.css so an artifact always reads
+   as part of the app. Components must consume these, never raw colours. */
+:root {
+	--radius-control: 10px;
+	--radius-surface: 12px;
+	--radius-overlay: 16px;
+}
 :root[data-theme='light'] {
 	color-scheme: light;
-	--bg: #f8fafc;
 	--surface: #ffffff;
+	--surface-muted: #f8fafc;
 	--text: #111827;
-	--muted: #64748b;
+	--text-muted: #64748b;
 	--line: #e2e8f0;
 	--brand: #4f46e5;
-	--success: #15803d;
+	--ok: #15803d;
+	--warn: #b45309;
 	--danger: #b91c1c;
 }
 :root[data-theme='dark'] {
 	color-scheme: dark;
-	--bg: #0f172a;
 	--surface: #111827;
+	--surface-muted: #0f172a;
 	--text: #f8fafc;
-	--muted: #94a3b8;
+	--text-muted: #94a3b8;
 	--line: #334155;
 	--brand: #a5b4fc;
-	--success: #6ee7b7;
+	--ok: #6ee7b7;
+	--warn: #fcd34d;
 	--danger: #fca5a5;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-	background: var(--bg);
+	background: var(--surface-muted);
 	color: var(--text);
-	font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-	line-height: 1.5;
+	font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	font-size: 1rem;
+	line-height: 1.55;
 	overflow-y: auto;
-	padding: 16px;
+	overflow-x: hidden;
+	padding: 12px;
 }
-.explainer-head h1 { margin: 0 0 4px; font-size: 1.25rem; line-height: 1.3; }
-.explainer-summary { margin: 0 0 16px; color: var(--muted); }
+/* Design-system breakpoints only: 480 (phone), 768 (roomier). */
+@media (min-width: 480px) { body { padding: 16px; } }
+@media (min-width: 768px) { body { padding: 24px; } }
+
+.explainer-head, .explainer-main { width: 100%; max-width: 720px; margin: 0 auto; }
+.explainer-head h1 { margin: 0 0 4px; font-size: 1.35rem; line-height: 1.25; text-wrap: balance; }
+@media (min-width: 768px) { .explainer-head h1 { font-size: 1.6rem; } }
+.explainer-summary { margin: 0 0 16px; color: var(--text-muted); font-size: 0.9rem; }
+@media (min-width: 768px) { .explainer-summary { margin-bottom: 24px; } }
+
+/* Section rhythm: 16 on phones, 24 from 768 up (4px grid only). */
+.explainer-main { display: grid; gap: 16px; }
+@media (min-width: 768px) { .explainer-main { gap: 24px; } }
+
+/* Prose defaults for model markup, so unstyled content still reads well. */
+.explainer-main p { margin: 0 0 12px; }
+.explainer-main p:last-child { margin-bottom: 0; }
+.explainer-main h2 { margin: 0 0 8px; font-size: 1.125rem; line-height: 1.3; }
+@media (min-width: 768px) { .explainer-main h2 { font-size: 1.25rem; } }
+.explainer-main h3 { margin: 0 0 4px; font-size: 1rem; line-height: 1.3; }
+.explainer-main ul, .explainer-main ol { margin: 0 0 12px; padding-left: 20px; }
+.explainer-main li { margin: 4px 0; }
+.explainer-main a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+.explainer-main code {
+	background: var(--surface-muted);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-control);
+	padding: 0 4px;
+	font-size: 0.9em;
+}
+.explainer-main pre {
+	margin: 0 0 12px;
+	background: var(--surface-muted);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-control);
+	padding: 12px;
+	overflow-x: auto;
+}
+.explainer-main pre code { background: none; border: 0; padding: 0; }
+.explainer-main blockquote {
+	margin: 0 0 12px;
+	padding: 4px 12px;
+	border-left: 3px solid var(--brand);
+	color: var(--text-muted);
+}
+.explainer-main img, .explainer-main svg, .explainer-main canvas { max-width: 100%; }
+.explainer-main img, .explainer-main canvas { height: auto; }
+.explainer-main figure { margin: 0 0 12px; }
+.explainer-main figcaption { margin-top: 4px; color: var(--text-muted); font-size: 0.8rem; }
+.explainer-main hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+.explainer-main table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	border-collapse: collapse;
+}
+.explainer-main th, .explainer-main td {
+	border: 1px solid var(--line);
+	padding: 6px 10px;
+	text-align: left;
+}
+.explainer-main th { background: var(--surface-muted); font-weight: 600; }
+
+/* Scaffold components. Cards sit on the surface token, controls keep 44px
+   tap targets, and every radius comes from the three radius tokens. */
 .stage {
 	background: var(--surface);
 	border: 1px solid var(--line);
-	border-radius: 12px;
+	border-radius: var(--radius-surface);
 	padding: 16px;
 }
+@media (min-width: 768px) { .stage { padding: 24px; } }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .control {
 	min-height: 44px;
 	min-width: 44px;
 	padding: 8px 14px;
-	border-radius: 10px;
+	border-radius: var(--radius-control);
 	border: 1px solid var(--line);
 	background: var(--surface);
 	color: var(--text);
 	font: inherit;
 	cursor: pointer;
 }
+.control:hover { border-color: var(--brand); }
 .control:focus-visible {
 	outline: none;
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent);
 }
+input[type='range'] { accent-color: var(--brand); }
 .steps { display: grid; gap: 8px; }
-.step { border-left: 3px solid var(--line); padding-left: 10px; }
+.step { border-left: 3px solid var(--line); padding-left: 12px; }
 .step-active { border-left-color: var(--brand); }
+
 /* Responsive guards: the artifact must fit a 320px phone without the parent
    page scrolling sideways, whatever the model draws. */
-img, svg, canvas { max-width: 100%; }
-img, canvas { height: auto; }
-table { display: block; max-width: 100%; overflow-x: auto; }
-body { overflow-x: hidden; }
 @media (prefers-reduced-motion: reduce) {
 	html[data-motion='reduced'] *,
 	html[data-motion='reduced'] *::before,

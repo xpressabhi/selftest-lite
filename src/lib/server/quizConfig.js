@@ -100,4 +100,4 @@ export const ARTIFACT_RATE_LIMIT = 5;
  * Prompt semantics version for the explainer cache key. Bump when the brief or
  * artifact prompts change in a way that should supersede cached artifacts.
  */
-export const ARTIFACT_PROMPT_VERSION = 'prompt-v1';
+export const ARTIFACT_PROMPT_VERSION = 'prompt-v2';

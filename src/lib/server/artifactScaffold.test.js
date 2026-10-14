@@ -98,14 +98,36 @@ describe('composeArtifactDocument', () => {
 			'toggle-compare',
 		]);
 		expect(ARTIFACT_RECIPES.every((recipe) => recipe.id && recipe.description)).toBe(true);
-		expect(ARTIFACT_SCAFFOLD_VERSION).toBe('scaffold-v2');
+		expect(ARTIFACT_SCAFFOLD_VERSION).toBe('scaffold-v3');
+	});
+
+	it('ships the design-system base styles: tokens, radii, spacing and breakpoints', () => {
+		const document = composeArtifactDocument({ brief, payload, language: 'english' });
+		// Theme tokens mirror the app, so artifacts read as part of it.
+		expect(document).toContain('--radius-control: 10px');
+		expect(document).toContain('--radius-surface: 12px');
+		expect(document).toContain('--radius-overlay: 16px');
+		expect(document).toContain('--surface-muted: #0f172a');
+		expect(document).toContain('--text-muted: #94a3b8');
+		// Responsive spacing on the documented breakpoints only.
+		expect(document).toContain('@media (min-width: 480px) { body { padding: 16px; } }');
+		expect(document).toContain('@media (min-width: 768px) { body { padding: 24px; } }');
+		expect(document).toContain(
+			'.explainer-head, .explainer-main { width: 100%; max-width: 720px; margin: 0 auto; }'
+		);
+		// Prose defaults for model markup.
+		expect(document).toContain('.explainer-main h2');
+		expect(document).toContain('.explainer-main p:last-child { margin-bottom: 0; }');
+		expect(document).toContain('.controls');
 	});
 
 	it('ships responsive guards in the base css', () => {
 		const document = composeArtifactDocument({ brief, payload, language: 'english' });
-		expect(document).toContain('img, svg, canvas { max-width: 100%; }');
-		expect(document).toContain('img, canvas { height: auto; }');
-		expect(document).toContain('table { display: block; max-width: 100%; overflow-x: auto; }');
-		expect(document).toContain('body { overflow-x: hidden; }');
+		expect(document).toContain(
+			'.explainer-main img, .explainer-main svg, .explainer-main canvas { max-width: 100%; }'
+		);
+		expect(document).toContain('.explainer-main img, .explainer-main canvas { height: auto; }');
+		expect(document).toContain('overflow-x: auto');
+		expect(document).toContain('overflow-x: hidden');
 	});
 });

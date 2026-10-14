@@ -51,7 +51,11 @@ describe('generateArtifactPrompt', () => {
 		expect(prompt).toContain('.steps');
 		expect(prompt).toContain('prefers-reduced-motion');
 		expect(prompt).toContain('data-motion');
-		expect(prompt).toContain('Responsive by construction');
+		expect(prompt).toContain('mobile-first from 320px up');
+		expect(prompt).toContain('var(--brand)');
+		expect(prompt).toContain('var(--radius-surface)');
+		expect(prompt).toContain('never write raw colour values');
+		expect(prompt).toContain('do not repeat the shell title or summary');
 		expect(prompt).toContain('"html"');
 		expect(prompt).toContain('"css"');
 		expect(prompt).toContain('"js"');
