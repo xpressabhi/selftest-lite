@@ -24,7 +24,8 @@ test_changes:
   - path: "src/lib/server/schemaMigrations.test.js"
     reason: "Recorded DDL fingerprint update required by the intentional ensureStorageSchema change (new user_explainers table + partial unique indexes); SCHEMA_VERSION bumped 13 to 14. The guard's assertions are unchanged."
 links:
-  related: ["CHG-0020"]
+  related:
+    - "CHG-0020"
   supersedes: []
   decisions: []
 review_required: false
