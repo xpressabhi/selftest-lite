@@ -982,5 +982,9 @@
 	"playgroundFromYourQuestion": "आपके प्रश्न से",
 	"playgroundNewConcept": "नया कॉन्सेप्ट",
 	"playgroundErrorIntro": "एक्सप्लेनर नहीं बन सका।",
+	"errorPlaygroundTopicRequired": "समझाने के लिए एक कॉन्सेप्ट लिखें",
+	"errorPlaygroundTooLong": "कॉन्सेप्ट या संदर्भ बहुत लंबा है",
+	"errorExplainerInvalid": "एक्सप्लेनर ठीक नहीं बना। फिर कोशिश करें।",
+	"errorExplainerFailed": "एक्सप्लेनर बनाते समय कुछ गड़बड़ हुई।",
 	"explainVisually": "विज़ुअल तरीके से समझें"
 }

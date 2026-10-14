@@ -982,5 +982,9 @@
 	"playgroundFromYourQuestion": "From your question",
 	"playgroundNewConcept": "New concept",
 	"playgroundErrorIntro": "The explainer could not be created.",
+	"errorPlaygroundTopicRequired": "Enter a concept to explain",
+	"errorPlaygroundTooLong": "The concept or context is too long",
+	"errorExplainerInvalid": "The explainer did not come out right. Please retry.",
+	"errorExplainerFailed": "Something went wrong while creating the explainer.",
 	"explainVisually": "Explain visually"
 }

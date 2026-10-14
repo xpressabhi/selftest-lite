@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import ArtifactFrame from '#lib/client/ArtifactFrame.svelte';
-	import { activeLanguage, t } from '#lib/client/i18n.js';
+	import { activeLanguage, localizedApiError, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { track } from '#lib/client/telemetry.js';
 	import { bucketClientProfile } from '#lib/shared/playgroundProfile.js';
@@ -111,7 +111,11 @@
 			});
 			const payload = await response.json().catch(() => ({}));
 			if (!response.ok) {
-				throw new Error(payload.error || $t('playgroundErrorIntro'));
+				// Localized copy comes from the shared error-code map, never the
+				// server's English message (bilingual UI is mandatory).
+				const failure = new Error(localizedApiError(payload, $t, response.status));
+				failure.localized = true;
+				throw failure;
 			}
 			artifact = payload;
 			status = 'ready';
@@ -123,7 +127,9 @@
 			});
 		} catch (error) {
 			status = 'error';
-			errorMessage = error?.message || '';
+			// A network failure has no server payload; the localized headline
+			// carries the message.
+			errorMessage = error?.localized === true ? error.message : '';
 			track('playground:generate-result', {
 				status: 'error',
 				cached: false,

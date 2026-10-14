@@ -165,13 +165,28 @@ for (const [index, concept] of concepts.entries()) {
 			});
 			await page.waitForTimeout(400);
 			const first = await page.evaluate(sampleScript());
-			await page.waitForTimeout(1500);
+
+			// The contract encourages manual step controls over autoplay, so a
+			// click-driven artifact must count as animated: measure at rest,
+			// then after the first control click.
+			const controls = page.locator('button, input, [role="button"]');
+			const controlCount = await controls.count();
+			if (controlCount > 0) {
+				await controls
+					.first()
+					.click({ timeout: 2000 })
+					.catch(() => {});
+			}
+			await page.waitForTimeout(1200);
 			const second = await page.evaluate(sampleScript());
+
 			result.animations = Math.max(first.animations, second.animations);
 			result.mutations = second.mutations;
 			result.controls = second.controls;
-			result.animated =
-				result.animations > 0 || result.mutations > 0 || result.controls > 0;
+			// Controls are reported separately: a static document with a button
+			// is not "animated". The gate means measurable motion — at rest or
+			// after the first interaction.
+			result.animated = result.animations > 0 || result.mutations > 0;
 			if (result.consoleErrors.length > 0 || result.pageErrors.length > 0) {
 				result.ok = false;
 			}

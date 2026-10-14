@@ -35,9 +35,11 @@ decision gate. The markdown explanation pipeline is untouched.
 
 ## Decisions (evidence)
 
-- **`ARTIFACT_MODEL` stays `gemini-flash-lite-latest`.** Final eval run: 8/8 valid, 8/8 animated,
-  0 external requests, 0 over budget, strict gates passed (an earlier run was 7/8 with one
-  model-authored JS `ReferenceError`, i.e. nondeterministic sloppiness, not a systemic failure).
+- **`ARTIFACT_MODEL` stays `gemini-flash-lite-latest`.** Final eval run under the interaction-aware gate
+  (motion measured at rest and after the first control click; controls alone never count): 8/8 valid,
+  7/8 measurably animated, 0 external requests, 0 over budget, 0 console errors — strict gates passed.
+  (An earlier 8/8 "animated" reading counted static controls; it is superseded.) One run in three shows
+  a single model-authored JS defect, i.e. nondeterministic sloppiness rather than a systemic failure.
 - **`gemini-flash-latest` (→ `gemini-3.8-flash`) is unusable on this Google plan**: free-tier
   quota (5 requests/min/model) returned 429/503 for every concept.
 - **The OpenCode gateway is not a validated artifact generator (yet)**: its brief call works
@@ -59,8 +61,10 @@ decision gate. The markdown explanation pipeline is untouched.
   boundary against a seeded hostile document, phone-viewport overflow check, request bounds.
 - `npm run verify:vercel` — OK (sitemap includes `/playground` + `/hi/playground`, 238 URLs).
 - `npm run eval:artifact -- --strict` (Gemini lite) — strict gates passed; report and
-  screenshots under `test-results/artifact-eval/` (plus preserved
-  `report-gemini-flash-latest-quota.json` and `report-opencode-403.json` evidence).
+  screenshots under `test-results/artifact-eval/` (transient: Playwright wipes `test-results/`
+  on every run, so the numbers are recorded here). Superseded evidence preserved during
+  development: the `gemini-flash-latest` quota failure and the OpenCode gateway 403 are
+  described above rather than as report files.
 
 ## Follow-ups (post-deploy)
 

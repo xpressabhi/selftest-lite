@@ -99,12 +99,16 @@ npm run eval:artifact -- --strict
 ```
 
 It drives the production pipeline, loads each composed document in Chromium,
-and reports validity (no console/page errors), animation activity
-(`getAnimations()` plus DOM mutations), external requests, and byte sizes,
-writing `test-results/artifact-eval/report.json` with screenshots. `--strict`
-gates: ≥ 7/8 valid, ≥ 6/8 animated, zero external requests, nothing over the
-150 KB document cap. Its report is the evidence that selects `ARTIFACT_MODEL`
-(and whether the OpenAI-compatible gateway replaces the Gemini SDK).
+and reports validity (no console/page errors), animation activity (measured at
+rest and again after the first control click — the contract favors manual
+controls, so a click-driven artifact counts as animated), external requests,
+and byte sizes, writing `test-results/artifact-eval/report.json` with
+screenshots (note: Playwright wipes `test-results/` at the start of every run;
+record the numbers you care about outside it). `--strict` gates: ≥ 7/8 valid,
+≥ 6/8 animated, zero external requests, nothing over the 150 KB document cap
+(80 KB on the lite device budget). Its report is the evidence that selects
+`ARTIFACT_MODEL` (and whether the OpenAI-compatible gateway replaces the
+Gemini SDK).
 
 ## Item analytics and feedback
 
