@@ -239,6 +239,7 @@
 	let activePath = $derived(page.url.pathname);
 	let homeHref = $derived(localizedPath('/', $activeLanguage));
 	let practiceHref = $derived(localizedPath('/practice', $activeLanguage));
+	let playgroundHref = $derived(localizedPath('/playground', $activeLanguage));
 	let bookmarksHref = $derived(localizedPath('/bookmarks', $activeLanguage));
 	let historyHref = $derived(localizedPath('/history', $activeLanguage));
 
@@ -256,6 +257,7 @@
 	const exploreLinks = $derived([
 		{ href: localizedPath('/about', $activeLanguage), icon: 'info', label: $t('about') },
 		{ href: practiceHref, icon: 'target', label: $t('practiceTitle') },
+		{ href: playgroundHref, icon: 'sparkle', label: $t('playgroundTitle') },
 		{ href: localizedPath('/blog', $activeLanguage), icon: 'book', label: $t('blog') },
 		{ href: localizedPath('/faq', $activeLanguage), icon: 'note', label: $t('faq') },
 		{ href: localizedPath('/contact', $activeLanguage), icon: 'mail', label: $t('contact') },
@@ -269,6 +271,7 @@
 	const desktopLinks = $derived([
 		{ href: localizedPath('/about', $activeLanguage), label: $t('about') },
 		{ href: practiceHref, label: $t('practiceTitle') },
+		{ href: playgroundHref, label: $t('playgroundTitle') },
 		{ href: localizedPath('/blog', $activeLanguage), label: $t('blog') },
 		{ href: localizedPath('/faq', $activeLanguage), label: $t('faq') },
 		{ href: localizedPath('/contact', $activeLanguage), label: $t('contact') },
@@ -598,6 +601,9 @@
 					<a class="header-icon desktop-only" href="/history" aria-label={$t('history')}>
 						<Icon name="clock" />
 					</a>
+					<a class="header-icon desktop-only" href={bookmarksHref} aria-label={$t('bookmarks')}>
+						<Icon name="bookmark" />
+					</a>
 					{#if $user}
 						<div class="user-menu-wrap">
 							<button
@@ -722,6 +728,15 @@
 								<Icon name="shield" size={18} />{$t('settingsMenuLabel')}
 							</a>
 						{/if}
+						<a
+							class="menu-action"
+							class:active={activePath === '/bookmarks'}
+							href={bookmarksHref}
+							aria-current={activePath === '/bookmarks' ? 'page' : undefined}
+							onclick={() => (isMenuOpen = false)}
+						>
+							<Icon name="bookmark" size={18} />{$t('bookmarks')}
+						</a>
 						<a
 							class="menu-action"
 							class:active={activePath === '/history'}
@@ -861,12 +876,10 @@
 				><Icon name="plus" size={20} /><span class="tab-label">{$t('createTab')}</span></a
 			>
 			<a
-				class:active={isActivePath(bookmarksHref)}
-				href={bookmarksHref}
-				aria-current={isActivePath(bookmarksHref) ? 'page' : undefined}
-				><Icon name="bookmark" size={18} /><span class="tab-label"
-					>{$t('bookmarksTab')}</span
-				></a
+				class:active={isActivePath(playgroundHref)}
+				href={playgroundHref}
+				aria-current={isActivePath(playgroundHref) ? 'page' : undefined}
+				><Icon name="sparkle" size={18} /><span class="tab-label">{$t('playgroundTab')}</span></a
 			>
 			<a
 				class:active={isActivePath(historyHref)}
@@ -888,6 +901,7 @@
 				<nav class="footer-links" aria-label={$t('footerNav')}>
 					<a href={localizedPath('/about', $activeLanguage)}>{$t('about')}</a>
 					<a href={localizedPath('/practice', $activeLanguage)}>{$t('practiceTitle')}</a>
+					<a href={playgroundHref}>{$t('playgroundTitle')}</a>
 					<a href={localizedPath('/blog', $activeLanguage)}>{$t('blog')}</a>
 					<a href={localizedPath('/faq', $activeLanguage)}>{$t('faq')}</a>
 					<a href={localizedPath('/contact', $activeLanguage)}>{$t('contact')}</a>

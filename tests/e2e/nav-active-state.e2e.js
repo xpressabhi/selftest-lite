@@ -112,6 +112,7 @@ test('desktop nav marks only the current destination', async ({ page }) => {
 		{ path: '/about', marked: ['/about'] },
 		{ path: '/practice', marked: ['/practice'] },
 		{ path: '/practice/ssc-cgl', marked: ['/practice'] }, // child route
+		{ path: '/playground', marked: ['/playground'] },
 		{ path: '/blog', marked: ['/blog'] },
 		{ path: '/faq', marked: ['/faq'] },
 		{ path: '/contact', marked: ['/contact'] },
@@ -123,11 +124,12 @@ test('desktop nav marks only the current destination', async ({ page }) => {
 		{ path: '/hi/blog', marked: ['/hi/blog'] },
 		{ path: '/hi/practice', marked: ['/hi/practice'] },
 		{ path: '/hi/practice/ssc-cgl', marked: ['/hi/practice'] },
+		{ path: '/hi/playground', marked: ['/hi/playground'] },
 	];
 
 	for (const route of routes) {
 		await page.goto(route.path);
-		await expectNav(page, '.desktop-nav', route.marked, 6);
+		await expectNav(page, '.desktop-nav', route.marked, 7);
 	}
 });
 
@@ -135,24 +137,25 @@ test('desktop nav marks only the current destination', async ({ page }) => {
 test('desktop nav marker follows client-side clicks', async ({ page }) => {
 	await page.setViewportSize(DESKTOP);
 	await page.goto('/');
-	await expectNav(page, '.desktop-nav', ['/'], 6);
+	await expectNav(page, '.desktop-nav', ['/'], 7);
 	await waitForHydration(page);
 
 	for (const [label, href] of [
 		['About', '/about'],
 		['Practice Exams', '/practice'],
+		['Playground', '/playground'],
 		['Blog', '/blog'],
 		['FAQ', '/faq'],
 		['Contact', '/contact'],
 	]) {
 		await page.locator('.desktop-nav a', { hasText: new RegExp(`^${label}$`) }).click();
 		await page.waitForURL(`**${href}`);
-		await expectNav(page, '.desktop-nav', [href], 6);
+		await expectNav(page, '.desktop-nav', [href], 7);
 	}
 
 	await page.locator('.desktop-nav .create-link').click();
 	await page.waitForURL('**/');
-	await expectNav(page, '.desktop-nav', ['/'], 6);
+	await expectNav(page, '.desktop-nav', ['/'], 7);
 });
 
 // The phone hamburger grid already tracked the route; pin it so it cannot
@@ -160,10 +163,10 @@ test('desktop nav marker follows client-side clicks', async ({ page }) => {
 test('phone hamburger grid marks only the current destination', async ({ page }) => {
 	await page.setViewportSize(PHONE);
 
-	for (const path of ['/about', '/privacy', '/terms', '/faq']) {
+	for (const path of ['/about', '/privacy', '/terms', '/faq', '/playground', '/bookmarks']) {
 		await page.goto(path);
 		await openMenu(page);
-		await expectNav(page, '.mobile-menu', [path], 8);
+		await expectNav(page, '.mobile-menu', [path], 9);
 	}
 });
 
@@ -176,8 +179,10 @@ test('phone bottom nav marks only the current destination', async ({ page }) => 
 		{ path: '/', marked: ['/'] },
 		{ path: '/practice', marked: ['/practice'] },
 		{ path: '/practice/ssc-cgl', marked: ['/practice'] },
-		{ path: '/bookmarks', marked: ['/bookmarks'] },
+		{ path: '/playground', marked: ['/playground'] },
+		{ path: '/hi/playground', marked: ['/hi/playground'] },
 		{ path: '/history', marked: ['/history'] },
+		{ path: '/bookmarks', marked: [] }, // moved to the hamburger menu + header icon
 		{ path: '/about', marked: [] },
 		{ path: '/blog', marked: [] },
 		{ path: '/hi/about', marked: [] },

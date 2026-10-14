@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0023"
 title: "Replace the phone Bookmarks tab with Playground and add Playground everywhere"
-status: "draft"
+status: "complete"
 created_at: "2026-10-14T15:30:00Z"
 request: "provide a direct link to playground from footer in mobile (remove bookmarks from footer) and find a suitable place for playground on all other device sizes"
 proposal:
