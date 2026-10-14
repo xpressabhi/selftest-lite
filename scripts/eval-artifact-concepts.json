@@ -1,0 +1,50 @@
+[
+	{
+		"topic": "Newton's third law",
+		"question": "A rocket pushes exhaust gases downward. Why does the rocket move upward?",
+		"answer": "The gases push back on the rocket with an equal and opposite force",
+		"language": "english"
+	},
+	{
+		"topic": "Photosynthesis light reactions",
+		"question": "Which products of the light reactions drive the Calvin cycle?",
+		"answer": "ATP and NADPH",
+		"language": "english"
+	},
+	{
+		"topic": "Ohm's law",
+		"question": "A 6 V supply drives 2 A through a resistor. What is its resistance?",
+		"answer": "3 ohms",
+		"language": "english"
+	},
+	{
+		"topic": "Pythagoras theorem",
+		"question": "A right triangle has legs 3 cm and 4 cm. How long is the hypotenuse?",
+		"answer": "5 cm",
+		"language": "english"
+	},
+	{
+		"topic": "Acid-base neutralisation",
+		"question": "What are the products when hydrochloric acid reacts with sodium hydroxide?",
+		"answer": "Sodium chloride and water",
+		"language": "english"
+	},
+	{
+		"topic": "DNA replication",
+		"question": "Why is DNA replication described as semi-conservative?",
+		"answer": "Each new molecule keeps one original strand and one new strand",
+		"language": "english"
+	},
+	{
+		"topic": "प्रकाश संश्लेषण",
+		"question": "प्रकाश संश्लेषण में क्लोरोफिल की क्या भूमिका है?",
+		"answer": "सूर्य के प्रकाश की ऊर्जा को पकड़ना",
+		"language": "hindi"
+	},
+	{
+		"topic": "न्यूटन का गति का दूसरा नियम",
+		"question": "एक ही बल लगाने पर भारी वस्तु की तुलना में हल्की वस्तु का त्वरण कैसा होगा?",
+		"answer": "अधिक होगा",
+		"language": "hindi"
+	}
+]

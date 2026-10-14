@@ -25,6 +25,7 @@
 		"attempts:backfill-links": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/backfill-attempt-links.mjs",
 		"reminders:send": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/send-reminders.mjs",
 		"eval:content": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/eval-content.mjs",
+		"eval:artifact": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/eval-artifact.mjs",
 		"exams:sync": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs",
 		"exams:discover": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/sync-exam-notifications.mjs --discover",
 		"exams:patterns": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/warm-exam-patterns.mjs",
