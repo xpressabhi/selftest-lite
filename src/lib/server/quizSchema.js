@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { RECIPE_IDS } from './artifactScaffold.js';
 
 export const questionSchema = z.object({
 	question: z.string().describe('The question text with formatting'),
@@ -112,4 +113,34 @@ export function paperSchemaFor(testType) {
 
 export const explanationSchema = z.object({
 	explanation: z.string().describe('A clear, concise explanation of the answer'),
+});
+
+const recipeIdSchema = z.enum(RECIPE_IDS);
+
+export const conceptBriefSchema = z.object({
+	concept: z.string().min(1).describe('The specific concept, not the broad topic'),
+	title: z.string().min(1).describe('Short user-visible title for the explainer'),
+	summary: z.string().min(1).describe('One sentence capturing the idea'),
+	level: z.string().min(1).describe('The level implied by the question, e.g. "class 10"'),
+	recipes: z
+		.array(recipeIdSchema)
+		.min(1)
+		.describe('Animation recipes the artifact will use, from the provided menu only'),
+	sections: z
+		.array(
+			z.object({
+				heading: z.string().min(1).describe('Section heading shown to the learner'),
+				purpose: z.string().min(1).describe('What this section animates or explains'),
+				recipe: recipeIdSchema.describe('The recipe this section uses'),
+			})
+		)
+		.min(2)
+		.max(5)
+		.describe('Two to five planned sections'),
+});
+
+export const artifactPayloadSchema = z.object({
+	html: z.string().describe('Body markup only: no script/style/link/iframe tags, no on*/style attrs'),
+	css: z.string().describe('All styling: no @import, url() only with data: targets'),
+	js: z.string().describe('Vanilla JS only: no network, eval, storage, or parent/top access'),
 });

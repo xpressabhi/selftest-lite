@@ -1,4 +1,5 @@
 import { questionTextFor } from '../shared/questionText.js';
+import { ARTIFACT_RECIPES } from './artifactScaffold.js';
 
 export function generatePrompt({
 	topic,
@@ -342,5 +343,79 @@ export function generateExplanationPrompt({ topic, question, answer, language })
       5. Include a separate line in the explanation starting with "**Example:**".
       6. Use Markdown formatting where useful (lists, bold, inline LaTeX, short code block if needed).
       7. Do not include extra keys or any text outside the JSON object.
+    `;
+}
+
+export function generateConceptBriefPrompt({ topic, question, answer, language }) {
+	const recipeLines = ARTIFACT_RECIPES.map((recipe) => `- ${recipe.id}: ${recipe.description}`).join(
+		'\n'
+	);
+	const contextLines = [
+		question ? `Question: ${question}` : null,
+		answer ? `Correct Answer: ${answer}` : null,
+	]
+		.filter(Boolean)
+		.join('\n');
+
+	return `
+      Plan an animated, self-contained HTML explainer for one concept.
+
+      Topic: ${topic}
+      ${contextLines ? `${contextLines}\n      ` : ''}Explanation Language: ${language || 'English'}
+
+      Output must be a JSON object with this exact structure:
+      {
+        "concept": "The specific concept, not the broad topic",
+        "title": "Short user-visible title",
+        "summary": "One sentence capturing the idea",
+        "level": "The level implied by the request, e.g. class 10",
+        "recipes": ["recipe-id"],
+        "sections": [{ "heading": "...", "purpose": "...", "recipe": "recipe-id" }]
+      }
+
+      BRIEF REQUIREMENTS:
+      1. concept must narrow the topic to one teachable idea.
+      2. Pick 1 to 3 recipes from this menu — no other values:
+      ${recipeLines}
+      3. sections must have 2 to 5 entries; each entry uses a recipe from the menu.
+      4. Write concept, title, summary and section text in ${language || 'English'}.
+      5. Do not include extra keys or any text outside the JSON object.
+    `;
+}
+
+export function generateArtifactPrompt({ brief, language, repairIssues }) {
+	const repairBlock =
+		repairIssues && repairIssues.length > 0
+			? `\n      VALIDATION ERRORS TO FIX (the previous attempt was rejected):
+${repairIssues.map((issue) => `      - ${issue.code}: ${issue.detail}`).join('\n')}
+`
+			: '';
+
+	return `
+      Write the body of a self-contained animated HTML explainer.
+
+      Language: ${language || 'English'}
+      Brief to realize:
+      ${JSON.stringify(brief)}
+      ${repairBlock}
+      The page shell already exists (doctype, head, theme tokens, CSP, base CSS, title and summary). Write ONLY the body fragment.
+
+      Output must be a JSON object with this exact structure:
+      {
+        "html": "body markup",
+        "css": "all styling",
+        "js": "vanilla JavaScript"
+      }
+
+      ARTIFACT CONTRACT:
+      1. Self-contained: no network requests, no external URLs anywhere, no webfonts; images only as data: URLs.
+      2. html: body markup only. Allowed: div, span, section, header, p, h1-h6, ul/ol/li, table, svg, canvas, img (data: only), button, label, input, details/summary, figure, code, pre, br, hr, a (#fragment href only). Never script, style, link, iframe, object, embed, base, form, video, audio, source, track, template. No on* handler attributes and no style="" attributes.
+      3. css: put all styling here. No @import; url() targets must be data: URLs.
+      4. js: vanilla JavaScript only. No fetch, XMLHttpRequest, WebSocket, EventSource, sendBeacon, eval, Function, dynamic import, document.cookie, localStorage, sessionStorage, indexedDB, window.open, location changes, or parent/top access — it runs in an isolated frame.
+      5. Motion: animate with CSS transitions/keyframes or requestAnimationFrame; prefer transform and opacity. Use the scaffold primitives .stage (card), .steps/.step/.step-active (step list) and .control (buttons/inputs, minimum 44px tap targets).
+      6. Respect motion: when document.documentElement has data-motion="reduced" (the OS prefers-reduced-motion setting), pause autoplay loops; manual step controls must keep working.
+      7. Budgets: html under 96KB, css under 32KB, js under 24KB. Stay focused on one idea.
+      8. All visible text in ${language || 'English'}.
+      9. Do not include extra keys or any text outside the JSON object.
     `;
 }
