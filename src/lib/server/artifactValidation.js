@@ -54,6 +54,9 @@ const EXTERNAL_URL = /https?:\/\//i;
 // off-system in light mode and invisible in dark mode. Rejected so the repair
 // loop can swap them for tokens.
 const HARDCODED_BLACK = /(#000(000)?\b|\bblack\b|rgba?\(\s*0\s*,\s*0\s*,\s*0\b)/i;
+// var(--brand) flips to a light tint in dark mode, so using it as a fill
+// produces unreadable button labels. Fills belong to --brand-fill.
+const BRAND_AS_FILL = /background(-color)?\s*:\s*var\(--brand\)/i;
 
 /** Returns the first url() target that is not a data: URL, or null. */
 function findNonDataUrl(css) {
@@ -156,6 +159,12 @@ export function validateArtifactPayload(payload, limits = {}) {
 	}
 	if (HARDCODED_BLACK.test(css)) {
 		issues.push({ code: 'css-hardcoded-colour', detail: 'pure black colour' });
+	}
+	if (BRAND_AS_FILL.test(css)) {
+		issues.push({
+			code: 'css-brand-fill',
+			detail: 'var(--brand) used as a fill; use .control-primary / var(--brand-fill)',
+		});
 	}
 
 	for (const token of JS_DENYLIST) {

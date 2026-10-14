@@ -48,3 +48,13 @@ buttons (native sheet → clipboard fallback + toast) sit on the result card and
 
 - DB-backed sitemap segment for explainer pages once volume warrants; per-artifact OG images.
 - Moderation switch (report / `noindex`-until-reviewed) if public output ever draws abuse.
+
+## Consistency fix pass
+
+- New shared `ExplainerHeader` (title + summary + action row) renders on both surfaces: the
+  public page uses tag `h1` at page size, the playground result card uses `h2` at card size —
+  same layout, same Share placement, platform semantics preserved.
+- The playground result card moves Share / New concept above the artifact, so actions no longer
+  sit below a tall frame; the public page keeps its top-of-page Share.
+- Playground E2E unchanged and green (8/8); public page assertions still pass because the page
+  chrome (not the artifact) carries the title/summary.

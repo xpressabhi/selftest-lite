@@ -7,7 +7,7 @@
 // is part of the explainer cache key, so a bump supersedes old rows without
 // deleting them.
 
-export const ARTIFACT_SCAFFOLD_VERSION = 'scaffold-v3';
+export const ARTIFACT_SCAFFOLD_VERSION = 'scaffold-v4';
 
 /** Animation vocabulary the brief may pick from. Ids are validated by schema. */
 export const ARTIFACT_RECIPES = [
@@ -44,11 +44,15 @@ const CSP_CONTENT =
 
 const BASE_CSS = `
 /* Theme tokens mirror src/lib/styles/globals.css so an artifact always reads
-   as part of the app. Components must consume these, never raw colours. */
+   as part of the app. Components must consume these, never raw colours.
+   --brand is text-grade (it flips to a light tint in dark mode); fills use
+   --brand-fill with --on-brand text, which never flip. */
 :root {
 	--radius-control: 10px;
 	--radius-surface: 12px;
 	--radius-overlay: 16px;
+	--brand-fill: #4f46e5;
+	--on-brand: #f8fafc;
 }
 :root[data-theme='light'] {
 	color-scheme: light;
@@ -90,11 +94,9 @@ body {
 @media (min-width: 480px) { body { padding: 16px; } }
 @media (min-width: 768px) { body { padding: 24px; } }
 
-.explainer-head, .explainer-main { width: 100%; max-width: 720px; margin: 0 auto; }
-.explainer-head h1 { margin: 0 0 4px; font-size: 1.35rem; line-height: 1.25; text-wrap: balance; }
-@media (min-width: 768px) { .explainer-head h1 { font-size: 1.6rem; } }
-.explainer-summary { margin: 0 0 16px; color: var(--text-muted); font-size: 0.9rem; }
-@media (min-width: 768px) { .explainer-summary { margin-bottom: 24px; } }
+/* The hosts (playground card, public page) render the title and summary; the
+   artifact body must not repeat them, so the shell has no header block. */
+.explainer-main { width: 100%; max-width: 720px; margin: 0 auto; }
 
 /* Section rhythm: 16 on phones, 24 from 768 up (4px grid only). */
 .explainer-main { display: grid; gap: 16px; }
@@ -112,8 +114,8 @@ body {
 .explainer-main code {
 	background: var(--surface-muted);
 	border: 1px solid var(--line);
-	border-radius: var(--radius-control);
-	padding: 0 4px;
+	border-radius: 4px;
+	padding: 0 6px;
 	font-size: 0.9em;
 }
 .explainer-main pre {
@@ -175,6 +177,14 @@ body {
 	outline: none;
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent);
 }
+/* Filled controls: the fill never flips with the theme, so the label stays
+   readable on the indigo in both themes. */
+.control-primary {
+	background: var(--brand-fill);
+	border-color: var(--brand-fill);
+	color: var(--on-brand);
+}
+.control-primary:hover { border-color: var(--brand-fill); filter: brightness(1.08); }
 input[type='range'] { accent-color: var(--brand); }
 .steps { display: grid; gap: 8px; }
 .step { border-left: 3px solid var(--line); padding-left: 12px; }
@@ -243,7 +253,6 @@ export function composeArtifactDocument({ brief, payload, language, theme = 'lig
 	const lang = String(language ?? '').toLowerCase() === 'hindi' ? 'hi' : 'en';
 	const resolvedTheme = theme === 'dark' ? 'dark' : 'light';
 	const title = escapeHtml(brief?.title ?? '');
-	const summary = escapeHtml(brief?.summary ?? '');
 	const html = String(payload?.html ?? '');
 	const css = String(payload?.css ?? '');
 	const js = String(payload?.js ?? '');
@@ -261,7 +270,6 @@ ${MOTION_SCRIPT}
 <style>${BASE_CSS}\n${css}</style>
 </head>
 <body>
-<header class="explainer-head"><h1>${title}</h1><p class="explainer-summary">${summary}</p></header>
 <main class="explainer-main">${html}</main>
 ${HEIGHT_SCRIPT}${modelScript}
 </body>

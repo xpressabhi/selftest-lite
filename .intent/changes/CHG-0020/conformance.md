@@ -107,3 +107,20 @@ desktop column centers at 720px; the duplicate-title issue from the first screen
 Post-change eval (`--strict`): 7/8 valid, 7/8 measurably animated, 0 external requests,
 0 over budget — the single failure is a model-authored JS null-reference in the DNA-replication
 artifact (nondeterministic sloppiness of the same class recorded earlier).
+
+## Consistency fix pass (scaffold-v4, prompt-v3)
+
+- Removed the shell header (h1 + summary): hosts render title/summary, so the artifact duplicated
+  them and inverted the heading hierarchy. `<title>` remains for metadata.
+- `ArtifactFrame` sizes to the artifact's content (min 320, ceiling 6000) instead of an 85vh
+  clamp — one page scroll on mobile instead of a nested scrollbar; the resize listener went with
+  the viewport-dependent ceiling.
+- Filled-control theming: added `--brand-fill` / `--on-brand` (constant in both themes) and
+  `.control-primary`; the validator rejects `background(-color): var(--brand)` with a repair
+  hint, because `--brand` flips light in dark mode and produced unreadable labels (the `Enter`
+  button in the operator's screenshots). Prompt v3 documents the rule.
+- Inline code chips tightened (4px radius, 6px padding) so they read as code, not buttons.
+- Verified against the live Python explainer payload composed with scaffold-v4: no header, no
+  clipped top, natural 2418px height, clean chips. Note: artifacts cached under the old prompt
+  keep their old model CSS; the next request for the same concept regenerates under prompt-v3,
+  and old public URLs keep serving their frozen artifact.

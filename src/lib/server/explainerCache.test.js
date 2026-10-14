@@ -16,8 +16,8 @@ function independentlyComputedKey({ topic, question, answer, language, viewport 
 		.update(
 			JSON.stringify([
 				'pg-v2',
-				'prompt-v2',
-				'scaffold-v3',
+				'prompt-v3',
+				'scaffold-v4',
 				normalize(language).toLowerCase() || 'english',
 				normalize(topic),
 				normalize(question ?? ''),

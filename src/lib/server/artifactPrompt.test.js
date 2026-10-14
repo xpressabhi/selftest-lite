@@ -55,7 +55,8 @@ describe('generateArtifactPrompt', () => {
 		expect(prompt).toContain('var(--brand)');
 		expect(prompt).toContain('var(--radius-surface)');
 		expect(prompt).toContain('never write raw colour values');
-		expect(prompt).toContain('do not repeat the shell title or summary');
+		expect(prompt).toContain('do not repeat them');
+		expect(prompt).toContain('control-primary');
 		expect(prompt).toContain('"html"');
 		expect(prompt).toContain('"css"');
 		expect(prompt).toContain('"js"');

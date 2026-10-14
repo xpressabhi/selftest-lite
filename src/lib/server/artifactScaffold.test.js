@@ -54,12 +54,12 @@ describe('composeArtifactDocument', () => {
 		);
 	});
 
-	it('renders escaped title and summary server-side', () => {
+	it('renders the escaped title only in head metadata, never a shell header', () => {
 		const document = composeArtifactDocument({ brief, payload, language: 'english' });
 		expect(document).toContain('<title>Ohm law, &lt;b&gt;visually&lt;/b&gt;</title>');
-		expect(document).toContain('<h1>Ohm law, &lt;b&gt;visually&lt;/b&gt;</h1>');
-		expect(document).toContain('Voltage pushes &lt;i&gt;current&lt;/i&gt;');
 		expect(document).not.toContain('<b>visually</b>');
+		expect(document).not.toContain('explainer-head');
+		expect(document).not.toContain('<h1');
 	});
 
 	it('slots the fragment and the model css', () => {
@@ -98,7 +98,7 @@ describe('composeArtifactDocument', () => {
 			'toggle-compare',
 		]);
 		expect(ARTIFACT_RECIPES.every((recipe) => recipe.id && recipe.description)).toBe(true);
-		expect(ARTIFACT_SCAFFOLD_VERSION).toBe('scaffold-v3');
+		expect(ARTIFACT_SCAFFOLD_VERSION).toBe('scaffold-v4');
 	});
 
 	it('ships the design-system base styles: tokens, radii, spacing and breakpoints', () => {
@@ -107,14 +107,19 @@ describe('composeArtifactDocument', () => {
 		expect(document).toContain('--radius-control: 10px');
 		expect(document).toContain('--radius-surface: 12px');
 		expect(document).toContain('--radius-overlay: 16px');
+		expect(document).toContain('--brand-fill: #4f46e5');
+		expect(document).toContain('--on-brand: #f8fafc');
 		expect(document).toContain('--surface-muted: #0f172a');
 		expect(document).toContain('--text-muted: #94a3b8');
 		// Responsive spacing on the documented breakpoints only.
 		expect(document).toContain('@media (min-width: 480px) { body { padding: 16px; } }');
 		expect(document).toContain('@media (min-width: 768px) { body { padding: 24px; } }');
 		expect(document).toContain(
-			'.explainer-head, .explainer-main { width: 100%; max-width: 720px; margin: 0 auto; }'
+			'.explainer-main { width: 100%; max-width: 720px; margin: 0 auto; }'
 		);
+		// Filled controls keep a readable label in both themes.
+		expect(document).toContain('.control-primary');
+		expect(document).toContain('background: var(--brand-fill)');
 		// Prose defaults for model markup.
 		expect(document).toContain('.explainer-main h2');
 		expect(document).toContain('.explainer-main p:last-child { margin-bottom: 0; }');

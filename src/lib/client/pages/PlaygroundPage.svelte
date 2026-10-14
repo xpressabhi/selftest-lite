@@ -4,6 +4,7 @@
 	import ArtifactFrame from '#lib/client/ArtifactFrame.svelte';
 	import { getClientHeaders } from '#lib/client/identity.js';
 	import { activeLanguage, localizedApiError, t } from '#lib/client/i18n.js';
+	import ExplainerHeader from '#lib/client/ExplainerHeader.svelte';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { shareLink } from '#lib/client/shareLink.js';
 	import { track } from '#lib/client/telemetry.js';
@@ -241,10 +242,7 @@
 	{#if status === 'ready' && artifact}
 		<div class="card border shadow-sm mt-4">
 			<div class="card-body">
-				<h2 class="h5 mb-1">{artifact.title}</h2>
-				<p class="text-muted small mb-3">{artifact.summary}</p>
-				<ArtifactFrame html={artifact.html} title={artifact.title} />
-				<div class="d-flex flex-wrap gap-2 mt-3">
+				<ExplainerHeader title={artifact.title} summary={artifact.summary}>
 					{#if artifact.slug}
 						<button
 							class="btn btn-sm btn-outline-secondary"
@@ -257,6 +255,9 @@
 					<button class="btn btn-sm btn-outline-secondary" type="button" onclick={reset}>
 						{$t('playgroundNewConcept')}
 					</button>
+				</ExplainerHeader>
+				<div class="mt-3">
+					<ArtifactFrame html={artifact.html} title={artifact.title} />
 				</div>
 			</div>
 		</div>

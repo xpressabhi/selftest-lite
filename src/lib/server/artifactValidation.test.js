@@ -149,6 +149,21 @@ describe('validateArtifactPayload', () => {
 				}).ok
 			).toBe(true);
 		});
+
+		it('rejects var(--brand) used as a fill but allows it for text and borders', () => {
+			expect(codesFor({ ...goodPayload, css: '.a { background: var(--brand); }' })).toContain(
+				'css-brand-fill'
+			);
+			expect(
+				codesFor({ ...goodPayload, css: '.a { background-color: var(--brand); }' })
+			).toContain('css-brand-fill');
+			expect(
+				validateArtifactPayload({
+					...goodPayload,
+					css: '.a { color: var(--brand); border: 1px solid var(--brand); background: var(--brand-fill); color: var(--on-brand); }',
+				}).ok
+			).toBe(true);
+		});
 	});
 
 	describe('js', () => {

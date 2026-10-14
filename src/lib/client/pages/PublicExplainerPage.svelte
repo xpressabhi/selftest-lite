@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import ArtifactFrame from '#lib/client/ArtifactFrame.svelte';
+	import ExplainerHeader from '#lib/client/ExplainerHeader.svelte';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { shareLink } from '#lib/client/shareLink.js';
@@ -38,17 +39,11 @@
 />
 
 <section class="app-container py-4 py-md-5">
-	<header class="d-flex flex-wrap align-items-start justify-content-between gap-2">
-		<div>
-			<h1 class="text-page mb-1">{data.title}</h1>
-			{#if data.summary}
-				<p class="text-muted mb-0">{data.summary}</p>
-			{/if}
-		</div>
+	<ExplainerHeader title={data.title} summary={data.summary} tag="h1" size="page">
 		<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void share()}>
 			{$t('playgroundShare')}
 		</button>
-	</header>
+	</ExplainerHeader>
 
 	<div class="card border shadow-sm mt-4">
 		<div class="card-body">
