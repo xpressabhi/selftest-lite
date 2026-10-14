@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import ArtifactFrame from '#lib/client/ArtifactFrame.svelte';
+	import { getClientHeaders } from '#lib/client/identity.js';
 	import { activeLanguage, localizedApiError, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { track } from '#lib/client/telemetry.js';
@@ -20,6 +21,7 @@
 	let artifact = $state(null);
 	let errorMessage = $state('');
 	let stageTimer = null;
+	let library = $state([]);
 
 	const examples = $derived([
 		$t('playgroundExample1'),
@@ -40,6 +42,7 @@
 			answer: params.get('answer') ?? '',
 		};
 		track('playground:open', { hasContext: Boolean(context.question || context.answer) });
+		void loadLibrary();
 		return () => {
 			if (stageTimer !== null) {
 				clearInterval(stageTimer);
@@ -99,7 +102,7 @@
 					: 'light';
 			const response = await fetch('/api/playground', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: getClientHeaders(),
 				body: JSON.stringify({
 					topic: trimmedTopic,
 					question: context.question || undefined,
@@ -125,6 +128,9 @@
 				durationMs: Date.now() - startedAt,
 				recipes: payload.recipes,
 			});
+			// The new explainer now belongs to this identity's library; keep
+			// the idle-state list current for the next visit.
+			void loadLibrary();
 		} catch (error) {
 			status = 'error';
 			// A network failure has no server payload; the localized headline
@@ -147,6 +153,63 @@
 		status = 'idle';
 		artifact = null;
 		errorMessage = '';
+	}
+
+	// The library is an enhancement: any failure leaves it hidden rather than
+	// blocking the page.
+	async function loadLibrary() {
+		try {
+			const response = await fetch('/api/playground/library', {
+				headers: getClientHeaders(),
+			});
+			if (!response.ok) {
+				return;
+			}
+			const payload = await response.json().catch(() => ({}));
+			library = Array.isArray(payload.items) ? payload.items : [];
+		} catch {
+			// Keep the previous list; nothing to surface.
+		}
+	}
+
+	async function openLibraryItem(id) {
+		if (status === 'loading') {
+			return;
+		}
+		status = 'loading';
+		errorMessage = '';
+		try {
+			const theme =
+				typeof document !== 'undefined'
+					? document.documentElement.getAttribute('data-bs-theme') || 'light'
+					: 'light';
+			const response = await fetch(`/api/playground/library?id=${id}&theme=${theme}`, {
+				headers: getClientHeaders(),
+			});
+			const payload = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				const failure = new Error(localizedApiError(payload, $t, response.status));
+				failure.localized = true;
+				throw failure;
+			}
+			artifact = payload;
+			status = 'ready';
+			track('playground:library-item-open', { id });
+		} catch (error) {
+			status = 'error';
+			errorMessage = error?.localized === true ? error.message : '';
+		}
+	}
+
+	function formatLibraryDate(value) {
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) {
+			return '';
+		}
+		return date.toLocaleDateString($activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN', {
+			day: 'numeric',
+			month: 'short',
+		});
 	}
 </script>
 
@@ -249,6 +312,30 @@
 					</button>
 				</div>
 			{/if}
+
+			{#if library.length > 0}
+				<div class="playground-library mt-4">
+					<h2 class="h6 text-muted mb-2">{$t('playgroundLibraryTitle')}</h2>
+					<ul class="list-unstyled mb-0 d-grid gap-2">
+						{#each library as item (item.id)}
+							<li>
+								<button
+									type="button"
+									class="btn btn-outline-secondary w-100 text-start"
+									disabled={status === 'loading'}
+									onclick={() => void openLibraryItem(item.id)}
+								>
+									<span class="playground-library-title">{item.title || item.concept}</span>
+									<span class="playground-library-meta">
+										{item.concept}
+										{#if item.lastOpenedAt}· {formatLibraryDate(item.lastOpenedAt)}{/if}
+									</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 		</form>
 	{/if}
 </section>
@@ -265,5 +352,16 @@
 	.playground-context summary {
 		cursor: pointer;
 		font-weight: 600;
+	}
+
+	.playground-library-title {
+		display: block;
+		font-weight: 600;
+	}
+
+	.playground-library-meta {
+		display: block;
+		color: var(--text-muted);
+		font-size: 0.8rem;
 	}
 </style>

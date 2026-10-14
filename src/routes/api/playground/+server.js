@@ -4,6 +4,7 @@ import {
 	OPENCODE_API_KEY,
 	OPENCODE_BASE_URL,
 } from '$app/env/private';
+import { resolveRequestContext } from '#lib/server/apiContext.js';
 import { composeArtifactDocument } from '#lib/server/artifactScaffold.js';
 import {
 	buildExplainerCacheKey,
@@ -11,6 +12,7 @@ import {
 	saveExplainer,
 	touchExplainer,
 } from '#lib/server/explainerCache.js';
+import { recordExplainerForIdentity } from '#lib/server/explainerLibrary.js';
 import { generateExplainerArtifact } from '#lib/server/explainerPipeline.js';
 import {
 	ARTIFACT_BRIEF_MODEL,
@@ -22,16 +24,15 @@ import {
 } from '#lib/server/quizConfig.js';
 import { rateLimiter } from '#lib/server/rateLimiter.js';
 import { parseRequestBody } from '#lib/server/requestBody.js';
-import { getClientKey, logApiEvent } from '#lib/server/storage.js';
+import { logApiEvent } from '#lib/server/storage.js';
 import { API_LIMIT_ERROR_CODE, classifyApiError } from '#lib/shared/apiLimitError.js';
 import { normalizePlaygroundProfile } from '#lib/shared/playgroundProfile.js';
 
 const ROUTE = '/api/playground';
 const ACTION = 'generate_explainer';
 
-export async function POST({ request }) {
-	const startedAt = Date.now();
-	const clientKey = getClientKey(request);
+export async function POST({ request, cookies }) {
+	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
 
 	try {
 		const body = await parseRequestBody(request);
@@ -82,6 +83,23 @@ export async function POST({ request }) {
 			profile,
 		});
 
+		// Every served explainer lands in the caller's library, hit or fresh.
+		// Best-effort: a library write must never fail the response.
+		const identity = { userId: user?.id ?? null, clientId };
+		const recordLibraryEntry = async ({ concept, title, summary }) => {
+			try {
+				await recordExplainerForIdentity(identity, {
+					cacheKey,
+					concept,
+					title,
+					summary,
+					language: effectiveLanguage,
+				});
+			} catch (error) {
+				console.error('Explainer library record failed', error);
+			}
+		};
+
 		// Cache hits are served before the rate limiter: they only cost an
 		// indexed read, so repeat explainers stay instant and free.
 		let cached = null;
@@ -98,6 +116,11 @@ export async function POST({ request }) {
 			} catch (error) {
 				console.error('Explainer cache touch failed', error);
 			}
+			await recordLibraryEntry({
+				concept: cached.concept,
+				title: cached.payload?.title,
+				summary: cached.payload?.summary,
+			});
 			await logApiEvent({
 				route: ROUTE,
 				action: ACTION,
@@ -203,6 +226,12 @@ export async function POST({ request }) {
 			// regenerates and tries to save again.
 			console.error('Explainer cache save failed', error);
 		}
+
+		await recordLibraryEntry({
+			concept: brief.concept,
+			title: brief.title,
+			summary: brief.summary,
+		});
 
 		await logApiEvent({
 			route: ROUTE,

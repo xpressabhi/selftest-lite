@@ -981,6 +981,7 @@
 	"playgroundDrawing": "Drawing and animating…",
 	"playgroundFromYourQuestion": "From your question",
 	"playgroundNewConcept": "New concept",
+	"playgroundLibraryTitle": "Your explainers",
 	"playgroundErrorIntro": "The explainer could not be created.",
 	"errorPlaygroundTopicRequired": "Enter a concept to explain",
 	"errorPlaygroundTooLong": "The concept or context is too long",
