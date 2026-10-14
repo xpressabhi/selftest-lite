@@ -11,6 +11,7 @@ export const variables = defineEnvVars({
 	TYPESAFE_API_KEY: { schema: (input) => input ?? '' },
 	GEMINI_API_KEY: { schema: (input) => input ?? '' },
 	OPENCODE_API_KEY: { schema: (input) => input ?? '' },
+	OPENCODE_BASE_URL: { schema: (input) => input ?? '' },
 	EXPLAINER_PROVIDER: { schema: (input) => input ?? '' },
 	ADMIN_USERNAME: { schema: (input) => input ?? '' },
 	ADMIN_PASSWORD: { schema: (input) => input ?? '' },
