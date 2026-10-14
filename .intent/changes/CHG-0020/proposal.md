@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0020"
 title: "Concept playground: animated HTML explainers"
-status: "draft"
+status: "complete"
 created_at: "2026-10-14T11:30:00Z"
 request: "Research HTML in question explanations or build a playground that explains a topic via a detailed HTML artifact with CSS/JS animation; the playground direction was chosen"
 proposal:
