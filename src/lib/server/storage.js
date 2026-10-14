@@ -83,7 +83,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -540,6 +540,17 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_concept_explainers_last_used
 			ON concept_explainers (last_used_at DESC)
+		`);
+
+		// Public URL slug for each explainer (deterministic; see
+		// explainerSlug.js). Added after the table shipped, hence the ALTER.
+		await query(`
+			ALTER TABLE concept_explainers ADD COLUMN IF NOT EXISTS slug TEXT
+		`);
+
+		await query(`
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_concept_explainers_slug
+			ON concept_explainers (slug) WHERE slug IS NOT NULL
 		`);
 
 		// Per-identity explainer library: which cached explainers a user or

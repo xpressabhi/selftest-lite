@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { normalizePlaygroundProfile } from '../shared/playgroundProfile.js';
+import { buildExplainerSlug } from './explainerSlug.js';
 import { ARTIFACT_PROMPT_VERSION } from './quizConfig.js';
 import { ARTIFACT_SCAFFOLD_VERSION } from './artifactScaffold.js';
 import { ensureStorageSchema, query } from './storage.js';
@@ -53,7 +54,7 @@ export async function getCachedExplainer(cacheKey) {
 	}
 	await ensureStorageSchema();
 	const result = await query(
-		`SELECT payload, language, model, concept
+		`SELECT payload, language, model, concept, slug
 		 FROM concept_explainers
 		 WHERE cache_key = $1`,
 		[cacheKey]
@@ -67,7 +68,42 @@ export async function getCachedExplainer(cacheKey) {
 		language: row.language,
 		model: row.model,
 		concept: row.concept,
+		slug: row.slug,
 	};
+}
+
+/** Public lookup for /explain/<slug>. Returns null on a miss. */
+export async function getExplainerBySlug(slug) {
+	if (!slug) {
+		return null;
+	}
+	await ensureStorageSchema();
+	const result = await query(
+		`SELECT payload, language, concept, slug
+		 FROM concept_explainers
+		 WHERE slug = $1`,
+		[slug]
+	);
+	return result.rows[0] ?? null;
+}
+
+/**
+ * Fills in a slug for a row created before public URLs existed. Never
+ * overwrites an assigned slug, so it is safe to call on every cache hit.
+ */
+export async function backfillExplainerSlug({ cacheKey, title }) {
+	if (!cacheKey) {
+		return null;
+	}
+	const slug = buildExplainerSlug({ title, cacheKey });
+	await ensureStorageSchema();
+	await query(
+		`UPDATE concept_explainers
+		 SET slug = $2
+		 WHERE cache_key = $1 AND slug IS NULL`,
+		[cacheKey, slug]
+	);
+	return slug;
 }
 
 /**
@@ -79,11 +115,20 @@ export async function saveExplainer({ cacheKey, language, concept, payload, mode
 		return false;
 	}
 	await ensureStorageSchema();
+	const slug = buildExplainerSlug({ title: payload?.title, cacheKey });
 	await query(
-		`INSERT INTO concept_explainers (cache_key, language, concept, payload, model)
-		 VALUES ($1, $2, $3, $4, $5)
-		 ON CONFLICT (cache_key) DO NOTHING`,
-		[cacheKey, language || 'english', concept || null, JSON.stringify(payload), model || null]
+		`INSERT INTO concept_explainers (cache_key, language, concept, payload, model, slug)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 ON CONFLICT (cache_key) DO UPDATE
+			SET slug = COALESCE(concept_explainers.slug, EXCLUDED.slug)`,
+		[
+			cacheKey,
+			language || 'english',
+			concept || null,
+			JSON.stringify(payload),
+			model || null,
+			slug,
+		]
 	);
 	return true;
 }

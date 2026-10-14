@@ -65,12 +65,13 @@ export async function listExplainersForIdentity(identity, { limit = 24 } = {}) {
 	await ensureStorageSchema();
 
 	const result = await query(
-		`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count
+		`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count, slug
 		 FROM (
-			SELECT DISTINCT ON (cache_key) *
-			FROM user_explainers
-			WHERE (user_id = $1) OR (user_id IS NULL AND client_id = $2)
-			ORDER BY cache_key, last_opened_at DESC
+			SELECT DISTINCT ON (ue.cache_key) ue.*, c.slug
+			FROM user_explainers ue
+			LEFT JOIN concept_explainers c ON c.cache_key = ue.cache_key
+			WHERE (ue.user_id = $1) OR (ue.user_id IS NULL AND ue.client_id = $2)
+			ORDER BY ue.cache_key, ue.last_opened_at DESC
 		 ) latest
 		 ORDER BY last_opened_at DESC
 		 LIMIT $3`,
@@ -91,7 +92,7 @@ export async function getExplainerForIdentity(identity, id) {
 	await ensureStorageSchema();
 
 	const result = await query(
-		`SELECT ue.id, ue.concept, ue.title, ue.summary, ue.language, ue.open_count, c.payload
+		`SELECT ue.id, ue.concept, ue.title, ue.summary, ue.language, ue.open_count, c.payload, c.slug
 		 FROM user_explainers ue
 		 INNER JOIN concept_explainers c ON c.cache_key = ue.cache_key
 		 WHERE ue.id = $1
