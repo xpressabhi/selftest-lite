@@ -1,4 +1,4 @@
-import { GEMINI_API_KEY } from '$app/env/private';
+import { EXPLAINER_PROVIDER, GEMINI_API_KEY, OPENCODE_API_KEY } from '$app/env/private';
 import { composeArtifactDocument } from '#lib/server/artifactScaffold.js';
 import {
 	buildExplainerCacheKey,
@@ -9,7 +9,6 @@ import {
 import { generateExplainerArtifact } from '#lib/server/explainerPipeline.js';
 import {
 	ARTIFACT_BRIEF_MODEL,
-	ARTIFACT_MODEL,
 	ARTIFACT_RATE_LIMIT,
 	MAX_ANSWER_TEXT_LENGTH,
 	MAX_QUESTION_TEXT_LENGTH,
@@ -32,6 +31,8 @@ export async function POST({ request }) {
 		const body = await parseRequestBody(request);
 		const { topic, question, answer, language } = body;
 		const theme = body.theme === 'dark' ? 'dark' : 'light';
+		const provider =
+			String(EXPLAINER_PROVIDER || '').toLowerCase() === 'opencode' ? 'opencode' : 'gemini';
 
 		if (!topic) {
 			return Response.json(
@@ -149,18 +150,27 @@ export async function POST({ request }) {
 			);
 		}
 
-		const apiKey = GEMINI_API_KEY;
+		const apiKey = provider === 'opencode' ? OPENCODE_API_KEY : GEMINI_API_KEY;
 
 		if (!apiKey) {
-			return Response.json({ error: 'Gemini API key is not configured' }, { status: 500 });
+			return Response.json(
+				{
+					error:
+						provider === 'opencode'
+							? 'Inference API key is not configured'
+							: 'Gemini API key is not configured',
+				},
+				{ status: 500 }
+			);
 		}
 
-		const { brief, payload } = await generateExplainerArtifact({
+		const { brief, payload, model } = await generateExplainerArtifact({
 			topic,
 			question,
 			answer,
 			language: effectiveLanguage,
 			apiKey,
+			provider,
 		});
 
 		try {
@@ -176,7 +186,7 @@ export async function POST({ request }) {
 					css: payload.css,
 					js: payload.js,
 				},
-				model: ARTIFACT_MODEL,
+				model: model,
 			});
 		} catch (error) {
 			// Storage must never fail a good explainer; the next request
@@ -195,8 +205,9 @@ export async function POST({ request }) {
 				topic,
 				language: effectiveLanguage,
 				cached: false,
-				briefModel: ARTIFACT_BRIEF_MODEL,
-				artifactModel: ARTIFACT_MODEL,
+				provider,
+				briefModel: provider === 'opencode' ? model : ARTIFACT_BRIEF_MODEL,
+				artifactModel: model,
 			},
 		});
 

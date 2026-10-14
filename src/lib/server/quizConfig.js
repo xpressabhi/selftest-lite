@@ -63,6 +63,13 @@ export const ARTIFACT_BRIEF_MODEL = 'gemini-flash-lite-latest';
  * stronger Flash alias replaces the lite default only with that evidence.
  */
 export const ARTIFACT_MODEL = 'gemini-flash-lite-latest';
+/**
+ * OpenAI-compatible inference gateway (OpenCode): selected for the playground
+ * by setting EXPLAINER_PROVIDER=opencode plus OPENCODE_API_KEY. Same eval
+ * gates apply before it becomes a deployment default.
+ */
+export const OPENCODE_INFERENCE_BASE_URL = 'https://opencode.ai/inference/openai/v1';
+export const ARTIFACT_OPENCODE_MODEL = 'deepseek-v4.1-flash';
 export const MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS = 1024;
 export const MAX_ARTIFACT_OUTPUT_TOKENS = 8192;
 export const ARTIFACT_DEADLINE_MS = 90000;

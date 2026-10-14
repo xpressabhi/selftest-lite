@@ -10,15 +10,20 @@ import {
 	ARTIFACT_BRIEF_MODEL,
 	ARTIFACT_DEADLINE_MS,
 	ARTIFACT_MODEL,
+	ARTIFACT_OPENCODE_MODEL,
 	MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS,
 	MAX_ARTIFACT_DOCUMENT_BYTES,
 	MAX_ARTIFACT_OUTPUT_TOKENS,
+	OPENCODE_INFERENCE_BASE_URL,
 } from './quizConfig.js';
 import { backoffBeforeRetry, isTransientProviderError } from './transientErrors.js';
 
 // The two-call concept-explainer pipeline. This module must stay node-safe
 // (no $app/env, no storage) so scripts/eval-artifact.mjs can drive the exact
-// production code path with a process-level API key.
+// production code path with a process-level API key. The wire is pluggable:
+// `gemini` uses the @google/genai SDK with a response schema; `opencode`
+// talks to the OpenAI-compatible inference gateway and relies on the prompt's
+// JSON shape, the parser, and validation/repair for the same guarantees.
 
 export class ExplainerTimeoutError extends Error {
 	constructor() {
@@ -48,34 +53,93 @@ function stageFailure(stage, cause, issues = []) {
 	return error;
 }
 
-async function requestJson({ ai, model, prompt, schema, maxOutputTokens, deadline }) {
+async function withDeadline(promiseFactory, deadline) {
 	const remainingMs = deadline - Date.now();
 	if (remainingMs <= 0) {
 		throw new ExplainerTimeoutError();
 	}
 	let timeoutHandle;
 	try {
-		const response = await Promise.race([
-			ai.models.generateContent({
-				model,
-				contents: prompt,
-				config: {
-					responseMimeType: 'application/json',
-					responseJsonSchema: z.toJSONSchema(schema),
-					maxOutputTokens,
-				},
-			}),
+		return await Promise.race([
+			promiseFactory(),
 			new Promise((_, reject) => {
 				timeoutHandle = setTimeout(() => {
 					reject(new ExplainerTimeoutError());
 				}, remainingMs);
 			}),
 		]);
-		return response.text;
 	} finally {
 		if (timeoutHandle) {
 			clearTimeout(timeoutHandle);
 		}
+	}
+}
+
+async function requestGeminiJson({ ai, model, prompt, schema, maxOutputTokens, deadline }) {
+	return withDeadline(
+		() =>
+			ai.models
+				.generateContent({
+					model,
+					contents: prompt,
+					config: {
+						responseMimeType: 'application/json',
+						responseJsonSchema: z.toJSONSchema(schema),
+						maxOutputTokens,
+					},
+				})
+				.then((response) => response.text),
+		deadline
+	);
+}
+
+async function requestOpenAiCompatJson({
+	apiKey,
+	baseUrl,
+	model,
+	prompt,
+	maxOutputTokens,
+	deadline,
+}) {
+	const remainingMs = deadline - Date.now();
+	if (remainingMs <= 0) {
+		throw new ExplainerTimeoutError();
+	}
+	const controller = new AbortController();
+	const timeoutHandle = setTimeout(() => controller.abort(), remainingMs);
+	try {
+		const response = await fetch(`${baseUrl}/chat/completions`, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				model,
+				messages: [{ role: 'user', content: prompt }],
+				max_tokens: maxOutputTokens,
+				response_format: { type: 'json_object' },
+			}),
+			signal: controller.signal,
+		});
+		if (!response.ok) {
+			const body = await response.text().catch(() => '');
+			const error = new Error(
+				`Inference provider returned ${response.status}: ${body.slice(0, 300)}`
+			);
+			// A bare status makes the transient-retry classifier work on 429/5xx.
+			error.status = response.status;
+			throw error;
+		}
+		const payload = await response.json();
+		return payload?.choices?.[0]?.message?.content ?? '';
+	} catch (error) {
+		if (error?.name === 'AbortError') {
+			throw new ExplainerTimeoutError();
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutHandle);
 	}
 }
 
@@ -92,14 +156,21 @@ function artifactIssues(payload, brief, language) {
 	return issues;
 }
 
-async function generateBrief({ ai, topic, question, answer, language, deadline }) {
+async function generateBrief({
+	requestJson,
+	model,
+	topic,
+	question,
+	answer,
+	language,
+	deadline,
+}) {
 	const prompt = generateConceptBriefPrompt({ topic, question, answer, language });
 	let lastError = null;
 	for (let attempt = 1; attempt <= 2; attempt += 1) {
 		try {
 			const text = await requestJson({
-				ai,
-				model: ARTIFACT_BRIEF_MODEL,
+				model,
 				prompt,
 				schema: conceptBriefSchema,
 				maxOutputTokens: MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS,
@@ -127,7 +198,7 @@ async function generateBrief({ ai, topic, question, answer, language, deadline }
 	throw stageFailure('brief', lastError);
 }
 
-async function generateArtifactBody({ ai, brief, language, deadline }) {
+async function generateArtifactBody({ requestJson, model, brief, language, deadline }) {
 	const prompt = generateArtifactPrompt({ brief, language });
 	let payload = null;
 	let lastError = null;
@@ -136,8 +207,7 @@ async function generateArtifactBody({ ai, brief, language, deadline }) {
 	for (let attempt = 1; attempt <= 2 && !payload; attempt += 1) {
 		try {
 			const text = await requestJson({
-				ai,
-				model: ARTIFACT_MODEL,
+				model,
 				prompt,
 				schema: artifactPayloadSchema,
 				maxOutputTokens: MAX_ARTIFACT_OUTPUT_TOKENS,
@@ -178,8 +248,7 @@ async function generateArtifactBody({ ai, brief, language, deadline }) {
 	let repaired = null;
 	try {
 		const text = await requestJson({
-			ai,
-			model: ARTIFACT_MODEL,
+			model,
 			prompt: generateArtifactPrompt({ brief, language, repairIssues: issues }),
 			schema: artifactPayloadSchema,
 			maxOutputTokens: MAX_ARTIFACT_OUTPUT_TOKENS,
@@ -207,7 +276,7 @@ async function generateArtifactBody({ ai, brief, language, deadline }) {
 }
 
 /**
- * Runs the production pipeline and returns `{ brief, payload, model }`.
+ * Runs the production pipeline and returns `{ brief, payload, model, provider }`.
  * Throws `ExplainerTimeoutError`, `ArtifactInvalidError`, or a stage error
  * carrying `generationFailure`.
  */
@@ -217,15 +286,57 @@ export async function generateExplainerArtifact({
 	answer,
 	language,
 	apiKey,
+	provider = 'gemini',
+	baseUrl = OPENCODE_INFERENCE_BASE_URL,
 	deadlineMs,
+	artifactModel,
+	briefModel,
 }) {
 	if (!apiKey) {
-		throw new Error('Gemini API key is not configured');
+		throw new Error('Inference API key is not configured');
 	}
-	const ai = new GoogleGenAI({ apiKey });
 	const deadline = deadlineMs ?? Date.now() + ARTIFACT_DEADLINE_MS;
 
-	const brief = await generateBrief({ ai, topic, question, answer, language, deadline });
-	const payload = await generateArtifactBody({ ai, brief, language, deadline });
-	return { brief, payload, model: ARTIFACT_MODEL };
+	if (provider === 'opencode') {
+		const model = artifactModel ?? ARTIFACT_OPENCODE_MODEL;
+		const requestJson = (args) => requestOpenAiCompatJson({ apiKey, baseUrl, ...args });
+		const brief = await generateBrief({
+			requestJson,
+			model: briefModel ?? model,
+			topic,
+			question,
+			answer,
+			language,
+			deadline,
+		});
+		const payload = await generateArtifactBody({
+			requestJson,
+			model,
+			brief,
+			language,
+			deadline,
+		});
+		return { brief, payload, model, provider };
+	}
+
+	const ai = new GoogleGenAI({ apiKey });
+	const model = artifactModel ?? ARTIFACT_MODEL;
+	const requestJson = (args) => requestGeminiJson({ ai, ...args });
+	const brief = await generateBrief({
+		requestJson,
+		model: briefModel ?? ARTIFACT_BRIEF_MODEL,
+		topic,
+		question,
+		answer,
+		language,
+		deadline,
+	});
+	const payload = await generateArtifactBody({
+		requestJson,
+		model,
+		brief,
+		language,
+		deadline,
+	});
+	return { brief, payload, model, provider };
 }

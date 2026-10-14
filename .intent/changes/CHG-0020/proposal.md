@@ -6,8 +6,8 @@ status: "draft"
 created_at: "2026-10-14T11:30:00Z"
 request: "Research HTML in question explanations or build a playground that explains a topic via a detailed HTML artifact with CSS/JS animation; the playground direction was chosen"
 proposal:
-  revision: 2
-  digest: "sha256:744063d81b87431c34aabb24462fbf1eb66fef7635fde34ab544a25f69a0ac7f"
+  revision: 3
+  digest: "sha256:1de7a67de9974f234609538893d94da0b874ebea0fb5574ee2f48a0cf42c34d8"
 scope:
   paths:
     - ".intent/changes/CHG-0020/**"
@@ -31,6 +31,8 @@ scope:
     - "src/lib/locales/*.json"
     - "tests/e2e/playground.e2e.js"
     - "scripts/eval-artifact*"
+    - ".env.example"
+    - "src/env.js"
     - "package.json"
     - "package-lock.json"
 test_changes:
@@ -79,6 +81,7 @@ New tests only otherwise: `src/lib/shared/playgroundLink.test.js`, `src/lib/serv
 - Sandbox + CSP are the security boundary; validation is a quality gate (spec D4).
 - Cache mirrors `question_explanations`; compose at serve time so `theme` stays out of the cache key (D5).
 - Artifact model constant is evidence-picked by `eval:artifact` (D2); `parse5` is added as a dependency; `explainerPipeline.js` is split out node-safe for the eval script (deviation from spec's file inventory, noted for conformance).
+- Provider seam: `EXPLAINER_PROVIDER=opencode` routes both pipeline calls through the OpenAI-compatible gateway (`OPENCODE_INFERENCE_BASE_URL`, Bearer `OPENCODE_API_KEY`); default stays Gemini. Requested by the operator to use their OpenCode subscription limits; the same eval gates decide whether it becomes a deployment default.
 - Rate limit 5/min for generation; cache hits free (D6).
 
 ## Verification
