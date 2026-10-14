@@ -144,3 +144,12 @@ Prompt v5 states the rule explicitly ("start with the first section; never rende
 title/summary"; no h1 anywhere). Verified against the stored real payload
 (`pythagoras-theorem-74d80856`): summary repeats 1 → 0, no lead header, no title heading.
 Limitation recorded: a mid-document title repeat is not auto-stripped (the prompt covers it).
+
+## Border cleanup
+
+The playground result card (`card border shadow-sm` + `card-body`) wrapped the header and the
+artifact in a component border that stacked with the artifact's own content cards — the operator
+read it as "two borders everywhere" and saw it hugging the title/Share row. The wrapper card is
+gone on the playground result surface: ExplainerHeader and ArtifactFrame now sit directly on the
+page background, so the only borders are the artifact's own (intended) content cards. Verified at
+390px with a stubbed API response: zero `.card`/`.card-body` wrappers in the result surface.

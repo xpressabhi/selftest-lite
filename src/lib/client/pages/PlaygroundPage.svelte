@@ -251,25 +251,23 @@
 	</header>
 
 	{#if status === 'ready' && artifact}
-		<div class="card border shadow-sm mt-4">
-			<div class="card-body">
-				<ExplainerHeader title={artifact.title} summary={artifact.summary}>
-					{#if artifact.slug}
-						<button
-							class="btn btn-sm btn-outline-secondary"
-							type="button"
-							onclick={() => void shareCurrentExplainer()}
-						>
-							{$t('playgroundShare')}
-						</button>
-					{/if}
-					<button class="btn btn-sm btn-outline-secondary" type="button" onclick={reset}>
-						{$t('playgroundNewConcept')}
+		<div class="mt-4">
+			<ExplainerHeader title={artifact.title} summary={artifact.summary}>
+				{#if artifact.slug}
+					<button
+						class="btn btn-sm btn-outline-secondary"
+						type="button"
+						onclick={() => void shareCurrentExplainer()}
+					>
+						{$t('playgroundShare')}
 					</button>
-				</ExplainerHeader>
-				<div class="mt-3">
-					<ArtifactFrame html={artifact.html} title={artifact.title} />
-				</div>
+				{/if}
+				<button class="btn btn-sm btn-outline-secondary" type="button" onclick={reset}>
+					{$t('playgroundNewConcept')}
+				</button>
+			</ExplainerHeader>
+			<div class="mt-3">
+				<ArtifactFrame html={artifact.html} title={artifact.title} />
 			</div>
 		</div>
 	{:else}

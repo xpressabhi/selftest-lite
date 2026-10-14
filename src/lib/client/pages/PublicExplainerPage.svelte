@@ -45,9 +45,7 @@
 		</button>
 	</ExplainerHeader>
 
-	<div class="card border shadow-sm mt-4">
-		<div class="card-body">
-			<ArtifactFrame {html} title={data.title} />
-		</div>
+	<div class="mt-4">
+		<ArtifactFrame {html} title={data.title} />
 	</div>
 </section>

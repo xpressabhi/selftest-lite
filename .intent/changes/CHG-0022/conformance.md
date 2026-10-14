@@ -58,3 +58,10 @@ buttons (native sheet → clipboard fallback + toast) sit on the result card and
   sit below a tall frame; the public page keeps its top-of-page Share.
 - Playground E2E unchanged and green (8/8); public page assertions still pass because the page
   chrome (not the artifact) carries the title/summary.
+
+## Border cleanup
+
+The public explain page's wrapper card is removed for the same reason as the playground result
+surface: header + artifact sit directly on the page, and the only remaining border is the
+artifact's own content card. Verified against the live `pythagoras-theorem-74d80856` payload at
+390px (zero wrapper cards; single title; correct filled-button contrast).
