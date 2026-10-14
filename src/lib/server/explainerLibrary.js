@@ -53,9 +53,11 @@ export async function recordExplainerForIdentity(
 }
 
 /**
- * Lists an identity's explainers, newest first. Deduped by cache_key: a
- * signed-in user can also match an older anonymous row for the same concept
- * on the same device, and only the most recent should appear.
+ * Lists an identity's explainers, newest-created first. Deduped by cache_key:
+ * a signed-in user can also match an older anonymous row for the same concept
+ * on the same device, and only the most recent should appear. Ordering is by
+ * creation time (the operator's request); opening an item still bumps
+ * `last_opened_at`, it just does not reorder the list.
  */
 export async function listExplainersForIdentity(identity, { limit = 24 } = {}) {
 	const { userId, clientId } = normalizeAttemptIdentity(identity);
@@ -65,7 +67,7 @@ export async function listExplainersForIdentity(identity, { limit = 24 } = {}) {
 	await ensureStorageSchema();
 
 	const result = await query(
-		`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count, slug
+		`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count, slug, cache_key
 		 FROM (
 			SELECT DISTINCT ON (ue.cache_key) ue.*, c.slug
 			FROM user_explainers ue
@@ -73,11 +75,71 @@ export async function listExplainersForIdentity(identity, { limit = 24 } = {}) {
 			WHERE (ue.user_id = $1) OR (ue.user_id IS NULL AND ue.client_id = $2)
 			ORDER BY ue.cache_key, ue.last_opened_at DESC
 		 ) latest
-		 ORDER BY last_opened_at DESC
+		 ORDER BY created_at DESC
 		 LIMIT $3`,
 		[userId, clientId, limit]
 	);
 	return result.rows;
+}
+
+/** Escapes LIKE wildcards so user input matches literally. */
+function escapeLike(value) {
+	return String(value ?? '').replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+/**
+ * Searches the caller's own explainers and every already-generated public
+ * explainer for a substring match, so replaying an existing artifact is
+ * always an option before spending tokens. Own rows win the dedupe by cache
+ * key; the merged list is newest-created first.
+ */
+export async function searchExplainersForIdentity(identity, searchTerm, { limit = 12 } = {}) {
+	const term = String(searchTerm ?? '').trim();
+	if (!term) {
+		return [];
+	}
+	const { userId, clientId } = normalizeAttemptIdentity(identity);
+	await ensureStorageSchema();
+
+	const pattern = `%${escapeLike(term)}%`;
+	const ownRows =
+		userId || clientId
+			? (
+					await query(
+						`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count, slug, cache_key, true AS mine
+						 FROM (
+							SELECT DISTINCT ON (ue.cache_key) ue.*, c.slug
+							FROM user_explainers ue
+							LEFT JOIN concept_explainers c ON c.cache_key = ue.cache_key
+							WHERE ((ue.user_id = $1) OR (ue.user_id IS NULL AND ue.client_id = $2))
+							  AND (ue.title ILIKE $3 OR ue.concept ILIKE $3 OR ue.summary ILIKE $3)
+							ORDER BY ue.cache_key, ue.last_opened_at DESC
+						 ) latest
+						 ORDER BY created_at DESC
+						 LIMIT $4`,
+						[userId, clientId, pattern, limit]
+					)
+				).rows
+			: [];
+
+	const ownKeys = new Set(ownRows.map((row) => row.cache_key));
+	const publicRows = (
+		await query(
+			`SELECT NULL::bigint AS id, c.concept, c.payload->>'title' AS title,
+				c.payload->>'summary' AS summary, c.language, c.created_at,
+				c.created_at AS last_opened_at, 0 AS open_count, c.slug, c.cache_key, false AS mine
+			 FROM concept_explainers c
+			 WHERE c.slug IS NOT NULL
+			   AND (c.payload->>'title' ILIKE $1 OR c.concept ILIKE $1)
+			 ORDER BY c.created_at DESC
+			 LIMIT $2`,
+			[pattern, limit]
+		)
+	).rows.filter((row) => !ownKeys.has(row.cache_key));
+
+	return [...ownRows, ...publicRows]
+		.sort((left, right) => new Date(right.created_at) - new Date(left.created_at))
+		.slice(0, limit);
 }
 
 /**

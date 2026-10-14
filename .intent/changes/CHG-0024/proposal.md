@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0024"
 title: "Playground: creation-ordered library and explainer search"
-status: "draft"
+status: "complete"
 created_at: "2026-10-14T16:40:00Z"
 request: "keep createdat timestamp for each explainer and show the recent one first in playground, and make the playground searchable"
 proposal:

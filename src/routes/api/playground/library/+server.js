@@ -3,6 +3,7 @@ import { composeArtifactDocument } from '#lib/server/artifactScaffold.js';
 import {
 	getExplainerForIdentity,
 	listExplainersForIdentity,
+	searchExplainersForIdentity,
 } from '#lib/server/explainerLibrary.js';
 import { rateLimiter } from '#lib/server/rateLimiter.js';
 import { logApiEvent } from '#lib/server/storage.js';
@@ -17,6 +18,21 @@ const LIBRARY_RATE_LIMIT = 60;
 
 // Per-identity data must never sit in any browser or service-worker cache.
 const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
+
+function mapExplainerItem(row) {
+	return {
+		id: row.id ?? null,
+		concept: row.concept,
+		title: row.title,
+		summary: row.summary,
+		language: row.language,
+		slug: row.slug,
+		openCount: Number(row.open_count ?? 0),
+		createdAt: row.created_at,
+		lastOpenedAt: row.last_opened_at,
+		mine: row.mine === true,
+	};
+}
 
 function rateLimitedResponse(rateLimit) {
 	return Response.json(
@@ -97,29 +113,25 @@ export async function GET({ request, cookies, url }) {
 			);
 		}
 
-		const items = await listExplainersForIdentity(identity, { limit: 24 });
+		const searchTerm = (url.searchParams.get('q') ?? '').trim().slice(0, 80);
+		const rows = searchTerm
+			? await searchExplainersForIdentity(identity, searchTerm, { limit: 12 })
+			: (await listExplainersForIdentity(identity, { limit: 24 })).map((row) => ({
+					...row,
+					mine: true,
+				}));
 		await logApiEvent({
 			route: ROUTE,
-			action: 'list_explainers',
+			action: searchTerm ? 'search_explainers' : 'list_explainers',
 			clientKey,
 			request,
 			statusCode: 200,
 			durationMs: Date.now() - startedAt,
-			metadata: { count: items.length },
+			metadata: { count: rows.length, search: searchTerm || null },
 		});
 		return Response.json(
 			{
-				items: items.map((row) => ({
-					id: row.id,
-					concept: row.concept,
-					title: row.title,
-					summary: row.summary,
-					language: row.language,
-					slug: row.slug,
-					openCount: Number(row.open_count ?? 0),
-					createdAt: row.created_at,
-					lastOpenedAt: row.last_opened_at,
-				})),
+				items: rows.map(mapExplainerItem),
 			},
 			{ headers: NO_STORE_HEADERS }
 		);

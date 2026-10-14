@@ -514,6 +514,98 @@ test('publishes each explainer at a unique slug URL with a shareable page', asyn
 	});
 });
 
+test('lists the caller library newest-created first with created timestamps', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const clientId = 'e2e-order-client';
+	await sql`
+		INSERT INTO user_explainers (client_id, cache_key, concept, title, summary, language, created_at, last_opened_at)
+		VALUES
+			(${clientId}, 'e2e-order-old', 'Old concept', 'Older Explainer', 's', 'english', NOW() - INTERVAL '2 days', NOW()),
+			(${clientId}, 'e2e-order-new', 'New concept', 'Newer Explainer', 's', 'english', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '30 minutes')
+	`;
+
+	const response = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	expect(response.status()).toBe(200);
+	const items = (await response.json()).items;
+	expect(items.map((entry) => entry.title)).toEqual(['Newer Explainer', 'Older Explainer']);
+	expect(items[0].createdAt).toBeTruthy();
+	expect(items.every((entry) => entry.mine === true)).toBe(true);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ order: items.map((entry) => entry.title) }),
+	});
+});
+
+test('search finds own and public explainers without generating', async ({ request }, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const clientId = 'e2e-search-client';
+	const topic = 'e2e-search-topic';
+	// Seed the shared cache, then serve it once so it gets a slug and lands in
+	// this client's library.
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Searchable Exoplanets',
+			summary: 'Find me',
+			recipes: [],
+			html: '<p id="e2e-search-marker">x</p>',
+			css: '',
+			js: '',
+		},
+	});
+	const served = await request.post('/api/playground', {
+		data: { topic, theme: 'light', profile: { viewport: 'wide', budget: 'full' } },
+		headers: { 'x-client-id': clientId },
+	});
+	const { slug } = await served.json();
+	expect(slug).toBeTruthy();
+
+	// A different identity finds the same artifact as a public row.
+	const publicSearch = await request.get('/api/playground/library?q=Exoplanet', {
+		headers: { 'x-client-id': 'e2e-search-other' },
+	});
+	const publicItems = (await publicSearch.json()).items;
+	const publicMatch = publicItems.find((entry) => entry.slug === slug);
+	expect(publicMatch).toBeTruthy();
+	expect(publicMatch.mine).toBe(false);
+	expect(publicMatch.id).toBeNull();
+
+	// The owner sees it once, as theirs (deduped across the two sources).
+	const ownSearch = await request.get('/api/playground/library?q=Exoplanet', {
+		headers: { 'x-client-id': clientId },
+	});
+	const ownItems = (await ownSearch.json()).items.filter((entry) => entry.slug === slug);
+	expect(ownItems).toHaveLength(1);
+	expect(ownItems[0].mine).toBe(true);
+
+	const noMatch = await request.get('/api/playground/library?q=zzzznomatch', {
+		headers: { 'x-client-id': clientId },
+	});
+	expect((await noMatch.json()).items).toEqual([]);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			slug,
+			publicMatch: publicMatch.mine === false,
+			ownMatches: ownItems.length,
+			emptyForUnknown: true,
+		}),
+	});
+});
+
 test('rejects malformed playground requests', async ({ request }) => {
 	const missingTopic = await request.post('/api/playground', { data: { question: 'Q' } });
 	expect(missingTopic.status()).toBe(400);

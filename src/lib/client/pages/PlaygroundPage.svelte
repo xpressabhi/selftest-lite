@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import ArtifactFrame from '#lib/client/ArtifactFrame.svelte';
 	import { getClientHeaders } from '#lib/client/identity.js';
@@ -24,6 +25,13 @@
 	let errorMessage = $state('');
 	let stageTimer = null;
 	let library = $state([]);
+	let searchQuery = $state('');
+	let searchResults = $state(null);
+	let searching = $state(false);
+	let searchTimer = null;
+	let searchSequence = 0;
+
+	const visibleItems = $derived(searchQuery.trim() ? (searchResults ?? []) : library);
 
 	const examples = $derived([
 		$t('playgroundExample1'),
@@ -56,6 +64,9 @@
 		return () => {
 			if (stageTimer !== null) {
 				clearInterval(stageTimer);
+			}
+			if (searchTimer !== null) {
+				clearTimeout(searchTimer);
 			}
 			document.removeEventListener('visibilitychange', onVisibility);
 		};
@@ -207,7 +218,7 @@
 			}
 			artifact = payload;
 			status = 'ready';
-			track('playground:library-item-open', { id });
+			track('playground:library-item-open', { id, mine: true });
 		} catch (error) {
 			status = 'error';
 			errorMessage = error?.localized === true ? error.message : '';
@@ -223,6 +234,58 @@
 			day: 'numeric',
 			month: 'short',
 		});
+	}
+
+	// Search spans the caller's own explainers and every already-generated
+	// public one, so an existing artifact can always be replayed instead of
+	// spending tokens on a new generation.
+	function scheduleSearch() {
+		if (searchTimer !== null) {
+			clearTimeout(searchTimer);
+		}
+		if (!searchQuery.trim()) {
+			searchResults = null;
+			searching = false;
+			return;
+		}
+		searchTimer = setTimeout(() => {
+			searchTimer = null;
+			void runSearch(searchQuery.trim());
+		}, 350);
+	}
+
+	async function runSearch(term) {
+		const sequence = ++searchSequence;
+		searching = true;
+		try {
+			const response = await fetch(`/api/playground/library?q=${encodeURIComponent(term)}`, {
+				headers: getClientHeaders(),
+				cache: 'no-store',
+			});
+			if (!response.ok || sequence !== searchSequence) {
+				return;
+			}
+			const payload = await response.json().catch(() => ({}));
+			searchResults = Array.isArray(payload.items) ? payload.items : [];
+		} catch {
+			// Keep the previous results; search is an enhancement.
+		} finally {
+			if (sequence === searchSequence) {
+				searching = false;
+			}
+		}
+	}
+
+	async function openItem(item) {
+		if (item.mine && item.id) {
+			await openLibraryItem(item.id);
+			return;
+		}
+		if (!item.slug) {
+			return;
+		}
+		track('playground:library-item-open', { id: null, mine: false });
+		await goto(localizedPath(`/explain/${item.slug}`, $activeLanguage));
 	}
 
 	async function shareCurrentExplainer() {
@@ -346,29 +409,50 @@
 				</div>
 			{/if}
 
-			{#if library.length > 0}
-				<div class="playground-library mt-4">
-					<h2 class="h6 text-muted mb-2">{$t('playgroundLibraryTitle')}</h2>
+			<div class="playground-library mt-4">
+				<label class="visually-hidden" for="playground-search">{$t('playgroundSearchLabel')}</label>
+				<input
+					id="playground-search"
+					class="form-control"
+					type="search"
+					autocomplete="off"
+					maxlength="80"
+					placeholder={$t('playgroundSearchPlaceholder')}
+					disabled={status === 'loading'}
+					bind:value={searchQuery}
+					oninput={scheduleSearch}
+				/>
+				{#if visibleItems.length > 0}
+					<h2 class="h6 text-muted mt-3 mb-2">
+						{searchQuery.trim() ? $t('playgroundSearchResults') : $t('playgroundLibraryTitle')}
+					</h2>
 					<ul class="list-unstyled mb-0 d-grid gap-2">
-						{#each library as item (item.id)}
+						{#each visibleItems as item (item.mine ? `mine-${item.id}` : `public-${item.slug}`)}
 							<li>
 								<button
 									type="button"
 									class="playground-library-item"
 									disabled={status === 'loading'}
-									onclick={() => void openLibraryItem(item.id)}
+									onclick={() => void openItem(item)}
 								>
-									<span class="playground-library-title">{item.title || item.concept}</span>
+									<span class="playground-library-title">
+										{item.title || item.concept}
+										{#if !item.mine}
+											<span class="playground-library-badge">{$t('playgroundPublicBadge')}</span>
+										{/if}
+									</span>
 									<span class="playground-library-meta">
 										{item.concept}
-										{#if item.lastOpenedAt}· {formatLibraryDate(item.lastOpenedAt)}{/if}
+										{#if item.createdAt}· {formatLibraryDate(item.createdAt)}{/if}
 									</span>
 								</button>
 							</li>
 						{/each}
 					</ul>
-				</div>
-			{/if}
+				{:else if searchQuery.trim() && !searching}
+					<p class="text-muted small mb-0 mt-3">{$t('playgroundSearchEmpty')}</p>
+				{/if}
+			</div>
 		</form>
 	{/if}
 </section>
@@ -420,5 +504,17 @@
 		margin-top: 2px;
 		color: var(--text-muted);
 		font-size: 0.8rem;
+	}
+
+	.playground-library-badge {
+		display: inline-block;
+		margin-left: 6px;
+		padding: 0 8px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		color: var(--text-muted);
+		font-size: 0.7rem;
+		font-weight: 500;
+		vertical-align: middle;
 	}
 </style>
