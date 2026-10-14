@@ -75,6 +75,15 @@ export const ARTIFACT_MODEL = 'gemini-flash-lite-latest';
  */
 export const OPENCODE_INFERENCE_BASE_URL = 'https://opencode.ai/inference/go/v1';
 export const ARTIFACT_OPENCODE_MODEL = 'deepseek-v4.1-flash';
+/**
+ * The gateway's chat-completions models share the completion budget with
+ * reasoning tokens. Eval evidence: deepseek-v4.1-flash with reasoning enabled
+ * spends the whole budget thinking and emits no content (`finish_reason:
+ * length`), and `reasoning_effort: low` is silently ignored; `none` makes it
+ * emit the JSON directly (~20s per artifact). Revisit if a future default
+ * model rejects the field.
+ */
+export const OPENCODE_REASONING_EFFORT = 'none';
 export const MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS = 1024;
 export const MAX_ARTIFACT_OUTPUT_TOKENS = 8192;
 /**

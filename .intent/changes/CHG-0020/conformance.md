@@ -72,3 +72,18 @@ decision gate. The markdown explanation pipeline is untouched.
   `ARTIFACT_INVALID` rate, cache `use_count` growth, `playground:*` client events.
 - Human-review the eval screenshots once; re-try gateway models when a lighter-reasoning
   candidate appears (the seam already supports it).
+
+## Post-completion finding: gateway artifact calls
+
+Root cause of the local `/api/playground` timeout with `EXPLAINER_PROVIDER=opencode`: the Go
+gateway shares the completion budget with reasoning tokens, and `deepseek-v4.1-flash` spent the
+entire 8,192-token budget reasoning (`finish_reason: length`, zero content). `reasoning_effort:
+"low"` is silently ignored; `reasoning_effort: "none"` is honored and produces the full artifact
+(~14 KB JSON) in ~20 s. The wire now sends `OPENCODE_REASONING_EFFORT = 'none'`.
+
+Full gateway eval with the fix (`--provider=opencode --model=deepseek-v4.1-flash --strict`):
+5/8 valid (one invalid brief JSON, one 90 s timeout, one model JS console error), 3/8 measurably
+animated, 25–73 s per concept. The gates require ≥ 7/8 valid and ≥ 6/8 animated, so
+`deepseek-v4.1-flash` remains **not** a validated artifact model and the repo defaults stay
+Gemini + the Gemini provider. The gateway remains selectable via `EXPLAINER_PROVIDER=opencode`
+(used locally on request); re-run the eval before making it a deployment default.

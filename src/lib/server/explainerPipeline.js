@@ -20,6 +20,7 @@ import {
 	MAX_ARTIFACT_OUTPUT_TOKENS,
 	MAX_ARTIFACT_OUTPUT_TOKENS_OPENCODE,
 	OPENCODE_INFERENCE_BASE_URL,
+	OPENCODE_REASONING_EFFORT,
 } from './quizConfig.js';
 import { backoffBeforeRetry, isTransientProviderError } from './transientErrors.js';
 
@@ -106,6 +107,7 @@ async function requestOpenAiCompatJson({
 	maxOutputTokens,
 	deadline,
 	sessionId,
+	reasoningEffort,
 }) {
 	const remainingMs = deadline - Date.now();
 	if (remainingMs <= 0) {
@@ -130,6 +132,7 @@ async function requestOpenAiCompatJson({
 				messages: [{ role: 'user', content: prompt }],
 				max_tokens: maxOutputTokens,
 				response_format: { type: 'json_object' },
+				...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
 			}),
 			signal: controller.signal,
 		});
@@ -327,7 +330,13 @@ export async function generateExplainerArtifact({
 		const model = artifactModel ?? ARTIFACT_OPENCODE_MODEL;
 		const sessionId = randomUUID();
 		const requestJson = (args) =>
-			requestOpenAiCompatJson({ apiKey, baseUrl, sessionId, ...args });
+			requestOpenAiCompatJson({
+				apiKey,
+				baseUrl,
+				sessionId,
+				reasoningEffort: OPENCODE_REASONING_EFFORT,
+				...args,
+			});
 		const brief = await generateBrief({
 			requestJson,
 			model: briefModel ?? model,
