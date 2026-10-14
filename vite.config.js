@@ -71,14 +71,16 @@ export default defineConfig(({ command }) => {
 							},
 						},
 						{
-							// Public GET APIs only. Personal or admin data (/api/user,
-							// /api/auth, /api/admin, /api/premium, /api/test) is never
-							// written to a shared cache, and responses that explicitly
-							// opt out with `Cache-Control: no-store` are skipped too.
+							// Public, shareable GET APIs only. Personal or admin data
+							// (/api/user, /api/auth, /api/admin, /api/premium, /api/test,
+							// /api/playground) is never written to a shared cache — the
+							// explainer library is per-identity and a cached list went
+							// stale on phones. Responses that explicitly opt out with
+							// `Cache-Control: no-store` are skipped too.
 							urlPattern: ({ url }) =>
 								url.origin === self.location.origin &&
 								url.pathname.startsWith('/api/') &&
-								!/^\/api\/(auth|admin|user|premium)\//.test(url.pathname) &&
+								!/^\/api\/(auth|admin|user|premium|playground)\//.test(url.pathname) &&
 								url.pathname !== '/api/test',
 							handler: 'NetworkFirst',
 							options: {

@@ -15,6 +15,9 @@ import { API_LIMIT_ERROR_CODE, classifyApiError } from '#lib/shared/apiLimitErro
 const ROUTE = '/api/playground/library';
 const LIBRARY_RATE_LIMIT = 60;
 
+// Per-identity data must never sit in any browser or service-worker cache.
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
+
 function rateLimitedResponse(rateLimit) {
 	return Response.json(
 		{
@@ -26,6 +29,7 @@ function rateLimitedResponse(rateLimit) {
 		{
 			status: 429,
 			headers: {
+				...NO_STORE_HEADERS,
 				'X-RateLimit-Limit': String(LIBRARY_RATE_LIMIT),
 				'X-RateLimit-Remaining': rateLimit.remaining.toString(),
 				'X-RateLimit-Reset': rateLimit.resetTime.toString(),
@@ -61,7 +65,7 @@ export async function GET({ request, cookies, url }) {
 			if (!row) {
 				return Response.json(
 					{ error: 'Explainer not found', code: 'EXPLAINER_NOT_FOUND' },
-					{ status: 404 }
+					{ status: 404, headers: NO_STORE_HEADERS }
 				);
 			}
 			const theme = url.searchParams.get('theme') === 'dark' ? 'dark' : 'light';
@@ -74,20 +78,23 @@ export async function GET({ request, cookies, url }) {
 				durationMs: Date.now() - startedAt,
 				metadata: { id: row.id, language: row.language },
 			});
-			return Response.json({
-				id: row.id,
-				title: row.title,
-				summary: row.summary,
-				recipes: row.payload?.recipes ?? [],
-				slug: row.slug,
-				html: composeArtifactDocument({
-					brief: row.payload ?? {},
-					payload: row.payload ?? {},
-					language: row.language,
-					theme,
-				}),
-				cached: true,
-			});
+			return Response.json(
+				{
+					id: row.id,
+					title: row.title,
+					summary: row.summary,
+					recipes: row.payload?.recipes ?? [],
+					slug: row.slug,
+					html: composeArtifactDocument({
+						brief: row.payload ?? {},
+						payload: row.payload ?? {},
+						language: row.language,
+						theme,
+					}),
+					cached: true,
+				},
+				{ headers: NO_STORE_HEADERS }
+			);
 		}
 
 		const items = await listExplainersForIdentity(identity, { limit: 24 });
@@ -100,19 +107,22 @@ export async function GET({ request, cookies, url }) {
 			durationMs: Date.now() - startedAt,
 			metadata: { count: items.length },
 		});
-		return Response.json({
-			items: items.map((row) => ({
-				id: row.id,
-				concept: row.concept,
-				title: row.title,
-				summary: row.summary,
-				language: row.language,
-				slug: row.slug,
-				openCount: Number(row.open_count ?? 0),
-				createdAt: row.created_at,
-				lastOpenedAt: row.last_opened_at,
-			})),
-		});
+		return Response.json(
+			{
+				items: items.map((row) => ({
+					id: row.id,
+					concept: row.concept,
+					title: row.title,
+					summary: row.summary,
+					language: row.language,
+					slug: row.slug,
+					openCount: Number(row.open_count ?? 0),
+					createdAt: row.created_at,
+					lastOpenedAt: row.last_opened_at,
+				})),
+			},
+			{ headers: NO_STORE_HEADERS }
+		);
 	} catch (error) {
 		console.error(error);
 		const { statusCode, code, message } = classifyApiError(error, {

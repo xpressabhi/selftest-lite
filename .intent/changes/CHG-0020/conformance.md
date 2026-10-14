@@ -124,3 +124,10 @@ artifact (nondeterministic sloppiness of the same class recorded earlier).
   clipped top, natural 2418px height, clean chips. Note: artifacts cached under the old prompt
   keep their old model CSS; the next request for the same concept regenerates under prompt-v3,
   and old public URLs keep serving their frozen artifact.
+
+## Prompt v4: no reserved blank space
+
+A live artifact review showed a large empty region where hidden steps still occupied layout (the
+model hid steps with visibility/opacity). The artifact prompt now requires inactive steps to be
+hidden with `display:none` (or removed) so the reported height matches visible content; prompt
+version bumped to `prompt-v4` so affected concepts regenerate on their next request.

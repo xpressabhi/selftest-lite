@@ -40,3 +40,18 @@ counter. Reviewing a saved explainer performs no model call and consumes no gene
 - After deploy: `telemetry:report --days=7` for `/api/playground/library` volume and errors.
 - Optional later: backfill of pre-login anonymous library rows onto accounts (the CHG-0013
   pattern), and per-item removal once a retention story beyond archive-first is designed.
+
+## Freshness + display fix pass
+
+Testing the flow locally surfaced two real defects:
+
+1. The library item was styled with the app's `.btn` class, which laid the title and meta out as
+   squeezed side-by-side columns. It now uses a purpose-built `.playground-library-item`
+   (block layout, token border/radius, 44px target); verified at 390px (title and meta both full
+   width, stacked).
+2. The service worker's cached-APIs rule did not exclude `/api/playground`, so the per-identity
+   library list could be served stale from the 'apis' cache (NetworkFirst falls back on its
+   10-second timeout). `/api/playground` is now in the personal-data exclusion list, the library
+   route sends `Cache-Control: no-store` on every response, and the page fetches the list with
+   `cache: 'no-store'` plus a visibility-change refresh — the "recent explainers" list can no
+   longer show a previous artifact after a new generation.

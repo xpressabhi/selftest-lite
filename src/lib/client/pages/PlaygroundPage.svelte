@@ -45,10 +45,19 @@
 		};
 		track('playground:open', { hasContext: Boolean(context.question || context.answer) });
 		void loadLibrary();
+		// Keep the recent list honest when the tab is restored (bfcache / app
+		// switch on a phone), where no load happens but time has passed.
+		const onVisibility = () => {
+			if (document.visibilityState === 'visible' && status === 'idle') {
+				void loadLibrary();
+			}
+		};
+		document.addEventListener('visibilitychange', onVisibility);
 		return () => {
 			if (stageTimer !== null) {
 				clearInterval(stageTimer);
 			}
+			document.removeEventListener('visibilitychange', onVisibility);
 		};
 	});
 
@@ -163,6 +172,7 @@
 		try {
 			const response = await fetch('/api/playground/library', {
 				headers: getClientHeaders(),
+				cache: 'no-store',
 			});
 			if (!response.ok) {
 				return;
@@ -187,6 +197,7 @@
 					: 'light';
 			const response = await fetch(`/api/playground/library?id=${id}&theme=${theme}`, {
 				headers: getClientHeaders(),
+				cache: 'no-store',
 			});
 			const payload = await response.json().catch(() => ({}));
 			if (!response.ok) {
@@ -345,7 +356,7 @@
 							<li>
 								<button
 									type="button"
-									class="btn btn-outline-secondary w-100 text-start"
+									class="playground-library-item"
 									disabled={status === 'loading'}
 									onclick={() => void openLibraryItem(item.id)}
 								>
@@ -378,6 +389,29 @@
 		font-weight: 600;
 	}
 
+	.playground-library-item {
+		display: block;
+		width: 100%;
+		text-align: left;
+		min-height: 44px;
+		padding: 10px 12px;
+		background: var(--surface, #ffffff);
+		border: 1px solid var(--line, #e2e8f0);
+		border-radius: var(--radius-surface, 12px);
+		font: inherit;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.playground-library-item:hover {
+		border-color: var(--brand-text, #4f46e5);
+	}
+
+	.playground-library-item:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+
 	.playground-library-title {
 		display: block;
 		font-weight: 600;
@@ -385,6 +419,7 @@
 
 	.playground-library-meta {
 		display: block;
+		margin-top: 2px;
 		color: var(--text-muted);
 		font-size: 0.8rem;
 	}

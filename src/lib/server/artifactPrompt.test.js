@@ -57,6 +57,7 @@ describe('generateArtifactPrompt', () => {
 		expect(prompt).toContain('never write raw colour values');
 		expect(prompt).toContain('do not repeat them');
 		expect(prompt).toContain('control-primary');
+		expect(prompt).toContain('must not reserve layout space');
 		expect(prompt).toContain('"html"');
 		expect(prompt).toContain('"css"');
 		expect(prompt).toContain('"js"');
