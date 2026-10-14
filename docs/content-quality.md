@@ -90,6 +90,22 @@ served answer-position gate is a one-sided binomial test (50% + 2σ), not a
 fixed percentage: with only ~30 questions a fixed 60% gate false-alarms about
 one run in five, while a real shuffle failure still trips the σ limit.
 
+Concept-playground artifacts have their own harness:
+
+```bash
+npm run eval:artifact                                     # 8 concepts, Gemini default
+npm run eval:artifact -- --provider=opencode --model=deepseek-v4.1-flash
+npm run eval:artifact -- --strict
+```
+
+It drives the production pipeline, loads each composed document in Chromium,
+and reports validity (no console/page errors), animation activity
+(`getAnimations()` plus DOM mutations), external requests, and byte sizes,
+writing `test-results/artifact-eval/report.json` with screenshots. `--strict`
+gates: ≥ 7/8 valid, ≥ 6/8 animated, zero external requests, nothing over the
+150 KB document cap. Its report is the evidence that selects `ARTIFACT_MODEL`
+(and whether the OpenAI-compatible gateway replaces the Gemini SDK).
+
 ## Item analytics and feedback
 
 `npm run telemetry:report` derives per-question p-values from stored
