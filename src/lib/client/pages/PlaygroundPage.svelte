@@ -5,6 +5,7 @@
 	import { getClientHeaders } from '#lib/client/identity.js';
 	import { activeLanguage, localizedApiError, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
+	import { shareLink } from '#lib/client/shareLink.js';
 	import { track } from '#lib/client/telemetry.js';
 	import { bucketClientProfile } from '#lib/shared/playgroundProfile.js';
 	import { localizedPath } from '#lib/shared/seo.js';
@@ -211,6 +212,17 @@
 			month: 'short',
 		});
 	}
+
+	async function shareCurrentExplainer() {
+		if (!artifact?.slug) {
+			return;
+		}
+		const publicPath = localizedPath(`/explain/${artifact.slug}`, $activeLanguage);
+		const url =
+			typeof window !== 'undefined' ? `${window.location.origin}${publicPath}` : publicPath;
+		const method = await shareLink({ title: artifact.title, text: artifact.summary, url });
+		track('playground:share', { surface: 'result', method });
+	}
 </script>
 
 <SeoHead
@@ -232,9 +244,20 @@
 				<h2 class="h5 mb-1">{artifact.title}</h2>
 				<p class="text-muted small mb-3">{artifact.summary}</p>
 				<ArtifactFrame html={artifact.html} title={artifact.title} />
-				<button class="btn btn-sm btn-outline-secondary mt-3" type="button" onclick={reset}>
-					{$t('playgroundNewConcept')}
-				</button>
+				<div class="d-flex flex-wrap gap-2 mt-3">
+					{#if artifact.slug}
+						<button
+							class="btn btn-sm btn-outline-secondary"
+							type="button"
+							onclick={() => void shareCurrentExplainer()}
+						>
+							{$t('playgroundShare')}
+						</button>
+					{/if}
+					<button class="btn btn-sm btn-outline-secondary" type="button" onclick={reset}>
+						{$t('playgroundNewConcept')}
+					</button>
+				</div>
 			</div>
 		</div>
 	{:else}

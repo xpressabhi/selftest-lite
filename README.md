@@ -87,7 +87,7 @@ npm run exams:sync  # fetch, extract and store exam notifications (needs DATABAS
 | ---------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/api/generate`                          | POST            | Generate a quiz/exam paper from topic, difficulty, language, etc. (personalized when a profile exists; response includes `personalized` + `tailoredSummary`)                                                                                                     |
 | `/api/explain`                           | POST            | Generate an explanation for a question/answer                                                                                                                                                                                                                    |
-| `/api/playground`                        | POST            | Generate an animated HTML explainer for a concept (two-step brief → artifact pipeline, cache-first; returns a composed document for a sandboxed iframe; 5 generations/min)                                                                                         |
+| `/api/playground`                        | POST            | Generate an animated HTML explainer for a concept (two-step brief → artifact pipeline, cache-first; returns a composed document, its public slug, and a theme match; 5 generations/min)                                                                          |
 | `/api/playground/library`                | GET             | The caller's saved explainers (`?id=` serves one from the shared cache — never a model call)                                                                                                                                                                      |
 | `/api/parse-intent`                      | POST            | Conversational test planner turn: message + current plan in, updated plan plus an optional clarification question out (TypeSafe Jev). `mode: "preview"` returns the plan only (live card preview); the route allows 100 requests/min per client.                 |
 | `/api/test?id=`                          | GET             | Fetch a stored test paper (includes `myAttempt` for the current user/device)                                                                                                                                                                                     |
@@ -126,8 +126,10 @@ All endpoints are rate-limited. See `src/lib/server/rateLimiter.js`.
 Indexable pages exist in English and Hindi: the Hindi tree is mirrored under `/hi`
 (same body components, URL-driven language, reciprocal `hreflang`). Crawler files
 are generated from the registries: `/sitemap.xml` (both languages), `/rss.xml`,
-`/llms.txt`, and `static/robots.txt`. Head metadata for every indexable page comes
-from `src/lib/shared/seo.js` + `SeoHead.svelte`; the runbook for Search Console and
+`/llms.txt`, and `static/robots.txt`. Every published explainer also has a public page at
+`/explain/<slug>` (Hindi twin under `/hi`) with canonical + hreflang metadata; these dynamic
+pages are crawlable but not part of the build-time sitemap. Head metadata for every indexable
+page comes from `src/lib/shared/seo.js` + `SeoHead.svelte`; the runbook for Search Console and
 the measurement baseline lives in [docs/seo-baseline.md](docs/seo-baseline.md).
 
 Before deploying, `npm run verify:vercel` builds and validates the Vercel output:

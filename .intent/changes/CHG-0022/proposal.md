@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0022"
 title: "Public per-explainer URLs with sharing"
-status: "draft"
+status: "complete"
 created_at: "2026-10-14T14:10:00Z"
 request: "make each explainer have unique, seo friendly url, and a share button as well"
 proposal:

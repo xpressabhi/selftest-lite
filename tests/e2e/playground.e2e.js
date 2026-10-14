@@ -443,6 +443,77 @@ test('opens a saved explainer from the cache and counts the open', async ({
 	});
 });
 
+test('publishes each explainer at a unique slug URL with a shareable page', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const topic = 'e2e-public-explainer';
+	const clientId = 'e2e-public-client';
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Public Slug Title',
+			summary: 'Public summary text',
+			recipes: [],
+			html: '<p id="e2e-public-marker">public body</p>',
+			css: '',
+			js: '',
+		},
+	});
+
+	// The served artifact carries its deterministic slug (the seeded row had
+	// none; the hit path backfills it, which is also the legacy-row path).
+	const served = await request.post('/api/playground', {
+		data: { topic, theme: 'light', profile: { viewport: 'wide', budget: 'full' } },
+		headers: { 'x-client-id': clientId },
+	});
+	expect(served.status()).toBe(200);
+	const body = await served.json();
+	expect(body.slug).toMatch(/^[a-z0-9-]+-[0-9a-f]{8}$/);
+
+	const page = await request.get(`/explain/${body.slug}`);
+	expect(page.status()).toBe(200);
+	const html = await page.text();
+	expect(html).toContain('Public Slug Title');
+	expect(html).toContain('Public summary text');
+	expect(html).toContain(`rel="canonical" href="https://www.selftest.in/explain/${body.slug}"`);
+	expect(html).toContain(`href="https://www.selftest.in/hi/explain/${body.slug}"`);
+	expect(html).toContain('sandbox="allow-scripts"');
+	expect(html).toMatch(/Share\s*<\/button>/);
+
+	const hindi = await request.get(`/hi/explain/${body.slug}`);
+	expect(hindi.status()).toBe(200);
+	expect(await hindi.text()).toContain('Public Slug Title');
+
+	const missing = await request.get('/explain/definitely-missing-00000000');
+	expect(missing.status()).toBe(404);
+
+	// The library row exposes the same slug so sharing works from there too.
+	const listed = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	const item = (await listed.json()).items.find((entry) => entry.title === 'Public Slug Title');
+	expect(item.slug).toBe(body.slug);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			slug: body.slug,
+			publicStatus: page.status(),
+			canonicalServed: html.includes(
+				`rel="canonical" href="https://www.selftest.in/explain/${body.slug}"`
+			),
+			hindiTwinStatus: hindi.status(),
+			missingStatus: missing.status(),
+			librarySlugMatches: item.slug === body.slug,
+		}),
+	});
+});
+
 test('rejects malformed playground requests', async ({ request }) => {
 	const missingTopic = await request.post('/api/playground', { data: { question: 'Q' } });
 	expect(missingTopic.status()).toBe(400);

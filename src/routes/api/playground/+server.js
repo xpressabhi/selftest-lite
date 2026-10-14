@@ -14,6 +14,8 @@ import {
 } from '#lib/server/explainerCache.js';
 import { recordExplainerForIdentity } from '#lib/server/explainerLibrary.js';
 import { generateExplainerArtifact } from '#lib/server/explainerPipeline.js';
+import { buildExplainerSlug } from '#lib/server/explainerSlug.js';
+import { backfillExplainerSlug } from '#lib/server/explainerCache.js';
 import {
 	ARTIFACT_BRIEF_MODEL,
 	ARTIFACT_RATE_LIMIT,
@@ -121,6 +123,16 @@ export async function POST({ request, cookies }) {
 				title: cached.payload?.title,
 				summary: cached.payload?.summary,
 			});
+			// Rows created before public URLs existed get their slug lazily;
+			// the backfill never overwrites an assigned slug.
+			let slug = cached.slug;
+			if (!slug) {
+				try {
+					slug = await backfillExplainerSlug({ cacheKey, title: cached.payload?.title });
+				} catch (error) {
+					console.error('Explainer slug backfill failed', error);
+				}
+			}
 			await logApiEvent({
 				route: ROUTE,
 				action: ACTION,
@@ -138,6 +150,7 @@ export async function POST({ request, cookies }) {
 				title: cached.payload.title,
 				summary: cached.payload.summary,
 				recipes: cached.payload.recipes,
+				slug,
 				html: composeArtifactDocument({
 					brief: cached.payload,
 					payload: cached.payload,
@@ -205,6 +218,7 @@ export async function POST({ request, cookies }) {
 			baseUrl: OPENCODE_BASE_URL || undefined,
 			profile,
 		});
+		const slug = buildExplainerSlug({ title: brief.title, cacheKey });
 
 		try {
 			await saveExplainer({
@@ -255,6 +269,7 @@ export async function POST({ request, cookies }) {
 			title: brief.title,
 			summary: brief.summary,
 			recipes: brief.recipes,
+			slug,
 			html: composeArtifactDocument({ brief, payload, language: effectiveLanguage, theme }),
 			cached: false,
 		});

@@ -79,6 +79,7 @@ export async function GET({ request, cookies, url }) {
 				title: row.title,
 				summary: row.summary,
 				recipes: row.payload?.recipes ?? [],
+				slug: row.slug,
 				html: composeArtifactDocument({
 					brief: row.payload ?? {},
 					payload: row.payload ?? {},
@@ -106,6 +107,7 @@ export async function GET({ request, cookies, url }) {
 				title: row.title,
 				summary: row.summary,
 				language: row.language,
+				slug: row.slug,
 				openCount: Number(row.open_count ?? 0),
 				createdAt: row.created_at,
 				lastOpenedAt: row.last_opened_at,

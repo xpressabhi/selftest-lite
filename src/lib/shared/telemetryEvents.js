@@ -63,6 +63,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'playground:generate-requested',
 	'playground:generate-result',
 	'playground:library-item-open',
+	'playground:share',
 
 	// Search (smart intent dropdown)
 	'search:open',

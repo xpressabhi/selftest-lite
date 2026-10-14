@@ -63,9 +63,14 @@
 	});
 
 	onDestroy(() => {
+		// SSR teardown also runs this callback; window exists only in the
+		// browser.
+		if (typeof window === 'undefined') {
+			return;
+		}
 		window.removeEventListener('message', onMessage);
 		window.removeEventListener('resize', onResize);
-		if (rafHandle !== null && typeof window !== 'undefined') {
+		if (rafHandle !== null) {
 			window.cancelAnimationFrame(rafHandle);
 		}
 	});
