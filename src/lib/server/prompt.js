@@ -416,6 +416,7 @@ ${repairIssues.map((issue) => `      - ${issue.code}: ${issue.detail}`).join('\n
       6. Respect motion: when document.documentElement has data-motion="reduced" (the OS prefers-reduced-motion setting), pause autoplay loops; manual step controls must keep working.
       7. Budgets: html under 96KB, css under 32KB, js under 24KB. Stay focused on one idea.
       8. All visible text in ${language || 'English'}.
-      9. Do not include extra keys or any text outside the JSON object.
+      9. Responsive by construction: design mobile-first from 320px up. Use fluid widths (%, max-width, flex/grid), wrap long text, and never set a fixed width wider than the viewport. Tables and wide diagrams may scroll horizontally inside their own container only.
+      10. Do not include extra keys or any text outside the JSON object.
     `;
 }

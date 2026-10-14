@@ -51,6 +51,7 @@ describe('generateArtifactPrompt', () => {
 		expect(prompt).toContain('.steps');
 		expect(prompt).toContain('prefers-reduced-motion');
 		expect(prompt).toContain('data-motion');
+		expect(prompt).toContain('Responsive by construction');
 		expect(prompt).toContain('"html"');
 		expect(prompt).toContain('"css"');
 		expect(prompt).toContain('"js"');

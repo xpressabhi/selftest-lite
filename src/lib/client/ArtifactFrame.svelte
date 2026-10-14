@@ -14,18 +14,21 @@
 
 	let frame = $state();
 	let height = $state(FALLBACK_HEIGHT);
-	let pendingHeight = null;
+	let reportedHeight = null;
 	let rafHandle = null;
+
+	function clampHeight(value) {
+		const maxHeight =
+			typeof window !== 'undefined' ? window.innerHeight * 0.85 : FALLBACK_HEIGHT * 1.5;
+		return Math.min(Math.max(value, MIN_HEIGHT), maxHeight);
+	}
 
 	function commitHeight() {
 		rafHandle = null;
-		if (pendingHeight === null) {
+		if (reportedHeight === null) {
 			return;
 		}
-		const maxHeight =
-			typeof window !== 'undefined' ? window.innerHeight * 0.85 : FALLBACK_HEIGHT * 1.5;
-		height = Math.min(Math.max(pendingHeight, MIN_HEIGHT), maxHeight);
-		pendingHeight = null;
+		height = clampHeight(reportedHeight);
 	}
 
 	function onMessage(event) {
@@ -40,18 +43,28 @@
 		if (!Number.isFinite(reported)) {
 			return;
 		}
-		pendingHeight = reported;
+		reportedHeight = reported;
 		if (rafHandle === null && typeof window !== 'undefined') {
 			rafHandle = window.requestAnimationFrame(commitHeight);
 		}
 	}
 
+	// A resize or rotation re-clamps the last reported height: the ceiling is
+	// a share of the viewport, so a fixed height would stop being responsive.
+	function onResize() {
+		if (reportedHeight !== null) {
+			height = clampHeight(reportedHeight);
+		}
+	}
+
 	onMount(() => {
 		window.addEventListener('message', onMessage);
+		window.addEventListener('resize', onResize);
 	});
 
 	onDestroy(() => {
 		window.removeEventListener('message', onMessage);
+		window.removeEventListener('resize', onResize);
 		if (rafHandle !== null && typeof window !== 'undefined') {
 			window.cancelAnimationFrame(rafHandle);
 		}

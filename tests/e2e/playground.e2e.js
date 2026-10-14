@@ -24,7 +24,7 @@ function cacheKeyFor({ topic, question = '', answer = '', language = 'english' }
 			JSON.stringify([
 				'pg-v1',
 				'prompt-v1',
-				'scaffold-v1',
+				'scaffold-v2',
 				normalizeText(language).toLowerCase() || 'english',
 				normalizeText(topic),
 				normalizeText(question),
@@ -266,6 +266,38 @@ test('a seeded hostile artifact cannot reach the app: the sandbox is the boundar
 			observedRequests: requestsAfterLoad.length,
 		}),
 	});
+});
+
+test('keeps the artifact display inside the phone viewport', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.route('**/api/playground', async (route) => {
+		await route.fulfill({
+			status: 200,
+			json: {
+				title: 'Responsive artifact',
+				summary: 's',
+				recipes: [],
+				html: '<!doctype html><html lang="en" data-theme="light"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div style="width: 1200px">wide</div></body></html>',
+				cached: false,
+			},
+		});
+	});
+
+	await page.goto('/playground?topic=Responsive%20check');
+	await page.getByRole('button', { name: 'Create explainer' }).click();
+	await expect(page.getByRole('heading', { name: 'Responsive artifact' })).toBeVisible();
+
+	const frame = page.locator('iframe.artifact-frame');
+	await expect(frame).toBeVisible();
+	const box = await frame.boundingBox();
+	// The frame never exceeds the phone viewport, and a wide artifact inside
+	// it cannot push the parent page sideways.
+	expect(box.width).toBeLessThanOrEqual(390);
+	expect(box.x).toBeGreaterThanOrEqual(0);
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth - window.innerWidth
+	);
+	expect(overflow).toBeLessThanOrEqual(1);
 });
 
 test('rejects malformed playground requests', async ({ request }) => {

@@ -98,6 +98,14 @@ describe('composeArtifactDocument', () => {
 			'toggle-compare',
 		]);
 		expect(ARTIFACT_RECIPES.every((recipe) => recipe.id && recipe.description)).toBe(true);
-		expect(ARTIFACT_SCAFFOLD_VERSION).toBe('scaffold-v1');
+		expect(ARTIFACT_SCAFFOLD_VERSION).toBe('scaffold-v2');
+	});
+
+	it('ships responsive guards in the base css', () => {
+		const document = composeArtifactDocument({ brief, payload, language: 'english' });
+		expect(document).toContain('img, svg, canvas { max-width: 100%; }');
+		expect(document).toContain('img, canvas { height: auto; }');
+		expect(document).toContain('table { display: block; max-width: 100%; overflow-x: auto; }');
+		expect(document).toContain('body { overflow-x: hidden; }');
 	});
 });

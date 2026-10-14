@@ -5,7 +5,7 @@
 // it is part of the explainer cache key, so a bump supersedes old rows without
 // deleting them.
 
-export const ARTIFACT_SCAFFOLD_VERSION = 'scaffold-v1';
+export const ARTIFACT_SCAFFOLD_VERSION = 'scaffold-v2';
 
 /** Animation vocabulary the brief may pick from. Ids are validated by schema. */
 export const ARTIFACT_RECIPES = [
@@ -99,6 +99,12 @@ body {
 .steps { display: grid; gap: 8px; }
 .step { border-left: 3px solid var(--line); padding-left: 10px; }
 .step-active { border-left-color: var(--brand); }
+/* Responsive guards: the artifact must fit a 320px phone without the parent
+   page scrolling sideways, whatever the model draws. */
+img, svg, canvas { max-width: 100%; }
+img, canvas { height: auto; }
+table { display: block; max-width: 100%; overflow-x: auto; }
+body { overflow-x: hidden; }
 @media (prefers-reduced-motion: reduce) {
 	html[data-motion='reduced'] *,
 	html[data-motion='reduced'] *::before,
