@@ -1,3 +1,5 @@
+import { stripRepeatedLead } from './artifactLead.js';
+
 // Server-owned shell for concept artifacts. The model writes only a body
 // fragment ({ html, css, js }); everything structural — doctype, language,
 // theme, CSP, base CSS, sizing script — is composed here so it can never be
@@ -253,7 +255,9 @@ export function composeArtifactDocument({ brief, payload, language, theme = 'lig
 	const lang = String(language ?? '').toLowerCase() === 'hindi' ? 'hi' : 'en';
 	const resolvedTheme = theme === 'dark' ? 'dark' : 'light';
 	const title = escapeHtml(brief?.title ?? '');
-	const html = String(payload?.html ?? '');
+	// The host page shows the title and summary; a model-written lead block
+	// repeating them is removed here so cached artifacts are fixed too.
+	const html = stripRepeatedLead(String(payload?.html ?? ''), brief);
 	const css = String(payload?.css ?? '');
 	const js = String(payload?.js ?? '');
 

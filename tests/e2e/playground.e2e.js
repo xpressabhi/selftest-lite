@@ -30,7 +30,7 @@ function cacheKeyFor({
 		.update(
 			JSON.stringify([
 				'pg-v2',
-				'prompt-v4',
+				'prompt-v5',
 				'scaffold-v4',
 				normalizeText(language).toLowerCase() || 'english',
 				normalizeText(topic),

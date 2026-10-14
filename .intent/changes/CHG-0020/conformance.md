@@ -131,3 +131,16 @@ A live artifact review showed a large empty region where hidden steps still occu
 model hid steps with visibility/opacity). The artifact prompt now requires inactive steps to be
 hidden with `display:none` (or removed) so the reported height matches visible content; prompt
 version bumped to `prompt-v4` so affected concepts regenerate on their next request.
+
+## Double-title root cause and compose-time lead strip (prompt-v5)
+
+The duplicated title survived the scaffold-v4 header removal because the model itself writes a
+lead block into its payload (`<header class="lead"><h2>Title</h2><p>summary</p></header>`);
+removing the shell header merely exposed it. Fixed deterministically at compose time:
+`stripRepeatedLead(html, brief)` (`artifactLead.js`, parse5, pure, 10 unit tests) removes a
+leading wrapper/heading (+ matching summary paragraph) when it repeats the brief — so
+already-cached artifacts are fixed without regeneration on both `/playground` and `/explain`.
+Prompt v5 states the rule explicitly ("start with the first section; never render the
+title/summary"; no h1 anywhere). Verified against the stored real payload
+(`pythagoras-theorem-74d80856`): summary repeats 1 → 0, no lead header, no title heading.
+Limitation recorded: a mid-document title repeat is not auto-stripped (the prompt covers it).

@@ -126,6 +126,22 @@ describe('composeArtifactDocument', () => {
 		expect(document).toContain('.controls');
 	});
 
+	it('strips a model-written lead block that repeats the title and summary', () => {
+		const leadBrief = { ...brief, title: 'Ohm law visually', summary: 'Voltage pushes current' };
+		const duplicated = {
+			...payload,
+			html: `<header class="lead"><h2>Ohm law visually</h2><p>Voltage pushes current</p></header><div class="stage" id="artifact-body">BODY_MARKER</div>`,
+		};
+		const document = composeArtifactDocument({
+			brief: leadBrief,
+			payload: duplicated,
+			language: 'english',
+		});
+		expect(document).not.toContain('class="lead"');
+		expect(document).not.toContain('Voltage pushes current');
+		expect(document).toContain('BODY_MARKER');
+	});
+
 	it('ships responsive guards in the base css', () => {
 		const document = composeArtifactDocument({ brief, payload, language: 'english' });
 		expect(document).toContain(
