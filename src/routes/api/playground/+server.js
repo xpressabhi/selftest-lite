@@ -1,4 +1,9 @@
-import { EXPLAINER_PROVIDER, GEMINI_API_KEY, OPENCODE_API_KEY } from '$app/env/private';
+import {
+	EXPLAINER_PROVIDER,
+	GEMINI_API_KEY,
+	OPENCODE_API_KEY,
+	OPENCODE_BASE_URL,
+} from '$app/env/private';
 import { composeArtifactDocument } from '#lib/server/artifactScaffold.js';
 import {
 	buildExplainerCacheKey,
@@ -19,6 +24,7 @@ import { rateLimiter } from '#lib/server/rateLimiter.js';
 import { parseRequestBody } from '#lib/server/requestBody.js';
 import { getClientKey, logApiEvent } from '#lib/server/storage.js';
 import { API_LIMIT_ERROR_CODE, classifyApiError } from '#lib/shared/apiLimitError.js';
+import { normalizePlaygroundProfile } from '#lib/shared/playgroundProfile.js';
 
 const ROUTE = '/api/playground';
 const ACTION = 'generate_explainer';
@@ -33,6 +39,7 @@ export async function POST({ request }) {
 		const theme = body.theme === 'dark' ? 'dark' : 'light';
 		const provider =
 			String(EXPLAINER_PROVIDER || '').toLowerCase() === 'opencode' ? 'opencode' : 'gemini';
+		const profile = normalizePlaygroundProfile(body.profile);
 
 		if (!topic) {
 			return Response.json(
@@ -72,6 +79,7 @@ export async function POST({ request }) {
 			question,
 			answer,
 			language: effectiveLanguage,
+			profile,
 		});
 
 		// Cache hits are served before the rate limiter: they only cost an
@@ -171,6 +179,8 @@ export async function POST({ request }) {
 			language: effectiveLanguage,
 			apiKey,
 			provider,
+			baseUrl: OPENCODE_BASE_URL || undefined,
+			profile,
 		});
 
 		try {
@@ -206,6 +216,7 @@ export async function POST({ request }) {
 				language: effectiveLanguage,
 				cached: false,
 				provider,
+				deviceProfile: `${profile.viewport}-${profile.budget}`,
 				briefModel: provider === 'opencode' ? model : ARTIFACT_BRIEF_MODEL,
 				artifactModel: model,
 			},

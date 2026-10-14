@@ -58,6 +58,21 @@ describe('generateArtifactPrompt', () => {
 		expect(prompt).not.toContain('VALIDATION ERRORS');
 	});
 
+	it('lists device target buckets', () => {
+		const capable = generateArtifactPrompt({ brief, language: 'english' });
+		expect(capable).toContain('DEVICE TARGET');
+		expect(capable).toContain('Performance budget: full');
+
+		const lite = generateArtifactPrompt({
+			brief,
+			language: 'english',
+			profile: { viewport: 'phone', budget: 'lite' },
+		});
+		expect(lite).toContain('phone (up to 600px wide)');
+		expect(lite).toContain('Performance budget: lite');
+		expect(lite).toContain('no infinite autoplay loops');
+	});
+
 	it('appends the repair issues when provided', () => {
 		const prompt = generateArtifactPrompt({
 			brief,

@@ -1,4 +1,5 @@
 import { questionTextFor } from '../shared/questionText.js';
+import { normalizePlaygroundProfile } from '../shared/playgroundProfile.js';
 import { ARTIFACT_RECIPES } from './artifactScaffold.js';
 
 export function generatePrompt({
@@ -346,7 +347,8 @@ export function generateExplanationPrompt({ topic, question, answer, language })
     `;
 }
 
-export function generateConceptBriefPrompt({ topic, question, answer, language }) {
+export function generateConceptBriefPrompt({ topic, question, answer, language, profile }) {
+	const device = normalizePlaygroundProfile(profile);
 	const recipeLines = ARTIFACT_RECIPES.map((recipe) => `- ${recipe.id}: ${recipe.description}`).join(
 		'\n'
 	);
@@ -363,6 +365,10 @@ export function generateConceptBriefPrompt({ topic, question, answer, language }
       Topic: ${topic}
       ${contextLines ? `${contextLines}\n      ` : ''}Explanation Language: ${language || 'English'}
 
+      DEVICE TARGET:
+      Viewport: ${device.viewport === 'phone' ? 'phone (up to 600px wide)' : 'wide (over 600px)'}
+      Performance budget: ${device.budget}
+
       Output must be a JSON object with this exact structure:
       {
         "concept": "The specific concept, not the broad topic",
@@ -377,13 +383,23 @@ export function generateConceptBriefPrompt({ topic, question, answer, language }
       1. concept must narrow the topic to one teachable idea.
       2. Pick 1 to 3 recipes from this menu — no other values:
       ${recipeLines}
-      3. sections must have 2 to 5 entries; each entry uses a recipe from the menu.
-      4. Write concept, title, summary and section text in ${language || 'English'}.
-      5. Do not include extra keys or any text outside the JSON object.
+      3. Match the device target: on a lite budget plan 2 to 3 sections with light manual recipes (step-reveal, toggle-compare); avoid particle-flow, orbit and autoplay-heavy plans. On a phone viewport plan single-column sections.
+      4. sections must have 2 to 5 entries; each entry uses a recipe from the menu.
+      5. Write concept, title, summary and section text in ${language || 'English'}.
+      6. Do not include extra keys or any text outside the JSON object.
     `;
 }
 
-export function generateArtifactPrompt({ brief, language, repairIssues }) {
+export function generateArtifactPrompt({ brief, language, repairIssues, profile }) {
+	const device = normalizePlaygroundProfile(profile);
+	const deviceTarget =
+		device.viewport === 'phone'
+			? 'phone (up to 600px wide): single column, full-width stages, controls at least 44px'
+			: 'wide (over 600px): content may use up to 720px width; a light two-column layout is allowed';
+	const budgetRule =
+		device.budget === 'lite'
+			? 'lite: at most two animated elements at once, transform/opacity only, no infinite autoplay loops; js under 12KB and the whole document under 80KB; prefer manual step controls over autoplay'
+			: 'full: the standard budgets below apply';
 	const repairBlock =
 		repairIssues && repairIssues.length > 0
 			? `\n      VALIDATION ERRORS TO FIX (the previous attempt was rejected):
@@ -397,6 +413,10 @@ ${repairIssues.map((issue) => `      - ${issue.code}: ${issue.detail}`).join('\n
       Language: ${language || 'English'}
       Brief to realize:
       ${JSON.stringify(brief)}
+
+      DEVICE TARGET:
+      Viewport: ${deviceTarget}
+      Performance budget: ${budgetRule}
       ${repairBlock}
       The page shell already exists (doctype, head, theme tokens, CSP, base CSS, title and summary). Write ONLY the body fragment.
 

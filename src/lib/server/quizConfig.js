@@ -55,6 +55,8 @@ export const MAX_ARTIFACT_HTML_BYTES = 96 * 1024;
 export const MAX_ARTIFACT_CSS_BYTES = 32 * 1024;
 export const MAX_ARTIFACT_JS_BYTES = 24 * 1024;
 export const MAX_ARTIFACT_DOCUMENT_BYTES = 150 * 1024;
+/** Enforced ceiling when the client profile is on the lite budget. */
+export const MAX_ARTIFACT_DOCUMENT_BYTES_LITE = 80 * 1024;
 
 export const ARTIFACT_BRIEF_MODEL = 'gemini-flash-lite-latest';
 /**
@@ -65,13 +67,23 @@ export const ARTIFACT_BRIEF_MODEL = 'gemini-flash-lite-latest';
 export const ARTIFACT_MODEL = 'gemini-flash-lite-latest';
 /**
  * OpenAI-compatible inference gateway (OpenCode): selected for the playground
- * by setting EXPLAINER_PROVIDER=opencode plus OPENCODE_API_KEY. Same eval
- * gates apply before it becomes a deployment default.
+ * by setting EXPLAINER_PROVIDER=opencode plus OPENCODE_API_KEY. The default
+ * base is the Go subscription endpoint (Chat Completions family); Console
+ * service-account keys use https://opencode.ai/inference/openai/v1 and can
+ * override via OPENCODE_BASE_URL. Same eval gates apply before it becomes a
+ * deployment default.
  */
-export const OPENCODE_INFERENCE_BASE_URL = 'https://opencode.ai/inference/openai/v1';
+export const OPENCODE_INFERENCE_BASE_URL = 'https://opencode.ai/inference/go/v1';
 export const ARTIFACT_OPENCODE_MODEL = 'deepseek-v4.1-flash';
 export const MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS = 1024;
 export const MAX_ARTIFACT_OUTPUT_TOKENS = 8192;
+/**
+ * Gateway budgets are larger: DeepSeek-style reasoning tokens are billed
+ * inside the same completion budget, so a tight cap can starve the JSON body
+ * (seen in eval before these caps were raised).
+ */
+export const MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS_OPENCODE = 2048;
+export const MAX_ARTIFACT_OUTPUT_TOKENS_OPENCODE = 16384;
 export const ARTIFACT_DEADLINE_MS = 90000;
 export const ARTIFACT_RATE_LIMIT = 5;
 

@@ -18,17 +18,26 @@ function normalizeText(value) {
 
 // Independently computed to pin the documented formula: drift in either
 // implementation makes the seeded row invisible and fails the test.
-function cacheKeyFor({ topic, question = '', answer = '', language = 'english' }) {
+function cacheKeyFor({
+	topic,
+	question = '',
+	answer = '',
+	language = 'english',
+	viewport = 'wide',
+	budget = 'full',
+}) {
 	return createHash('sha256')
 		.update(
 			JSON.stringify([
-				'pg-v1',
+				'pg-v2',
 				'prompt-v1',
 				'scaffold-v2',
 				normalizeText(language).toLowerCase() || 'english',
 				normalizeText(topic),
 				normalizeText(question),
 				normalizeText(answer),
+				viewport,
+				budget,
 			])
 		)
 		.digest('hex');
@@ -37,11 +46,14 @@ function cacheKeyFor({ topic, question = '', answer = '', language = 'english' }
 const CSP_CONTENT =
 	"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; base-uri 'none'";
 
-async function seedExplainer(sql, { topic, question = '', answer = '', language = 'english', payload }) {
+async function seedExplainer(
+	sql,
+	{ topic, question = '', answer = '', language = 'english', profile, payload }
+) {
 	await sql`
 		INSERT INTO concept_explainers (cache_key, language, concept, payload, model)
 		VALUES (
-			${cacheKeyFor({ topic, question, answer, language })},
+			${cacheKeyFor({ topic, question, answer, language, ...profile })},
 			${language},
 			${payload.title},
 			${JSON.stringify(payload)}::jsonb,
@@ -75,7 +87,7 @@ test('serves a seeded explainer from the database cache without generating', asy
 		},
 	});
 
-	const body = { topic, theme: 'dark' };
+	const body = { topic, theme: 'dark', profile: { viewport: 'wide', budget: 'full' } };
 	const before = await sql`
 		SELECT use_count FROM concept_explainers WHERE cache_key = ${cacheKeyFor({ topic })}
 	`;
@@ -224,18 +236,25 @@ test('a seeded hostile artifact cannot reach the app: the sandbox is the boundar
 	].join('\n');
 
 	// Seeded directly: this row bypassed validation on purpose, so the test
-	// proves the browser boundary rather than the validator.
-	await seedExplainer(sql, {
-		topic,
-		payload: {
-			title: 'Boundary probe',
-			summary: 's',
-			recipes: [],
-			html: '<div>boundary probe</div>',
-			css: '',
-			js: hostileJs,
-		},
-	});
+	// proves the browser boundary rather than the validator. One row per
+	// device bucket, since the page sends its own bucket in the request.
+	const hostilePayload = {
+		title: 'Boundary probe',
+		summary: 's',
+		recipes: [],
+		html: '<div>boundary probe</div>',
+		css: '',
+		js: hostileJs,
+	};
+	for (const viewport of ['phone', 'wide']) {
+		for (const budget of ['lite', 'full']) {
+			await seedExplainer(sql, {
+				topic,
+				profile: { viewport, budget },
+				payload: hostilePayload,
+			});
+		}
+	}
 
 	const requestsAfterLoad = [];
 	page.on('request', (requestEvent) => {

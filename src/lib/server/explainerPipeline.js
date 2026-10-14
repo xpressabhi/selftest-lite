@@ -1,6 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
+import { randomUUID } from 'node:crypto';
 import * as z from 'zod';
 import { API_TIMEOUT_ERROR_CODE } from '../shared/apiLimitError.js';
+import { normalizePlaygroundProfile } from '../shared/playgroundProfile.js';
 import { composeArtifactDocument } from './artifactScaffold.js';
 import { validateArtifactPayload } from './artifactValidation.js';
 import { parseJsonResponse } from './jsonResponse.js';
@@ -12,8 +14,11 @@ import {
 	ARTIFACT_MODEL,
 	ARTIFACT_OPENCODE_MODEL,
 	MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS,
+	MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS_OPENCODE,
 	MAX_ARTIFACT_DOCUMENT_BYTES,
+	MAX_ARTIFACT_DOCUMENT_BYTES_LITE,
 	MAX_ARTIFACT_OUTPUT_TOKENS,
+	MAX_ARTIFACT_OUTPUT_TOKENS_OPENCODE,
 	OPENCODE_INFERENCE_BASE_URL,
 } from './quizConfig.js';
 import { backoffBeforeRetry, isTransientProviderError } from './transientErrors.js';
@@ -100,6 +105,7 @@ async function requestOpenAiCompatJson({
 	prompt,
 	maxOutputTokens,
 	deadline,
+	sessionId,
 }) {
 	const remainingMs = deadline - Date.now();
 	if (remainingMs <= 0) {
@@ -113,6 +119,11 @@ async function requestOpenAiCompatJson({
 			headers: {
 				Authorization: `Bearer ${apiKey}`,
 				'Content-Type': 'application/json',
+				// The Go gateway requires a session id per conversation (the
+				// brief + artifact + repair calls share one) and asks direct
+				// clients to identify themselves.
+				'User-Agent': 'selftest-lite-playground/1.0',
+				'x-opencode-session': sessionId,
 			},
 			body: JSON.stringify({
 				model,
@@ -144,13 +155,13 @@ async function requestOpenAiCompatJson({
 }
 
 /** Validation plus the composed-document size check the fragment cannot see. */
-function artifactIssues(payload, brief, language) {
+function artifactIssues(payload, brief, language, documentCap) {
 	const { issues } = validateArtifactPayload(payload);
 	const composed = composeArtifactDocument({ brief, payload, language, theme: 'light' });
-	if (Buffer.byteLength(composed, 'utf8') > MAX_ARTIFACT_DOCUMENT_BYTES) {
+	if (Buffer.byteLength(composed, 'utf8') > documentCap) {
 		issues.push({
 			code: 'size',
-			detail: `composed document exceeds ${MAX_ARTIFACT_DOCUMENT_BYTES} bytes`,
+			detail: `composed document exceeds ${documentCap} bytes`,
 		});
 	}
 	return issues;
@@ -159,13 +170,15 @@ function artifactIssues(payload, brief, language) {
 async function generateBrief({
 	requestJson,
 	model,
+	maxTokens,
 	topic,
 	question,
 	answer,
 	language,
+	profile,
 	deadline,
 }) {
-	const prompt = generateConceptBriefPrompt({ topic, question, answer, language });
+	const prompt = generateConceptBriefPrompt({ topic, question, answer, language, profile });
 	let lastError = null;
 	for (let attempt = 1; attempt <= 2; attempt += 1) {
 		try {
@@ -173,7 +186,7 @@ async function generateBrief({
 				model,
 				prompt,
 				schema: conceptBriefSchema,
-				maxOutputTokens: MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS,
+				maxOutputTokens: maxTokens,
 				deadline,
 			});
 			const validated = conceptBriefSchema.safeParse(parseJsonResponse(text));
@@ -198,8 +211,17 @@ async function generateBrief({
 	throw stageFailure('brief', lastError);
 }
 
-async function generateArtifactBody({ requestJson, model, brief, language, deadline }) {
-	const prompt = generateArtifactPrompt({ brief, language });
+async function generateArtifactBody({
+	requestJson,
+	model,
+	maxTokens,
+	brief,
+	language,
+	profile,
+	documentCap,
+	deadline,
+}) {
+	const prompt = generateArtifactPrompt({ brief, language, profile });
 	let payload = null;
 	let lastError = null;
 
@@ -210,7 +232,7 @@ async function generateArtifactBody({ requestJson, model, brief, language, deadl
 				model,
 				prompt,
 				schema: artifactPayloadSchema,
-				maxOutputTokens: MAX_ARTIFACT_OUTPUT_TOKENS,
+				maxOutputTokens: maxTokens,
 				deadline,
 			});
 			const validated = artifactPayloadSchema.safeParse(parseJsonResponse(text));
@@ -238,7 +260,7 @@ async function generateArtifactBody({ requestJson, model, brief, language, deadl
 		throw stageFailure('artifact', lastError);
 	}
 
-	const issues = artifactIssues(payload, brief, language);
+	const issues = artifactIssues(payload, brief, language, documentCap);
 	if (issues.length === 0) {
 		return payload;
 	}
@@ -249,9 +271,9 @@ async function generateArtifactBody({ requestJson, model, brief, language, deadl
 	try {
 		const text = await requestJson({
 			model,
-			prompt: generateArtifactPrompt({ brief, language, repairIssues: issues }),
+			prompt: generateArtifactPrompt({ brief, language, repairIssues: issues, profile }),
 			schema: artifactPayloadSchema,
-			maxOutputTokens: MAX_ARTIFACT_OUTPUT_TOKENS,
+			maxOutputTokens: maxTokens,
 			deadline,
 		});
 		const validated = artifactPayloadSchema.safeParse(parseJsonResponse(text));
@@ -268,7 +290,7 @@ async function generateArtifactBody({ requestJson, model, brief, language, deadl
 	if (!repaired) {
 		throw new ArtifactInvalidError(issues);
 	}
-	const repairedIssues = artifactIssues(repaired, brief, language);
+	const repairedIssues = artifactIssues(repaired, brief, language, documentCap);
 	if (repairedIssues.length > 0) {
 		throw new ArtifactInvalidError(repairedIssues);
 	}
@@ -291,29 +313,40 @@ export async function generateExplainerArtifact({
 	deadlineMs,
 	artifactModel,
 	briefModel,
+	profile,
 }) {
 	if (!apiKey) {
 		throw new Error('Inference API key is not configured');
 	}
 	const deadline = deadlineMs ?? Date.now() + ARTIFACT_DEADLINE_MS;
+	const device = normalizePlaygroundProfile(profile);
+	const documentCap =
+		device.budget === 'lite' ? MAX_ARTIFACT_DOCUMENT_BYTES_LITE : MAX_ARTIFACT_DOCUMENT_BYTES;
 
 	if (provider === 'opencode') {
 		const model = artifactModel ?? ARTIFACT_OPENCODE_MODEL;
-		const requestJson = (args) => requestOpenAiCompatJson({ apiKey, baseUrl, ...args });
+		const sessionId = randomUUID();
+		const requestJson = (args) =>
+			requestOpenAiCompatJson({ apiKey, baseUrl, sessionId, ...args });
 		const brief = await generateBrief({
 			requestJson,
 			model: briefModel ?? model,
+			maxTokens: MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS_OPENCODE,
 			topic,
 			question,
 			answer,
 			language,
+			profile: device,
 			deadline,
 		});
 		const payload = await generateArtifactBody({
 			requestJson,
 			model,
+			maxTokens: MAX_ARTIFACT_OUTPUT_TOKENS_OPENCODE,
 			brief,
 			language,
+			profile: device,
+			documentCap,
 			deadline,
 		});
 		return { brief, payload, model, provider };
@@ -325,17 +358,22 @@ export async function generateExplainerArtifact({
 	const brief = await generateBrief({
 		requestJson,
 		model: briefModel ?? ARTIFACT_BRIEF_MODEL,
+		maxTokens: MAX_ARTIFACT_BRIEF_OUTPUT_TOKENS,
 		topic,
 		question,
 		answer,
 		language,
+		profile: device,
 		deadline,
 	});
 	const payload = await generateArtifactBody({
 		requestJson,
 		model,
+		maxTokens: MAX_ARTIFACT_OUTPUT_TOKENS,
 		brief,
 		language,
+		profile: device,
+		documentCap,
 		deadline,
 	});
 	return { brief, payload, model, provider };

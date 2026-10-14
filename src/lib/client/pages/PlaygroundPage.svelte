@@ -5,6 +5,7 @@
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { track } from '#lib/client/telemetry.js';
+	import { bucketClientProfile } from '#lib/shared/playgroundProfile.js';
 	import { localizedPath } from '#lib/shared/seo.js';
 
 	// Concept playground: a topic in, an animated self-contained HTML explainer
@@ -46,6 +47,31 @@
 		};
 	});
 
+	// Coarse capability buckets only — no user agent, no fingerprint. The
+	// server puts the buckets in the cache key, so each device class gets an
+	// artifact that fits it (and shares it with its class).
+	function currentDeviceProfile() {
+		if (typeof window === 'undefined') {
+			return { viewport: 'wide', budget: 'full' };
+		}
+		const connection =
+			typeof navigator !== 'undefined'
+				? navigator.connection || navigator.mozConnection || navigator.webkitConnection
+				: undefined;
+		return bucketClientProfile({
+			width: window.innerWidth,
+			reducedMotion:
+				typeof window.matchMedia === 'function'
+					? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+					: false,
+			saveData: connection?.saveData === true,
+			effectiveType: connection?.effectiveType,
+			deviceMemory: typeof navigator !== 'undefined' ? navigator.deviceMemory : undefined,
+			hardwareConcurrency:
+				typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : undefined,
+		});
+	}
+
 	async function generate() {
 		const trimmedTopic = topic.trim();
 		if (!trimmedTopic || status === 'loading') {
@@ -80,6 +106,7 @@
 					answer: context.answer || undefined,
 					language: $activeLanguage,
 					theme,
+					profile: currentDeviceProfile(),
 				}),
 			});
 			const payload = await response.json().catch(() => ({}));

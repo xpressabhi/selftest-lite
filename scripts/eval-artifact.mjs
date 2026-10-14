@@ -40,6 +40,10 @@ const provider = getArg('provider', 'gemini');
 const model = getArg('model', provider === 'opencode' ? ARTIFACT_OPENCODE_MODEL : ARTIFACT_MODEL);
 const baseUrl = getArg('base-url', OPENCODE_INFERENCE_BASE_URL);
 const limit = Number(getArg('limit', '0')) || 0;
+const profileArg = getArg('profile', '');
+const profile = profileArg
+	? { viewport: profileArg.split('-')[0], budget: profileArg.split('-')[1] }
+	: undefined;
 const apiKey =
 	provider === 'opencode' ? process.env.OPENCODE_API_KEY : process.env.GEMINI_API_KEY;
 
@@ -109,6 +113,7 @@ for (const [index, concept] of concepts.entries()) {
 			provider,
 			baseUrl,
 			artifactModel: model,
+			profile,
 		});
 		result.ok = true;
 	} catch (error) {
@@ -207,11 +212,19 @@ const totals = {
 	),
 };
 
-const report = { generatedAt: new Date().toISOString(), provider, model, totals, concepts: results };
+const report = {
+	generatedAt: new Date().toISOString(),
+	provider,
+	model,
+	profile: profile ?? { viewport: 'wide', budget: 'full' },
+	totals,
+	concepts: results,
+};
 writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, '\t')}\n`);
 
 console.log(`\nprovider: ${provider}`);
 console.log(`model: ${model}`);
+console.log(`profile: ${profile ? profileArg : 'wide-full (default)'}`);
 console.log(JSON.stringify(totals, null, 2));
 console.log(`report: ${join(outDir, 'report.json')}`);
 

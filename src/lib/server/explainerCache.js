@@ -1,11 +1,12 @@
 import { createHash } from 'crypto';
+import { normalizePlaygroundProfile } from '../shared/playgroundProfile.js';
 import { ARTIFACT_PROMPT_VERSION } from './quizConfig.js';
 import { ARTIFACT_SCAFFOLD_VERSION } from './artifactScaffold.js';
 import { ensureStorageSchema, query } from './storage.js';
 
 // Bump when the key's composition or normalization changes: old rows stay in
 // the table but are never served under the new key semantics.
-export const ARTIFACT_CACHE_KEY_VERSION = 'pg-v1';
+export const ARTIFACT_CACHE_KEY_VERSION = 'pg-v2';
 
 /**
  * NFC-normalizes, trims and collapses internal whitespace. Case is preserved
@@ -20,10 +21,11 @@ function normalizeText(value) {
 
 /**
  * Stable content address for a cached concept explainer. Exact-match by
- * design: identical concept + context + language + prompt/scaffold versions
- * reuse one row; anything else misses.
+ * design: identical concept + context + language + device buckets +
+ * prompt/scaffold versions reuse one row; anything else misses.
  */
-export function buildExplainerCacheKey({ topic, question, answer, language }) {
+export function buildExplainerCacheKey({ topic, question, answer, language, profile }) {
+	const device = normalizePlaygroundProfile(profile);
 	return createHash('sha256')
 		.update(
 			JSON.stringify([
@@ -34,6 +36,8 @@ export function buildExplainerCacheKey({ topic, question, answer, language }) {
 				normalizeText(topic),
 				normalizeText(question ?? ''),
 				normalizeText(answer ?? ''),
+				device.viewport,
+				device.budget,
 			])
 		)
 		.digest('hex');

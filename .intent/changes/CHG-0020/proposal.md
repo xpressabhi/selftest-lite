@@ -6,8 +6,8 @@ status: "draft"
 created_at: "2026-10-14T11:30:00Z"
 request: "Research HTML in question explanations or build a playground that explains a topic via a detailed HTML artifact with CSS/JS animation; the playground direction was chosen"
 proposal:
-  revision: 3
-  digest: "sha256:1de7a67de9974f234609538893d94da0b874ebea0fb5574ee2f48a0cf42c34d8"
+  revision: 5
+  digest: "sha256:0669abaa14abea3116d6680c4517e410ccd17c2994c875a45f328655a7a9b922"
 scope:
   paths:
     - ".intent/changes/CHG-0020/**"
@@ -26,6 +26,7 @@ scope:
     - "src/lib/client/ResultReviewList.svelte"
     - "src/routes/results/+page.svelte"
     - "src/lib/shared/playgroundLink.js"
+    - "src/lib/shared/playgroundProfile.js"
     - "src/lib/shared/telemetryEvents.js"
     - "src/lib/shared/sitemap.js"
     - "src/lib/locales/*.json"
@@ -81,7 +82,8 @@ New tests only otherwise: `src/lib/shared/playgroundLink.test.js`, `src/lib/serv
 - Sandbox + CSP are the security boundary; validation is a quality gate (spec D4).
 - Cache mirrors `question_explanations`; compose at serve time so `theme` stays out of the cache key (D5).
 - Artifact model constant is evidence-picked by `eval:artifact` (D2); `parse5` is added as a dependency; `explainerPipeline.js` is split out node-safe for the eval script (deviation from spec's file inventory, noted for conformance).
-- Provider seam: `EXPLAINER_PROVIDER=opencode` routes both pipeline calls through the OpenAI-compatible gateway (`OPENCODE_INFERENCE_BASE_URL`, Bearer `OPENCODE_API_KEY`); default stays Gemini. Requested by the operator to use their OpenCode subscription limits; the same eval gates decide whether it becomes a deployment default.
+- Provider seam: `EXPLAINER_PROVIDER=opencode` routes both pipeline calls through the OpenAI-compatible gateway (`OPENCODE_BASE_URL`, Bearer `OPENCODE_API_KEY`; Go subscription endpoint default, Console endpoint via override); default stays Gemini. Requested by the operator to use their OpenCode subscription limits; the same eval gates decide whether it becomes a deployment default.
+- Device-aware generation: the client sends coarse capability buckets (viewport `phone|wide`, budget `lite|full` from width, save-data, effective connection type, cores/memory and reduced motion — never a fingerprint). Buckets shape both prompts, enter the cache key (`pg-v2`), and the lite budget enforces an 80 KB composed-document cap. Responsiveness is additionally enforced by scaffold CSS guards (fluid media, scrollable tables, no horizontal overflow) and an E2E phone-viewport check.
 - Rate limit 5/min for generation; cache hits free (D6).
 
 ## Verification

@@ -11,17 +11,19 @@ function normalize(value) {
 		.replace(/\s+/g, ' ');
 }
 
-function independentlyComputedKey({ topic, question, answer, language }) {
+function independentlyComputedKey({ topic, question, answer, language, viewport = 'wide', budget = 'full' }) {
 	return createHash('sha256')
 		.update(
 			JSON.stringify([
-				'pg-v1',
+				'pg-v2',
 				'prompt-v1',
 				'scaffold-v2',
 				normalize(language).toLowerCase() || 'english',
 				normalize(topic),
 				normalize(question ?? ''),
 				normalize(answer ?? ''),
+				viewport,
+				budget,
 			])
 		)
 		.digest('hex');
@@ -80,5 +82,18 @@ describe('buildExplainerCacheKey', () => {
 		const hindi = buildExplainerCacheKey({ topic: 'न्यूटन का तीसरा नियम', language: 'hindi' });
 		expect(hindi).toBe(buildExplainerCacheKey({ topic: 'न्यूटन का तीसरा नियम', language: 'hindi' }));
 		expect(hindi).not.toBe(buildExplainerCacheKey({ topic: 'न्यूटन का तीसरा नियम' }));
+	});
+
+	it('separates device buckets and normalizes unknown ones to wide-full', () => {
+		const base = { topic: 'X' };
+		expect(buildExplainerCacheKey({ ...base, profile: { viewport: 'phone', budget: 'lite' } })).toBe(
+			independentlyComputedKey({ topic: 'X', viewport: 'phone', budget: 'lite' })
+		);
+		expect(buildExplainerCacheKey({ ...base, profile: { viewport: 'phone', budget: 'lite' } })).not.toBe(
+			buildExplainerCacheKey({ ...base, profile: { viewport: 'phone', budget: 'full' } })
+		);
+		expect(buildExplainerCacheKey({ ...base, profile: { viewport: 'watch', budget: 'ultra' } })).toBe(
+			buildExplainerCacheKey(base)
+		);
 	});
 });
