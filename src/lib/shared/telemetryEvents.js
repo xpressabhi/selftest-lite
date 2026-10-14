@@ -57,6 +57,11 @@ export const TELEMETRY_EVENTS = new Set([
 	'exam-paper:pattern',
 	'exam-paper:generate',
 
+	// Concept playground (animated HTML explainers)
+	'playground:open',
+	'playground:generate-requested',
+	'playground:generate-result',
+
 	// Search (smart intent dropdown)
 	'search:open',
 	'search:keystroke',

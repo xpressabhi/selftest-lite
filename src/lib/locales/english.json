@@ -966,5 +966,20 @@
 	"blogPost8Body3": "For concept gaps, go back to the source first and then generate a fresh quiz on just that subtopic — not the whole chapter. Reading the textbook paragraph that contains the exact rule, then answering eight to ten new questions on that narrow idea, closes the gap in one sitting. Resist the urge to re-read the entire chapter; broad revision dilutes the specific correction your brain needs. If the same subtopic produces gaps twice, escalate: watch one focused explainer, make a five-line note in your own words, and schedule that subtopic again after three days.",
 	"blogPost8Body4": "For misreads, build a physical habit: underline or circle the operative words in the question stem before looking at the options. Words like increases versus decreases, before versus after, and assertion-reason connectors decide the answer before any calculation begins. For calculation slips, separate method from arithmetic — first confirm the formula and setup are right, then recompute slowly with units attached. If you practice with a timer, add a final two-minute sweep reserved only for flagged questions; most slips are caught in that sweep, not during the first pass.",
 	"blogPost8Body5": "Never re-attempt a wrong question immediately. Instant retries flatter your memory because the question is still warm — of course you get it right thirty seconds later. Wait a day, then re-attempt the same questions cold. What you still miss after a day is your real syllabus; what you now get right was a focus problem, not a knowledge problem. This is the logic behind spaced review queues: the delay is the test. On this site, your history and results already feed a review queue — let accuracy after a gap decide what comes back, not what feels comfortable.",
-	"blogPost8Body6": "Watch for repeats above everything else. One mistake is an event; the same mistake twice is a pattern, and patterns need dedicated sessions, not more mixed practice. If modern-history dates slip twice, that topic gets its own 30-minute block with a timeline you draw yourself. If sign errors repeat in physics numericals, every practice set for a week starts with a units-and-signs checklist. And one caution about AI-generated practice itself: every paper here is quality-checked before delivery, but a mistake can still slip through. If an explanation contradicts your textbook, trust the textbook and use the report button — it helps the whole pool."
+	"blogPost8Body6": "Watch for repeats above everything else. One mistake is an event; the same mistake twice is a pattern, and patterns need dedicated sessions, not more mixed practice. If modern-history dates slip twice, that topic gets its own 30-minute block with a timeline you draw yourself. If sign errors repeat in physics numericals, every practice set for a week starts with a units-and-signs checklist. And one caution about AI-generated practice itself: every paper here is quality-checked before delivery, but a mistake can still slip through. If an explanation contradicts your textbook, trust the textbook and use the report button — it helps the whole pool.",
+	"playgroundTitle": "Playground",
+	"playgroundIntro": "Learn any concept through an animated explainer.",
+	"playgroundTopicLabel": "Concept",
+	"playgroundTopicPlaceholder": "e.g. Newton's third law",
+	"playgroundExamplesLabel": "Try one",
+	"playgroundExample1": "Newton's third law",
+	"playgroundExample2": "Photosynthesis",
+	"playgroundExample3": "Ohm's law",
+	"playgroundExample4": "Pythagoras theorem",
+	"playgroundGenerate": "Create explainer",
+	"playgroundPlanning": "Planning the explainer…",
+	"playgroundDrawing": "Drawing and animating…",
+	"playgroundFromYourQuestion": "From your question",
+	"playgroundNewConcept": "New concept",
+	"playgroundErrorIntro": "The explainer could not be created."
 }

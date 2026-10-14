@@ -16,6 +16,7 @@ export const STATIC_PATHS = [
 	'/privacy',
 	'/terms',
 	'/practice',
+	'/playground',
 ];
 
 function urlEntry(loc, alternates, lastmod) {
