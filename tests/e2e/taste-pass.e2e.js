@@ -198,11 +198,20 @@ test('public pages render without console errors', async ({ page }) => {
 	expect(errors).toEqual([]);
 });
 
+// Anchored to local midnight: the page groups by calendar day (today since
+// midnight, yesterday since the previous one), so fixed offsets from "now"
+// collapse the Today group between midnight and 02:00 local, when "2 hours
+// ago" is already yesterday. Every assertion below stays as it is.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const startOfToday = new Date();
+startOfToday.setHours(0, 0, 0, 0);
+const todayStart = startOfToday.getTime();
 const seededHistory = [
 	{
 		id: 'seed-1',
 		topic: 'SSC CGL general awareness practice',
-		timestamp: Date.now() - 2 * 60 * 60 * 1000,
+		// Today: a minute ago, but never before midnight.
+		timestamp: Math.max(todayStart, Date.now() - 60 * 1000),
 		totalQuestions: 10,
 		questions: Array.from({ length: 10 }, (_, i) => ({ q: i })),
 		userAnswers: { 0: 'a' },
@@ -211,7 +220,8 @@ const seededHistory = [
 	{
 		id: 'seed-2',
 		topic: 'UPSC prelims polity: constitutional bodies',
-		timestamp: Date.now() - 26 * 60 * 60 * 1000,
+		// Yesterday: late yesterday evening.
+		timestamp: todayStart - 60 * 60 * 1000,
 		totalQuestions: 20,
 		questions: Array.from({ length: 20 }, (_, i) => ({ q: i })),
 		userAnswers: { 0: 'a' },
@@ -220,7 +230,8 @@ const seededHistory = [
 	{
 		id: 'seed-3',
 		topic: 'Class 10 CBSE Science: life processes',
-		timestamp: Date.now() - 4 * 24 * 60 * 60 * 1000,
+		// Earlier: the day before yesterday.
+		timestamp: todayStart - 25 * 60 * 60 * 1000,
 		totalQuestions: 15,
 		questions: Array.from({ length: 15 }, (_, i) => ({ q: i })),
 		score: 11,
@@ -229,7 +240,8 @@ const seededHistory = [
 	{
 		id: 'seed-4',
 		topic: 'English grammar: tenses practice',
-		timestamp: Date.now() - 9 * 24 * 60 * 60 * 1000,
+		// Earlier: over a week back, so the row shows a short date.
+		timestamp: todayStart - 9 * DAY_MS,
 		totalQuestions: 10,
 		questions: Array.from({ length: 10 }, (_, i) => ({ q: i }))
 	}
