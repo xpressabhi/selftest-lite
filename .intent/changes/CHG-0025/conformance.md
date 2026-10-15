@@ -22,25 +22,27 @@ contract, and the public page's identity-free contract are untouched.
 
 This matches the design (`docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md`):
 decisions D1-D4 and D6-D10 are implemented as written, the §13 file inventory landed as listed
-(the only inventory delta is `tests/e2e/visualFit.js`, added during the process, recorded in
-`test_changes`), and the success criteria in §1 are covered by the E2E evidence below. The
-deviations are the four plan-owner rulings recorded in "Deviations and decisions".
+(its only deltas are two test files added during the process, `tests/e2e/visualFit.js` and
+`src/lib/server/visualFitJudge.test.js`, both recorded as new tests), and the success criteria in
+§1 are covered by the E2E evidence below. The deviations are the six items recorded in
+"Deviations and decisions" (three plan-owner rulings/amendments, a documented test-layering
+decision, a test-change record, and an operational follow-up).
 
 ## Verification
 
 All gates were run on a clean tree at `d55cd63` (the commit before this record). Every pre-existing
-test passed unmodified; the only pre-existing tests touched are the 13 entries declared in the
-proposal's `test_changes`.
+test passes; the only pre-existing tests touched are the 13 entries declared in the proposal's
+`test_changes`.
 
 | Command | Result |
 | --- | --- |
 | `npm run lint` (`eslint .`) | exit 0, no findings |
 | `npm run check` (`svelte-kit sync && vite build && node scripts/check-build-mode.mjs`) | exit 0; `check-build-mode: OK — 200 chunks, no DEV-only code, service worker registration present` |
 | `npm run test` (`vitest run`) | exit 0; **92 test files passed (92)**, **1136 tests passed (1136)**, 2.67 s |
-| `npm run test:e2e` (`playwright test`) | exit 0; **232 passed (1.6m)**, 0 failed; artifact `test-results/e2e-artifact.json` = total 232 / passed 232 / failed 0, stamped `sha d55cd63, dirty false` |
+| `npm run test:e2e` (`playwright test`) | exit 0; **232 passed (1.6m)**, 0 failed; artifact `test-results/e2e-artifact.json` = total 232 / passed 232 / failed 0, as stamped at gate time (`sha d55cd63, dirty false`; the commit hook later re-ran the suite at the pre-commit state with the same counts) |
 | `npm run verify:vercel` (build + `scripts/verify-vercel.mjs`) | exit 0; `verify-vercel: OK — 238 sitemap URLs, 234 prerendered pages, 234 clean-URL overrides, SSR function present` |
 | `sh .intent/scripts/verify-records.sh --base 2bab1bb --head HEAD` | exit 0; `record .intent/changes/CHG-0025` (exactly one record for the range) |
-| `sh .intent/scripts/verify-change.sh --change .intent/changes/CHG-0025 --base 2bab1bb` | exit 0; digest matches, records match pinned schemas, changed paths within declared scope, all protected test changes declared |
+| `sh .intent/scripts/verify-change.sh --change .intent/changes/CHG-0025 --base 2bab1bb` | exit 0; proposal digest matches, changed paths within declared scope, all protected test changes declared; schema validation skipped (python3 + PyYAML/jsonschema unavailable) |
 
 ## Test changes
 
@@ -49,9 +51,9 @@ Confirmed, each matching its declared kind and reason:
 - `tests/e2e/playground.e2e.js` (modified): extended for the seeded-verdict refusal (no explainer
   row, no generation quota), the linked serve carrying `source`, and the provenance chip (now
   including the structural pin that the chip is a link sibling of, not inside, the row button);
-  the in-flight loading-copy assertion moved from `Planning the explainer…` to the first stage
-  `Checking if a visual helps...` because Judging now precedes Planning. No other assertion was
-  weakened.
+  the in-flight loading-copy assertion is retained, not weakened: it now asserts the new
+  first-stage copy `Checking if a visual helps...` (after the judging-stage flip) instead of the
+  old `Planning the explainer…` string, because Judging now precedes Planning.
 - `src/lib/shared/playgroundLink.test.js` (deleted): removed together with the now-unused
   `src/lib/shared/playgroundLink.js` (commit `d55cd63`); the playground URL-prefill contract stays
   covered by the existing deep-link spec.
