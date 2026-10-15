@@ -997,7 +997,6 @@
 	"errorPlaygroundTooLong": "कॉन्सेप्ट या संदर्भ बहुत लंबा है",
 	"errorExplainerInvalid": "एक्सप्लेनर ठीक नहीं बना। फिर कोशिश करें।",
 	"errorExplainerFailed": "एक्सप्लेनर बनाते समय कुछ गड़बड़ हुई।",
-	"explainVisually": "विज़ुअल तरीके से समझें",
 	"explainCreateOwn": "अपना एक्सप्लेनर बनाएँ",
 	"visualExplainHeading": "विज़ुअल व्याख्या",
 	"visualBuild": "विज़ुअल व्याख्या बनाएँ",

@@ -997,7 +997,6 @@
 	"errorPlaygroundTooLong": "The concept or context is too long",
 	"errorExplainerInvalid": "The explainer did not come out right. Please retry.",
 	"errorExplainerFailed": "Something went wrong while creating the explainer.",
-	"explainVisually": "Explain visually",
 	"explainCreateOwn": "Create your own explainer",
 	"visualExplainHeading": "Visual explanation",
 	"visualBuild": "Build visual explanation",

@@ -110,6 +110,12 @@ record the numbers you care about outside it). `--strict` gates: ≥ 7/8 valid,
 `ARTIFACT_MODEL` (and whether the OpenAI-compatible gateway replaces the
 Gemini SDK).
 
+The Jev visual-fit judge (`src/lib/server/visualFitJudge.js`) is a token gate,
+not a quality gate: it decides whether a topic or question is worth an animated
+visual, and its verdict only controls whether the playground or a review card
+offers one. Verdicts are cached by content address in `question_visual_fits`.
+Artifact quality stays measured by `npm run eval:artifact` above.
+
 ## Item analytics and feedback
 
 `npm run telemetry:report` derives per-question p-values from stored
