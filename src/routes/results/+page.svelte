@@ -124,10 +124,15 @@
 	let nudgeTimer = null;
 	let pendingNudge = null;
 	// Per-question visual explainers: `visualLinks` restores what already
-	// exists for this test, `visualState` is the card's state machine
+	// exists for this test, `visualFit` holds the Jev verdict that gates the
+	// no-link affordance, and `visualState` is the card's state machine
 	// (hidden | offer | available | building | ready | error).
 	let visualLinks = $state({});
+	let visualFit = $state({});
 	let visualState = $state({});
+	// One-shot visibility probes for cards the page opened on the reader's
+	// behalf: a verdict is only requested once such a card is on screen.
+	let visualFitObservers = {};
 
 	const RESULTS_NUDGE_DWELL_MS = 5000;
 
@@ -414,6 +419,10 @@
 
 	onDestroy(() => {
 		autoExplainCanceled = true;
+		for (const observer of Object.values(visualFitObservers)) {
+			observer.disconnect();
+		}
+		visualFitObservers = {};
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
 		}
@@ -874,8 +883,13 @@
 					title: item.title,
 				};
 				// A card that already built (or is building) wins: the restored
-				// pointer only fills cards that have no visual yet.
-				if (!states[index] || states[index].status === 'offer') {
+				// pointer only fills cards that have no visual yet. A verdict
+				// that ran while this read was in flight never beats a link.
+				if (
+					!states[index] ||
+					states[index].status === 'offer' ||
+					states[index].status === 'hidden'
+				) {
 					states[index] = { status: 'available', artifact: null, error: '' };
 				}
 			}
@@ -886,28 +900,137 @@
 		}
 	}
 
-	// Task 10 replaces the no-link branch with the visual-fit verdict call.
-	// Until then an existing link is the only path to an affordance.
-	function ensureVisual(index, question) {
+	// A card with a link always shows it; without one the Jev visual-fit
+	// verdict decides whether the build offer appears at all. Any verdict
+	// failure is fail-open: the offer stands. `defer` is for cards the page
+	// opened itself (the wrong-answer defaults): the verdict is only requested
+	// once the card has been seen on screen, so a results view never
+	// batch-judges every open card on load.
+	function ensureVisual(index, question, { defer = false } = {}) {
 		// State that exists is never refetched: collapsing and re-expanding a
-		// card must not repeat the links read, the build, or the open.
+		// card must not repeat the links read, the verdict, the build, or the
+		// open.
 		if (visualState[index] || !question) {
 			return;
 		}
 		const link = visualLinks[index];
+		if (link) {
+			visualState = {
+				...visualState,
+				[index]: { status: 'available', artifact: null, error: '' },
+			};
+			return;
+		}
+		const verdict = visualFit[index];
+		if (verdict?.status === 'done') {
+			applyVisualFit(index);
+			return;
+		}
+		if (verdict?.status === 'loading') {
+			return;
+		}
+		if (defer) {
+			observeVisualCard(index, question);
+			return;
+		}
+		void fetchVisualFit(index, question);
+	}
+
+	// One observer per card, dropped the moment it reports the card on screen:
+	// a card the reader never reaches costs no judge call.
+	function observeVisualCard(index, question) {
+		if (visualFitObservers[index]) {
+			return;
+		}
+		const element =
+			typeof document !== 'undefined' ? document.getElementById(`question-${index}`) : null;
+		if (typeof IntersectionObserver === 'undefined' || !element) {
+			// No observer to lean on: fail open rather than silently dropping
+			// the affordance.
+			void fetchVisualFit(index, question);
+			return;
+		}
+		const observer = new IntersectionObserver((entries) => {
+			if (!entries.some((entry) => entry.isIntersecting) || expanded[index] !== true) {
+				return;
+			}
+			observer.disconnect();
+			delete visualFitObservers[index];
+			if (!visualState[index]) {
+				void fetchVisualFit(index, question);
+			}
+		});
+		visualFitObservers[index] = observer;
+		observer.observe(element);
+	}
+
+	async function fetchVisualFit(index, question) {
+		// One verdict per question per session: a held or in-flight entry (or a
+		// card that already resolved) is never fetched again.
+		if (visualFit[index] || visualState[index] || !questionPaper || !question) {
+			return;
+		}
+		visualFit = {
+			...visualFit,
+			[index]: { status: 'loading', suggested: false, degraded: false },
+		};
+		try {
+			const response = await fetch('/api/visual-fit', {
+				method: 'POST',
+				headers: getClientHeaders(),
+				body: JSON.stringify({
+					topic: questionPaper.topic,
+					question: questionTextFor(question),
+					answer: question.answer,
+					language: questionPaper.requestParams?.language || 'english',
+				}),
+			});
+			const payload = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				throw new Error(payload?.error || `visual-fit ${response.status}`);
+			}
+			visualFit = {
+				...visualFit,
+				[index]: {
+					status: 'done',
+					suggested: Boolean(payload.suggested),
+					degraded: Boolean(payload.degraded),
+				},
+			};
+		} catch {
+			// Fail-open: a verdict this device could not get never hides the
+			// affordance, so it degrades exactly like a judge outage.
+			visualFit = {
+				...visualFit,
+				[index]: { status: 'done', suggested: true, degraded: true },
+			};
+		}
+		applyVisualFit(index);
+	}
+
+	// `suggested || degraded` offers the build, so an unconfigured judge keeps
+	// today's behavior; a link that landed meanwhile still wins.
+	function applyVisualFit(index) {
+		const verdict = visualFit[index];
+		if (verdict?.status !== 'done' || visualState[index]) {
+			return;
+		}
+		const status = visualLinks[index]
+			? 'available'
+			: verdict.suggested || verdict.degraded
+				? 'offer'
+				: 'hidden';
 		visualState = {
 			...visualState,
-			[index]: link
-				? { status: 'available', artifact: null, error: '' }
-				: { status: 'offer', artifact: null, error: '' },
+			[index]: { status, artifact: null, error: '' },
 		};
 	}
 
-	function ensureVisualsForOpenCards() {
+	function ensureVisualsForOpenCards({ defer = false } = {}) {
 		const questions = questionPaper?.questions || [];
 		for (const [key, open] of Object.entries(expanded)) {
 			if (open === true) {
-				ensureVisual(Number(key), questions[Number(key)]);
+				ensureVisual(Number(key), questions[Number(key)], { defer });
 			}
 		}
 	}
@@ -918,10 +1041,12 @@
 		// Let the default-expansion effect write the whole map first: setting
 		// one index before it would be overwritten by the defaults.
 		await tick();
+		let hashIndex = null;
 		if (typeof window !== 'undefined') {
 			const match = /^#question-(\d+)$/.exec(window.location.hash);
 			const index = match ? Number(match[1]) : null;
 			if (index !== null && Number.isInteger(index) && index >= 0) {
+				hashIndex = index;
 				expanded = { ...expanded, [index]: true };
 				await tick();
 				document.getElementById(`question-${index}`)?.scrollIntoView({
@@ -932,7 +1057,13 @@
 				});
 			}
 		}
-		ensureVisualsForOpenCards();
+		if (hashIndex !== null) {
+			// A deep link is the reader's own door into the card: it judges now.
+			ensureVisual(hashIndex, questionPaper?.questions?.[hashIndex]);
+		}
+		// The remaining open cards were opened by the page, not the reader:
+		// their verdicts wait until each card first reaches the viewport.
+		ensureVisualsForOpenCards({ defer: true });
 	}
 
 	// Coarse capability buckets only, exactly as the playground sends them, so

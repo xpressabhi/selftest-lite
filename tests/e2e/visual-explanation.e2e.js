@@ -416,6 +416,22 @@ function countBuilds(page) {
 	return builds;
 }
 
+/** The verdict gate runs before the build offer: stub it as worth-it. */
+async function stubVisualFitWorthIt(page) {
+	await page.route('**/api/visual-fit', async (route) => {
+		await route.fulfill({
+			status: 200,
+			json: {
+				suggested: true,
+				category: 'worth_it',
+				confidence: 0.9,
+				cached: false,
+				degraded: false,
+			},
+		});
+	});
+}
+
 test('restores a linked visual and opens it inline from the hash deep link', async ({
 	page,
 	request,
@@ -534,6 +550,7 @@ test('builds a visual inline and keeps it across collapse and expand', async ({
 	page,
 }, testInfo) => {
 	let buildCalls = 0;
+	await stubVisualFitWorthIt(page);
 	await page.route('**/api/playground', async (route) => {
 		buildCalls += 1;
 		// The honest loading state is asserted below, so the stub must not
@@ -589,6 +606,7 @@ test('builds a visual inline and keeps it across collapse and expand', async ({
 
 test('shows the localized build error with a working retry', async ({ page }, testInfo) => {
 	let buildCalls = 0;
+	await stubVisualFitWorthIt(page);
 	await page.route('**/api/playground', async (route) => {
 		buildCalls += 1;
 		await route.fulfill({
@@ -627,5 +645,229 @@ test('shows the localized build error with a working retry', async ({ page }, te
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify({ buildCalls }, null, 2),
+	});
+});
+
+// --- The verdict gate on the review card: the Jev visual-fit call decides
+// whether the no-link affordance ever appears. The specs stub the endpoint, so
+// no spec reaches a judge. The ruling pinned here: reader-driven expansions
+// judge their card immediately, while cards the page opens for the reader are
+// judged the first time they reach the viewport, never in a load-time sweep.
+// Spec: docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md §7.1
+
+/** Ten wrong answers: every card opens at load, the whole list on one page. */
+function tenQuestionPaper({ id }) {
+	return {
+		id,
+		topic: 'e2e-visual topic',
+		timestamp: 10,
+		questions: Array.from({ length: 10 }, (_, questionIndex) => ({
+			question: `Q${questionIndex + 1}`,
+			options: ['A', 'B', 'C'],
+			answer: 'A',
+		})),
+		userAnswers: Object.fromEntries(
+			Array.from({ length: 10 }, (_, questionIndex) => [questionIndex, 'B'])
+		),
+		score: 0,
+		totalQuestions: 10,
+		timeTaken: 60,
+	};
+}
+
+test('offers the build affordance once when the verdict suggests a visual', async ({
+	page,
+}, testInfo) => {
+	const fitRequests = [];
+	await page.route('**/api/visual-fit', async (route) => {
+		fitRequests.push({
+			body: route.request().postDataJSON(),
+			headers: route.request().headers(),
+		});
+		await route.fulfill({
+			status: 200,
+			json: {
+				suggested: true,
+				category: 'worth_it',
+				confidence: 0.9,
+				cached: false,
+				degraded: false,
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-fit-offer';
+	const clientId = 'e2e-visual-delta';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, { clientId, history: [cardPaper({ id: testId })] });
+	await page.goto(`/results?id=${testId}`);
+
+	// A correct answer starts collapsed, so the head tap is the reader's own
+	// expansion: the verdict is fetched with it, not on page load.
+	await page.locator('.review-card-head').click();
+	await expect(page.getByRole('heading', { name: 'Visual explanation' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toBeVisible();
+	await expect.poll(() => fitRequests.length).toBe(1);
+	// The pinned contract: the same context fields the build request will send.
+	expect(fitRequests[0].body).toEqual({
+		topic: 'e2e-visual topic',
+		question: 'Q1',
+		answer: 'A1',
+		language: 'english',
+	});
+	expect(fitRequests[0].headers['x-client-id']).toBe(clientId);
+
+	// Collapsing and re-expanding reuses the held verdict: no second judge call.
+	await page.locator('.review-card-head').click();
+	await expect(page.locator('.review-card-body')).toHaveCount(0);
+	await page.locator('.review-card-head').click();
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toBeVisible();
+	expect(fitRequests).toHaveLength(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ fitCalls: fitRequests.length, body: fitRequests[0].body }, null, 2),
+	});
+});
+
+test('hides the visual affordance when the verdict says it is not visual', async ({
+	page,
+}, testInfo) => {
+	let fitCalls = 0;
+	await page.route('**/api/visual-fit', async (route) => {
+		fitCalls += 1;
+		// The honest checking state is asserted below, so the stub must not
+		// answer before the browser has painted the open card.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		await route.fulfill({
+			status: 200,
+			json: {
+				suggested: false,
+				category: 'not_visual',
+				confidence: 0.9,
+				cached: false,
+				degraded: false,
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-fit-hidden';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-zeta',
+		history: [cardPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	const verdict = page.waitForResponse('**/api/visual-fit');
+	await page.locator('.review-card-head').click();
+	// While the verdict is in flight the section shows nothing: no button flash.
+	await expect(page.locator('.review-card-body')).toHaveCount(1);
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Visual explanation' })).toHaveCount(0);
+
+	// The verdict landed and said no: the section stays absent.
+	await verdict;
+	await expect(page.locator('.visual-explainer')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Visual explanation' })).toHaveCount(0);
+	expect(fitCalls).toBe(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ fitCalls, affordanceRendered: false }, null, 2),
+	});
+});
+
+test('keeps the build affordance when the verdict request fails', async ({ page }, testInfo) => {
+	let fitCalls = 0;
+	await page.route('**/api/visual-fit', async (route) => {
+		fitCalls += 1;
+		await route.fulfill({
+			status: 429,
+			json: {
+				error: 'Rate limit exceeded. Please try again later.',
+				code: 'API_LIMIT_EXCEEDED',
+				resetTime: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-fit-fail-open';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-eta',
+		history: [cardPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	await page.locator('.review-card-head').click();
+	// Fail-open: an unavailable verdict never hides the affordance.
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toBeVisible();
+	await expect.poll(() => fitCalls).toBe(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ fitCalls, status: 429, affordanceRendered: true }, null, 2),
+	});
+});
+
+test('judges an auto-opened card only when it reaches the viewport', async ({ page }, testInfo) => {
+	const judgedQuestions = [];
+	await page.route('**/api/visual-fit', async (route) => {
+		judgedQuestions.push(route.request().postDataJSON()?.question ?? '');
+		await route.fulfill({
+			status: 200,
+			json: {
+				suggested: true,
+				category: 'worth_it',
+				confidence: 0.9,
+				cached: false,
+				degraded: false,
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-fit-viewport';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-epsilon',
+		history: [tenQuestionPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	// Every answer is wrong, so every card opens at load; only the cards that
+	// reach the viewport may judge. A load-time sweep would call ten times.
+	await page.locator('#question-0').scrollIntoViewIfNeeded();
+	await expect(
+		page.locator('#question-0').getByRole('button', { name: 'Build visual explanation' })
+	).toBeVisible();
+	const judgedAtLoad = judgedQuestions.length;
+	expect(judgedAtLoad).toBeGreaterThan(0);
+	expect(judgedAtLoad).toBeLessThan(5);
+	expect(judgedQuestions).not.toContain('Q10');
+
+	// The last card sits far below the fold: scrolling it into view is the
+	// first time it is seen, and that is when its verdict is fetched.
+	await page.locator('#question-9').scrollIntoViewIfNeeded();
+	await expect(
+		page.locator('#question-9').getByRole('button', { name: 'Build visual explanation' })
+	).toBeVisible();
+	await expect.poll(() => judgedQuestions.includes('Q10')).toBe(true);
+	expect(judgedQuestions.filter((question) => question === 'Q10')).toHaveLength(1);
+	// Still not a sweep: the load never judged the whole paper.
+	expect(judgedQuestions.length).toBeLessThan(10);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				judgedAtLoad,
+				judgedAfterScroll: judgedQuestions.length,
+				lastCardJudged: judgedQuestions.includes('Q10'),
+			},
+			null,
+			2
+		),
 	});
 });
