@@ -24,7 +24,7 @@ scope:
 test_changes:
   - path: "tests/e2e/playground.e2e.js"
     kind: "modified"
-    reason: "Extended for the requested behaviour: the pre-generation refusal on a seeded verdict (no explainer row, no generation quota), the linked serve carrying source, and the provenance chip. Existing specs and helpers are unchanged."
+    reason: "Extended for the requested behaviour: the pre-generation refusal on a seeded verdict (no explainer row, no generation quota), the linked serve carrying source, and the provenance chip. The in-flight loading-copy assertion moved from `Planning the explainer…` to the new first stage `Checking if a visual helps...` because Judging now precedes Planning; no other assertion was weakened. Existing specs and helpers are otherwise unchanged."
   - path: "src/lib/shared/playgroundLink.test.js"
     kind: "deleted"
     reason: "Deleted together with its now-unused helper src/lib/shared/playgroundLink.js when the review card's old Explain visually link is replaced by the inline visual section; a planned removal, not a test weakened to pass."

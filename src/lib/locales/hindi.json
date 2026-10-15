@@ -977,9 +977,11 @@
 	"playgroundExample3": "ओम का नियम",
 	"playgroundExample4": "पाइथागोरस प्रमेय",
 	"playgroundGenerate": "एक्सप्लेनर बनाएँ",
+	"playgroundJudging": "जांचा जा रहा है कि विज़ुअल मदद करेगा या नहीं...",
 	"playgroundPlanning": "एक्सप्लेनर की योजना बन रही है…",
 	"playgroundDrawing": "चित्र और एनिमेशन बन रहे हैं…",
 	"playgroundFromYourQuestion": "आपके प्रश्न से",
+	"playgroundFromYourTest": "आपके टेस्ट से",
 	"playgroundNewConcept": "नया कॉन्सेप्ट",
 	"playgroundLibraryTitle": "आपके एक्सप्लेनर",
 	"playgroundShare": "शेयर करें",
@@ -1000,5 +1002,8 @@
 	"visualBuild": "विज़ुअल व्याख्या बनाएँ",
 	"visualShow": "विज़ुअल व्याख्या देखें",
 	"visualOpenPage": "पूरा पेज खोलें",
-	"visualBuildError": "विज़ुअल व्याख्या नहीं बन सकी। कृपया फिर प्रयास करें।"
+	"visualBuildError": "विज़ुअल व्याख्या नहीं बन सकी। कृपया फिर प्रयास करें।",
+	"visualFitNotWorthyTitle": "यहां विज़ुअल से खास फायदा नहीं होगा",
+	"visualFitVagueHint": "साफ लिखें कि आप क्या देखना चाहते हैं: प्रक्रिया, बदलाव या संबंध।",
+	"visualFitTextFirstHint": "यह विषय पढ़ने के लिए बेहतर है। जो प्रक्रिया या तंत्र आपके मन में है, उसे लिखकर दोबारा कोशिश करें।"
 }

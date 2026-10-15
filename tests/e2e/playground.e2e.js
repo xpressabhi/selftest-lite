@@ -185,7 +185,7 @@ test('renders the artifact flow in the sandboxed frame with height fallbacks', a
 		},
 	});
 	await page.getByRole('button', { name: 'Create explainer' }).click();
-	await expect(page.getByText('Planning the explainer…')).toBeVisible();
+	await expect(page.getByText('Checking if a visual helps...')).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'Stub title' })).toBeVisible();
 	const frame = page.locator('iframe.artifact-frame');
 	await expect(frame).toHaveAttribute('sandbox', 'allow-scripts');
@@ -849,5 +849,169 @@ test('ignores a malformed source instead of failing the serve', async ({
 			linkRows: links,
 			librarySource: item.source,
 		}),
+	});
+});
+
+// --- Playground client surfaces: the Judging stage, the refusal guidance
+// panel, and the library provenance chip. Every spec stubs /api/playground or
+// seeds through it, so no run can reach a model. Spec:
+// docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md §7.2
+
+test('shows the judging stage, then planning, on a slow generation', async ({ page }, testInfo) => {
+	await page.route('**/api/playground', async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, 2500));
+		await route.fulfill({
+			status: 200,
+			json: {
+				title: 'Judged title',
+				summary: 's',
+				recipes: [],
+				html: '<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8"><title>Stub</title></head><body><div id="e2e-judging-marker">judged</div></body></html>',
+				cached: false,
+			},
+		});
+	});
+
+	// Hydration gate: onMount runs the URL prefill and fires the library fetch,
+	// so wait for that fetch before typing (a pre-hydration fill would be reset
+	// by the prefill assignment).
+	const hydrated = page.waitForResponse((response) =>
+		response.url().includes('/api/playground/library')
+	);
+	await page.goto('/playground');
+	await hydrated;
+	await page.locator('#playground-topic').fill('Judging stage topic');
+	await page.getByRole('button', { name: 'Create explainer' }).click();
+
+	// The judge runs first: Judging is the honest first stage, and Planning
+	// only appears after the 2000 ms flip, before the stub answers at 2500 ms.
+	await expect(page.getByText('Checking if a visual helps...')).toBeVisible();
+	await expect(page.getByText('Planning the explainer…')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Judged title' })).toBeVisible();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ judgingCopy: true, planningCopy: true, artifact: 'Judged title' }),
+	});
+});
+
+test('guides on a refused topic and generates once the topic is refined', async ({
+	page,
+}, testInfo) => {
+	let refuse = true;
+	await page.route('**/api/playground', async (route) => {
+		if (refuse) {
+			await route.fulfill({
+				status: 200,
+				json: { code: 'VISUAL_NOT_WORTHY', category: 'too_vague' },
+			});
+			return;
+		}
+		await route.fulfill({
+			status: 200,
+			json: {
+				title: 'Refined artifact',
+				summary: 's',
+				recipes: [],
+				html: '<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8"><title>Stub</title></head><body><div id="e2e-refined-marker">refined</div></body></html>',
+				cached: false,
+			},
+		});
+	});
+
+	// Hydration gate: onMount runs the URL prefill and fires the library fetch,
+	// so wait for that fetch before typing (a pre-hydration fill would be reset
+	// by the prefill assignment).
+	const hydrated = page.waitForResponse((response) =>
+		response.url().includes('/api/playground/library')
+	);
+	await page.goto('/playground');
+	await hydrated;
+	await page.locator('#playground-topic').fill('Something vague');
+	await page.getByRole('button', { name: 'Create explainer' }).click();
+
+	// A refusal is guidance, not an error: the bordered panel renders its
+	// category hint, the red error alert never does, and no artifact was
+	// built or charged for.
+	await expect(page.getByText("A visual won't add much here")).toBeVisible();
+	await expect(
+		page.getByText('Add what you want to see: the process, the change, or the relationship.')
+	).toBeVisible();
+	await expect(page.locator('.alert-danger')).toHaveCount(0);
+	await expect(page.locator('iframe.artifact-frame')).toHaveCount(0);
+
+	// The topic stayed editable and the button enabled: refine in place and
+	// the very next Generate goes through.
+	refuse = false;
+	await page.locator('#playground-topic').fill('A process with clear change over time');
+	await expect(page.getByRole('button', { name: 'Create explainer' })).toBeEnabled();
+	await page.getByRole('button', { name: 'Create explainer' }).click();
+	await expect(page.getByRole('heading', { name: 'Refined artifact' })).toBeVisible();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			refusalPanel: true,
+			errorAlertAbsent: true,
+			artifactBuilt: true,
+			topicStayedEditable: true,
+		}),
+	});
+});
+
+test('shows the From your test chip on a linked library item', async ({
+	page,
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	const topic = 'e2e-prov-chip';
+	const clientId = 'e2e-prov-client';
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this warmup off the /api/test bucket the suite shares.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': clientId } });
+
+	const testId = 'e2e-src-test';
+	const questionIndex = 4;
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Provenance served',
+			summary: 's',
+			recipes: [],
+			html: '<p id="e2e-prov-marker">prov</p>',
+			css: '',
+			js: '',
+		},
+	});
+
+	// Serving with a source records the question link; the library list turns
+	// that link into the provenance chip (same seeding path as the
+	// linked-serve spec above, a different identity).
+	const served = await request.post('/api/playground', {
+		data: {
+			topic,
+			theme: 'light',
+			profile: { viewport: 'wide', budget: 'full' },
+			source: { testId, questionIndex },
+		},
+		headers: { 'x-client-id': clientId },
+	});
+	expect(served.status()).toBe(200);
+
+	await page.addInitScript((value) => {
+		window.localStorage.setItem('selftest_client_id', value);
+	}, clientId);
+	await page.goto('/playground');
+
+	const chip = page.getByRole('link', { name: 'From your test' });
+	await expect(chip).toBeVisible();
+	const href = (await chip.getAttribute('href')) || '';
+	expect(href).toContain(`/results?id=${testId}#question-${questionIndex}`);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ chipVisible: true, href }),
 	});
 });

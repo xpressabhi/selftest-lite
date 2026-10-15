@@ -23,7 +23,8 @@
 	let stage = $state('planning');
 	let artifact = $state(null);
 	let errorMessage = $state('');
-	let stageTimer = null;
+	let refusalCategory = $state('');
+	let stageTimers = [];
 	let library = $state([]);
 	let searchQuery = $state('');
 	let searchResults = $state(null);
@@ -62,9 +63,7 @@
 		};
 		document.addEventListener('visibilitychange', onVisibility);
 		return () => {
-			if (stageTimer !== null) {
-				clearInterval(stageTimer);
-			}
+			clearStageTimers();
 			if (searchTimer !== null) {
 				clearTimeout(searchTimer);
 			}
@@ -102,14 +101,22 @@
 		if (!trimmedTopic || status === 'loading') {
 			return;
 		}
+		clearStageTimers();
 		status = 'loading';
-		stage = 'planning';
+		stage = 'judging';
+		refusalCategory = '';
 		errorMessage = '';
-		// Coarse, honest stages: we know there are two model calls, not their
-		// progress; the copy flips once so waiting feels bounded, no fake bars.
-		stageTimer = setInterval(() => {
-			stage = 'drawing';
-		}, 5000);
+		// Coarse, honest stages: the judge runs first, then two model calls, and
+		// we know the order, not the progress; the copy flips twice so waiting
+		// feels bounded, no fake bars.
+		stageTimers = [
+			setTimeout(() => {
+				stage = 'planning';
+			}, 2000),
+			setTimeout(() => {
+				stage = 'drawing';
+			}, 7000),
+		];
 
 		const startedAt = Date.now();
 		track('playground:generate-requested', {
@@ -135,6 +142,16 @@
 				}),
 			});
 			const payload = await response.json().catch(() => ({}));
+			if (response.ok && payload.code === 'VISUAL_NOT_WORTHY') {
+				// The judge decided a visual would not help: this is guidance,
+				// not an error. Show the category hint and leave the topic
+				// editable so the user can refine it and try again, and skip
+				// the generate-result event because nothing was generated.
+				status = 'refused';
+				refusalCategory = payload.category ?? '';
+				track('playground:judge-declined', { category: payload.category });
+				return;
+			}
 			if (!response.ok) {
 				// Localized copy comes from the shared error-code map, never the
 				// server's English message (bilingual UI is mandatory).
@@ -164,17 +181,22 @@
 				durationMs: Date.now() - startedAt,
 			});
 		} finally {
-			if (stageTimer !== null) {
-				clearInterval(stageTimer);
-				stageTimer = null;
-			}
+			clearStageTimers();
 		}
+	}
+
+	function clearStageTimers() {
+		for (const timer of stageTimers) {
+			clearTimeout(timer);
+		}
+		stageTimers = [];
 	}
 
 	function reset() {
 		status = 'idle';
 		artifact = null;
 		errorMessage = '';
+		refusalCategory = '';
 	}
 
 	// The library is an enhancement: any failure leaves it hidden rather than
@@ -387,11 +409,30 @@
 			>
 				{#if status === 'loading'}
 					<span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>
-					<span class="ms-2">{$t(stage === 'drawing' ? 'playgroundDrawing' : 'playgroundPlanning')}</span>
+					<span class="ms-2"
+						>{$t(
+							stage === 'judging'
+								? 'playgroundJudging'
+								: stage === 'drawing'
+									? 'playgroundDrawing'
+									: 'playgroundPlanning'
+						)}</span
+					>
 				{:else}
 					{$t('playgroundGenerate')}
 				{/if}
 			</button>
+
+			{#if status === 'refused'}
+				<div class="playground-refusal mt-3" role="status">
+					<p class="fw-semibold mb-1">{$t('visualFitNotWorthyTitle')}</p>
+					<p class="small mb-0">
+						{$t(
+							refusalCategory === 'too_vague' ? 'visualFitVagueHint' : 'visualFitTextFirstHint'
+						)}
+					</p>
+				</div>
+			{/if}
 
 			{#if status === 'error'}
 				<div class="alert alert-danger mt-3" role="status">
@@ -444,6 +485,14 @@
 									<span class="playground-library-meta">
 										{item.concept}
 										{#if item.createdAt}· {formatLibraryDate(item.createdAt)}{/if}
+										{#if item.source}
+											<a
+												class="playground-library-source"
+												href={`/results?id=${encodeURIComponent(item.source.testId)}#question-${item.source.questionIndex}`}
+												onclick={(event) => event.stopPropagation()}
+												>{$t('playgroundFromYourTest')}</a
+											>
+										{/if}
 									</span>
 								</button>
 							</li>
@@ -506,6 +555,14 @@
 		font-size: 0.8rem;
 	}
 
+	.playground-refusal {
+		padding: 12px 14px;
+		background: var(--surface-muted, #f8fafc);
+		border: 1px solid var(--line, #e2e8f0);
+		border-left: 4px solid var(--brand-text, #4f46e5);
+		border-radius: var(--radius-surface, 12px);
+	}
+
 	.playground-library-badge {
 		display: inline-block;
 		margin-left: 6px;
@@ -516,5 +573,19 @@
 		font-size: 0.7rem;
 		font-weight: 500;
 		vertical-align: middle;
+	}
+
+	.playground-library-source {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin-top: 2px;
+		padding: 0 12px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		color: var(--brand-text, #4f46e5);
+		font-size: 0.78rem;
+		font-weight: 600;
+		text-decoration: none;
 	}
 </style>

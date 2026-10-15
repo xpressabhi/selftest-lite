@@ -977,9 +977,11 @@
 	"playgroundExample3": "Ohm's law",
 	"playgroundExample4": "Pythagoras theorem",
 	"playgroundGenerate": "Create explainer",
+	"playgroundJudging": "Checking if a visual helps...",
 	"playgroundPlanning": "Planning the explainer…",
 	"playgroundDrawing": "Drawing and animating…",
 	"playgroundFromYourQuestion": "From your question",
+	"playgroundFromYourTest": "From your test",
 	"playgroundNewConcept": "New concept",
 	"playgroundLibraryTitle": "Your explainers",
 	"playgroundShare": "Share",
@@ -1000,5 +1002,8 @@
 	"visualBuild": "Build visual explanation",
 	"visualShow": "Show visual explanation",
 	"visualOpenPage": "Open full page",
-	"visualBuildError": "The visual explanation could not be built. Please retry."
+	"visualBuildError": "The visual explanation could not be built. Please retry.",
+	"visualFitNotWorthyTitle": "A visual won't add much here",
+	"visualFitVagueHint": "Add what you want to see: the process, the change, or the relationship.",
+	"visualFitTextFirstHint": "This topic reads as text-first. Name the process or mechanism you have in mind and try again."
 }

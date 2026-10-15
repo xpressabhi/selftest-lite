@@ -61,6 +61,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'playground:open',
 	'playground:generate-requested',
 	'playground:generate-result',
+	'playground:judge-declined',
 	'playground:library-item-open',
 	'playground:share',
 
