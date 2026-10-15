@@ -469,7 +469,7 @@
 					</h2>
 					<ul class="list-unstyled mb-0 d-grid gap-2">
 						{#each visibleItems as item (item.mine ? `mine-${item.id}` : `public-${item.slug}`)}
-							<li>
+							<li class="playground-library-row">
 								<button
 									type="button"
 									class="playground-library-item"
@@ -485,16 +485,18 @@
 									<span class="playground-library-meta">
 										{item.concept}
 										{#if item.createdAt}· {formatLibraryDate(item.createdAt)}{/if}
-										{#if item.source}
-											<a
-												class="playground-library-source"
-												href={`/results?id=${encodeURIComponent(item.source.testId)}#question-${item.source.questionIndex}`}
-												onclick={(event) => event.stopPropagation()}
-												>{$t('playgroundFromYourTest')}</a
-											>
-										{/if}
 									</span>
 								</button>
+								{#if item.source}
+									<!-- The provenance chip is a sibling of the row button, never a
+									descendant: interactive content inside a button is invalid
+									markup and pollutes the row's accessible name. -->
+									<a
+										class="playground-library-source"
+										href={`/results?id=${encodeURIComponent(item.source.testId)}#question-${item.source.questionIndex}`}
+										>{$t('playgroundFromYourTest')}</a
+									>
+								{/if}
 							</li>
 						{/each}
 					</ul>
@@ -575,11 +577,17 @@
 		vertical-align: middle;
 	}
 
+	.playground-library-row {
+		display: grid;
+		gap: 6px;
+	}
+
 	.playground-library-source {
 		display: inline-flex;
 		align-items: center;
+		justify-self: start;
 		min-height: 44px;
-		margin-top: 2px;
+		margin-left: 12px;
 		padding: 0 12px;
 		border: 1px solid var(--line);
 		border-radius: 999px;
@@ -587,5 +595,9 @@
 		font-size: 0.78rem;
 		font-weight: 600;
 		text-decoration: none;
+	}
+
+	.playground-library-source:hover {
+		border-color: var(--brand-text, #4f46e5);
 	}
 </style>

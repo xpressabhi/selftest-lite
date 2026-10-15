@@ -859,7 +859,7 @@ test('ignores a malformed source instead of failing the serve', async ({
 
 test('shows the judging stage, then planning, on a slow generation', async ({ page }, testInfo) => {
 	await page.route('**/api/playground', async (route) => {
-		await new Promise((resolve) => setTimeout(resolve, 2500));
+		await new Promise((resolve) => setTimeout(resolve, 4000));
 		await route.fulfill({
 			status: 200,
 			json: {
@@ -884,7 +884,8 @@ test('shows the judging stage, then planning, on a slow generation', async ({ pa
 	await page.getByRole('button', { name: 'Create explainer' }).click();
 
 	// The judge runs first: Judging is the honest first stage, and Planning
-	// only appears after the 2000 ms flip, before the stub answers at 2500 ms.
+	// appears on the 2000 ms flip; the stub answers at 4000 ms, so the planning
+	// copy is observable for a full two seconds instead of half a second.
 	await expect(page.getByText('Checking if a visual helps...')).toBeVisible();
 	await expect(page.getByText('Planning the explainer…')).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'Judged title' })).toBeVisible();
@@ -1009,9 +1010,14 @@ test('shows the From your test chip on a linked library item', async ({
 	await expect(chip).toBeVisible();
 	const href = (await chip.getAttribute('href')) || '';
 	expect(href).toContain(`/results?id=${testId}#question-${questionIndex}`);
+	// The chip is a sibling of the row button, never inside it: interactive
+	// content in a button is invalid markup and would join the button's
+	// accessible name.
+	await expect(page.locator('.playground-library-item a')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /From your test/ })).toHaveCount(0);
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify({ chipVisible: true, href }),
+		body: JSON.stringify({ chipVisible: true, href, anchorsInsideRowButton: 0 }),
 	});
 });
