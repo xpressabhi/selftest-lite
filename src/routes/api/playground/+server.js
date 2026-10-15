@@ -39,8 +39,34 @@ import { normalizePlaygroundProfile } from '#lib/shared/playgroundProfile.js';
 
 const ROUTE = '/api/playground';
 const ACTION = 'generate_explainer';
+// The judge is a metered provider call, so uncached topics get their own
+// bucket; refusals still never touch the generation bucket below.
+const JUDGE_RATE_LIMIT = 20;
 const MAX_SOURCE_TEST_ID_LENGTH = 128;
 const MAX_SOURCE_QUESTION_INDEX = 999;
+
+/**
+ * The one 429 body every limiter on this route returns, so a caller cannot
+ * tell which bucket denied them (and neither can a stale client contract).
+ */
+function rateLimitedResponse(rateLimit, limit) {
+	return Response.json(
+		{
+			error: 'Rate limit exceeded. Please try again later.',
+			code: API_LIMIT_ERROR_CODE,
+			resetTime: new Date(rateLimit.resetTime).toISOString(),
+			remaining: rateLimit.remaining,
+		},
+		{
+			status: 429,
+			headers: {
+				'X-RateLimit-Limit': String(limit),
+				'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+				'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+			},
+		}
+	);
+}
 
 /**
  * Reads the optional `source` provenance field. Only the exact shape is
@@ -217,11 +243,30 @@ export async function POST({ request, cookies }) {
 			});
 		}
 
-		// The visual-fit gate runs before the rate limiter and before any
-		// generation token is spent: an unworthy topic is refused outright and
-		// the verdict is cached, so repeats stay free. judgeVisualFit owns the
-		// fail-open contract — no key, an upstream error, or a timeout all
-		// suggest the visual — so this route never duplicates that logic.
+		// The visual-fit gate runs before the generation limiter: an unworthy
+		// topic is refused without spending generation quota, and the verdict
+		// is cached so repeats stay free. The judge is still a metered provider
+		// call, so uncached topics pass their own bucket first — refusals never
+		// consume generation quota, but judging an uncached topic never runs
+		// unmetered either. judgeVisualFit owns the fail-open contract — no
+		// key, an upstream error, or a timeout all suggest the visual — so this
+		// route never duplicates that logic.
+		const judgeLimit = await rateLimiter(request, {
+			bucket: `${ROUTE}:judge`,
+			limit: JUDGE_RATE_LIMIT,
+		});
+		if (judgeLimit.limited) {
+			await logApiEvent({
+				route: ROUTE,
+				action: ACTION,
+				clientKey,
+				request,
+				statusCode: 429,
+				durationMs: Date.now() - startedAt,
+			});
+			return rateLimitedResponse(judgeLimit, JUDGE_RATE_LIMIT);
+		}
+
 		const judgeClient = TYPESAFE_API_KEY
 			? new TypeSafeClient({
 					apiKey: TYPESAFE_API_KEY,
@@ -271,22 +316,7 @@ export async function POST({ request, cookies }) {
 				durationMs: Date.now() - startedAt,
 			});
 
-			return Response.json(
-				{
-					error: 'Rate limit exceeded. Please try again later.',
-					code: API_LIMIT_ERROR_CODE,
-					resetTime: new Date(rateLimit.resetTime).toISOString(),
-					remaining: rateLimit.remaining,
-				},
-				{
-					status: 429,
-					headers: {
-						'X-RateLimit-Limit': String(ARTIFACT_RATE_LIMIT),
-						'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-						'X-RateLimit-Reset': rateLimit.resetTime.toString(),
-					},
-				}
-			);
+			return rateLimitedResponse(rateLimit, ARTIFACT_RATE_LIMIT);
 		}
 
 		const apiKey = provider === 'opencode' ? OPENCODE_API_KEY : GEMINI_API_KEY;

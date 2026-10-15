@@ -84,8 +84,10 @@ test('serves a seeded verdict from the content-addressed cache without judging',
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
-	// The first storage touch runs ensureStorageSchema on the dev server.
-	await request.get('/api/test?id=1');
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this warmup off the /api/test bucket the whole suite
+	// shares, so this spec adds no pressure to it.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': CLIENT_ID } });
 
 	const topic = 'e2e-fit-topic';
 	const question = 'Q?';
@@ -230,7 +232,8 @@ test('serves the caller question links for one test with no-store', async ({
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
-	await request.get('/api/test?id=1');
+	// Schema warmup on the library bucket, not the suite-shared /api/test one.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': LINKS_CLIENT_ID } });
 
 	const testId = 'e2e-links-test';
 	const { slug, libraryId } = await seedLinkedExplainer(sql, {
@@ -272,7 +275,8 @@ test('keeps one device question links invisible to another identity', async ({
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
-	await request.get('/api/test?id=1');
+	// Schema warmup on the library bucket, not the suite-shared /api/test one.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': LINKS_CLIENT_ID } });
 
 	const testId = 'e2e-links-isolation';
 	await seedLinkedExplainer(sql, { clientId: LINKS_CLIENT_ID, testId });

@@ -649,12 +649,12 @@ test('refuses an unworthy topic from the seeded verdict without generating', asy
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
-	// The first storage touch runs ensureStorageSchema on the dev server. The
-	// library read keeps this off the /api/test bucket the suite exhausts.
-	await request.get('/api/playground/library');
-
 	const topic = 'e2e-fit-refuse';
 	const clientId = 'e2e-fit-client';
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this warmup off the /api/test bucket the suite shares.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': clientId } });
+
 	const verdictKey = visualFitCacheKeyFor({ topic });
 	const explainerKey = cacheKeyFor({ topic });
 
@@ -667,25 +667,27 @@ test('refuses an unworthy topic from the seeded verdict without generating', asy
 				model = EXCLUDED.model
 	`;
 
-	const data = { topic, profile: { viewport: 'wide', budget: 'full' } };
-	const first = await request.post('/api/playground', {
-		data,
-		headers: { 'x-client-id': clientId },
-	});
-	const second = await request.post('/api/playground', {
-		data,
-		headers: { 'x-client-id': clientId },
-	});
-	expect(first.status()).toBe(200);
-	expect(second.status()).toBe(200);
+	// Six refused posts, because the generation quota is 5/min: a refusal path
+	// that spent that quota would 429 the sixth request. The seeded verdict
+	// keeps every one of them provider-free.
+	const attempts = 6;
+	const bodies = [];
+	const statuses = [];
+	for (let index = 0; index < attempts; index += 1) {
+		const response = await request.post('/api/playground', {
+			data: { topic, profile: { viewport: 'wide', budget: 'full' } },
+			headers: { 'x-client-id': clientId },
+		});
+		statuses.push(response.status());
+		bodies.push(await response.json());
+	}
 
-	const firstBody = await first.json();
-	const secondBody = await second.json();
-	// The full refusal body: a code and the category, no title, no html.
-	expect(firstBody).toEqual({ code: 'VISUAL_NOT_WORTHY', category: 'not_visual' });
-	// The verdict is cached and the refusal never consumed generation quota,
-	// so the second call is byte-identical.
-	expect(secondBody).toEqual(firstBody);
+	// Every refusal is a 200 with the same full body: a code and the category,
+	// no title, no html.
+	expect(statuses).toEqual(Array(attempts).fill(200));
+	for (const body of bodies) {
+		expect(body).toEqual({ code: 'VISUAL_NOT_WORTHY', category: 'not_visual' });
+	}
 
 	// A refusal spends nothing: no explainer row was ever written.
 	const counted = await sql`
@@ -697,9 +699,9 @@ test('refuses an unworthy topic from the seeded verdict without generating', asy
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify({
-			firstStatus: first.status(),
-			firstBody,
-			secondBody,
+			attempts,
+			statuses,
+			firstBody: bodies[0],
 			explainerRows,
 			verdictKey,
 		}),
@@ -711,12 +713,12 @@ test('links a served explainer to its question and lists the source', async ({
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
-	// The first storage touch runs ensureStorageSchema on the dev server. The
-	// library read keeps this off the /api/test bucket the suite exhausts.
-	await request.get('/api/playground/library');
-
 	const topic = 'e2e-link-serve';
 	const clientId = 'e2e-src-client';
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this warmup off the /api/test bucket the suite shares.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': clientId } });
+
 	const testId = 'e2e-src-test';
 	const questionIndex = 4;
 	await seedExplainer(sql, {
@@ -794,12 +796,12 @@ test('ignores a malformed source instead of failing the serve', async ({
 }, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
-	// The first storage touch runs ensureStorageSchema on the dev server. The
-	// library read keeps this off the /api/test bucket the suite exhausts.
-	await request.get('/api/playground/library');
-
 	const topic = 'e2e-link-malformed';
 	const clientId = 'e2e-src-malformed-client';
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this warmup off the /api/test bucket the suite shares.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': clientId } });
+
 	await seedExplainer(sql, {
 		topic,
 		profile: { viewport: 'wide', budget: 'full' },
