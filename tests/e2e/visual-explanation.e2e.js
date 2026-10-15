@@ -133,3 +133,218 @@ test('serves a seeded verdict from the content-addressed cache without judging',
 		}),
 	});
 });
+
+// --- GET /api/playground/links: the owner-only read the results page makes
+// once per test to learn which questions already have a visual explainer. The
+// specs pin the item shape and no-store, identity isolation, and the testId
+// bounds. Spec:
+// docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md §4.3
+
+const LINKS_CLIENT_ID = 'e2e-links-alpha';
+
+// Independently computed to pin the documented playground tuple: drift in
+// either implementation makes the seeded rows invisible and fails the test.
+function explainerCacheKeyFor({
+	topic,
+	question = '',
+	answer = '',
+	language = 'english',
+	viewport = 'wide',
+	budget = 'full',
+}) {
+	return createHash('sha256')
+		.update(
+			JSON.stringify([
+				'pg-v2',
+				'prompt-v5',
+				'scaffold-v4',
+				normalizeText(language).toLowerCase() || 'english',
+				normalizeText(topic),
+				normalizeText(question),
+				normalizeText(answer),
+				viewport,
+				budget,
+			])
+		)
+		.digest('hex');
+}
+
+// One linked explainer for one identity: the shared cache row, the caller's
+// library row, and the pointer tying one question of one test to it. The slug
+// is seeded rather than backfilled by /api/playground, so the response contract
+// is pinned to the stored value.
+async function seedLinkedExplainer(
+	sql,
+	{ clientId, testId, topic = 'e2e-links-topic', questionIndex = 2 }
+) {
+	const cacheKey = explainerCacheKeyFor({ topic });
+	const slug = 'e2e-links-slug-0000abcd';
+
+	await sql`
+		INSERT INTO concept_explainers (cache_key, language, concept, payload, model, slug)
+		VALUES (
+			${cacheKey},
+			'english',
+			'Linked title',
+			${JSON.stringify({
+				title: 'Linked title',
+				summary: 'Linked summary',
+				recipes: ['step-reveal'],
+				html: '<p id="e2e-links-marker">linked body</p>',
+				css: '',
+				js: '',
+			})}::jsonb,
+			'e2e-seed',
+			${slug}
+		)
+		ON CONFLICT (cache_key) DO UPDATE
+			SET slug = EXCLUDED.slug,
+				payload = EXCLUDED.payload,
+				last_used_at = NOW()
+	`;
+
+	const library = await sql`
+		INSERT INTO user_explainers (user_id, client_id, cache_key, concept, title, summary, language)
+		VALUES (NULL, ${clientId}, ${cacheKey}, 'Linked title', 'Linked title', 'Linked summary', 'english')
+		ON CONFLICT (client_id, cache_key) WHERE user_id IS NULL DO UPDATE
+			SET title = EXCLUDED.title,
+				summary = EXCLUDED.summary,
+				last_opened_at = NOW()
+		RETURNING id
+	`;
+
+	await sql`
+		INSERT INTO question_explainer_links (user_id, client_id, test_id, question_index, question_key, cache_key)
+		VALUES (NULL, ${clientId}, ${testId}, ${questionIndex}, 'E2E linked question::A', ${cacheKey})
+		ON CONFLICT (client_id, test_id, question_index) WHERE user_id IS NULL DO UPDATE
+			SET cache_key = EXCLUDED.cache_key,
+				question_key = EXCLUDED.question_key,
+				updated_at = NOW()
+	`;
+
+	return { cacheKey, slug, libraryId: Number(library[0].id) };
+}
+
+test('serves the caller question links for one test with no-store', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const testId = 'e2e-links-test';
+	const { slug, libraryId } = await seedLinkedExplainer(sql, {
+		clientId: LINKS_CLIENT_ID,
+		testId,
+	});
+
+	const response = await request.get(`/api/playground/links?testId=${testId}`, {
+		headers: { 'x-client-id': LINKS_CLIENT_ID },
+	});
+	expect(response.status()).toBe(200);
+	expect(response.headers()['cache-control']).toBe('no-store');
+
+	const body = await response.json();
+	expect(body.items).toHaveLength(1);
+	// toEqual pins the full item shape: the five contract keys, no more.
+	expect(body.items[0]).toEqual({
+		questionIndex: 2,
+		libraryId,
+		slug,
+		title: 'Linked title',
+		createdAt: expect.any(String),
+	});
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			status: response.status(),
+			cacheControl: response.headers()['cache-control'],
+			items: body.items,
+			seededLibraryId: libraryId,
+			seededSlug: slug,
+		}),
+	});
+});
+
+test('keeps one device question links invisible to another identity', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+
+	const testId = 'e2e-links-isolation';
+	await seedLinkedExplainer(sql, { clientId: LINKS_CLIENT_ID, testId });
+
+	// The owner sees the seeded link, so an empty stranger read below means
+	// isolation rather than missing data.
+	const owner = await request.get(`/api/playground/links?testId=${testId}`, {
+		headers: { 'x-client-id': LINKS_CLIENT_ID },
+	});
+	expect(owner.status()).toBe(200);
+	const ownerItems = (await owner.json()).items;
+	expect(ownerItems).toHaveLength(1);
+
+	const stranger = await request.get(`/api/playground/links?testId=${testId}`, {
+		headers: { 'x-client-id': 'e2e-links-beta' },
+	});
+	expect(stranger.status()).toBe(200);
+	const strangerBody = await stranger.json();
+	expect(strangerBody).toEqual({ items: [] });
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			ownerStatus: owner.status(),
+			ownerItems: ownerItems.length,
+			strangerStatus: stranger.status(),
+			strangerItems: strangerBody.items.length,
+		}),
+	});
+});
+
+test('rejects a links read without a testId', async ({ request }, testInfo) => {
+	const missing = await request.get('/api/playground/links', {
+		headers: { 'x-client-id': LINKS_CLIENT_ID },
+	});
+	expect(missing.status()).toBe(400);
+	const missingBody = await missing.json();
+	expect(missingBody.code).toBe('LINKS_TESTID_REQUIRED');
+
+	// Whitespace-only trims to empty and is rejected the same way.
+	const blank = await request.get('/api/playground/links?testId=%20%20', {
+		headers: { 'x-client-id': LINKS_CLIENT_ID },
+	});
+	expect(blank.status()).toBe(400);
+	const blankBody = await blank.json();
+	expect(blankBody.code).toBe('LINKS_TESTID_REQUIRED');
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			missingStatus: missing.status(),
+			missingCode: missingBody.code,
+			blankStatus: blank.status(),
+			blankCode: blankBody.code,
+		}),
+	});
+});
+
+test('rejects an oversized links testId', async ({ request }, testInfo) => {
+	const oversized = await request.get(`/api/playground/links?testId=${'x'.repeat(200)}`, {
+		headers: { 'x-client-id': LINKS_CLIENT_ID },
+	});
+	expect(oversized.status()).toBe(400);
+	const body = await oversized.json();
+	expect(body.code).toBe('LINKS_TESTID_REQUIRED');
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			testIdLength: 200,
+			status: oversized.status(),
+			code: body.code,
+		}),
+	});
+});
