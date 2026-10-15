@@ -12,6 +12,7 @@ scope:
   paths:
     - "src/routes/api/playground/**"
     - "src/routes/api/visual-fit/**"
+    - "src/routes/results/**"
     - "src/lib/server/**"
     - "src/lib/client/**"
     - "src/lib/shared/**"
