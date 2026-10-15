@@ -583,6 +583,9 @@
 			return;
 		}
 		expanded = { ...expanded, [firstWrong]: true };
+		// Third door that opens a card: it arms the visual section itself, the
+		// same way the expand-all toggle and the post-load pass do.
+		ensureVisualsForOpenCards();
 		requestAnimationFrame(() => {
 			const prefersReducedMotion = window.matchMedia(
 				'(prefers-reduced-motion: reduce)'

@@ -377,6 +377,23 @@ function cardPaper({ id, correct = true }) {
 	};
 }
 
+/** Two-question paper: the first question is wrong, the second is correct. */
+function twoQuestionPaper({ id }) {
+	return {
+		id,
+		topic: 'e2e-visual topic',
+		timestamp: 10,
+		questions: [
+			{ question: 'Q1', options: ['A1', 'B1', 'C1'], answer: 'A1' },
+			{ question: 'Q2', options: ['A2', 'B2', 'C2'], answer: 'A2' },
+		],
+		userAnswers: { 0: 'B1', 1: 'A2' },
+		score: 1,
+		totalQuestions: 2,
+		timeTaken: 24,
+	};
+}
+
 /** Identity + history land before any app code runs, so the first fetch is attributed. */
 async function seedCardState(page, { clientId, history }) {
 	await page.addInitScript(
@@ -452,6 +469,59 @@ test('restores a linked visual and opens it inline from the hash deep link', asy
 				openFullPage: await page
 					.getByRole('link', { name: 'Open full page' })
 					.getAttribute('href'),
+				builds: builds.length,
+			},
+			null,
+			2
+		),
+	});
+});
+
+test('arms the linked visual when the wrong-answers action opens the card', async ({
+	page,
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	// Schema warmup on the library bucket, not the suite-shared /api/test one.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': CARD_CLIENT_ID } });
+
+	const testId = 'e2e-visual-review-action';
+	await seedLinkedExplainer(sql, {
+		clientId: CARD_CLIENT_ID,
+		testId,
+		topic: 'e2e-links-topic',
+		questionIndex: 0,
+	});
+
+	const builds = countBuilds(page);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: CARD_CLIENT_ID,
+		history: [twoQuestionPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	// Hero action: narrows the review list to the wrong answers and opens the
+	// first one. That same click must arm the visual section for the card it
+	// opens; the card is never collapsed and re-expanded by hand here.
+	await page.getByRole('button', { name: 'Review wrong answers' }).click();
+
+	const wrongCard = page.locator('#question-0');
+	await expect(wrongCard.locator('.review-card-body')).toHaveCount(1);
+	await expect(wrongCard.getByRole('button', { name: 'Show visual explanation' })).toBeVisible();
+	// The action really ran: only the wrong card survives the incorrect filter.
+	await expect(page.locator('#question-1')).toHaveCount(0);
+	// And it is a restore, not a build.
+	expect(builds).toEqual([]);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				expandedCard: 0,
+				showButtonVisible: true,
+				correctCardFilteredOut: true,
 				builds: builds.length,
 			},
 			null,
@@ -550,7 +620,9 @@ test('shows the localized build error with a working retry', async ({ page }, te
 	// Retry re-runs the build rather than leaving the card stuck.
 	await retry.click();
 	await expect(section.getByText('Rate limit exceeded. Please try again later.')).toBeVisible();
-	expect(buildCalls).toBe(2);
+	// The 429 copy above is already on screen before the retry, so poll for the
+	// second request instead of asserting the counter the moment the click lands.
+	await expect.poll(() => buildCalls).toBe(2);
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
