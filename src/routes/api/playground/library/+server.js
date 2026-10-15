@@ -31,6 +31,7 @@ function mapExplainerItem(row) {
 		createdAt: row.created_at,
 		lastOpenedAt: row.last_opened_at,
 		mine: row.mine === true,
+		source: row.source ?? null,
 	};
 }
 

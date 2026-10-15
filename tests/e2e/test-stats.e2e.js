@@ -40,6 +40,39 @@ async function pressAndHold(page, locator, holdMs = 1100) {
 	await page.mouse.up();
 }
 
+// The suite shares one rate-limit bucket per route (the limiter keys by peer
+// IP), so by the end of a full run a page fetch of a freshly seeded test can
+// take a transient 429 (or a dropped connection under load) and the page
+// renders "Test not found" without retrying. Retry the navigation here; a
+// real defect still fails every try. The stats wait is bounded so a fetch
+// that never lands delays one attempt instead of consuming the whole test.
+async function gotoTestSummary(page, url, { attempts = 3, waitForStats = false } = {}) {
+	for (let attempt = 1; ; attempt += 1) {
+		// Re-arm the stats wait for each navigation, and swallow it when this
+		// attempt fails so a stale promise cannot outlive the retry.
+		const statsLoad = waitForStats
+			? page
+					.waitForResponse(
+						(response) => response.url().includes('/api/test/stats'),
+						{ timeout: 10000 }
+					)
+					.catch(() => null)
+			: null;
+		await page.goto(url);
+		try {
+			await expect(page.locator('.test-summary-card')).toBeVisible({ timeout: 10000 });
+			if (statsLoad) {
+				await statsLoad;
+			}
+			return;
+		} catch (error) {
+			if (attempt >= attempts) {
+				throw error;
+			}
+		}
+	}
+}
+
 async function seedTest(sql, questionCount = 2) {
 	const questions = Array.from({ length: questionCount }, (_, index) => ({
 		question: `Probe question ${index + 1}?`,
@@ -83,29 +116,25 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	page,
 	request,
 }, testInfo) => {
+	// Two contexts and a retryable summary load; the default 30s budget is
+	// tight when the shared bucket is being drained by the rest of the suite.
+	test.slow();
 	const errors = await collectErrors(page);
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
+	// The first storage touch runs ensureStorageSchema on the dev server.
+	await request.get('/api/test?id=1');
 	const testId = await seedTest(sql, 2);
 
 	// First visitor: no submissions yet, so no stats card.
-	const firstLoad = page.waitForResponse((response) =>
-		response.url().includes('/api/test/stats')
-	);
-	await page.goto(`/test?id=${testId}`);
-	await expect(page.locator('.test-summary-card')).toBeVisible({ timeout: 15000 });
-	await firstLoad;
+	await gotoTestSummary(page, `/test?id=${testId}`, { waitForStats: true });
 	await expect(page.locator('.test-stats-card')).toHaveCount(0);
 
 	// Second visitor: both visits count, but with no submissions yet the
 	// activity card stays hidden.
 	const visitorContext = await browser.newContext();
 	const visitorPage = await visitorContext.newPage();
-	const visitorFirstLoad = visitorPage.waitForResponse((response) =>
-		response.url().includes('/api/test/stats')
-	);
-	await visitorPage.goto(`/test?id=${testId}`);
-	await visitorFirstLoad;
+	await gotoTestSummary(visitorPage, `/test?id=${testId}`, { waitForStats: true });
 	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
 	await expect
 		.poll(async () => (await statsViaPage(visitorPage, testId)).body.visitors, {
@@ -197,13 +226,16 @@ test('challenge name and params survive submission to the results page', async (
 	page,
 	request,
 }, testInfo) => {
+	// A full answer-and-submit pass plus a retryable summary load.
+	test.slow();
 	const errors = await collectErrors(page);
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
+	// The first storage touch runs ensureStorageSchema on the dev server.
+	await request.get('/api/test?id=1');
 	const testId = await seedTest(sql, 2);
 
-	await page.goto(`/test?id=${testId}&ch=1&by=Ravi`);
-	await expect(page.locator('.test-summary-card')).toBeVisible({ timeout: 15000 });
+	await gotoTestSummary(page, `/test?id=${testId}&ch=1&by=Ravi`);
 	await answerFirstAndSubmit(page, new RegExp(`/results\\?id=${testId}&ch=1&by=Ravi`));
 
 	await expect(page.locator('.challenge-card')).toBeVisible();

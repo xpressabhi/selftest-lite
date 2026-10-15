@@ -67,9 +67,15 @@ export async function listExplainersForIdentity(identity, { limit = 24 } = {}) {
 	await ensureStorageSchema();
 
 	const result = await query(
-		`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count, slug, cache_key
+		`SELECT id, concept, title, summary, language, created_at, last_opened_at, open_count, slug, cache_key, source
 		 FROM (
-			SELECT DISTINCT ON (ue.cache_key) ue.*, c.slug
+			SELECT DISTINCT ON (ue.cache_key) ue.*, c.slug,
+				(SELECT json_build_object('testId', l.test_id, 'questionIndex', l.question_index)
+				   FROM question_explainer_links l
+				  WHERE l.cache_key = ue.cache_key
+				    AND (l.user_id = $1 OR (l.user_id IS NULL AND l.client_id = $2))
+				  ORDER BY l.updated_at DESC
+				  LIMIT 1) AS source
 			FROM user_explainers ue
 			LEFT JOIN concept_explainers c ON c.cache_key = ue.cache_key
 			WHERE (ue.user_id = $1) OR (ue.user_id IS NULL AND ue.client_id = $2)

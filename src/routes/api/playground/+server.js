@@ -3,7 +3,9 @@ import {
 	GEMINI_API_KEY,
 	OPENCODE_API_KEY,
 	OPENCODE_BASE_URL,
+	TYPESAFE_API_KEY,
 } from '$app/env/private';
+import { TypeSafeClient } from '@typesafe-ai/sdk';
 import { resolveRequestContext } from '#lib/server/apiContext.js';
 import { composeArtifactDocument } from '#lib/server/artifactScaffold.js';
 import {
@@ -17,6 +19,10 @@ import { generateExplainerArtifact } from '#lib/server/explainerPipeline.js';
 import { buildExplainerSlug } from '#lib/server/explainerSlug.js';
 import { backfillExplainerSlug } from '#lib/server/explainerCache.js';
 import {
+	buildQuestionLinkKey,
+	recordQuestionExplainerLink,
+} from '#lib/server/questionExplainerLinks.js';
+import {
 	ARTIFACT_BRIEF_MODEL,
 	ARTIFACT_RATE_LIMIT,
 	MAX_ANSWER_TEXT_LENGTH,
@@ -27,11 +33,39 @@ import {
 import { rateLimiter } from '#lib/server/rateLimiter.js';
 import { parseRequestBody } from '#lib/server/requestBody.js';
 import { logApiEvent } from '#lib/server/storage.js';
+import { judgeVisualFit } from '#lib/server/visualFitJudge.js';
 import { API_LIMIT_ERROR_CODE, classifyApiError } from '#lib/shared/apiLimitError.js';
 import { normalizePlaygroundProfile } from '#lib/shared/playgroundProfile.js';
 
 const ROUTE = '/api/playground';
 const ACTION = 'generate_explainer';
+const MAX_SOURCE_TEST_ID_LENGTH = 128;
+const MAX_SOURCE_QUESTION_INDEX = 999;
+
+/**
+ * Reads the optional `source` provenance field. Only the exact shape is
+ * accepted — a test id that trims to 1-128 characters and an integer question
+ * index in 0-999 — and anything else is ignored rather than fatal: an
+ * unparsable source must still serve the explainer.
+ */
+function normalizeSource(value) {
+	if (!value || typeof value !== 'object') {
+		return null;
+	}
+	const testId = typeof value.testId === 'string' ? value.testId.trim() : '';
+	if (testId.length < 1 || testId.length > MAX_SOURCE_TEST_ID_LENGTH) {
+		return null;
+	}
+	const questionIndex = value.questionIndex;
+	if (
+		!Number.isInteger(questionIndex) ||
+		questionIndex < 0 ||
+		questionIndex > MAX_SOURCE_QUESTION_INDEX
+	) {
+		return null;
+	}
+	return { testId, questionIndex };
+}
 
 export async function POST({ request, cookies }) {
 	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
@@ -43,6 +77,7 @@ export async function POST({ request, cookies }) {
 		const provider =
 			String(EXPLAINER_PROVIDER || '').toLowerCase() === 'opencode' ? 'opencode' : 'gemini';
 		const profile = normalizePlaygroundProfile(body.profile);
+		const source = normalizeSource(body.source);
 
 		if (!topic) {
 			return Response.json(
@@ -102,6 +137,26 @@ export async function POST({ request, cookies }) {
 			}
 		};
 
+		// Provenance: the served explainer answers a specific question of a
+		// specific test. Best-effort like the library write — a link failure
+		// must never fail a serve, and an absent or malformed source is simply
+		// nothing to record.
+		const recordLink = async () => {
+			if (!source) {
+				return;
+			}
+			try {
+				await recordQuestionExplainerLink(identity, {
+					testId: source.testId,
+					questionIndex: source.questionIndex,
+					questionKey: buildQuestionLinkKey(question, answer),
+					cacheKey,
+				});
+			} catch (error) {
+				console.error('Question explainer link record failed', error);
+			}
+		};
+
 		// Cache hits are served before the rate limiter: they only cost an
 		// indexed read, so repeat explainers stay instant and free.
 		let cached = null;
@@ -133,6 +188,7 @@ export async function POST({ request, cookies }) {
 					console.error('Explainer slug backfill failed', error);
 				}
 			}
+			await recordLink();
 			await logApiEvent({
 				route: ROUTE,
 				action: ACTION,
@@ -159,6 +215,45 @@ export async function POST({ request, cookies }) {
 				}),
 				cached: true,
 			});
+		}
+
+		// The visual-fit gate runs before the rate limiter and before any
+		// generation token is spent: an unworthy topic is refused outright and
+		// the verdict is cached, so repeats stay free. judgeVisualFit owns the
+		// fail-open contract — no key, an upstream error, or a timeout all
+		// suggest the visual — so this route never duplicates that logic.
+		const judgeClient = TYPESAFE_API_KEY
+			? new TypeSafeClient({
+					apiKey: TYPESAFE_API_KEY,
+					timeout: 5000,
+					retry: { maxRetries: 0, apiTimeoutError: false },
+				})
+			: null;
+		const verdict = await judgeVisualFit({
+			topic,
+			question,
+			answer,
+			language: effectiveLanguage,
+			client: judgeClient,
+		});
+		if (!verdict.suggested) {
+			await logApiEvent({
+				route: ROUTE,
+				action: ACTION,
+				clientKey,
+				request,
+				statusCode: 200,
+				durationMs: Date.now() - startedAt,
+				metadata: {
+					topic,
+					language: effectiveLanguage,
+					notWorthy: true,
+					judgeCategory: verdict.category,
+					judgeCached: verdict.cached,
+					judgeDegraded: verdict.degraded,
+				},
+			});
+			return Response.json({ code: 'VISUAL_NOT_WORTHY', category: verdict.category });
 		}
 
 		// Only generation requests consume rate-limit quota.
@@ -246,6 +341,7 @@ export async function POST({ request, cookies }) {
 			title: brief.title,
 			summary: brief.summary,
 		});
+		await recordLink();
 
 		await logApiEvent({
 			route: ROUTE,
@@ -262,6 +358,9 @@ export async function POST({ request, cookies }) {
 				deviceProfile: `${profile.viewport}-${profile.budget}`,
 				briefModel: provider === 'opencode' ? model : ARTIFACT_BRIEF_MODEL,
 				artifactModel: model,
+				judgeCategory: verdict.category,
+				judgeCached: verdict.cached,
+				judgeDegraded: verdict.degraded,
 			},
 		});
 

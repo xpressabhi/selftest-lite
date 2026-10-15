@@ -16,6 +16,23 @@ function normalizeText(value) {
 		.replace(/\s+/g, ' ');
 }
 
+// Independently computed visual-fit verdict key: the same content-addressed
+// formula as src/lib/server/visualFitCache.js, so only the seeded verdict can
+// answer the gate and a miss degrades or generates instead.
+function visualFitCacheKeyFor({ topic, question = '', answer = '', language = 'english' }) {
+	return createHash('sha256')
+		.update(
+			JSON.stringify([
+				'vf-v1',
+				normalizeText(language).toLowerCase() || 'english',
+				normalizeText(topic),
+				normalizeText(question),
+				normalizeText(answer),
+			])
+		)
+		.digest('hex');
+}
+
 // Independently computed to pin the documented formula: drift in either
 // implementation makes the seeded row invisible and fails the test.
 function cacheKeyFor({
@@ -620,4 +637,215 @@ test('rejects malformed playground requests', async ({ request }) => {
 	});
 	expect(badLanguage.status()).toBe(400);
 	expect((await badLanguage.json()).code).toBe('INVALID_LANGUAGE');
+});
+
+// --- The Jev visual-fit gate, question source recording, and provenance in
+// the library list. The judge only runs on cache misses with a real key, so
+// every spec here seeds its verdict/explainer and stays provider-free. Spec:
+// docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md
+
+test('refuses an unworthy topic from the seeded verdict without generating', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this off the /api/test bucket the suite exhausts.
+	await request.get('/api/playground/library');
+
+	const topic = 'e2e-fit-refuse';
+	const clientId = 'e2e-fit-client';
+	const verdictKey = visualFitCacheKeyFor({ topic });
+	const explainerKey = cacheKeyFor({ topic });
+
+	await sql`
+		INSERT INTO question_visual_fits (cache_key, language, category, confidence, model)
+		VALUES (${verdictKey}, 'english', 'not_visual', 0.9, 'e2e-seed')
+		ON CONFLICT (cache_key) DO UPDATE
+			SET category = EXCLUDED.category,
+				confidence = EXCLUDED.confidence,
+				model = EXCLUDED.model
+	`;
+
+	const data = { topic, profile: { viewport: 'wide', budget: 'full' } };
+	const first = await request.post('/api/playground', {
+		data,
+		headers: { 'x-client-id': clientId },
+	});
+	const second = await request.post('/api/playground', {
+		data,
+		headers: { 'x-client-id': clientId },
+	});
+	expect(first.status()).toBe(200);
+	expect(second.status()).toBe(200);
+
+	const firstBody = await first.json();
+	const secondBody = await second.json();
+	// The full refusal body: a code and the category, no title, no html.
+	expect(firstBody).toEqual({ code: 'VISUAL_NOT_WORTHY', category: 'not_visual' });
+	// The verdict is cached and the refusal never consumed generation quota,
+	// so the second call is byte-identical.
+	expect(secondBody).toEqual(firstBody);
+
+	// A refusal spends nothing: no explainer row was ever written.
+	const counted = await sql`
+		SELECT COUNT(*) AS count FROM concept_explainers WHERE cache_key = ${explainerKey}
+	`;
+	const explainerRows = Number(counted[0]?.count ?? 0);
+	expect(explainerRows).toBe(0);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			firstStatus: first.status(),
+			firstBody,
+			secondBody,
+			explainerRows,
+			verdictKey,
+		}),
+	});
+});
+
+test('links a served explainer to its question and lists the source', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this off the /api/test bucket the suite exhausts.
+	await request.get('/api/playground/library');
+
+	const topic = 'e2e-link-serve';
+	const clientId = 'e2e-src-client';
+	const testId = 'e2e-src-test';
+	const questionIndex = 4;
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Linked Served',
+			summary: 's',
+			recipes: [],
+			html: '<p id="e2e-link-serve-marker">linked</p>',
+			css: '',
+			js: '',
+		},
+	});
+
+	const served = await request.post('/api/playground', {
+		data: {
+			topic,
+			theme: 'light',
+			profile: { viewport: 'wide', budget: 'full' },
+			source: { testId, questionIndex },
+		},
+		headers: { 'x-client-id': clientId },
+	});
+	expect(served.status()).toBe(200);
+	const servedBody = await served.json();
+	expect(servedBody.cached).toBe(true);
+	expect(servedBody.title).toBe('Linked Served');
+
+	const links = await sql`
+		SELECT test_id, question_index, question_key, cache_key
+		FROM question_explainer_links
+		WHERE client_id = ${clientId} AND test_id = ${testId}
+	`;
+	expect(links).toHaveLength(1);
+	expect(links[0].test_id).toBe(testId);
+	expect(Number(links[0].question_index)).toBe(questionIndex);
+	expect(links[0].cache_key).toBe(cacheKeyFor({ topic }));
+	// The request carried no question/answer, so the link key is the empty
+	// pair: proof the stored key came through buildQuestionLinkKey.
+	expect(links[0].question_key).toBe('::');
+
+	const listed = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	expect(listed.status()).toBe(200);
+	const item = (await listed.json()).items.find((entry) => entry.title === 'Linked Served');
+	expect(item).toBeTruthy();
+	expect(item.source).toEqual({ testId, questionIndex });
+
+	const servedLinks = await request.get(`/api/playground/links?testId=${testId}`, {
+		headers: { 'x-client-id': clientId },
+	});
+	expect(servedLinks.status()).toBe(200);
+	const linkItems = (await servedLinks.json()).items;
+	expect(linkItems).toHaveLength(1);
+	expect(linkItems[0].questionIndex).toBe(questionIndex);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			servedStatus: served.status(),
+			cached: servedBody.cached,
+			linkRows: links.length,
+			storedQuestionIndex: Number(links[0].question_index),
+			storedCacheKeyMatches: links[0].cache_key === cacheKeyFor({ topic }),
+			librarySource: item.source,
+			linkItems: linkItems.length,
+		}),
+	});
+});
+
+test('ignores a malformed source instead of failing the serve', async ({
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	// The first storage touch runs ensureStorageSchema on the dev server. The
+	// library read keeps this off the /api/test bucket the suite exhausts.
+	await request.get('/api/playground/library');
+
+	const topic = 'e2e-link-malformed';
+	const clientId = 'e2e-src-malformed-client';
+	await seedExplainer(sql, {
+		topic,
+		profile: { viewport: 'wide', budget: 'full' },
+		payload: {
+			title: 'Malformed Served',
+			summary: 's',
+			recipes: [],
+			html: '<p id="e2e-link-malformed-marker">served</p>',
+			css: '',
+			js: '',
+		},
+	});
+
+	const served = await request.post('/api/playground', {
+		data: {
+			topic,
+			theme: 'light',
+			profile: { viewport: 'wide', budget: 'full' },
+			source: { testId: 123, questionIndex: 'x' },
+		},
+		headers: { 'x-client-id': clientId },
+	});
+	expect(served.status()).toBe(200);
+	const servedBody = await served.json();
+	expect(servedBody.cached).toBe(true);
+	expect(servedBody.title).toBe('Malformed Served');
+
+	const linkRows = await sql`
+		SELECT COUNT(*) AS count FROM question_explainer_links WHERE client_id = ${clientId}
+	`;
+	const links = Number(linkRows[0]?.count ?? 0);
+
+	const listed = await request.get('/api/playground/library', {
+		headers: { 'x-client-id': clientId },
+	});
+	const item = (await listed.json()).items.find((entry) => entry.title === 'Malformed Served');
+	expect(links).toBe(0);
+	expect(item.source).toBeNull();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			servedStatus: served.status(),
+			cached: servedBody.cached,
+			linkRows: links,
+			librarySource: item.source,
+		}),
+	});
 });
