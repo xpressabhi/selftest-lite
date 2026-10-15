@@ -43,6 +43,12 @@
 		<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void share()}>
 			{$t('playgroundShare')}
 		</button>
+		<a
+			class="btn btn-sm btn-outline-secondary"
+			href={localizedPath('/playground', $activeLanguage)}
+		>
+			{$t('explainCreateOwn')}
+		</a>
 	</ExplainerHeader>
 
 	<div class="mt-4">

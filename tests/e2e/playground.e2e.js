@@ -501,10 +501,19 @@ test('publishes each explainer at a unique slug URL with a shareable page', asyn
 	expect(html).toContain(`href="https://www.selftest.in/hi/explain/${body.slug}"`);
 	expect(html).toContain('sandbox="allow-scripts"');
 	expect(html).toMatch(/Share\s*<\/button>/);
+	// The shareable page is not a dead end: its header sends visitors on to the
+	// playground, in the language the page is being read in.
+	expect(html).toMatch(
+		/<a[^>]*class="[^"]*btn[^"]*"[^>]*href="\/playground"[^>]*>\s*Create your own explainer\s*<\/a>/
+	);
 
 	const hindi = await request.get(`/hi/explain/${body.slug}`);
 	expect(hindi.status()).toBe(200);
-	expect(await hindi.text()).toContain('Public Slug Title');
+	const hindiHtml = await hindi.text();
+	expect(hindiHtml).toContain('Public Slug Title');
+	expect(hindiHtml).toMatch(
+		/<a[^>]*class="[^"]*btn[^"]*"[^>]*href="\/hi\/playground"[^>]*>\s*अपना एक्सप्लेनर बनाएँ\s*<\/a>/
+	);
 
 	const missing = await request.get('/explain/definitely-missing-00000000');
 	expect(missing.status()).toBe(404);
@@ -525,6 +534,12 @@ test('publishes each explainer at a unique slug URL with a shareable page', asyn
 				`rel="canonical" href="https://www.selftest.in/explain/${body.slug}"`
 			),
 			hindiTwinStatus: hindi.status(),
+			ctaEnglishHref: /href="\/playground"[^>]*>\s*Create your own explainer\s*<\/a>/.test(
+				html
+			),
+			ctaHindiHref: /href="\/hi\/playground"[^>]*>\s*अपना एक्सप्लेनर बनाएँ\s*<\/a>/.test(
+				hindiHtml
+			),
 			missingStatus: missing.status(),
 			librarySlugMatches: item.slug === body.slug,
 		}),
