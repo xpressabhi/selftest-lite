@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0025"
 title: "Visual explanations inline: review-card embed, question links, Jev fit gate"
-status: "draft"
+status: "complete"
 created_at: "2026-10-15T06:02:00Z"
 request: "embed visual explanation in the review card, link it back to the question, judge worthiness with Jev before generating"
 proposal:
