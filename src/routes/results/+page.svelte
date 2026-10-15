@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import Icon from '#lib/client/Icon.svelte';
+	import { getClientHeaders } from '#lib/client/identity.js';
 	import { localizedApiError, t } from '#lib/client/i18n.js';
 	import { language } from '#lib/client/preferences.js';
 	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '#lib/client/countUp.js';
@@ -29,6 +30,7 @@
 	import ResultReviewList from '#lib/client/ResultReviewList.svelte';
 	import TestStatsCard from '#lib/client/TestStatsCard.svelte';
 	import { questionTextFor } from '#lib/shared/questionText.js';
+	import { bucketClientProfile } from '#lib/shared/playgroundProfile.js';
 	import { REMINDER_EARLIEST_HOUR } from '#lib/shared/reminders.js';
 	import {
 		disableReminders,
@@ -121,6 +123,11 @@
 	let resultsOpenedAt = $state(0);
 	let nudgeTimer = null;
 	let pendingNudge = null;
+	// Per-question visual explainers: `visualLinks` restores what already
+	// exists for this test, `visualState` is the card's state machine
+	// (hidden | offer | available | building | ready | error).
+	let visualLinks = $state({});
+	let visualState = $state({});
 
 	const RESULTS_NUDGE_DWELL_MS = 5000;
 
@@ -358,6 +365,11 @@
 			track('results:view', { id: testId });
 			refreshLearningPanels();
 			loading = false;
+			// One links read per test restores the visuals that already exist;
+			// it is fire-and-forget so the review list is never held back.
+			if (questionPaper?.id) {
+				void loadVisualLinks(questionPaper.id);
+			}
 			// Central focus (fail-open, once): expand the Jev-picked panel and
 			// collapse low-value ones; the full review list stays available.
 			// The nudge slice rides the same call: no extra request, and
@@ -394,6 +406,9 @@
 			if (autoExplainEnabled) {
 				void runAutoExplain();
 			}
+			// The review list is on screen now, so deep links can open and
+			// scroll their question, and every open card can show its visual.
+			void openReviewTargets();
 		}
 	});
 
@@ -534,10 +549,15 @@
 	}
 
 	function toggleExpanded(index) {
+		const opening = expanded[index] !== true;
 		expanded = {
 			...expanded,
 			[index]: !expanded[index],
 		};
+		if (opening) {
+			// A card that opens shows its visual section immediately.
+			ensureVisual(index, questionPaper?.questions?.[index]);
+		}
 		track('results:toggle-question', { q: index });
 	}
 
@@ -550,6 +570,9 @@
 			nextExpanded[index] = next;
 		}
 		expanded = nextExpanded;
+		if (next) {
+			ensureVisualsForOpenCards();
+		}
 		track('results:toggle-all', { expanded: next });
 	}
 
@@ -806,6 +829,236 @@
 			loadingExplanation = {
 				...loadingExplanation,
 				[index]: false,
+			};
+		}
+	}
+
+	// --- Visual explanations, inline in the review card ---------------------
+	// One read per test restores what already exists; each card then either
+	// shows its saved explainer or offers to build one. Everything in this
+	// section is an enhancement: a links read failure degrades silently to the
+	// build offer, and no failure ever blocks the review.
+
+	async function loadVisualLinks(testId) {
+		if (!testId) {
+			return;
+		}
+		try {
+			const response = await fetch(
+				`/api/playground/links?testId=${encodeURIComponent(testId)}`,
+				{ headers: getClientHeaders(), cache: 'no-store' }
+			);
+			if (!response.ok) {
+				return;
+			}
+			const payload = await response.json().catch(() => ({}));
+			const items = Array.isArray(payload.items) ? payload.items : [];
+			const links = { ...visualLinks };
+			const states = { ...visualState };
+			// Two rows can point at one question (an older anonymous library row
+			// and a newer signed-in one); the API lists newest first, so the
+			// first entry wins and every card stays on one explainer.
+			const seen = new Set();
+			for (const item of items) {
+				const index = item?.questionIndex;
+				if (!Number.isInteger(index) || index < 0 || seen.has(index)) {
+					continue;
+				}
+				seen.add(index);
+				links[index] = {
+					libraryId: item.libraryId,
+					slug: item.slug,
+					title: item.title,
+				};
+				// A card that already built (or is building) wins: the restored
+				// pointer only fills cards that have no visual yet.
+				if (!states[index] || states[index].status === 'offer') {
+					states[index] = { status: 'available', artifact: null, error: '' };
+				}
+			}
+			visualLinks = links;
+			visualState = states;
+		} catch {
+			// Offline or a failed read: the build offer stands.
+		}
+	}
+
+	// Task 10 replaces the no-link branch with the visual-fit verdict call.
+	// Until then an existing link is the only path to an affordance.
+	function ensureVisual(index, question) {
+		// State that exists is never refetched: collapsing and re-expanding a
+		// card must not repeat the links read, the build, or the open.
+		if (visualState[index] || !question) {
+			return;
+		}
+		const link = visualLinks[index];
+		visualState = {
+			...visualState,
+			[index]: link
+				? { status: 'available', artifact: null, error: '' }
+				: { status: 'offer', artifact: null, error: '' },
+		};
+	}
+
+	function ensureVisualsForOpenCards() {
+		const questions = questionPaper?.questions || [];
+		for (const [key, open] of Object.entries(expanded)) {
+			if (open === true) {
+				ensureVisual(Number(key), questions[Number(key)]);
+			}
+		}
+	}
+
+	// Deep links from an explainer's provenance chip land on one question: the
+	// hash opens its card and scrolls it into view once the list is rendered.
+	async function openReviewTargets() {
+		// Let the default-expansion effect write the whole map first: setting
+		// one index before it would be overwritten by the defaults.
+		await tick();
+		if (typeof window !== 'undefined') {
+			const match = /^#question-(\d+)$/.exec(window.location.hash);
+			const index = match ? Number(match[1]) : null;
+			if (index !== null && Number.isInteger(index) && index >= 0) {
+				expanded = { ...expanded, [index]: true };
+				await tick();
+				document.getElementById(`question-${index}`)?.scrollIntoView({
+					behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+						? 'auto'
+						: 'smooth',
+					block: 'start',
+				});
+			}
+		}
+		ensureVisualsForOpenCards();
+	}
+
+	// Coarse capability buckets only, exactly as the playground sends them, so
+	// a card-built explainer shares cache rows per device class.
+	function currentDeviceProfile() {
+		if (typeof window === 'undefined') {
+			return { viewport: 'wide', budget: 'full' };
+		}
+		const connection =
+			typeof navigator !== 'undefined'
+				? navigator.connection || navigator.mozConnection || navigator.webkitConnection
+				: undefined;
+		return bucketClientProfile({
+			width: window.innerWidth,
+			reducedMotion:
+				typeof window.matchMedia === 'function'
+					? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+					: false,
+			saveData: connection?.saveData === true,
+			effectiveType: connection?.effectiveType,
+			deviceMemory: typeof navigator !== 'undefined' ? navigator.deviceMemory : undefined,
+			hardwareConcurrency:
+				typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : undefined,
+		});
+	}
+
+	function currentTheme() {
+		return typeof document !== 'undefined'
+			? document.documentElement.getAttribute('data-bs-theme') || 'light'
+			: 'light';
+	}
+
+	async function buildVisual(index, question) {
+		if (!questionPaper || !question || visualState[index]?.status === 'building') {
+			return;
+		}
+		track('results:visual-build', { index });
+		visualState = {
+			...visualState,
+			[index]: { status: 'building', artifact: null, error: '' },
+		};
+		try {
+			const response = await fetch('/api/playground', {
+				method: 'POST',
+				headers: getClientHeaders(),
+				body: JSON.stringify({
+					topic: questionPaper.topic,
+					question: questionTextFor(question),
+					answer: question.answer,
+					language: questionPaper.requestParams?.language || 'english',
+					theme: currentTheme(),
+					profile: currentDeviceProfile(),
+					// Provenance: the served explainer is recorded against this
+					// question, so a later visit restores it in place.
+					source: { testId: questionPaper.id, questionIndex: index },
+				}),
+			});
+			const payload = await response.json().catch(() => ({}));
+			// A judged refusal is a legitimate 200: the card goes quiet rather
+			// than spending tokens on a visual that would not help.
+			if (response.ok && payload.code === 'VISUAL_NOT_WORTHY') {
+				visualState = {
+					...visualState,
+					[index]: { status: 'hidden', artifact: null, error: '' },
+				};
+				return;
+			}
+			if (!response.ok) {
+				// Localized copy comes from the shared error-code map, never
+				// the server's English message (bilingual UI is mandatory).
+				const failure = new Error(localizedApiError(payload, $t, response.status));
+				failure.localized = true;
+				throw failure;
+			}
+			visualState = {
+				...visualState,
+				[index]: { status: 'ready', artifact: payload, error: '' },
+			};
+		} catch (caughtError) {
+			visualState = {
+				...visualState,
+				[index]: {
+					status: 'error',
+					artifact: null,
+					error:
+						caughtError?.localized === true
+							? caughtError.message
+							: $t('visualBuildError'),
+				},
+			};
+		}
+	}
+
+	async function openVisual(index) {
+		const link = visualLinks[index];
+		if (!link || visualState[index]?.status === 'building') {
+			return;
+		}
+		track('results:visual-open', { index });
+		visualState = {
+			...visualState,
+			[index]: { status: 'building', artifact: null, error: '' },
+		};
+		try {
+			const response = await fetch(
+				`/api/playground/library?id=${encodeURIComponent(link.libraryId)}&theme=${currentTheme()}`,
+				{ headers: getClientHeaders(), cache: 'no-store' }
+			);
+			const payload = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				const failure = new Error(localizedApiError(payload, $t, response.status));
+				failure.localized = true;
+				throw failure;
+			}
+			visualState = {
+				...visualState,
+				[index]: { status: 'ready', artifact: payload, error: '' },
+			};
+		} catch (caughtError) {
+			visualState = {
+				...visualState,
+				[index]: {
+					status: 'error',
+					artifact: null,
+					error:
+						caughtError?.localized === true
+							? caughtError.message
+							: $t('visualBuildError'),
+				},
 			};
 		}
 	}
@@ -1371,7 +1624,7 @@
 
 		<ResultReviewList
 			questions={filteredQuestions}
-			topic={questionPaper.topic}
+			{visualState}
 			userAnswers={questionPaper.userAnswers}
 			{expanded}
 			{bookmarkPulse}
@@ -1386,6 +1639,8 @@
 			onReportQuestion={reportQuestion}
 			onSubmitReport={submitQuestionReport}
 			onFetchExplanation={fetchExplanation}
+			onBuildVisual={buildVisual}
+			onOpenVisual={openVisual}
 		/>
 
 		<footer class="result-footer no-print">

@@ -2,8 +2,8 @@
 	import ResultReviewItem from './ResultReviewItem.svelte';
 
 	let {
-		topic = '',
 		questions,
+		visualState = {},
 		userAnswers,
 		expanded,
 		bookmarkPulse,
@@ -18,6 +18,8 @@
 		onReportQuestion,
 		onSubmitReport,
 		onFetchExplanation,
+		onBuildVisual,
+		onOpenVisual,
 	} = $props();
 </script>
 
@@ -26,7 +28,7 @@
 		<ResultReviewItem
 			{question}
 			{index}
-			{topic}
+			visual={visualState[index]}
 			{userAnswers}
 			{expanded}
 			{bookmarkPulse}
@@ -41,6 +43,8 @@
 			{onReportQuestion}
 			{onSubmitReport}
 			{onFetchExplanation}
+			{onBuildVisual}
+			{onOpenVisual}
 		/>
 	{/each}
 </div>

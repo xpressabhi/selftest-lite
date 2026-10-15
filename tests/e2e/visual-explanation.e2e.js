@@ -352,3 +352,208 @@ test('rejects an oversized links testId', async ({ request }, testInfo) => {
 		}),
 	});
 });
+
+// --- The review card's visual section: one-tap build, inline embed, restored
+// links, and the hash deep link. The specs drive the real page against seeded
+// localStorage history; the DB is only touched for the seeded/linked cases and
+// the build POST is stubbed, so no spec can reach a model.
+// Spec: docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md §7.1
+
+const CARD_CLIENT_ID = 'e2e-visual-alpha';
+const CARD_TEST_ID = 'e2e-visual-a';
+const HISTORY_KEY = 'selftest_history';
+
+/** One-question device-local paper: the results page renders from this. */
+function cardPaper({ id, correct = true }) {
+	return {
+		id,
+		topic: 'e2e-visual topic',
+		timestamp: 10,
+		questions: [{ question: 'Q1', options: ['A1', 'B1', 'C1'], answer: 'A1' }],
+		userAnswers: { 0: correct ? 'A1' : 'B1' },
+		score: correct ? 1 : 0,
+		totalQuestions: 1,
+		timeTaken: 12,
+	};
+}
+
+/** Identity + history land before any app code runs, so the first fetch is attributed. */
+async function seedCardState(page, { clientId, history }) {
+	await page.addInitScript(
+		({ clientIdValue, historyKey, historyValue }) => {
+			window.localStorage.setItem('selftest_client_id', clientIdValue);
+			window.localStorage.setItem(historyKey, historyValue);
+		},
+		{ clientIdValue: clientId, historyKey: HISTORY_KEY, historyValue: JSON.stringify(history) }
+	);
+}
+
+/** Counts POSTs to the build endpoint, whatever else the page requests. */
+function countBuilds(page) {
+	const builds = [];
+	page.on('request', (requestEvent) => {
+		if (requestEvent.method() === 'POST' && requestEvent.url().endsWith('/api/playground')) {
+			builds.push(requestEvent.url());
+		}
+	});
+	return builds;
+}
+
+test('restores a linked visual and opens it inline from the hash deep link', async ({
+	page,
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	// Schema warmup on the library bucket, not the suite-shared /api/test one.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': CARD_CLIENT_ID } });
+
+	const { slug, libraryId } = await seedLinkedExplainer(sql, {
+		clientId: CARD_CLIENT_ID,
+		testId: CARD_TEST_ID,
+		topic: 'e2e-links-topic',
+		questionIndex: 0,
+	});
+
+	const builds = countBuilds(page);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: CARD_CLIENT_ID,
+		history: [cardPaper({ id: CARD_TEST_ID })],
+	});
+	await page.goto(`/results?id=${CARD_TEST_ID}#question-0`);
+
+	// The hash opens the card on load: no head tap is needed to reach the
+	// restored affordance.
+	await expect(page.locator('.review-card-body')).toHaveCount(1);
+	await expect(page.getByRole('heading', { name: 'Visual explanation' })).toBeVisible();
+	await page.getByRole('button', { name: 'Show visual explanation' }).click();
+
+	const frame = page.locator('iframe.artifact-frame');
+	await expect(frame).toBeVisible();
+	await expect(frame).toHaveAttribute('sandbox', 'allow-scripts');
+	await expect(
+		page.frameLocator('iframe.artifact-frame').locator('#e2e-links-marker')
+	).toHaveText('linked body');
+	await expect(page.getByRole('link', { name: 'Open full page' })).toHaveAttribute(
+		'href',
+		`/explain/${slug}`
+	);
+	// A linked explainer opens from the library: no generation was ever asked for.
+	expect(builds).toEqual([]);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				libraryId,
+				slug,
+				sandbox: await frame.getAttribute('sandbox'),
+				openFullPage: await page
+					.getByRole('link', { name: 'Open full page' })
+					.getAttribute('href'),
+				builds: builds.length,
+			},
+			null,
+			2
+		),
+	});
+});
+
+test('builds a visual inline and keeps it across collapse and expand', async ({
+	page,
+}, testInfo) => {
+	let buildCalls = 0;
+	await page.route('**/api/playground', async (route) => {
+		buildCalls += 1;
+		// The honest loading state is asserted below, so the stub must not
+		// answer before the browser has painted it.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		await route.fulfill({
+			status: 200,
+			json: {
+				title: 'Stub visual title',
+				summary: 'Stub visual summary',
+				slug: 'stub-visual-0000abcd',
+				recipes: ['step-reveal'],
+				html: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Stub</title></head><body><div id="e2e-stub-marker">stub body</div></body></html>',
+				cached: false,
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-build';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-beta',
+		history: [cardPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	// A correct answer starts collapsed, so the head tap opens the card and its
+	// visual section together.
+	await page.locator('.review-card-head').click();
+	await page.getByRole('button', { name: 'Build visual explanation' }).click();
+	await expect(page.getByText('Planning the explainer…')).toBeVisible();
+	await expect(page.frameLocator('iframe.artifact-frame').locator('#e2e-stub-marker')).toHaveText(
+		'stub body'
+	);
+	await expect(page.locator('iframe.artifact-frame')).toHaveAttribute('sandbox', 'allow-scripts');
+	await expect(page.getByRole('heading', { name: 'Stub visual title' })).toBeVisible();
+
+	// Collapsing unmounts the iframe; expanding again re-renders the retained
+	// artifact, and the stub was called exactly once for both mounts.
+	await page.locator('.review-card-head').click();
+	await expect(page.locator('iframe.artifact-frame')).toHaveCount(0);
+	await page.locator('.review-card-head').click();
+	await expect(page.frameLocator('iframe.artifact-frame').locator('#e2e-stub-marker')).toHaveText(
+		'stub body'
+	);
+	expect(buildCalls).toBe(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ buildCalls, markerRemounted: true }, null, 2),
+	});
+});
+
+test('shows the localized build error with a working retry', async ({ page }, testInfo) => {
+	let buildCalls = 0;
+	await page.route('**/api/playground', async (route) => {
+		buildCalls += 1;
+		await route.fulfill({
+			status: 429,
+			json: {
+				error: 'Rate limit exceeded. Please try again later.',
+				code: 'API_LIMIT_EXCEEDED',
+				resetTime: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-error';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-gamma',
+		history: [cardPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	await page.locator('.review-card-head').click();
+	await page.getByRole('button', { name: 'Build visual explanation' }).click();
+
+	const section = page.locator('.visual-explainer');
+	await expect(section.getByText('Rate limit exceeded. Please try again later.')).toBeVisible();
+	const retry = section.getByRole('button', { name: 'Try Again' });
+	await expect(retry).toBeVisible();
+
+	// Retry re-runs the build rather than leaving the card stuck.
+	await retry.click();
+	await expect(section.getByText('Rate limit exceeded. Please try again later.')).toBeVisible();
+	expect(buildCalls).toBe(2);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ buildCalls }, null, 2),
+	});
+});

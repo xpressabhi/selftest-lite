@@ -995,5 +995,10 @@
 	"errorPlaygroundTooLong": "The concept or context is too long",
 	"errorExplainerInvalid": "The explainer did not come out right. Please retry.",
 	"errorExplainerFailed": "Something went wrong while creating the explainer.",
-	"explainVisually": "Explain visually"
+	"explainVisually": "Explain visually",
+	"visualExplainHeading": "Visual explanation",
+	"visualBuild": "Build visual explanation",
+	"visualShow": "Show visual explanation",
+	"visualOpenPage": "Open full page",
+	"visualBuildError": "The visual explanation could not be built. Please retry."
 }

@@ -59,7 +59,6 @@ export const TELEMETRY_EVENTS = new Set([
 
 	// Concept playground (animated HTML explainers)
 	'playground:open',
-	'playground:entry-from-review',
 	'playground:generate-requested',
 	'playground:generate-result',
 	'playground:library-item-open',
@@ -105,6 +104,9 @@ export const TELEMETRY_EVENTS = new Set([
 	'results:challenge-view',
 	'results:auto-explain-toggle',
 	'results:practice-weak',
+	'results:visual-build',
+	'results:visual-open',
+	'results:visual-share',
 	'question:report',
 	'test:rating',
 

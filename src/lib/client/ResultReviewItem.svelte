@@ -1,17 +1,16 @@
 <script>
 	import AnimatedHeight from './AnimatedHeight.svelte';
 	import Icon from './Icon.svelte';
-	import { activeLanguage, t } from './i18n';
+	import { t } from './i18n';
 	import MarkdownContent from './MarkdownContent.svelte';
 	import QuestionAssertionReasoning from './QuestionAssertionReasoning.svelte';
 	import QuestionMatching from './QuestionMatching.svelte';
-	import { track } from './telemetry.js';
-	import { buildPlaygroundHref } from '#lib/shared/playgroundLink.js';
+	import VisualExplainerSection from './VisualExplainerSection.svelte';
 
 	let {
 		question,
 		index,
-		topic = '',
+		visual = null,
 		userAnswers,
 		expanded,
 		bookmarkPulse,
@@ -26,6 +25,8 @@
 		onReportQuestion,
 		onSubmitReport,
 		onFetchExplanation,
+		onBuildVisual,
+		onOpenVisual,
 	} = $props();
 
 	let userAnswer = $derived(userAnswers?.[index]);
@@ -176,22 +177,13 @@
 						</button>
 					{/if}
 				</AnimatedHeight>
-				{#if topic}
-					<p class="mb-2 mt-2">
-						<a
-							class="btn btn-sm btn-outline-secondary no-print"
-							href={buildPlaygroundHref({
-								topic,
-								question: question.question,
-								answer: question.answer,
-								language: $activeLanguage,
-							})}
-							onclick={() => track('playground:entry-from-review', {})}
-						>
-							{$t('explainVisually')}
-						</a>
-					</p>
-				{/if}
+				<VisualExplainerSection
+					status={visual?.status ?? 'hidden'}
+					artifact={visual?.artifact ?? null}
+					error={visual?.error ?? ''}
+					onBuild={() => onBuildVisual(index, question)}
+					onShow={() => onOpenVisual(index)}
+				/>
 				{#if explanationError[index]}
 					<div
 						class="text-danger small mt-2 d-flex flex-wrap align-items-center gap-2"
