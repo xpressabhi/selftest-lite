@@ -25,7 +25,7 @@ const STORAGE_SOURCE = readFileSync(
 
 // Recorded whenever the DDL intentionally changes. Format:
 //   '<sha256 of the normalized DDL>:<SCHEMA_VERSION it shipped with>'
-const DDL_FINGERPRINT = '139c558c6bba13fecaad192bc853bac82510a5dc0ef3055e2afa43957d1db990:15';
+const DDL_FINGERPRINT = 'b41421701e6c523630eb3977d34b6185409579ddc97721f0be876815594b7147:16';
 
 function normalizeDdl(source) {
 	const start = source.indexOf('CREATE TABLE IF NOT EXISTS app_schema');

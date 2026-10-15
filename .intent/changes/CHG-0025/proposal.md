@@ -25,6 +25,8 @@ test_changes:
     reason: "Extended for the requested behaviour: the pre-generation refusal on a seeded verdict (no explainer row, no generation quota), the linked serve carrying source, and the provenance chip. Existing specs and helpers are unchanged."
   - path: "src/lib/shared/playgroundLink.test.js"
     reason: "Deleted together with its now-unused helper src/lib/shared/playgroundLink.js when the review card's old Explain visually link is replaced by the inline visual section; a planned removal, not a test weakened to pass."
+  - path: "src/lib/server/schemaMigrations.test.js"
+    reason: "Recorded DDL fingerprint update required by the intentional ensureStorageSchema change (two new tables and their indexes); SCHEMA_VERSION bumped 15 to 16. The guard's assertions are unchanged."
 links:
   related:
     - "CHG-0020"

@@ -83,7 +83,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -586,6 +586,68 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_user_explainers_last_opened
 			ON user_explainers (last_opened_at DESC)
+		`);
+
+		// Visual-fit verdict cache: one Jev judgment per
+		// topic+question+answer+language+judge-version, reused by every later
+		// request. Degraded verdicts are never stored (visualFitJudge.js), so
+		// a judge outage is re-judged instead of pinned. Append/update only;
+		// nothing is deleted (see AGENTS.md).
+		await query(`
+			CREATE TABLE IF NOT EXISTS question_visual_fits (
+				id BIGSERIAL PRIMARY KEY,
+				cache_key TEXT NOT NULL UNIQUE,
+				language TEXT NOT NULL DEFAULT 'english',
+				category TEXT NOT NULL,
+				confidence REAL,
+				model TEXT,
+				created_at TIMESTAMPTZ DEFAULT NOW(),
+				last_used_at TIMESTAMPTZ DEFAULT NOW(),
+				use_count INTEGER DEFAULT 0
+			)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_question_visual_fits_last_used
+			ON question_visual_fits (last_used_at DESC)
+		`);
+
+		// Per-identity question-to-explainer link: which explainer answers one
+		// question of one test for a user or device, so review cards restore
+		// their visuals and the playground can show provenance. Upserts only;
+		// nothing is deleted (see AGENTS.md).
+		await query(`
+			CREATE TABLE IF NOT EXISTS question_explainer_links (
+				id BIGSERIAL PRIMARY KEY,
+				user_id BIGINT,
+				client_id TEXT,
+				test_id TEXT NOT NULL,
+				question_index INTEGER NOT NULL,
+				question_key TEXT NOT NULL,
+				cache_key TEXT NOT NULL,
+				created_at TIMESTAMPTZ DEFAULT NOW(),
+				updated_at TIMESTAMPTZ DEFAULT NOW()
+			)
+		`);
+
+		await query(`
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_question_explainer_links_user_test
+			ON question_explainer_links (user_id, test_id, question_index) WHERE user_id IS NOT NULL
+		`);
+
+		await query(`
+			CREATE UNIQUE INDEX IF NOT EXISTS idx_question_explainer_links_client_test
+			ON question_explainer_links (client_id, test_id, question_index) WHERE user_id IS NULL
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_question_explainer_links_user_lookup
+			ON question_explainer_links (user_id, test_id)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_question_explainer_links_client_lookup
+			ON question_explainer_links (client_id, test_id)
 		`);
 
 		// Per-test visitor ledger: who opened a test, who started it, and who
