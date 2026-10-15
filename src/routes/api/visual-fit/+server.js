@@ -9,6 +9,7 @@ import {
 	parseRequestBody,
 } from '#lib/server/requestBody.js';
 import { logApiEvent } from '#lib/server/storage.js';
+import { VISUAL_FIT_MODEL } from '#lib/server/visualFit.js';
 import { judgeVisualFit } from '#lib/server/visualFitJudge.js';
 import {
 	MAX_ANSWER_TEXT_LENGTH,
@@ -128,6 +129,7 @@ export async function POST({ request, cookies }) {
 				confidence: verdict.confidence,
 				cached: verdict.cached,
 				degraded: verdict.degraded,
+				model: VISUAL_FIT_MODEL,
 			},
 		});
 

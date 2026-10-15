@@ -78,7 +78,16 @@ function normalizeSource(value) {
 	if (!value || typeof value !== 'object') {
 		return null;
 	}
-	const testId = typeof value.testId === 'string' ? value.testId.trim() : '';
+	// A device-local paper carries a string id while a server-resolved one
+	// carries the record's numeric id, so both forms are accepted and
+	// coerced to the string the links table stores.
+	const rawTestId =
+		typeof value.testId === 'string'
+			? value.testId
+			: Number.isFinite(value.testId) && Number.isInteger(value.testId)
+				? String(value.testId)
+				: '';
+	const testId = rawTestId.trim();
 	if (testId.length < 1 || testId.length > MAX_SOURCE_TEST_ID_LENGTH) {
 		return null;
 	}

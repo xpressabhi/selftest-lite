@@ -135,8 +135,17 @@
 	// entry remembers its element, so a card re-created by filter churn is
 	// re-observed instead of watched as a detached node.
 	let visualFitObservers = {};
+	// One stage timer per in-flight in-card build: the building copy flips
+	// planning → drawing like the playground, and every settle clears it.
+	let visualBuildTimers = {};
 
 	const RESULTS_NUDGE_DWELL_MS = 5000;
+	// The in-card build mirrors the playground's coarse stage copy (the first
+	// flip lands well before a generation can). A card request gets a 120 s
+	// budget: generation's own worst case is 90 s, so a request cut off here
+	// is stalled and must land in the existing failure state.
+	const VISUAL_BUILD_STAGE_MS = 7000;
+	const VISUAL_REQUEST_TIMEOUT_MS = 120000;
 
 	let challengeOutcome = $derived(
 		challenge && questionPaper?.userAnswers
@@ -441,6 +450,10 @@
 			observer.disconnect();
 		}
 		visualFitObservers = {};
+		for (const timer of Object.values(visualBuildTimers)) {
+			clearTimeout(timer);
+		}
+		visualBuildTimers = {};
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
 		}
@@ -1006,10 +1019,12 @@
 			...visualFit,
 			[index]: { status: 'loading', suggested: false, degraded: false },
 		};
+		const budget = visualRequestBudget();
 		try {
 			const response = await fetch('/api/visual-fit', {
 				method: 'POST',
 				headers: getClientHeaders(),
+				signal: budget.signal,
 				body: JSON.stringify({
 					topic: questionPaper.topic,
 					question: questionTextFor(question),
@@ -1041,6 +1056,8 @@
 				...visualFit,
 				[index]: { status: 'done', suggested: true, degraded: true },
 			};
+		} finally {
+			budget.release();
 		}
 		applyVisualFit(index);
 	}
@@ -1133,6 +1150,24 @@
 			: 'light';
 	}
 
+	// One abort budget per card request: the card's existing failure handling
+	// (fail-open verdict, localized build error) then owns the stalled request.
+	function visualRequestBudget() {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), VISUAL_REQUEST_TIMEOUT_MS);
+		return {
+			signal: controller.signal,
+			release: () => clearTimeout(timer),
+		};
+	}
+
+	function clearVisualBuildTimer(index) {
+		if (visualBuildTimers[index]) {
+			clearTimeout(visualBuildTimers[index]);
+			delete visualBuildTimers[index];
+		}
+	}
+
 	async function buildVisual(index, question) {
 		if (!questionPaper || !question || visualState[index]?.status === 'building') {
 			return;
@@ -1140,12 +1175,26 @@
 		track('results:visual-build', { index });
 		visualState = {
 			...visualState,
-			[index]: { status: 'building', artifact: null, error: '' },
+			[index]: { status: 'building', stage: 'planning', artifact: null, error: '' },
 		};
+		clearVisualBuildTimer(index);
+		// Same coarse stage copy as the playground; a cache hit can land before
+		// the flip, so repeats still look instant.
+		visualBuildTimers[index] = setTimeout(() => {
+			delete visualBuildTimers[index];
+			if (visualState[index]?.status === 'building') {
+				visualState = {
+					...visualState,
+					[index]: { ...visualState[index], stage: 'drawing' },
+				};
+			}
+		}, VISUAL_BUILD_STAGE_MS);
+		const budget = visualRequestBudget();
 		try {
 			const response = await fetch('/api/playground', {
 				method: 'POST',
 				headers: getClientHeaders(),
+				signal: budget.signal,
 				body: JSON.stringify({
 					topic: questionPaper.topic,
 					question: questionTextFor(question),
@@ -1154,8 +1203,10 @@
 					theme: currentTheme(),
 					profile: currentDeviceProfile(),
 					// Provenance: the served explainer is recorded against this
-					// question, so a later visit restores it in place.
-					source: { testId: questionPaper.id, questionIndex: index },
+					// question, so a later visit restores it in place. The id is
+					// stringified because a server-resolved paper carries it as a
+					// number.
+					source: { testId: String(questionPaper.id), questionIndex: index },
 				}),
 			});
 			const payload = await response.json().catch(() => ({}));
@@ -1191,6 +1242,9 @@
 							: $t('visualBuildError'),
 				},
 			};
+		} finally {
+			budget.release();
+			clearVisualBuildTimer(index);
 		}
 	}
 
@@ -1204,10 +1258,11 @@
 			...visualState,
 			[index]: { status: 'building', artifact: null, error: '' },
 		};
+		const budget = visualRequestBudget();
 		try {
 			const response = await fetch(
 				`/api/playground/library?id=${encodeURIComponent(link.libraryId)}&theme=${currentTheme()}`,
-				{ headers: getClientHeaders(), cache: 'no-store' }
+				{ headers: getClientHeaders(), cache: 'no-store', signal: budget.signal }
 			);
 			const payload = await response.json().catch(() => ({}));
 			if (!response.ok) {
@@ -1231,6 +1286,8 @@
 							: $t('visualBuildError'),
 				},
 			};
+		} finally {
+			budget.release();
 		}
 	}
 

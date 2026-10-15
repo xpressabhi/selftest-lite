@@ -179,6 +179,7 @@
 				</AnimatedHeight>
 				<VisualExplainerSection
 					status={visual?.status ?? 'hidden'}
+					stage={visual?.stage ?? ''}
 					artifact={visual?.artifact ?? null}
 					error={visual?.error ?? ''}
 					onBuild={() => onBuildVisual(index, question)}

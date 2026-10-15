@@ -428,7 +428,7 @@
 					<p class="fw-semibold mb-1">{$t('visualFitNotWorthyTitle')}</p>
 					<p class="small mb-0">
 						{$t(
-							refusalCategory === 'too_vague' ? 'visualFitVagueHint' : 'visualFitTextFirstHint'
+							refusalCategory === 'not_visual' ? 'visualFitTextFirstHint' : 'visualFitVagueHint'
 						)}
 					</p>
 				</div>

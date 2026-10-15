@@ -968,3 +968,144 @@ test('keeps the build affordance when the verdict body is malformed', async ({
 		),
 	});
 });
+
+// --- The numeric-id card build: a paper resolved from the server carries a
+// numeric id, and the link the build records must still restore the card on
+// the next visit. This is the one card spec that drives the REAL
+// /api/playground: the route seeds the explainer cache row for the exact
+// request fields (the body's profile included) and then continues, so the
+// served response is a cache hit and no model call is reachable.
+// Spec: docs/superpowers/specs/2026-10-15-visual-explanation-embed-design.md §7.1
+
+// The suite shares one IP-keyed rate-limit bucket per route, and this file's
+// parallel page loads sit on the links route's 30/min. This is the only spec
+// whose assertions need the links route served, so it retires the route's
+// spent hits first — archived, never dropped — and then does its reads once.
+// The archive table is created by ensureStorageSchema (warmed up above).
+async function clearLinksRateLimit(sql) {
+	await sql`
+		WITH moved AS (
+			DELETE FROM api_rate_limit_events
+			WHERE route = '/api/playground/links'
+			RETURNING *
+		)
+		INSERT INTO api_rate_limit_events_archive
+		SELECT *, NOW() FROM moved
+	`;
+}
+
+test('records and restores a link for a numeric test id', async ({ page, request }, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	const clientId = 'e2e-visual-numeric';
+	// Schema warmup on the library bucket, not the suite-shared /api/test one.
+	await request.get('/api/playground/library', { headers: { 'x-client-id': clientId } });
+
+	const numericId = 12345;
+	const seededSlug = 'e2e-numeric-slug-0000abcd';
+	let seededCacheKey = '';
+
+	// The verdict gate stays stubbed, as everywhere in this section: the spec
+	// is about the link the real build records, not about the judge.
+	await stubVisualFit(page);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.route('**/api/playground', async (route) => {
+		const body = route.request().postDataJSON() ?? {};
+		seededCacheKey = explainerCacheKeyFor({
+			topic: body.topic,
+			question: body.question,
+			answer: body.answer,
+			language: body.language,
+			viewport: body.profile?.viewport,
+			budget: body.profile?.budget,
+		});
+		await sql`
+			INSERT INTO concept_explainers (cache_key, language, concept, payload, model, slug)
+			VALUES (
+				${seededCacheKey},
+				'english',
+				'Numeric link title',
+				${JSON.stringify({
+					title: 'Numeric link title',
+					summary: 'Numeric link summary',
+					recipes: ['step-reveal'],
+					html: '<p id="e2e-numeric-marker">numeric link body</p>',
+					css: '',
+					js: '',
+				})}::jsonb,
+				'e2e-seed',
+				${seededSlug}
+			)
+			ON CONFLICT (cache_key) DO UPDATE
+				SET payload = EXCLUDED.payload,
+					slug = EXCLUDED.slug,
+					last_used_at = NOW()
+		`;
+		// The cache row is committed before the request reaches the real
+		// server, so the served explainer can only be that seeded hit.
+		await route.continue();
+	});
+
+	await seedCardState(page, {
+		clientId,
+		history: [cardPaper({ id: numericId, correct: false })],
+	});
+	await page.goto(`/results?id=${numericId}`);
+
+	// The page only judges a card the reader has reached, so scroll the review
+	// list to the (default-open) wrong-answer card like a reader would.
+	await page.locator('#question-0').scrollIntoViewIfNeeded();
+	await page.getByRole('button', { name: 'Build visual explanation' }).click();
+	await expect(
+		page.frameLocator('iframe.artifact-frame').locator('#e2e-numeric-marker')
+	).toHaveText('numeric link body');
+
+	// The regression: a numeric id must land as the string the links table
+	// stores, pointing at the very cache row this build served.
+	const rows = await sql`
+		SELECT test_id, question_index, cache_key
+		FROM question_explainer_links
+		WHERE client_id = ${clientId} AND test_id = ${String(numericId)}
+	`;
+	expect(rows).toHaveLength(1);
+	expect(rows[0].test_id).toBe(String(numericId));
+	expect(Number(rows[0].question_index)).toBe(0);
+	expect(rows[0].cache_key).toBe(seededCacheKey);
+
+	// Retire the shared links bucket's spent hits so the reads below are served.
+	await clearLinksRateLimit(sql);
+
+	const linksUrl = `/api/playground/links?testId=${numericId}`;
+	const links = await request.get(linksUrl, { headers: { 'x-client-id': clientId } });
+	expect(links.status()).toBe(200);
+	const items = (await links.json()).items;
+	expect(items).toHaveLength(1);
+	expect(items[0].questionIndex).toBe(0);
+	expect(items[0].slug).toBe(seededSlug);
+	expect(items[0].title).toBe('Numeric link title');
+
+	// The next visit restores the card: the links read lifts it from the
+	// build offer to Show with the default expansion only.
+	await page.reload();
+	await expect(page.getByRole('button', { name: 'Show visual explanation' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toHaveCount(0);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				numericId,
+				seededCacheKey,
+				linkRow: {
+					testId: rows[0].test_id,
+					questionIndex: Number(rows[0].question_index),
+					cacheKey: rows[0].cache_key,
+				},
+				linksRead: items,
+				restoredAffordance: 'Show visual explanation',
+			},
+			null,
+			2
+		),
+	});
+});

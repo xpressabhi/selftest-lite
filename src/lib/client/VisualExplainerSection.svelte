@@ -10,7 +10,7 @@
 	// built and embedded inside the results page. It renders only what the
 	// page's state hands it; the build and library requests live in
 	// src/routes/results/+page.svelte, and `hidden` renders nothing at all.
-	let { status = 'hidden', artifact = null, error = '', onBuild, onShow } = $props();
+	let { status = 'hidden', stage = '', artifact = null, error = '', onBuild, onShow } = $props();
 
 	const publicPath = $derived(
 		artifact?.slug ? localizedPath(`/explain/${artifact.slug}`, $activeLanguage) : ''
@@ -43,9 +43,11 @@
 							{$t('playgroundShare')}
 						</button>
 					{/if}
-					<a class="btn btn-sm btn-outline-secondary" href={publicPath}
-						>{$t('visualOpenPage')}</a
-					>
+					{#if artifact.slug}
+						<a class="btn btn-sm btn-outline-secondary" href={publicPath}
+							>{$t('visualOpenPage')}</a
+						>
+					{/if}
 				</ExplainerHeader>
 			</div>
 			<div class="visual-explainer-frame">
@@ -66,7 +68,11 @@
 					<span class="thinking-dots" aria-hidden="true"
 						><span></span><span></span><span></span></span
 					>
-					<span class="ms-2">{$t('playgroundPlanning')}</span>
+					<span class="ms-2"
+						>{$t(
+							stage === 'drawing' ? 'playgroundDrawing' : 'playgroundPlanning'
+						)}</span
+					>
 				</p>
 			{:else if status === 'error'}
 				<p class="text-danger small mb-2" role="status">{error}</p>
