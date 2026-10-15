@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { stubVisualFit } from './visualFit.js';
 
 // Smoke suite: critical pages render with zero console/page errors. No API
-// keys or backend data needed; specs stay read-only (no test generation).
+// keys or backend data needed; specs stay read-only (no test generation), and
+// the results review card's visual-fit verdict is stubbed below.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 async function collectErrors(page) {
 	const errors = [];

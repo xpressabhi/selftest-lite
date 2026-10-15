@@ -2,11 +2,19 @@ import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { TEST_ORIGIN, connectOrSkip, sqlClient } from './testDb.js';
 import { addVirtualAuthenticator, signUpWithPasskey } from './passkeySignIn.js';
+import { stubVisualFit } from './visualFit.js';
 
 // Cross-device results suite: an attempt stored for an account is re-graded on
 // read, so a second device signed into the same account renders the full
 // review — and an anonymous visitor still receives no answer key.
 // Spec: docs/superpowers/specs/2026-10-12-cross-device-results-design.md
+
+// The review card asks for a visual-fit verdict before it offers to build a
+// visual; the endpoint is stubbed per page so the suite never reaches a model
+// provider.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 const PROBE_TOPIC = 'E2E cross-device probe';
 const PROBE_QUESTIONS = [
@@ -131,6 +139,8 @@ test('a second signed-in device renders the full review of a stored attempt', as
 	await contextB.addCookies(await page.context().cookies());
 	const pageB = await contextB.newPage();
 	await stubPersonalize(pageB);
+	// pageB visits the review list; keep its verdict hermetic too.
+	await stubVisualFit(pageB);
 	const explainPayloads = [];
 	pageB.on('request', (outgoing) => {
 		if (outgoing.url().includes('/api/explain') && outgoing.method() === 'POST') {
@@ -283,6 +293,8 @@ test('a device that already holds the paper but not the attempt still loads the 
 	);
 	const page = await context.newPage();
 	await stubPersonalize(page);
+	// This page renders the review list; keep its verdict hermetic too.
+	await stubVisualFit(page);
 	await page.goto(`${TEST_ORIGIN}/results?id=${testId}`);
 
 	// The cached paper alone cannot render the review; the page must fetch the

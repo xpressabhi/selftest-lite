@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { stubVisualFit } from './visualFit.js';
 
 // Nudge engine contract on the results hero. /api/personalize is route-stubbed
 // (no TypeSafe key in CI; the real route fails open), so the decision path is
 // deterministic while the ledger, dwell, suppression and share wiring stay
-// real. Everything is seeded through localStorage; no backend needed.
+// real. Everything is seeded through localStorage; no backend needed. The
+// results review card's visual-fit verdict is stubbed for the same reason.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 const HISTORY_KEY = 'selftest_history';
 const LEDGER_KEY = 'selftest_nudge_ledger';

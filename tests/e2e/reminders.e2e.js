@@ -10,6 +10,7 @@ import { getReminderCopy } from '../../src/lib/shared/reminderCopy.js';
 import { REMINDER_DEFAULT_HOUR, REMINDER_QUIET_HOUR } from '../../src/lib/shared/reminders.js';
 import { isPgliteUrl, testDatabaseUrl } from './testDb.js';
 import { PUSH_TEST_KEYS } from './pushTestKeys.js';
+import { stubVisualFit } from './visualFit.js';
 
 // Web push end-to-end suite. Run it with `npm run test:e2e:push` (see
 // docs/reminders.md): it drives the real opt-in UI in headed Chrome, delivers
@@ -20,6 +21,12 @@ import { PUSH_TEST_KEYS } from './pushTestKeys.js';
 //
 // The default `npm run test:e2e` config excludes this file because the suite
 // cannot run headless and talks to external services.
+
+// The results review card asks /api/visual-fit before it offers to build a
+// visual; it is stubbed so the push run adds no model traffic either.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 const runCommand = promisify(execFile);
 

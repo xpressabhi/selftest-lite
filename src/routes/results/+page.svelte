@@ -131,7 +131,9 @@
 	let visualFit = $state({});
 	let visualState = $state({});
 	// One-shot visibility probes for cards the page opened on the reader's
-	// behalf: a verdict is only requested once such a card is on screen.
+	// behalf: a verdict is only requested once such a card is on screen. Each
+	// entry remembers its element, so a card re-created by filter churn is
+	// re-observed instead of watched as a detached node.
 	let visualFitObservers = {};
 
 	const RESULTS_NUDGE_DWELL_MS = 5000;
@@ -238,6 +240,22 @@
 		filteredQuestions.length > 0 &&
 			filteredQuestions.every(({ index }) => expanded[index] === true)
 	);
+
+	// The review list is keyed and filter-driven: a card that leaves the current
+	// filter is destroyed, and its visibility probe is left watching a detached
+	// node that can never intersect. The pass below re-runs whenever the open,
+	// rendered card set changes (a filter chip, the personalized fix_mistakes
+	// flip), so a re-created element is observed again and an auto-opened card
+	// is still judged exactly once, only on screen.
+	$effect(() => {
+		const questions = questionPaper?.questions || [];
+		const openVisibleIndexes = filteredQuestions
+			.filter(({ index }) => expanded[index] === true)
+			.map(({ index }) => index);
+		for (const index of openVisibleIndexes) {
+			ensureVisual(index, questions[index], { defer: true });
+		}
+	});
 
 	const RING_RADIUS = 42;
 	const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -419,7 +437,7 @@
 
 	onDestroy(() => {
 		autoExplainCanceled = true;
-		for (const observer of Object.values(visualFitObservers)) {
+		for (const { observer } of Object.values(visualFitObservers)) {
 			observer.disconnect();
 		}
 		visualFitObservers = {};
@@ -936,15 +954,29 @@
 		void fetchVisualFit(index, question);
 	}
 
-	// One observer per card, dropped the moment it reports the card on screen:
-	// a card the reader never reaches costs no judge call.
+	// One probe per card, dropped the moment it reports the card on screen: a
+	// card the reader never reaches costs no judge call. The observed element
+	// is kept beside the observer so a card re-created by filter churn (the
+	// list is keyed) is re-observed instead of watched as a detached node.
 	function observeVisualCard(index, question) {
-		if (visualFitObservers[index]) {
-			return;
-		}
 		const element =
 			typeof document !== 'undefined' ? document.getElementById(`question-${index}`) : null;
-		if (typeof IntersectionObserver === 'undefined' || !element) {
+		const armed = visualFitObservers[index];
+		if (armed && armed.element === element) {
+			return;
+		}
+		if (armed) {
+			// The card was re-created or left the list: a probe on the old node
+			// can never fire again.
+			armed.observer.disconnect();
+			delete visualFitObservers[index];
+		}
+		if (!element) {
+			// The card is not rendered (filtered out): never judge what the
+			// reader cannot see. The next pass arms it once it is back.
+			return;
+		}
+		if (typeof IntersectionObserver === 'undefined') {
 			// No observer to lean on: fail open rather than silently dropping
 			// the affordance.
 			void fetchVisualFit(index, question);
@@ -960,7 +992,7 @@
 				void fetchVisualFit(index, question);
 			}
 		});
-		visualFitObservers[index] = observer;
+		visualFitObservers[index] = { observer, element };
 		observer.observe(element);
 	}
 
@@ -989,11 +1021,16 @@
 			if (!response.ok) {
 				throw new Error(payload?.error || `visual-fit ${response.status}`);
 			}
+			if (typeof payload?.suggested !== 'boolean') {
+				// A 2xx the client cannot read is as unusable as an outage:
+				// never let it hide the affordance.
+				throw new Error('visual-fit verdict missing');
+			}
 			visualFit = {
 				...visualFit,
 				[index]: {
 					status: 'done',
-					suggested: Boolean(payload.suggested),
+					suggested: payload.suggested,
 					degraded: Boolean(payload.degraded),
 				},
 			};

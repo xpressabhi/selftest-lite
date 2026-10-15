@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { stubVisualFit } from './visualFit.js';
 
 // Spotlight results hero: comparison-pill states, the adaptive CTA, the share
 // sheet, and relocated controls (auto-explain, rating, reminder, print,
 // retake). Everything is seeded through localStorage; no API keys or backend
-// data needed.
+// data needed, and the review card's visual-fit verdict is stubbed so the
+// expand-all path cannot reach a model provider.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 const HISTORY_KEY = 'selftest_history';
 

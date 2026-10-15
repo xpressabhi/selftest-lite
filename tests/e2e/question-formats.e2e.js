@@ -1,11 +1,17 @@
 import { expect, test } from '@playwright/test';
+import { stubVisualFit } from './visualFit.js';
 
 // Question formats suite: matching columns, assertion-reasoning, and
 // statement-based true/false papers.
 // Specs: docs/superpowers/specs/2026-09-24-question-formats-design.md and
 // docs/superpowers/specs/2026-10-01-statement-based-truefalse-design.md
 //
-// Route-mocked and localStorage-seeded: no API keys, no backend rows.
+// Route-mocked and localStorage-seeded: no API keys, no backend rows. The
+// results review card asks for a visual-fit verdict before it offers to build
+// a visual; that verdict is stubbed below.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 async function collectErrors(page) {
 	const errors = [];

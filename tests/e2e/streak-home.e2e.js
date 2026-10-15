@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { stubVisualFit } from './visualFit.js';
 
 // Queens-style streak card on home: stats row, streak headline, rolling 7-day
 // strip graded by tests taken, milestone badge carousel, and the "Stay tuned"
 // reminder row gated on a completed test. Seeded through localStorage; no API
-// keys or backend data needed.
+// keys or backend data needed. The results review card's visual-fit verdict is
+// stubbed below.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 const STREAK_KEY = 'selftest_streak';
 const HISTORY_KEY = 'selftest_history';

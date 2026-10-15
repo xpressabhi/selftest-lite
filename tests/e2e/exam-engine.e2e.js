@@ -1,11 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { expect, request as playwrightRequest, test } from '@playwright/test';
 import { connectOrSkip, sqlClient, TEST_ORIGIN } from './testDb.js';
+import { stubVisualFit } from './visualFit.js';
 
 // Exam engine: a discovered pattern is served from cache, and a generated
 // pattern-based paper renders section headers on the test page and a
 // per-section breakdown on the results page. Seeded through the dev server's
-// test database bridge. No model calls.
+// test database bridge. No model calls: the visual-fit verdict the results
+// review card asks for is stubbed below.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 async function collectErrors(page) {
 	const errors = [];

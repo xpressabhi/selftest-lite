@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { connectOrSkip, sqlClient } from './testDb.js';
+import { stubVisualFit } from './visualFit.js';
 import { MAX_QUESTION_TEXT_LENGTH } from '../../src/lib/server/quizConfig.js';
 
 // Inline visual explanations: the visual-fit verdict endpoint review cards
@@ -416,22 +417,6 @@ function countBuilds(page) {
 	return builds;
 }
 
-/** The verdict gate runs before the build offer: stub it as worth-it. */
-async function stubVisualFitWorthIt(page) {
-	await page.route('**/api/visual-fit', async (route) => {
-		await route.fulfill({
-			status: 200,
-			json: {
-				suggested: true,
-				category: 'worth_it',
-				confidence: 0.9,
-				cached: false,
-				degraded: false,
-			},
-		});
-	});
-}
-
 test('restores a linked visual and opens it inline from the hash deep link', async ({
 	page,
 	request,
@@ -449,6 +434,10 @@ test('restores a linked visual and opens it inline from the hash deep link', asy
 	});
 
 	const builds = countBuilds(page);
+	// The hash card can ask for its verdict before the links read lands. The
+	// stub answers not_visual, so this spec also pins that a restored link
+	// outranks the verdict, and no run can reach a live judge.
+	await stubVisualFit(page, { suggested: false, category: 'not_visual' });
 	await page.setViewportSize({ width: 390, height: 844 });
 	await seedCardState(page, {
 		clientId: CARD_CLIENT_ID,
@@ -460,7 +449,11 @@ test('restores a linked visual and opens it inline from the hash deep link', asy
 	// restored affordance.
 	await expect(page.locator('.review-card-body')).toHaveCount(1);
 	await expect(page.getByRole('heading', { name: 'Visual explanation' })).toBeVisible();
-	await page.getByRole('button', { name: 'Show visual explanation' }).click();
+	const showButton = page.getByRole('button', { name: 'Show visual explanation' });
+	await expect(showButton).toBeVisible();
+	// The not_visual verdict never replaces a link with the build offer.
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toHaveCount(0);
+	await showButton.click();
 
 	const frame = page.locator('iframe.artifact-frame');
 	await expect(frame).toBeVisible();
@@ -511,6 +504,9 @@ test('arms the linked visual when the wrong-answers action opens the card', asyn
 	});
 
 	const builds = countBuilds(page);
+	// Verdicts answer not_visual here too, so the spec stays hermetic and the
+	// link still has to win whichever request lands first.
+	await stubVisualFit(page, { suggested: false, category: 'not_visual' });
 	await page.setViewportSize({ width: 390, height: 844 });
 	await seedCardState(page, {
 		clientId: CARD_CLIENT_ID,
@@ -526,6 +522,9 @@ test('arms the linked visual when the wrong-answers action opens the card', asyn
 	const wrongCard = page.locator('#question-0');
 	await expect(wrongCard.locator('.review-card-body')).toHaveCount(1);
 	await expect(wrongCard.getByRole('button', { name: 'Show visual explanation' })).toBeVisible();
+	await expect(wrongCard.getByRole('button', { name: 'Build visual explanation' })).toHaveCount(
+		0
+	);
 	// The action really ran: only the wrong card survives the incorrect filter.
 	await expect(page.locator('#question-1')).toHaveCount(0);
 	// And it is a restore, not a build.
@@ -550,7 +549,7 @@ test('builds a visual inline and keeps it across collapse and expand', async ({
 	page,
 }, testInfo) => {
 	let buildCalls = 0;
-	await stubVisualFitWorthIt(page);
+	await stubVisualFit(page);
 	await page.route('**/api/playground', async (route) => {
 		buildCalls += 1;
 		// The honest loading state is asserted below, so the stub must not
@@ -606,7 +605,7 @@ test('builds a visual inline and keeps it across collapse and expand', async ({
 
 test('shows the localized build error with a working retry', async ({ page }, testInfo) => {
 	let buildCalls = 0;
-	await stubVisualFitWorthIt(page);
+	await stubVisualFit(page);
 	await page.route('**/api/playground', async (route) => {
 		buildCalls += 1;
 		await route.fulfill({
@@ -866,6 +865,104 @@ test('judges an auto-opened card only when it reaches the viewport', async ({ pa
 				judgedAfterScroll: judgedQuestions.length,
 				lastCardJudged: judgedQuestions.includes('Q10'),
 			},
+			null,
+			2
+		),
+	});
+});
+
+test('re-arms the verdict probe when a filter chip remounts an auto-opened card', async ({
+	page,
+}, testInfo) => {
+	const judgedQuestions = [];
+	await page.route('**/api/visual-fit', async (route) => {
+		judgedQuestions.push(route.request().postDataJSON()?.question ?? '');
+		await route.fulfill({
+			status: 200,
+			json: {
+				suggested: true,
+				category: 'worth_it',
+				confidence: 0.9,
+				cached: false,
+				degraded: false,
+			},
+		});
+	});
+
+	const testId = 'e2e-visual-fit-rearm';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-theta',
+		history: [tenQuestionPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	// The last card is auto-opened but far below the fold: its probe is armed
+	// and has not fired yet.
+	const lastCard = page.locator('#question-9');
+	await expect(lastCard).toHaveCount(1);
+	await expect(lastCard.locator('.review-card-head')).toHaveAttribute('aria-expanded', 'true');
+	const judgedAtLoad = judgedQuestions.length;
+	expect(judgedQuestions).not.toContain('Q10');
+
+	// A filter that excludes the card destroys it (the list is keyed) and its
+	// probe goes with the detached node; returning re-creates the element.
+	await page.getByRole('button', { name: /^Correct/ }).click();
+	await expect(lastCard).toHaveCount(0);
+	await page.getByRole('button', { name: /^All/ }).click();
+	await expect(lastCard).toHaveCount(1);
+
+	// The re-created card is judged when, and only when, it reaches the viewport.
+	await lastCard.scrollIntoViewIfNeeded();
+	await expect(lastCard.getByRole('button', { name: 'Build visual explanation' })).toBeVisible();
+	await expect.poll(() => judgedQuestions.includes('Q10')).toBe(true);
+	expect(judgedQuestions.filter((question) => question === 'Q10')).toHaveLength(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				judgedAtLoad,
+				lastCardJudgedAfterRemount: judgedQuestions.filter((question) => question === 'Q10')
+					.length,
+				affordanceVisible: true,
+			},
+			null,
+			2
+		),
+	});
+});
+
+test('keeps the build affordance when the verdict body is malformed', async ({
+	page,
+}, testInfo) => {
+	let fitCalls = 0;
+	await page.route('**/api/visual-fit', async (route) => {
+		fitCalls += 1;
+		// A 2xx without a boolean verdict is as unusable as an outage.
+		await route.fulfill({
+			status: 200,
+			json: { category: 'worth_it', cached: false },
+		});
+	});
+
+	const testId = 'e2e-visual-fit-malformed';
+	await page.setViewportSize({ width: 390, height: 844 });
+	await seedCardState(page, {
+		clientId: 'e2e-visual-iota',
+		history: [cardPaper({ id: testId })],
+	});
+	await page.goto(`/results?id=${testId}`);
+
+	await page.locator('.review-card-head').click();
+	// A verdict the client cannot read degrades, so the offer stays.
+	await expect(page.getByRole('button', { name: 'Build visual explanation' })).toBeVisible();
+	await expect.poll(() => fitCalls).toBe(1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{ fitCalls, body: { category: 'worth_it', cached: false }, affordanceRendered: true },
 			null,
 			2
 		),

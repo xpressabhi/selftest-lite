@@ -3,12 +3,19 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { connectOrSkip, sqlClient } from './testDb.js';
+import { stubVisualFit } from './visualFit.js';
 
 // Design-consistency contract: every public surface lays out without
 // horizontal page overflow, without content crossing the viewport edge,
 // without clipped nowrap text, and with >=44px controls at phone (390),
 // tablet (768) and desktop (1280) widths. This is the guard that keeps the
 // "one coherent layout system" promise from silently regressing.
+
+// The results review card asks for a visual-fit verdict before it offers to
+// build a visual; the endpoint is stubbed so no run can reach a model provider.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 const WIDTHS = [390, 768, 1280];
 const SHELL_WIDTHS = [390, 768, 1024, 1280, 1920];

@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { connectOrSkip, sqlClient } from './testDb.js';
+import { stubVisualFit } from './visualFit.js';
 
 // Social test stats: visitor / in-progress / submission counters, public
 // scores, the owner-only view, and challenge params surviving submission.
-// Seeded through the dev server's test database bridge.
+// Seeded through the dev server's test database bridge. The results review
+// card's visual-fit verdict is stubbed below.
+test.beforeEach(async ({ page }) => {
+	await stubVisualFit(page);
+});
 
 async function collectErrors(page) {
 	const errors = [];
@@ -101,6 +106,9 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	// activity card stays hidden.
 	const visitorContext = await browser.newContext();
 	const visitorPage = await visitorContext.newPage();
+	// The visitor submits and lands on the review list; keep its verdict
+	// hermetic like the fixture page's.
+	await stubVisualFit(visitorPage);
 	const visitorFirstLoad = visitorPage.waitForResponse((response) =>
 		response.url().includes('/api/test/stats')
 	);
