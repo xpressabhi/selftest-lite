@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0027"
 title: "Show the activity card once more than one visitor has seen the test"
-status: "draft"
+status: "complete"
 created_at: "2026-10-16T03:00:03Z"
 request: "show how many people have visited the shared test page as soon as more than one user has seen the test or result page, at minimum the visitor count"
 proposal:

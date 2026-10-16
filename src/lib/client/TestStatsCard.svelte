@@ -8,10 +8,11 @@
 
 	let stats = $state(null);
 
-	// Shown only when there is something to compare: at least two submissions.
-	// A single submission is the viewer's own run (their score already leads
-	// the results page), and none means no activity worth a card.
-	const visible = $derived(Number(stats?.submissions || 0) >= 2);
+	// Shown once more than one identity has seen the test: the visitor count
+	// is the minimum this card promises. A single visitor (usually the creator
+	// alone, or a lone taker whose score already leads the results page) sees
+	// nothing.
+	const visible = $derived(Number(stats?.visitors || 0) >= 2);
 
 	const topScores = $derived((stats?.scores || []).slice(0, 5));
 

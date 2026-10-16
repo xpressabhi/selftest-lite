@@ -667,8 +667,8 @@ test('test start, stats and results stay fluid at every width', async ({
 	`;
 	const testId = rows[0].id;
 
-	// The activity card only shows with 2+ submissions, so a second probe test
-	// carries seeded attempts: the card layout beside the summary is still
+	// The activity card shows with 2+ visitors, so a second probe test carries
+	// seeded visits and attempts: the card layout beside the summary is still
 	// audited, while the first test keeps the no-card state covered.
 	const statsRows = await sql`
 		INSERT INTO ai_test (test, topic, language, num_questions)
@@ -679,6 +679,10 @@ test('test start, stats and results stay fluid at every width', async ({
 	await sql`
 		INSERT INTO ai_test_attempts (test_id, score, total_questions, time_taken)
 		VALUES (${statsTestId}, 1, 2, 30), (${statsTestId}, 2, 2, 25)
+	`;
+	await sql`
+		INSERT INTO ai_test_visits (test_id, identity_key)
+		VALUES (${statsTestId}, 'c:seed-layout-a'), (${statsTestId}, 'c:seed-layout-b')
 	`;
 
 	const report = [];

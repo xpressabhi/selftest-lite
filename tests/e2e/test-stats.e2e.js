@@ -102,8 +102,8 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	await firstLoad;
 	await expect(page.locator('.test-stats-card')).toHaveCount(0);
 
-	// Second visitor: both visits count, but with no submissions yet the
-	// activity card stays hidden.
+	// Second visitor: both visits count, and two visitors are enough for the
+	// activity card even before any submission: tiles only, no score list.
 	const visitorContext = await browser.newContext();
 	const visitorPage = await visitorContext.newPage();
 	// The visitor submits and lands on the review list; keep its verdict
@@ -114,7 +114,18 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	);
 	await visitorPage.goto(`/test?id=${testId}`);
 	await visitorFirstLoad;
-	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
+	await expect(visitorPage.locator('.test-stats-card')).toBeVisible();
+	await expect(
+		visitorPage.locator('[data-metric="visitors"] .test-stats-value')
+	).toHaveText('2');
+	await expect(
+		visitorPage.locator('[data-metric="inProgress"] .test-stats-value')
+	).toHaveText('0');
+	await expect(
+		visitorPage.locator('[data-metric="submissions"] .test-stats-value')
+	).toHaveText('0');
+	await expect(visitorPage.locator('.test-stats-score-row')).toHaveCount(0);
+	await expect(visitorPage.locator('.test-stats-my-score')).toHaveCount(0);
 	await expect
 		.poll(async () => (await statsViaPage(visitorPage, testId)).body.visitors, {
 			intervals: [500, 1000, 2000],
@@ -131,8 +142,8 @@ test('visitors, in-progress and submissions across two visitors', async ({
 		.toBe(1);
 
 	// Submit: one submission, one public score, nothing left in progress.
-	// Hold the stats card's own fetch so the hidden assertion below runs after
-	// the component has its data, not before it mounts.
+	// Hold the stats card's own fetch so the visibility assertions below run
+	// after the component has its data, not before it mounts.
 	const resultsStats = visitorPage.waitForResponse((response) =>
 		response.url().includes('/api/test/stats')
 	);
@@ -147,26 +158,40 @@ test('visitors, in-progress and submissions across two visitors', async ({
 	expect(after.body.scores[0]).toMatchObject({ name: null, score: 1, total: 2, isMine: true });
 	expect(after.body.myAttempt).toMatchObject({ score: 1, total: 2 });
 
-	// One submission or none is not activity: the card stays hidden for the
-	// taker (their score already leads the results page) and for everyone else.
-	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
+	// Two visitors keep the card visible for the taker on the results page:
+	// one submission, the taker's own score line, one public score row.
+	await expect(visitorPage.locator('.test-stats-card')).toBeVisible();
+	await expect(visitorPage.locator('.test-stats-my-score')).toContainText('1/2');
+	await expect(
+		visitorPage.locator('[data-metric="submissions"] .test-stats-value')
+	).toHaveText('1');
+	await expect(visitorPage.locator('.test-stats-score-row')).toHaveCount(1);
 
 	const visitorSummaryStats = visitorPage.waitForResponse((response) =>
 		response.url().includes('/api/test/stats')
 	);
 	await visitorPage.goto(`/test?id=${testId}`);
 	await visitorSummaryStats;
-	await expect(visitorPage.locator('.test-stats-card')).toHaveCount(0);
+	await expect(visitorPage.locator('.test-stats-card')).toBeVisible();
+	await expect(
+		visitorPage.locator('[data-metric="submissions"] .test-stats-value')
+	).toHaveText('1');
 
 	const firstSummaryStats = page.waitForResponse((response) =>
 		response.url().includes('/api/test/stats')
 	);
 	await page.goto(`/test?id=${testId}`);
 	await firstSummaryStats;
-	await expect(page.locator('.test-stats-card')).toHaveCount(0);
+	// The creator sees the card before their own run: two visitors, one
+	// submission, and no own-score line yet.
+	await expect(page.locator('.test-stats-card')).toBeVisible();
+	await expect(page.locator('[data-metric="visitors"] .test-stats-value')).toHaveText('2');
+	await expect(page.locator('[data-metric="submissions"] .test-stats-value')).toHaveText('1');
+	await expect(page.locator('.test-stats-score-row')).toHaveCount(1);
+	await expect(page.locator('.test-stats-my-score')).toHaveCount(0);
 
-	// A second submission gives the card something to compare: it appears for
-	// both takers, with both public scores and the viewer's own row.
+	// A second submission adds the second public score and the creator's own
+	// row; the card was already visible with two visitors.
 	await answerFirstAndSubmit(page, new RegExp(`/results\\?id=${testId}`));
 	await expect(page.locator('.test-stats-card')).toBeVisible();
 	await expect(page.locator('.test-stats-my-score')).toContainText('1/2');
@@ -217,7 +242,7 @@ test('challenge name and params survive submission to the results page', async (
 	await expect(page.locator('.challenge-card')).toBeVisible();
 	const stats = await statsViaPage(page, testId);
 	expect(stats.body.scores[0]).toMatchObject({ name: 'Ravi', score: 1, total: 2 });
-	// This taker's single submission keeps the activity card hidden.
+	// A lone visitor keeps the activity card hidden: it needs a second one.
 	await expect(page.locator('.test-stats-card')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
