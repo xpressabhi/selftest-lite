@@ -79,7 +79,7 @@ export async function getExplainerBySlug(slug) {
 	}
 	await ensureStorageSchema();
 	const result = await query(
-		`SELECT payload, language, concept, slug
+		`SELECT payload, language, concept, slug, cache_key
 		 FROM concept_explainers
 		 WHERE slug = $1`,
 		[slug]

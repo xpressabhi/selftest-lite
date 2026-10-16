@@ -4,16 +4,14 @@ import {
 	normalizeUserIdValue,
 	query,
 } from './storage.js';
+import { buildVisitIdentityKey, normalizeClientId } from './visitIdentity.js';
+
+// Identity helpers live in ./visitIdentity.js so explainer stats share them;
+// re-exported here for the importers that already depend on this module.
+export { buildVisitIdentityKey } from './visitIdentity.js';
 
 const MAX_DISPLAY_NAME = 40;
 const MAX_PUBLIC_SCORES = 50;
-const MIN_CLIENT_ID_LENGTH = 8;
-
-function normalizeClientId(value) {
-	return typeof value === 'string' && value.trim().length >= MIN_CLIENT_ID_LENGTH
-		? value.trim().slice(0, 64)
-		: null;
-}
 
 function toIso(value) {
 	if (!value) {
@@ -21,19 +19,6 @@ function toIso(value) {
 	}
 	const date = value instanceof Date ? value : new Date(value);
 	return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-/**
- * Stable per-test identity. Signed-in users are keyed by their account so
- * visits survive a device change; anonymous visitors by the device id.
- */
-export function buildVisitIdentityKey({ userId = null, clientId = null } = {}) {
-	const normalizedUserId = normalizeUserIdValue(userId);
-	if (normalizedUserId) {
-		return `u:${normalizedUserId}`;
-	}
-	const normalizedClientId = normalizeClientId(clientId);
-	return normalizedClientId ? `c:${normalizedClientId}` : null;
 }
 
 /** Public names are opt-in and bounded: trim, drop control chars, cap length. */

@@ -83,7 +83,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -551,6 +551,24 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE UNIQUE INDEX IF NOT EXISTS idx_concept_explainers_slug
 			ON concept_explainers (slug) WHERE slug IS NOT NULL
+		`);
+
+		// Per-explainer visitor ledger for the public /explain pages: one row
+		// per identity that opened the page. The counter shown on the page
+		// derives from this table; rows are upserted by identity and never
+		// deleted (see AGENTS.md). No separate index: the UNIQUE constraint
+		// already serves the count query.
+		await query(`
+			CREATE TABLE IF NOT EXISTS explainer_visits (
+				id BIGSERIAL PRIMARY KEY,
+				cache_key TEXT NOT NULL REFERENCES concept_explainers(cache_key) ON DELETE CASCADE,
+				identity_key TEXT NOT NULL,
+				user_id BIGINT,
+				client_id TEXT,
+				first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				UNIQUE (cache_key, identity_key)
+			)
 		`);
 
 		// Per-identity explainer library: which cached explainers a user or
