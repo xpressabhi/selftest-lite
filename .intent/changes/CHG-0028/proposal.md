@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0028"
 title: "Show how many people have seen each public explain page"
-status: "draft"
+status: "complete"
 created_at: "2026-10-16T05:26:55Z"
 request: "can we add visitor counter on each explain page as well to see how many people have seen the explanation"
 proposal:

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import ArtifactFrame from '#lib/client/ArtifactFrame.svelte';
 	import ExplainerHeader from '#lib/client/ExplainerHeader.svelte';
+	import { getClientHeaders } from '#lib/client/identity.js';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { shareLink } from '#lib/client/shareLink.js';
@@ -14,9 +15,36 @@
 	let { data } = $props();
 
 	let dark = $state(false);
+	let visitors = $state(0);
 
 	onMount(() => {
 		dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+
+		// Viewer counter: the fetch records this visit, then returns the
+		// distinct-viewer count (including this one). Decorative — a failed
+		// fetch leaves the line hidden.
+		let canceled = false;
+		async function loadViews() {
+			try {
+				const response = await fetch(
+					`/api/explain/stats?slug=${encodeURIComponent(data.slug)}`,
+					{ cache: 'no-store', headers: getClientHeaders() }
+				);
+				if (!response.ok) {
+					return;
+				}
+				const payload = await response.json();
+				if (!canceled) {
+					visitors = Number(payload?.visitors || 0);
+				}
+			} catch {
+				// Decorative: the line stays absent.
+			}
+		}
+		void loadViews();
+		return () => {
+			canceled = true;
+		};
 	});
 
 	const html = $derived(dark ? data.htmlDark : data.htmlLight);
@@ -39,7 +67,13 @@
 />
 
 <section class="app-container py-4 py-md-5">
-	<ExplainerHeader title={data.title} summary={data.summary} tag="h1" size="page">
+	<ExplainerHeader
+		title={data.title}
+		summary={data.summary}
+		tag="h1"
+		size="page"
+		views={visitors}
+	>
 		<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void share()}>
 			{$t('playgroundShare')}
 		</button>

@@ -998,6 +998,7 @@
 	"errorExplainerInvalid": "एक्सप्लेनर ठीक नहीं बना। फिर कोशिश करें।",
 	"errorExplainerFailed": "एक्सप्लेनर बनाते समय कुछ गड़बड़ हुई।",
 	"explainCreateOwn": "अपना एक्सप्लेनर बनाएँ",
+	"explainViewedBy": "इसे {count} लोगों ने देखा है",
 	"visualExplainHeading": "विज़ुअल व्याख्या",
 	"visualBuild": "विज़ुअल व्याख्या बनाएँ",
 	"visualShow": "विज़ुअल व्याख्या देखें",

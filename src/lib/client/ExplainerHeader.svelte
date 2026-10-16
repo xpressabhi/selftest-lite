@@ -1,10 +1,14 @@
 <script>
+	import { t } from '#lib/client/i18n.js';
+
 	// The one explainer masthead, shared by the playground result card and the
 	// public /explain page so both surfaces present the same title, summary and
 	// action placement. `tag`/`size` keep platform semantics right: the public
 	// page owns the document h1, the playground card is a section of a page
-	// whose h1 is "Playground".
-	let { title = '', summary = '', tag = 'h2', size = 'card', children } = $props();
+	// whose h1 is "Playground". `views` is the public page's viewer counter:
+	// the line renders from the second viewer on; the playground card passes
+	// nothing and stays unchanged.
+	let { title = '', summary = '', tag = 'h2', size = 'card', views = 0, children } = $props();
 </script>
 
 <header class="explainer-header" class:is-page={size === 'page'}>
@@ -12,6 +16,9 @@
 		<svelte:element this={tag} class="explainer-header-title">{title}</svelte:element>
 		{#if summary}
 			<p class="explainer-header-summary">{summary}</p>
+		{/if}
+		{#if Number(views) >= 2}
+			<p class="explainer-header-views">{$t('explainViewedBy', { count: views })}</p>
 		{/if}
 	</div>
 	{#if children}
@@ -43,6 +50,12 @@
 		margin: 0;
 		color: var(--text-muted);
 		font-size: 0.9rem;
+	}
+
+	.explainer-header-views {
+		margin: 6px 0 0;
+		color: var(--text-muted);
+		font-size: 0.85rem;
 	}
 
 	.explainer-header-actions {

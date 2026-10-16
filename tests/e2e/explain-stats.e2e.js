@@ -19,7 +19,9 @@ async function seedCounterExplainer(sql, { cacheKey, slug }) {
 	`;
 }
 
-test('explainer stats records distinct viewers and rejects bad slugs', async ({ request }, testInfo) => {
+test('explainer stats records distinct viewers and rejects bad slugs', async ({
+	request,
+}, testInfo) => {
 	const sql = sqlClient(request);
 	await connectOrSkip(sql);
 	// Warm the schema through a real API request; the bridge does not create tables.
@@ -68,4 +70,60 @@ test('explainer stats records distinct viewers and rejects bad slugs', async ({ 
 			unknownSlugStatus: unknownSlug.status(),
 		}),
 	});
+});
+
+test('public explain page shows the counter from the second viewer', async ({
+	browser,
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	await request.get('/api/test?id=1');
+	const cacheKey = 'e2e-counter-probe-2';
+	const slug = 'e2e-counter-probe-00000002';
+	await seedCounterExplainer(sql, { cacheKey, slug });
+
+	// First viewer: the fetch records them, the line stays hidden.
+	const ctx1 = await browser.newContext();
+	const page1 = await ctx1.newPage();
+	const firstStats = page1.waitForResponse((response) =>
+		response.url().includes('/api/explain/stats')
+	);
+	await page1.goto(`/explain/${slug}`);
+	await firstStats;
+	await expect(page1.locator('.explainer-header-views')).toHaveCount(0);
+	// Server-side truth: exactly one viewer (an identity-less probe never adds rows).
+	const afterFirst = await request.get(`/api/explain/stats?slug=${slug}`);
+	expect((await afterFirst.json()).visitors).toBe(1);
+
+	// Second viewer (fresh context → fresh device id): the line appears.
+	const ctx2 = await browser.newContext();
+	const page2 = await ctx2.newPage();
+	const secondStats = page2.waitForResponse((response) =>
+		response.url().includes('/api/explain/stats')
+	);
+	await page2.goto(`/explain/${slug}`);
+	await secondStats;
+	await expect(page2.locator('.explainer-header-views')).toBeVisible();
+	await expect(page2.locator('.explainer-header-views')).toHaveText('Viewed by 2 people');
+
+	// The Hindi twin shares the explainer: same count, localized copy, no new viewer.
+	const hindiStats = page2.waitForResponse((response) =>
+		response.url().includes('/api/explain/stats')
+	);
+	await page2.goto(`/hi/explain/${slug}`);
+	await hindiStats;
+	await expect(page2.locator('.explainer-header-views')).toHaveText('इसे 2 लोगों ने देखा है');
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({
+			visitorsAfterFirst: 1,
+			visitorsAfterSecond: 2,
+			englishText: 'Viewed by 2 people',
+			hindiText: 'इसे 2 लोगों ने देखा है',
+		}),
+	});
+	await ctx1.close();
+	await ctx2.close();
 });
