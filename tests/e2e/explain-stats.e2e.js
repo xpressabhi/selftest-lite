@@ -90,7 +90,16 @@ test('public explain page shows the counter from the second viewer', async ({
 		response.url().includes('/api/explain/stats')
 	);
 	await page1.goto(`/explain/${slug}`);
-	await firstStats;
+	const firstResponse = await firstStats;
+	expect(firstResponse.status()).toBe(200);
+	await firstResponse.finished();
+	// Let Svelte flush the fetched state before asserting absence: the
+	// response event fires before the body is processed, and an absent-element
+	// check passes immediately — without this settle the assertion could pass
+	// even if the line wrongly rendered at one viewer.
+	await page1.evaluate(
+		() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+	);
 	await expect(page1.locator('.explainer-header-views')).toHaveCount(0);
 	// Server-side truth: exactly one viewer (an identity-less probe never adds rows).
 	const afterFirst = await request.get(`/api/explain/stats?slug=${slug}`);

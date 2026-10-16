@@ -29,6 +29,10 @@ Each public explain page (`/explain/<slug>` and `/hi/explain/<slug>`) shows "Vie
 - The two `schemaMigrations.test.js` failures before the fingerprint update were the warm-database guard working as designed; the single declared edit fixed both.
 - No separate index on `explainer_visits`: the UNIQUE (cache_key, identity_key) constraint serves the count query.
 
+## Final review
+
+Whole-branch review (fresh context, range e4e6b55..a18cc7c): one Important finding — the lone-viewer assertion could pass vacuously (the response event fires before the body is processed, and an absent-element check passes immediately), and it is the only guard for "a lone viewer sees nothing". Fixed: the check now asserts the response status, awaits `finished()`, and settles two animation frames before asserting absence. Verified by a temporary 1-viewer gate regression: the hardened assertion failed against it (`Received: 1`), then passed with the gate restored; full suite 235/235 after the fix. One Minor deferred (the browser test's evidence block restates assertion constants instead of observed values).
+
 ## Approval constraints
 
 Not required.
