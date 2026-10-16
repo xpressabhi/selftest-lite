@@ -1258,6 +1258,9 @@
 		margin: 0 auto 12px;
 		place-items: center;
 		border-radius: var(--radius-overlay);
+		/* Triplet fallback (identical composite over --surface), then the
+		   exact mix for browsers that support color-mix(). */
+		background: rgba(var(--brand-rgb), 0.12);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
 		color: var(--brand-text);
 	}
@@ -1316,8 +1319,10 @@
 	.test-trimmed-notice {
 		margin: 0 0 16px;
 		padding: 9px 12px;
+		border: 1px solid rgba(var(--warn-rgb), 0.4);
 		border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
 		border-radius: var(--radius-surface);
+		background: rgba(var(--warn-rgb), 0.1);
 		background: color-mix(in srgb, var(--warn) 10%, transparent);
 		color: var(--warn);
 		font-size: 0.8rem;

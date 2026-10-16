@@ -81,6 +81,14 @@ Quizzes are generated via complex prompts in `src/lib/server/prompt.js`.
 ### 4. Styling System
 
 - **Tailwind**: Generated through the SvelteKit PostCSS pipeline.
+- **Palette compatibility**: Tailwind v4's default palette is `oklch()`-only, which
+  browsers below Chrome/Edge 111 and Firefox 113 (e.g. Chrome 109 on Windows 7/8.1)
+  cannot parse — fills silently disappear and white-ink buttons go invisible
+  (`.btn-success`). The families the app uses (slate, red, amber, emerald) are re-declared
+  as sRGB hex in `globals.css`; add new families/shades there — `src/lib/styles/palette.test.js`
+  fails otherwise. For tints prefer `rgba(var(--…-rgb), α)`, or keep an `rgba()` fallback
+  line before any `color-mix()`, and never put `color-mix()`/`dvh` inside a value that is
+  consumed through `var()` (it becomes invalid at computed-value time instead of falling back).
 - **Custom CSS**: Shared variables and Tailwind component primitives live in `src/lib/styles/globals.css`.
 - **Animations**: Prefer subtle transforms and transitions for a "premium" feel; the OS `prefers-reduced-motion` setting disables them globally via `globals.css`.
 

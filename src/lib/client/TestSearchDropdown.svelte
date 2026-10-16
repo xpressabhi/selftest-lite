@@ -331,12 +331,17 @@
 		   input and the top of the visible area. The visible top is whichever is
 		   lower: the safe area (status bar / Dynamic Island) or the sticky app
 		   header, so the panel's title never hides behind either. */
+		/* The fallback cannot be dvh: this value is consumed through
+		   var(--search-top), so an unsupported unit is invalid at
+		   computed-value time instead of falling back. The composer
+		   measures --search-top; 100vh only applies before the first
+		   measure. */
 		max-height: max(
 			140px,
 			min(
 				340px,
 				calc(
-					var(--search-top, 100dvh) -
+					var(--search-top, 100vh) -
 						max(env(safe-area-inset-top, 0px), var(--search-block-top, 0px)) - 20px
 				)
 			)

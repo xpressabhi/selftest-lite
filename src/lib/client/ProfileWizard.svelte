@@ -531,6 +531,7 @@
 		position: relative;
 		width: 100%;
 		max-width: 460px;
+		max-height: min(620px, 90vh);
 		max-height: min(620px, 90dvh);
 		overflow-y: auto;
 		padding: 24px 20px 16px;

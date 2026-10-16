@@ -68,6 +68,21 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
 - One accent (indigo). Dark mode swaps `--brand-text`; anything that must keep contrast in
   both themes uses `var(--brand-text)` with a token mix, never a fixed `brand-100/700`.
 - Shadows and borders follow the same hue in both themes; no pure black on light surfaces.
+- Tailwind's default palette is `oklch()`-only. Browsers below Chrome/Edge 111 and
+  Firefox 113 cannot parse it, and a `var(--color-*)` fill then falls back to nothing —
+  `.btn-success` (emerald fill, white ink) renders as a white-on-white invisible button.
+  Every palette family the app uses (slate, red, amber, emerald) is re-declared as sRGB
+  hex in `globals.css`'s `@theme`; the hex values are the Chromium-rasterised sRGB
+  equivalents of Tailwind's oklch values. `src/lib/styles/palette.test.js` fails when a
+  new family or shade is used without a matching override.
+- `color-mix()` needs the same browsers. Build tints with a triplet
+  `rgba(var(--…-rgb), α)` when the value must survive everywhere; where both forms are
+  kept, declare the `rgba()` line first and the `color-mix()` line second — the fallback
+  is honoured only if the later declaration is dropped at parse time. A token that
+  itself holds `color-mix()` (`--focus-ring`) cannot be rescued by a second declaration,
+  because the substituted value is invalid at computed-value time; make the token itself
+  the `rgba()` form. Where a value resolves through `var()` (e.g. `--search-top`), an
+  unsupported unit in the fallback is invalid for the same reason — use `vh`, not `dvh`.
 
 ### State pills
 
@@ -91,9 +106,10 @@ A brand-tinted pill uses `--color-brand-600`, which is an `@theme` step and does
 with the theme; it reads as ink via the paired `--brand-text`. Both forms are correct as long
 as the fill and the ink are declared together.
 
-Nothing enforces this yet. `taste-pass.e2e.js` checks computed contrast for `.btn-primary`
-only. A repo-wide sweep needs an explicit `color(srgb …)` / `oklch()` → RGB converter, which
-is the outstanding piece of work.
+`taste-pass.e2e.js` checks computed contrast and fill opacity for the filled buttons
+(`.btn-primary`, `.btn-success`, `.btn-warning`) in both themes, but nothing enforces the
+per-component tint rules yet. A repo-wide sweep needs an explicit `color(srgb …)` /
+`oklch()` → RGB converter, which is the outstanding piece of work.
 
 ## Layers
 

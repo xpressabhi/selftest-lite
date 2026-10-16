@@ -137,6 +137,17 @@ export default defineConfig(({ command }) => {
 		],
 		build: {
 			sourcemap: false,
+			// The CSS floor is deliberately lower than the JS baseline
+			// ('baseline-widely-available' = Chrome/Edge 111, Firefox 114,
+			// Safari 16.4). The minifier (lightningcss) removes an earlier
+			// declaration when a later one is provably valid for *its*
+			// targets, which silently deleted every `vh` fallback in front of
+			// a `dvh` value (and would delete future color-space fallbacks).
+			// These targets keep the double declarations alive, let the
+			// minifier lower computable color-mix()/oklch() automatically,
+			// and match the fallback work in src/lib/styles/globals.css for
+			// pre-oklch browsers (e.g. Chrome 109 on Windows 7/8.1).
+			cssTarget: ['chrome107', 'edge107', 'firefox104', 'safari16', 'ios16'],
 		},
 	};
 });

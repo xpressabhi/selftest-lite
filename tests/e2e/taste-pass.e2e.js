@@ -122,13 +122,19 @@ for (const path of ['/', '/practice', '/about', '/faq', '/blog', '/contact']) {
 	});
 }
 
-test('primary buttons keep WCAG AA contrast in both themes', async ({ page }, testInfo) => {
+test('filled buttons keep WCAG AA contrast and an opaque fill in both themes', async ({
+	page,
+}, testInfo) => {
 	await page.goto('/');
-	const ratios = await page.evaluate(() => {
+	const results = await page.evaluate(() => {
 		const parse = (value) => {
 			const match = value.match(/rgba?\(([^)]+)\)/);
-			if (!match) return [0, 0, 0];
-			return match[1].split(',').slice(0, 3).map((part) => Number(part.trim()));
+			if (!match) return { rgb: [0, 0, 0], alpha: 1 };
+			const parts = match[1].split(',').map((part) => part.trim());
+			return {
+				rgb: parts.slice(0, 3).map((part) => Number(part)),
+				alpha: parts.length > 3 ? Number(parts[3]) : 1,
+			};
 		};
 		const luminance = ([r, g, b]) => {
 			const channel = (c) => {
@@ -141,28 +147,44 @@ test('primary buttons keep WCAG AA contrast in both themes', async ({ page }, te
 			const [l1, l2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
 			return (l1 + 0.05) / (l2 + 0.05);
 		};
-		const probe = document.createElement('button');
-		probe.className = 'btn btn-primary';
-		probe.textContent = 'Contrast probe';
-		probe.id = 'contrast-probe';
-		document.body.appendChild(probe);
-		const measure = () => {
-			const styles = getComputedStyle(probe);
-			return contrast(parse(styles.color), parse(styles.backgroundColor));
-		};
-		const light = measure();
+		// The emerald `.btn-success` is the fill that once vanished on
+		// pre-oklch browsers (white ink on a transparent background): assert
+		// both an opaque fill and contrast, so a broken fill can never pass.
+		const probes = ['btn btn-primary', 'btn btn-success', 'btn btn-warning'];
+		const measureAll = () =>
+			Object.fromEntries(
+				probes.map((className) => {
+					const probe = document.createElement('button');
+					probe.className = className;
+					probe.textContent = 'Contrast probe';
+					document.body.appendChild(probe);
+					const styles = getComputedStyle(probe);
+					const ink = parse(styles.color);
+					const fill = parse(styles.backgroundColor);
+					probe.remove();
+					return [className, { ratio: contrast(ink.rgb, fill.rgb), fillAlpha: fill.alpha }];
+				})
+			);
+		const light = measureAll();
 		document.documentElement.classList.add('dark');
-		const dark = measure();
+		const dark = measureAll();
 		document.documentElement.classList.remove('dark');
-		probe.remove();
 		return { light, dark };
 	});
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify(ratios, null, 2),
+		body: JSON.stringify(results, null, 2),
 	});
-	expect(ratios.light).toBeGreaterThanOrEqual(4.5);
-	expect(ratios.dark).toBeGreaterThanOrEqual(4.5);
+	for (const theme of ['light', 'dark']) {
+		for (const [className, measured] of Object.entries(results[theme])) {
+			expect
+				.soft(measured.fillAlpha, `${theme} ${className}: fill must be opaque`)
+				.toBe(1);
+			expect
+				.soft(measured.ratio, `${theme} ${className}: ink on fill must reach AA`)
+				.toBeGreaterThanOrEqual(4.5);
+		}
+	}
 });
 
 test('reduced motion collapses animations', async ({ page }, testInfo) => {

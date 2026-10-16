@@ -141,6 +141,9 @@
 	.review-sheet {
 		width: 100%;
 		max-width: 560px;
+		/* vh fallback first: browsers without dvh drop the line below, and a
+		   sheet without a max-height pushes its footer past the viewport. */
+		max-height: min(82vh, 640px);
 		max-height: min(82dvh, 640px);
 		display: flex;
 		flex-direction: column;
@@ -296,6 +299,9 @@
 		margin: 0 0 10px;
 		padding: 8px 12px;
 		border-radius: var(--radius-control);
+		/* Triplet rgba() first: identical tint, also renders where
+		   color-mix() is unsupported; the mix below wins where it is. */
+		background: rgba(var(--warn-rgb), 0.12);
 		background: color-mix(in srgb, var(--warn) 12%, transparent);
 		color: var(--warn);
 		font-size: 0.85rem;
@@ -306,6 +312,7 @@
 		margin: 0 0 10px;
 		padding: 8px 12px;
 		border-radius: var(--radius-control);
+		background: rgba(var(--danger-rgb), 0.12);
 		background: color-mix(in srgb, var(--danger) 12%, transparent);
 		color: var(--danger);
 		font-size: 0.85rem;

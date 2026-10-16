@@ -66,6 +66,66 @@ body {
 	--color-spark-glint: #f0abfc;
 }
 
+/* sRGB fallbacks for Tailwind's default palette.
+   Tailwind v4 ships its palette in oklch(). Browsers that predate it —
+   Chrome/Edge < 111, Firefox < 113, e.g. Chrome 109 (the last build for
+   Windows 7/8.1) — treat a `var(--color-*)` value they cannot parse as
+   invalid at computed-value time, so the property silently falls back to its
+   initial value. `.btn-success` (emerald fill + white ink) then renders as
+   white text on a white page: the invisible submit button reported from a
+   Windows PC. Re-declaring the families the app uses as sRGB hex keeps every
+   utility working on those browsers; the hex values are the 8-bit sRGB
+   equivalents of Tailwind's oklch defaults (rasterised through Chromium), so
+   capable browsers paint the identical colour.
+   `palette.test.js` fails when a new palette family or shade is used without
+   a matching hex override here. */
+@theme {
+	--color-slate-50: #f8fafc;
+	--color-slate-100: #f1f5f9;
+	--color-slate-200: #e2e8f0;
+	--color-slate-300: #cad5e2;
+	--color-slate-400: #90a1b9;
+	--color-slate-500: #62748e;
+	--color-slate-600: #45556c;
+	--color-slate-700: #314158;
+	--color-slate-800: #1d293d;
+	--color-slate-900: #0f172b;
+	--color-slate-950: #020618;
+	--color-red-50: #fef2f2;
+	--color-red-100: #ffe2e2;
+	--color-red-200: #ffc9c9;
+	--color-red-300: #ffa2a2;
+	--color-red-400: #ff6467;
+	--color-red-500: #fb2c36;
+	--color-red-600: #e7000b;
+	--color-red-700: #c10007;
+	--color-red-800: #9f0712;
+	--color-red-900: #82181a;
+	--color-red-950: #460809;
+	--color-amber-50: #fffbeb;
+	--color-amber-100: #fef3c6;
+	--color-amber-200: #fee685;
+	--color-amber-300: #ffd230;
+	--color-amber-400: #ffb900;
+	--color-amber-500: #fe9a00;
+	--color-amber-600: #e17100;
+	--color-amber-700: #bb4d00;
+	--color-amber-800: #973c00;
+	--color-amber-900: #7b3306;
+	--color-amber-950: #461901;
+	--color-emerald-50: #ecfdf5;
+	--color-emerald-100: #d0fae5;
+	--color-emerald-200: #a4f4cf;
+	--color-emerald-300: #5ee9b5;
+	--color-emerald-400: #00d492;
+	--color-emerald-500: #00bc7d;
+	--color-emerald-600: #009966;
+	--color-emerald-700: #007a55;
+	--color-emerald-800: #006045;
+	--color-emerald-900: #004f3b;
+	--color-emerald-950: #002c22;
+}
+
 @keyframes thinking-dot {
 	0%,
 	80%,
@@ -156,6 +216,10 @@ body {
 	   way. `--rgb` flips per theme, so one rule serves both. */
 	--ok-rgb: 21, 128, 61;
 	--warn-rgb: 180, 83, 9;
+	--danger-rgb: 185, 28, 28;
+	/* `--text` as a triplet, so components can build alpha tints with plain
+	   rgba() where color-mix() is unsupported (see `--focus-ring` below). */
+	--text-rgb: 17, 24, 39;
 	/* Fixed fills for banners and solid state chips (same in both themes). A
 	   fill and its ink are declared together so they cannot drift apart. */
 	--ok-fill: #15803d;
@@ -192,8 +256,13 @@ body {
 	   `rgb()` around the triplet is required: `--brand-rgb` is `79, 70, 229`,
 	   a bare comma list, and color-mix() needs a <color>. Without the wrapper
 	   the whole declaration is invalid at computed-value time and box-shadow
-	   silently falls back to none, which is what this token did first. */
-	--focus-ring: 0 0 0 3px color-mix(in srgb, rgb(var(--brand-rgb)) 20%, transparent);
+	   silently falls back to none, which is what this token did first.
+
+	   Switched to the legacy `rgba(var(--brand-rgb), …)` comma syntax: this
+	   token is consumed through var(), so on a browser without color-mix()
+	   the substituted value would be invalid and the ring would silently
+	   disappear. The triplet keeps the recipe theme-aware. */
+	--focus-ring: 0 0 0 3px rgba(var(--brand-rgb), 0.2);
 	/* Brand color for text/iconography on surfaces. Dark mode swaps to a
 	   lighter tint so contrast holds on dark backgrounds; fills keep using
 	   --brand-rgb (white text stays readable). */
@@ -222,6 +291,8 @@ body {
 	--danger: #fca5a5;
 	--ok-rgb: 110, 231, 183;
 	--warn-rgb: 252, 211, 77;
+	--danger-rgb: 252, 165, 165;
+	--text-rgb: 248, 250, 252;
 	--brand-text-rgb: 165, 180, 252;
 	--brand-text: #a5b4fc;
 	--backdrop: rgb(2 6 23 / 0.72);
@@ -367,6 +438,13 @@ select {
 	.form-select {
 		@apply block min-h-11 w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-xs outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50;
 	}
+	/* Tailwind's preflight builds the placeholder ink with color-mix(); where
+	   that is unsupported the declaration is dropped and placeholders fall
+	   back to the input's full ink (they read as typed text). The triplet
+	   rgba() is the same 50% blend and renders on every browser. */
+	::placeholder {
+		color: rgba(var(--text-rgb), 0.5);
+	}
 	.input-group {
 		@apply flex;
 	}
@@ -468,6 +546,11 @@ select {
 	.chip.active,
 	.chip[aria-pressed='true'],
 	.chip:focus-visible {
+		/* Triplet fallbacks first: identical colour, and they survive browsers
+		   without color-mix(). The mixes below win where supported and keep
+		   the exact blend against --surface. */
+		border-color: rgba(var(--brand-rgb), 0.75);
+		background: rgba(var(--brand-rgb), 0.12);
 		border-color: color-mix(in srgb, var(--color-brand-600) 75%, transparent);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
 		color: var(--brand-text);

@@ -101,7 +101,9 @@
 		top: 0;
 		bottom: 0;
 		left: 0;
-		background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
+		/* rgba(var(--brand-rgb)) is the exact same 18% brand-600 tint as a
+		   color-mix(), but also renders without color-mix() support. */
+		background: rgba(var(--brand-rgb), 0.18);
 		transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
@@ -117,7 +119,9 @@
 		gap: 4px;
 		padding: 0 12px;
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--warn) 14%, transparent);
+		/* Triplet rgba(): identical 14% warn tint that flips with the theme,
+		   and it survives browsers without color-mix(). */
+		background: rgba(var(--warn-rgb), 0.14);
 		color: var(--warn);
 		font-size: 0.8rem;
 		font-weight: 700;

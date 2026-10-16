@@ -2052,6 +2052,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+		height: clamp(440px, 68vh, 720px);
 		height: clamp(440px, 68dvh, 720px);
 		padding: 1rem;
 		border: 1px solid var(--line);
@@ -2062,7 +2063,11 @@
 
 	@media (max-width: 480px) {
 		.planner-panel {
-			height: clamp(300px, calc(min(var(--vvh, 100dvh), 100dvh) * 0.62), 560px);
+			/* vh, not dvh: the declaration is consumed through var(--vvh), so
+			   a dvh variant would be invalid at computed-value time on
+			   browsers without dvh instead of falling back. --vvh tracks the
+			   visual viewport, so the min() picks the same value either way. */
+			height: clamp(300px, calc(min(var(--vvh, 100vh), 100vh) * 0.62), 560px);
 			padding: 0.75rem;
 		}
 	}

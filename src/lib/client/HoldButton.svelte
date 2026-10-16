@@ -145,7 +145,10 @@
 		overflow: hidden;
 		transform: scaleY(0);
 		transform-origin: bottom;
-		background: color-mix(in srgb, var(--text) 24%, transparent);
+		/* Same 24% ink blend as a color-mix() tint, but the triplet rgba()
+		   form still renders where color-mix() is unsupported — the hold
+		   progress is the only feedback for the hold-to-submit gesture. */
+		background: rgba(var(--text-rgb), 0.24);
 		transition: transform 140ms ease-out;
 	}
 

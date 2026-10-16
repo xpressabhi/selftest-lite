@@ -452,11 +452,18 @@
 		   freezes it into a static gradient border. */
 		--ring-base: color-mix(in srgb, var(--color-brand-600) 28%, var(--line));
 		border: 2px solid transparent;
-		background:
-			linear-gradient(var(--surface), var(--surface)) padding-box,
-			/* Counter-rotating glints, over the comet trains below. */
+		/* Surface fill as background-color, separate from the ring layers:
+		   where color-mix() is unsupported the background-image below is
+		   invalid at computed-value time (it resolves through var()), and a
+		   `background` shorthand would take the fill down with the ring. */
+		background-color: var(--surface);
+		background-image:
+			linear-gradient(var(--surface), var(--surface)),
+			/* Counter-rotating glints, over the comet trains below.
+			   The 0deg fallbacks keep the ring rendering as a static
+			   gradient in browsers without @property (Firefox < 128). */
 			conic-gradient(
-					from var(--spark-angle),
+					from var(--spark-angle, 0deg),
 					transparent 0deg,
 					transparent 30deg,
 					var(--color-spark-glint) 34deg,
@@ -475,11 +482,10 @@
 					var(--color-spark-glint) 314deg,
 					transparent 318deg,
 					transparent 360deg
-				)
-				border-box,
+				),
 			/* Two comets: pink head, violet and sky tails. */
 			conic-gradient(
-					from var(--ring-angle),
+					from var(--ring-angle, 0deg),
 					var(--color-spark-pink) 0deg,
 					var(--color-spark-violet) 16deg,
 					var(--color-spark-sky) 34deg,
@@ -495,8 +501,12 @@
 					var(--color-spark-sky) 326deg,
 					var(--color-spark-violet) 344deg,
 					var(--color-spark-pink) 360deg
-				)
-				border-box;
+				);
+		/* Origin/clip keywords are only valid in the `background` shorthand;
+		   as separate properties they describe the same layering: the first
+		   layer fills the padding box, the ring layers paint the border. */
+		background-origin: padding-box, border-box, border-box;
+		background-clip: padding-box, border-box, border-box;
 		animation:
 			brand-ring 8s linear infinite,
 			brand-sparks 4s cubic-bezier(0.6, 0, 0.4, 1) infinite;
