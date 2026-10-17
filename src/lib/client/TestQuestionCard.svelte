@@ -249,14 +249,12 @@
 		color: var(--text-muted);
 		font-size: 0.8rem;
 		font-weight: 700;
-		opacity: 0.65;
 	}
 
 	.test-hint.ready {
 		border-color: var(--brand-text);
 		background: color-mix(in srgb, var(--color-brand-600) 12%, var(--surface));
 		color: var(--brand-text);
-		opacity: 1;
 	}
 
 	.test-hint.used {
@@ -388,7 +386,7 @@
 
 	.test-option.eliminated {
 		cursor: not-allowed;
-		opacity: 0.55;
+		color: var(--text-muted);
 		transform: scale(0.985);
 		transition:
 			border-color 150ms ease,

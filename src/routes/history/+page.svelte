@@ -6,6 +6,7 @@
 	import { language } from '#lib/client/preferences.js';
 	import { formatDate, localeFor } from '#lib/client/formatting.js';
 	import FuseButton from '#lib/client/FuseButton.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import { track, trackDebounced } from '#lib/client/telemetry.js';
 	import { buildReviewQueue, formatDuration, getStats } from '#lib/client/learning.js';
@@ -24,6 +25,7 @@
 	let isHydrating = $state(false);
 	let pendingCount = $state(0);
 	let pendingDelete = $state(null);
+	let showClearConfirm = $state(false);
 	let historyReranked = false;
 
 	let filteredHistory = $derived(
@@ -105,12 +107,10 @@
 	}
 
 	function clearHistory() {
-		if (!confirm($t('clearHistoryConfirm'))) {
-			return;
-		}
 		clearAllHistory();
 		track('history:clear');
 		refreshHistory();
+		showClearConfirm = false;
 	}
 
 	// Deleting is a two-step affordance now: the first press arms the button
@@ -207,12 +207,22 @@
 				</span>
 			{/if}
 			{#if history.length > 0}
-				<button class="clear-link" type="button" onclick={clearHistory}>
+				<button class="clear-link" type="button" onclick={() => (showClearConfirm = true)}>
 					{$t('clear')}
 				</button>
 			{/if}
 		</div>
 	</header>
+
+	{#if showClearConfirm}
+		<ConfirmDialog
+			title={$t('clearHistoryConfirm')}
+			confirmLabel={$t('clear')}
+			cancelLabel={$t('cancel')}
+			onconfirm={clearHistory}
+			oncancel={() => (showClearConfirm = false)}
+		/>
+	{/if}
 
 	{#if stats.totalTests > 0}
 		<section class="stat-strip" aria-label={$t('history')}>

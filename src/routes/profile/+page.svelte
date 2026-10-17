@@ -4,6 +4,7 @@
 	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import SquishSwitch from '#lib/client/SquishSwitch.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
@@ -76,6 +77,7 @@
 	let saving = $state(false);
 	let saveQueued = false;
 	let resetting = $state(false);
+	let showResetConfirm = $state(false);
 	let isSigningIn = $state(false);
 	let signInError = $state('');
 	let loadError = $state('');
@@ -242,10 +244,15 @@
 		}
 	}
 
-	async function handleReset() {
-		if (resetting || !window.confirm($t('profileResetConfirm'))) {
+	function handleReset() {
+		if (resetting) {
 			return;
 		}
+		showResetConfirm = true;
+	}
+
+	async function confirmReset() {
+		showResetConfirm = false;
 		resetting = true;
 		try {
 			await resetProfile();
@@ -671,6 +678,16 @@
 							{resetting ? $t('deleting') : $t('profileResetButton')}
 						</button>
 					</div>
+
+					{#if showResetConfirm}
+						<ConfirmDialog
+							title={$t('profileResetConfirm')}
+							confirmLabel={$t('profileResetButton')}
+							cancelLabel={$t('cancel')}
+							onconfirm={confirmReset}
+							oncancel={() => (showResetConfirm = false)}
+						/>
+					{/if}
 				{/if}
 
 				<section class="panel">

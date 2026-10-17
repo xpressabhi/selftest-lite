@@ -5,6 +5,7 @@
 	import Icon from '#lib/client/Icon.svelte';
 	import { getClientHeaders } from '#lib/client/identity.js';
 	import { localizedApiError, t } from '#lib/client/i18n.js';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import { language } from '#lib/client/preferences.js';
 	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '#lib/client/countUp.js';
 	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '#lib/client/haptics.js';
@@ -114,8 +115,6 @@
 	let shareSheetFirstItem = $state();
 	let reminderToggleEl = $state();
 	let showRetakeConfirm = $state(false);
-	let retakeTrigger = $state();
-	let retakeConfirmButton = $state();
 	let nudgeKind = $state(null);
 	let nudgeParams = $state({});
 	let nudgeDismissed = $state(false);
@@ -1430,16 +1429,12 @@
 		return `/?${params.toString()}`;
 	}
 
-	async function requestRetake() {
+	function requestRetake() {
 		showRetakeConfirm = true;
-		await tick();
-		retakeConfirmButton?.focus({ preventScroll: true });
 	}
 
-	async function cancelRetake() {
+	function cancelRetake() {
 		showRetakeConfirm = false;
-		await tick();
-		retakeTrigger?.focus({ preventScroll: true });
 	}
 
 	function retakeTest() {
@@ -1623,12 +1618,7 @@
 
 		<div class="hero-utility no-print">
 			<button class="utility-link" type="button" onclick={printResult}>{$t('print')}</button>
-			<button
-				bind:this={retakeTrigger}
-				class="utility-link"
-				type="button"
-				onclick={requestRetake}
-			>
+			<button class="utility-link" type="button" onclick={requestRetake}>
 				{$t('retakeTest')}
 			</button>
 			<span class="utility-id">{$t('testId')}: {questionPaper.id}</span>
@@ -1677,31 +1667,14 @@
 		{/if}
 
 		{#if showRetakeConfirm}
-			<div
-				class="retake-confirm result-retake no-print"
-				role="group"
-				aria-label={$t('retakeConfirmTitle')}
-			>
-				<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
-				<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
-				<div class="d-flex flex-wrap gap-2">
-					<button
-						bind:this={retakeConfirmButton}
-						class="btn btn-sm btn-danger"
-						type="button"
-						onclick={retakeTest}
-					>
-						{$t('retakeTest')}
-					</button>
-					<button
-						class="btn btn-sm btn-outline-secondary"
-						type="button"
-						onclick={cancelRetake}
-					>
-						{$t('cancel')}
-					</button>
-				</div>
-			</div>
+			<ConfirmDialog
+				title={$t('retakeConfirmTitle')}
+				body={$t('retakeConfirmBody')}
+				confirmLabel={$t('retakeTest')}
+				cancelLabel={$t('cancel')}
+				onconfirm={retakeTest}
+				oncancel={cancelRetake}
+			/>
 		{/if}
 
 		{#if challengeOutcome}
@@ -2160,7 +2133,7 @@
 
 	.hero-utility > * + *::before {
 		margin-right: 10px;
-		color: var(--line);
+		color: var(--text-muted);
 		content: '·';
 	}
 
@@ -2174,7 +2147,7 @@
 		color: var(--text-muted);
 		font: inherit;
 		text-decoration: underline;
-		text-decoration-color: var(--line);
+		text-decoration-color: currentColor;
 		text-underline-offset: 3px;
 	}
 
@@ -2196,10 +2169,6 @@
 	.reminder-link-icon {
 		display: inline-flex;
 		color: var(--brand-text);
-	}
-
-	.result-retake {
-		margin-top: 10px;
 	}
 
 	.auto-explain-row {
@@ -2292,26 +2261,6 @@
 
 	.challenge-card {
 		border-color: color-mix(in srgb, var(--color-brand-600) 35%, transparent);
-	}
-
-	.retake-confirm {
-		flex: 1 1 100%;
-		padding: 10px 12px;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-control);
-		background: var(--surface-muted);
-	}
-
-	.retake-confirm-title {
-		margin: 0;
-		font-size: 0.9rem;
-		font-weight: 700;
-	}
-
-	.retake-confirm-body {
-		margin: 2px 0 10px;
-		color: var(--text-muted);
-		font-size: 0.8rem;
 	}
 
 	.filter-bar {

@@ -11,6 +11,7 @@
 		saveQuestionBookmarks,
 	} from '#lib/client/storage.js';
 	import Icon from '#lib/client/Icon.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import MarkdownContent from '#lib/client/MarkdownContent.svelte';
 	import { hydrateUserState } from '#lib/client/sync.js';
 	import { getIndianExamById, localizedStream } from '#lib/data/indianExams.js';
@@ -18,6 +19,7 @@
 	let examIds = $state([]);
 	let presets = $state([]);
 	let questionBookmarks = $state([]);
+	let pendingRemoval = $state(null);
 
 	let exams = $derived(
 		examIds
@@ -38,30 +40,47 @@
 		});
 	});
 
-	function removeExam(examId) {
-		if (!confirm($t('removeBookmarkConfirm'))) {
-			return;
-		}
-		examIds = examIds.filter((id) => id !== examId);
-		saveBookmarkedExamIds(examIds);
-		track('bookmark:remove-exam', { examId });
+	function askRemoveExam(exam) {
+		pendingRemoval = { kind: 'exam', id: exam.id, label: exam.name };
 	}
 
-	function removePreset(presetId) {
-		if (!confirm($t('removeBookmarkConfirm'))) {
-			return;
-		}
-		presets = presets.filter((preset) => preset.id !== presetId);
-		saveBookmarkedQuizPresets(presets);
-		track('bookmark:remove-preset', { presetId });
+	function askRemovePreset(preset) {
+		pendingRemoval = {
+			kind: 'preset',
+			id: preset.id,
+			label: preset.label || preset.topicSeed || $t('quizPractice'),
+		};
 	}
 
-	function removeQuestionBookmark(bookmark) {
-		if (!confirm($t('removeBookmarkConfirm'))) {
+	function askRemoveQuestion(bookmark) {
+		pendingRemoval = {
+			kind: 'question',
+			bookmark,
+			label: bookmark.topic || $t('quizPractice'),
+		};
+	}
+
+	function confirmRemoval() {
+		const pending = pendingRemoval;
+		pendingRemoval = null;
+		if (!pending) {
+			return;
+		}
+		if (pending.kind === 'exam') {
+			examIds = examIds.filter((id) => id !== pending.id);
+			saveBookmarkedExamIds(examIds);
+			track('bookmark:remove-exam', { examId: pending.id });
+			return;
+		}
+		if (pending.kind === 'preset') {
+			presets = presets.filter((preset) => preset.id !== pending.id);
+			saveBookmarkedQuizPresets(presets);
+			track('bookmark:remove-preset', { presetId: pending.id });
 			return;
 		}
 		questionBookmarks = questionBookmarks.filter(
-			(item) => item.question !== bookmark.question || item.answer !== bookmark.answer
+			(item) =>
+				item.question !== pending.bookmark.question || item.answer !== pending.bookmark.answer
 		);
 		saveQuestionBookmarks(questionBookmarks);
 		track('bookmark:remove-question');
@@ -108,7 +127,7 @@
 							class="bm-remove"
 							type="button"
 							aria-label={`${$t('removeBookmark')}: ${exam.name}`}
-							onclick={() => removeExam(exam.id)}
+							onclick={() => askRemoveExam(exam)}
 						>
 							<Icon name="trash" size={18} />
 						</button>
@@ -144,7 +163,7 @@
 							aria-label={`${$t('removeBookmark')}: ${
 								preset.label || preset.topicSeed || $t('quizPractice')
 							}`}
-							onclick={() => removePreset(preset.id)}
+							onclick={() => askRemovePreset(preset)}
 						>
 							<Icon name="trash" size={18} />
 						</button>
@@ -173,7 +192,7 @@
 								aria-label={`${$t('removeBookmark')}: ${
 									bookmark.topic || $t('quizPractice')
 								}`}
-								onclick={() => removeQuestionBookmark(bookmark)}
+								onclick={() => askRemoveQuestion(bookmark)}
 							>
 								<Icon name="trash" size={18} />
 							</button>
@@ -191,6 +210,17 @@
 		{/if}
 	</section>
 </section>
+
+{#if pendingRemoval}
+	<ConfirmDialog
+		title={$t('removeBookmarkConfirm')}
+		body={pendingRemoval.label}
+		confirmLabel={$t('remove')}
+		cancelLabel={$t('cancel')}
+		onconfirm={confirmRemoval}
+		oncancel={() => (pendingRemoval = null)}
+	/>
+{/if}
 
 <style>
 	.page-head {

@@ -624,7 +624,7 @@ select {
 		@apply text-center;
 	}
 	.text-success {
-		@apply text-emerald-600 dark:text-emerald-400;
+		@apply text-emerald-700 dark:text-emerald-400;
 	}
 	.text-danger {
 		@apply text-red-600 dark:text-red-400;
