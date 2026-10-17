@@ -1,10 +1,10 @@
 <script>
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 
-	let { ondismiss = () => {}, onswitch = () => {} } = $props();
+	let { ondismiss = () => {}, onswitch = () => {}, revealed = true } = $props();
 </script>
 
-<aside class="onboarding-hint" role="note">
+<aside class="onboarding-hint" class:is-revealed={revealed} role="note">
 	<div class="onboarding-hint-head">
 		<p class="onboarding-hint-body">{$t('onboardingHintBody')}</p>
 		<button
@@ -42,6 +42,15 @@
 		background: var(--surface);
 		border: 1px solid var(--line);
 		border-radius: var(--radius-surface);
+	}
+
+	/* Reserved but not yet revealed: the box keeps its space from the first
+	   paint, so becoming visible is not a layout shift. */
+	.onboarding-hint:not(.is-revealed) {
+		visibility: hidden;
+	}
+
+	.onboarding-hint.is-revealed {
 		animation: onboarding-hint-in 180ms ease-out both;
 	}
 

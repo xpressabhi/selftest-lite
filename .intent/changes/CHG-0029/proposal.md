@@ -6,8 +6,8 @@ status: "complete"
 created_at: "2026-10-17T02:27:27Z"
 request: "From the 2026-10-17 weekly telemetry review: make the first-visit experience value-first (no blocking tour; on-demand help), and note/implement the exclusion of the team's QA traffic from telemetry analysis."
 proposal:
-  revision: 1
-  digest: "sha256:f8db33ccd3298a4b5c86381635975b7090e71baae6a1f82115b3723197a24da9"
+  revision: 2
+  digest: "sha256:a489307befecea6cd021aa8fda380f8f47e624edf591c82f0595f56e0bf10ce6"
 scope:
   paths:
     - "src/lib/client/constants.js"
@@ -50,7 +50,7 @@ review_required: false
 
 ## Outcome
 
-First-time visitors get a non-blocking, in-flow coach hint (between the welcome gallery and the composer) instead of the auto-opening welcome tour: one line of copy, a one-tap language switch, and a 44px dismiss. It retires on dismiss, first typed input, example tap, or submit; its dismissal persists; and it is capped at three shows if never interacted with. The welcome tour becomes on-demand help opened from an always-visible "How it works" button under the composer, with the component itself unchanged. Team QA traffic becomes excludable from telemetry analysis: visiting `/?qa=1` stores a sticky tag that adds `props.qa = true` to every feature event, and `docs/telemetry.md` gains a "Known QA traffic" subsection with exclusion recipes for historical windows (iOS Chrome + Hyderabad; WebPageTest PTST).
+First-time visitors get a non-blocking, in-flow coach hint (below the composer panel, never inside it) instead of the auto-opening welcome tour: one line of copy, a one-tap language switch, and a 44px dismiss. It retires on dismiss, first typed input, example tap, or submit; its dismissal persists; and it is capped at three shows if never interacted with. The welcome tour becomes on-demand help opened from an always-visible "How it works" button under the composer, with the component itself unchanged. Team QA traffic becomes excludable from telemetry analysis: visiting `/?qa=1` stores a sticky tag that adds `props.qa = true` to every feature event, and `docs/telemetry.md` gains a "Known QA traffic" subsection with exclusion recipes for historical windows (iOS Chrome + Hyderabad; WebPageTest PTST).
 
 ## Scope
 

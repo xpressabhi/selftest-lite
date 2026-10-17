@@ -213,6 +213,7 @@
 	let nudgeTimer = null;
 	let pendingNudge = null;
 	let hintVisible = $state(false);
+	let hintReserved = $state(false);
 	let hintTimer = null;
 
 	const HOME_NUDGE_DWELL_MS = 2000;
@@ -464,7 +465,8 @@
 		// First-visit coach hint: one quiet, in-flow nudge toward the composer.
 		// Never shown to returning users, at most three times while untouched,
 		// and once used or dismissed it stays gone (reasons: composer, example,
-		// submit, close).
+		// submit, close). The card's box is reserved from the first paint so
+		// the reveal is a visibility flip, not a layout shift.
 		if (readJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, null) !== null) {
 			return;
 		}
@@ -472,9 +474,16 @@
 		if (shows >= HINT_MAX_SHOWS) {
 			return;
 		}
+		// Local history decides before the async server hydration can paint a
+		// recent list; a returning user must never see the reserved box collapse.
+		if (getHistory().length > 0) {
+			return;
+		}
+		hintReserved = true;
 		hintTimer = window.setTimeout(() => {
 			hintTimer = null;
 			if (!untrack(() => showWelcome)) {
+				hintReserved = false;
 				return;
 			}
 			const nextShows = shows + 1;
@@ -1646,6 +1655,19 @@
 	// The tour is opt-in help: it opens from the "How it works" entry under the
 	// composer and never interrupts a first visit on its own.
 	function openTour() {
+		// The walkthrough teaches the same thing, so opening it retires the
+		// hint for good: silently when the card had not revealed yet (nothing
+		// was shown to dismiss), with the dismissal event when it had.
+		if (hintVisible) {
+			dismissHint('close');
+		} else if (hintReserved) {
+			if (hintTimer !== null) {
+				window.clearTimeout(hintTimer);
+				hintTimer = null;
+			}
+			hintReserved = false;
+			writeJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, Date.now());
+		}
 		beginTour();
 		track('tour:start');
 	}
@@ -1657,9 +1679,11 @@
 				window.clearTimeout(hintTimer);
 				hintTimer = null;
 			}
+			hintReserved = false;
 			return;
 		}
 		hintVisible = false;
+		hintReserved = false;
 		writeJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, Date.now());
 		track('onboarding:hint-dismissed', { reason });
 	}
@@ -1851,8 +1875,12 @@
 					{planDensity}
 				/>
 			</div>
-			{#if hintVisible}
-				<OnboardingHint ondismiss={dismissHint} onswitch={switchHintLanguage} />
+			{#if hintReserved}
+				<OnboardingHint
+					ondismiss={dismissHint}
+					onswitch={switchHintLanguage}
+					revealed={hintVisible}
+				/>
 			{/if}
 			<button class="how-it-works" type="button" onclick={openTour}>
 				{$t('howItWorks')}

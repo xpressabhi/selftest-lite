@@ -341,6 +341,54 @@ test('returning users never see the hint', async ({ page }, testInfo) => {
 	expect(errors).toEqual([]);
 });
 
+test('the card reserves its space before it reveals', async ({ page }, testInfo) => {
+	// Clock control makes the pre-reveal window deterministic. The reserved box
+	// exists (hidden) from first paint, so the reveal is a visibility flip
+	// rather than the layout shift a late in-flow insertion would cause.
+	await page.clock.install();
+	await stubBackend(page);
+	await page.goto('/');
+	await page.clock.fastForward(1);
+
+	await expect(page.locator('.onboarding-hint')).toHaveCount(1);
+	const hiddenBeforeReveal = await page.locator('.onboarding-hint').isHidden();
+
+	await page.clock.fastForward(900);
+	await expect(page.locator('.onboarding-hint')).toBeVisible();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ hiddenBeforeReveal }, null, 2),
+	});
+	expect(hiddenBeforeReveal).toBe(true);
+});
+
+test('opening the tour retires the hint for good', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await stubBackend(page);
+	await openHome(page);
+
+	// Straight into the walkthrough: the hint must retire whether or not it
+	// had already revealed, and must not return on the next visit.
+	await page.locator('.how-it-works').click();
+	await expect(page.locator('.welcome-tour')).toBeVisible();
+	await expect(page.locator('.onboarding-hint')).toHaveCount(0);
+	await page.locator('.welcome-tour-skip').click();
+	const keys = await readHintKeys(page);
+
+	await page.reload();
+	await waitForHydration(page);
+	await page.waitForTimeout(1200);
+	await expect(page.locator('.onboarding-hint')).toHaveCount(0);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ keys }, null, 2),
+	});
+	expect(keys.dismissedAt).not.toBeNull();
+	expect(errors).toEqual([]);
+});
+
 test('blocked storage never throws when the hint is dismissed', async ({ page }, testInfo) => {
 	const errors = await collectUncaught(page);
 	await stubBackend(page);

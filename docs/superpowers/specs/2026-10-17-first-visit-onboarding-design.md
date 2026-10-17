@@ -15,7 +15,7 @@ Separately noted, out of scope: iPhones classify as `low` tier (no `deviceMemory
 
 ## Objective
 
-1. **First visits become value-first.** No modal. A small inline coach hint between the welcome gallery and the composer teaches the one action that matters; it is dismissible, persists its dismissal, and shows at most three times if never interacted with.
+1. **First visits become value-first.** No modal. A small inline coach hint below the composer panel teaches the one action that matters; it is dismissible, persists its dismissal, and shows at most three times if never interacted with.
 2. **The tour becomes on-demand help.** The existing `WelcomeTour` component is kept unchanged, opened from an always-visible "How it works" entry under the composer.
 3. **QA traffic becomes excludable.** `?qa=1` marks future QA sessions with `props.qa = true` on every feature event, and `docs/telemetry.md` documents the current heuristic signature and exclusion recipes for historical windows.
 
