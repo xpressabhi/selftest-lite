@@ -48,7 +48,7 @@ Specs: `home-layout`, `results-hero`, `visual-explanation`, `playground` updated
 ## Sweep 5 — Results
 
 - Announce auto-personalization + "Show all answers" undo chip.
-- Review list defaults collapsed when many incorrect items; Expand all stays.
+- Review-list expansion stays as designed (auto-opened wrong cards are what the viewport visual-probe is built around; collapse-all already sits directly above the list) — ruled during implementation.
 - Explain progress line (`Explaining n of m…`, aria-live).
 - `TestStatsCard` heading level fix; "Review incorrect answers" label; retake via ConfirmDialog (Sweep 2).
 

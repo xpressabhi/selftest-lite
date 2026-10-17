@@ -79,6 +79,8 @@
 	let countUpFrame = null;
 	let countUpStarted = false;
 	let filter = $state('all');
+	let personalizeNotice = $state(false);
+	let explainProgress = $state(null);
 	let resultsHide = $state([]);
 	let challenge = $state(null);
 	let challengeViewTracked = false;
@@ -424,6 +426,7 @@
 					if (decision?.applied) {
 						if (decision.action === 'fix_mistakes' && wrong > 0) {
 							filter = 'incorrect';
+							personalizeNotice = true;
 						}
 						if (Array.isArray(decision.hide) && decision.hide.length > 0) {
 							resultsHide = decision.hide;
@@ -693,15 +696,18 @@
 		}
 		autoExplainRunning = true;
 		autoExplainCanceled = false;
+		explainProgress = { done: 0, total: targets.length };
 		try {
 			for (const index of targets) {
 				if (autoExplainCanceled) {
 					break;
 				}
 				await fetchExplanation(index, questionPaper.questions[index]);
+				explainProgress = { done: explainProgress.done + 1, total: explainProgress.total };
 			}
 		} finally {
 			autoExplainRunning = false;
+			explainProgress = null;
 		}
 	}
 
@@ -1746,7 +1752,10 @@
 				class:active={filter === 'all'}
 				type="button"
 				aria-pressed={filter === 'all'}
-				onclick={() => (filter = 'all')}
+				onclick={() => {
+					filter = 'all';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterAll')}<span class="filter-count">{totalQuestions}</span>
 			</button>
@@ -1755,7 +1764,10 @@
 				class:active={filter === 'correct'}
 				type="button"
 				aria-pressed={filter === 'correct'}
-				onclick={() => (filter = 'correct')}
+				onclick={() => {
+					filter = 'correct';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterCorrect')}<span class="filter-count">{correctCount}</span>
 			</button>
@@ -1764,7 +1776,10 @@
 				class:active={filter === 'incorrect'}
 				type="button"
 				aria-pressed={filter === 'incorrect'}
-				onclick={() => (filter = 'incorrect')}
+				onclick={() => {
+					filter = 'incorrect';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterIncorrect')}<span class="filter-count">{incorrectCount}</span>
 			</button>
@@ -1773,7 +1788,10 @@
 				class:active={filter === 'unanswered'}
 				type="button"
 				aria-pressed={filter === 'unanswered'}
-				onclick={() => (filter = 'unanswered')}
+				onclick={() => {
+					filter = 'unanswered';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
 			</button>
@@ -1789,11 +1807,32 @@
 			{/if}
 		</div>
 
+		{#if personalizeNotice}
+			<div class="personalize-note" role="status">
+				<span class="small">{$t('personalizeFixMistakesNotice')}</span>
+				<button
+					class="btn btn-sm btn-outline-secondary"
+					type="button"
+					onclick={() => {
+						filter = 'all';
+						personalizeNotice = false;
+					}}
+				>
+					{$t('showAllAnswers')}
+				</button>
+			</div>
+		{/if}
+
 		<label class="auto-explain-row no-print">
 			<input type="checkbox" checked={autoExplainEnabled} onchange={toggleAutoExplain} />
-			<span class="small text-muted">
+			<span class="small text-muted" aria-live="polite">
 				{$t('autoExplainWrong')}
-				{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
+				{#if autoExplainRunning && explainProgress}
+					&middot; {$t('explainingProgressCount', {
+						done: explainProgress.done,
+						total: explainProgress.total,
+					})}
+				{/if}
 			</span>
 		</label>
 
@@ -2162,6 +2201,18 @@
 	.reminder-link-icon {
 		display: inline-flex;
 		color: var(--brand-text);
+	}
+
+	.personalize-note {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px;
+		margin: -6px 0 14px;
+		padding: 8px 12px;
+		border: 1px solid color-mix(in srgb, var(--color-brand-600) 25%, var(--line));
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--color-brand-600) 6%, var(--surface));
 	}
 
 	.auto-explain-row {

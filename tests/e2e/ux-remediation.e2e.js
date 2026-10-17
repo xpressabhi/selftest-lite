@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { connectOrSkip, sqlClient } from './testDb.js';
+import { stubVisualFit } from './visualFit.js';
 
 // UX remediation suite: pins the behavior of the fixes from the 2026-10-17
 // all-pages UX review. Starting with the unified confirmation dialog — the
@@ -160,4 +161,60 @@ test('a paper with no questions shows an empty state, never a crash', async ({
 		body: JSON.stringify({ testId, pageErrors }, null, 2),
 	});
 	expect(pageErrors).toEqual([]);
+});
+
+/** Two-question paper: the first question is wrong, the second is correct. */
+function personalizePaper() {
+	return {
+		id: 'ux-personalize',
+		topic: 'E2E personalize topic',
+		timestamp: 10,
+		questions: [
+			{ question: 'Q1', options: ['A1', 'B1', 'C1'], answer: 'A1' },
+			{ question: 'Q2', options: ['A2', 'B2', 'C2'], answer: 'A2' },
+		],
+		userAnswers: { 0: 'B1', 1: 'A2' },
+		score: 1,
+		totalQuestions: 2,
+		timeTaken: 24,
+	};
+}
+
+test('an auto-personalized review filter is announced and reversible', async ({ page }) => {
+	await stubVisualFit(page);
+	await page.route(
+		(url) => url.pathname === '/api/personalize',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					applied: true,
+					action: 'fix_mistakes',
+					promote: [],
+					hide: [],
+				}),
+			})
+	);
+	await page.addInitScript(
+		({ clientId, history }) => {
+			window.localStorage.setItem('selftest_client_id', clientId);
+			window.localStorage.setItem('selftest_history', JSON.stringify(history));
+		},
+		{ clientId: 'ux-personalize-client', history: [personalizePaper()] }
+	);
+
+	await page.goto('/results?id=ux-personalize');
+
+	// The auto-applied filter is announced, and it really applied.
+	const note = page.locator('.personalize-note');
+	await expect(note).toBeVisible();
+	await expect(note).toContainText('Showing incorrect answers first');
+	await expect(page.locator('#question-0')).toHaveCount(1);
+	await expect(page.locator('#question-1')).toHaveCount(0);
+
+	// One tap reverses it.
+	await note.getByRole('button', { name: 'Show all answers' }).click();
+	await expect(note).toHaveCount(0);
+	await expect(page.locator('#question-1')).toHaveCount(1);
 });
