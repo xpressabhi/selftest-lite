@@ -1856,7 +1856,7 @@
 			/>
 		{/snippet}
 
-		<div class="planner-block mb-4">
+		<div class="planner-block mb-6">
 			<div class="intent-section planner-panel">
 				<ChatThread
 					messages={plannerDraft.messages}
@@ -1966,7 +1966,7 @@
 			</div>
 		{/if}
 
-		<div class="daily-five-row mb-4">
+		<div class="daily-five-row mb-6">
 			<button
 				class="daily-five-btn"
 				type="button"
