@@ -28,7 +28,7 @@ Separately noted, out of scope: iPhones classify as `low` tier (no `deviceMemory
 
 ## Decisions
 
-- **D1 — The hint is in-flow.** Static card between gallery and composer, in normal document flow (no overlay, no fixed positioning, no measurement loops, no scroll lock). This is mobile-proof and removes the tour's first-paint cost; the modal is replaced by plain content.
+- **D1 — The hint is in-flow.** Static card in normal document flow, directly under the planner panel (under the composer), never inside the fixed-height panel so the chat log's height budget is untouched; no overlay, no fixed positioning, no measurement loops, no scroll lock. This is mobile-proof and removes the tour's first-paint cost; the modal is replaced by plain content.
 - **D2 — Dismissal is explicit and persistent.** Reasons: `close` (×), `composer` (first non-empty user input), `example` (example-chip tap), `submit` (planner submit). Once dismissed, never shown again. If the tab is killed before any of those, the hint may reappear later, hard-capped at 3 total shows.
 - **D3 — Eligibility is the newcomer state.** The hint shows only while `showWelcome` holds (no history, no conversation, nothing typed), snapshotted when the 800 ms one-shot timer fires. If the user interacts before it fires, the timer is cancelled silently and nothing is persisted or emitted — a hint that never displayed produces no `onboarding:*` events.
 - **D4 — Typing dismisses, focus does not.** The app programmatically focuses the empty composer on desktop "as an invitation"; focus as a dismissal trigger would kill the hint instantly there. The composer dismissal fires from a non-empty user input event only.

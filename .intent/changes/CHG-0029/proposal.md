@@ -2,7 +2,7 @@
 protocol_version: "2.0"
 id: "CHG-0029"
 title: "Value-first first-visit onboarding and an excludable QA-telemetry tag"
-status: "implementing"
+status: "complete"
 created_at: "2026-10-17T02:27:27Z"
 request: "From the 2026-10-17 weekly telemetry review: make the first-visit experience value-first (no blocking tour; on-demand help), and note/implement the exclusion of the team's QA traffic from telemetry analysis."
 proposal:
