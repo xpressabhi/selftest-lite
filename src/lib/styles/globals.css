@@ -282,11 +282,11 @@ body {
 
 :root.dark {
 	color-scheme: dark;
-	--surface: #111827;
-	--surface-muted: #0f172a;
-	--text: #f8fafc;
-	--text-muted: #94a3b8;
-	--line: #334155;
+	--surface: #161b22;
+	--surface-muted: #0e1116;
+	--text: #e8e4da;
+	--text-muted: #9a9a92;
+	--line: #2a3038;
 	--ok: #6ee7b7;
 	--warn: #fcd34d;
 	--danger: #fca5a5;
@@ -294,8 +294,8 @@ body {
 	--warn-rgb: 252, 211, 77;
 	--danger-rgb: 252, 165, 165;
 	--text-rgb: 248, 250, 252;
-	--brand-text-rgb: 165, 180, 252;
-	--brand-text: #a5b4fc;
+	--brand-text-rgb: 94, 234, 212;
+	--brand-text: #5eead4;
 	--backdrop: rgb(2 6 23 / 0.72);
 	--shadow-1: 0 1px 2px rgb(0 0 0 / 0.45);
 	--shadow-2: 0 16px 40px rgb(0 0 0 / 0.55);
