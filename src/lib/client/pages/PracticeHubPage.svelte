@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import Icon from '#lib/client/Icon.svelte';
 	import {
@@ -26,18 +27,57 @@
 	const searching = $derived(trimmedQuery.length > 0);
 	const searchResults = $derived(searching ? searchExams(trimmedQuery) : []);
 	const promotedExam = $derived(promotedExamId ? getIndianExamById(promotedExamId) : null);
+	const examCount = categories.reduce((sum, category) => sum + category.exams.length, 0);
+	let activeCategory = $state('');
+	let personalizePending = $state(true);
+
+	function handleSearchKeydown(event) {
+		if (event.key !== 'Enter') {
+			return;
+		}
+		event.preventDefault();
+		const first = searchResults[0];
+		if (first) {
+			void goto(localizedPath(`/practice/${first.id}`, $activeLanguage));
+		}
+	}
+
+	let jumpObserver = null;
 
 	onMount(() => {
 		// Practice promote (fail-open, once): pin the Jev-picked exam above the
 		// categories; it is removed from its own section to avoid duplicates.
 		void requestPersonalize('practice', {
 			ids: categories.flatMap((category) => category.exams.map((exam) => exam.id)),
-		}).then((decision) => {
-			if (!decision?.applied || !decision.action || decision.action === 'none') return;
-			if (getIndianExamById(decision.action)) {
-				promotedExamId = decision.action;
+		})
+			.then((decision) => {
+				if (!decision?.applied || !decision.action || decision.action === 'none') return;
+				if (getIndianExamById(decision.action)) {
+					promotedExamId = decision.action;
+				}
+			})
+			.finally(() => {
+				personalizePending = false;
+			});
+
+		// Scroll-spy for the jump chips: the section under the reading line
+		// keeps its chip marked while the reader scrolls.
+		if (typeof IntersectionObserver !== 'undefined') {
+			jumpObserver = new IntersectionObserver(
+				(entries) => {
+					for (const entry of entries) {
+						if (entry.isIntersecting) {
+							activeCategory = entry.target.id.replace('practice-cat-', '');
+						}
+					}
+				},
+				{ rootMargin: '-30% 0px -60% 0px' }
+			);
+			for (const section of document.querySelectorAll('.practice-category')) {
+				jumpObserver.observe(section);
 			}
-		});
+		}
+		return () => jumpObserver?.disconnect();
 	});
 
 	const hubJsonLd = $derived(
@@ -98,7 +138,7 @@
 			</span>
 		</a>
 
-		<div class="practice-search">
+		<div class="practice-search" role="search">
 			<span class="practice-search-icon" aria-hidden="true">
 				<Icon name="search" size={18} />
 			</span>
@@ -114,6 +154,7 @@
 				oninput={(event) => {
 					query = sanitizeInputText(event.currentTarget.value, MAX_SEARCH_CHARS);
 				}}
+				onkeydown={handleSearchKeydown}
 			/>
 			{#if query}
 				<button
@@ -146,9 +187,16 @@
 				</div>
 			{/if}
 		{:else}
+			<p class="practice-total-count">
+				{$t('practiceExamCount', { count: examCount })}
+			</p>
 			<nav class="practice-jump" aria-label={$t('practiceJumpLabel')}>
 				{#each categories as category (category.id)}
-					<a class="practice-chip" href={`#practice-cat-${category.id}`}>
+					<a
+						class="practice-chip"
+						class:active={activeCategory === category.id}
+						href={`#practice-cat-${category.id}`}
+					>
 						{$t(category.labelKey)}
 					</a>
 				{/each}
@@ -159,6 +207,13 @@
 					<p class="practice-recommended-label">{$t('practiceRecommendedTitle')}</p>
 					<div class="practice-grid">
 						{@render examCard(promotedExam, true)}
+					</div>
+				</section>
+			{:else if personalizePending}
+				<section class="practice-recommended" aria-hidden="true">
+					<p class="practice-recommended-label">{$t('practiceRecommendedTitle')}</p>
+					<div class="practice-grid">
+						<div class="practice-card practice-card-skeleton"></div>
 					</div>
 				</section>
 			{/if}
@@ -184,6 +239,33 @@
 	.practice-hub {
 		display: grid;
 		gap: 1.25rem;
+	}
+
+	.practice-total-count {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.practice-chip.active {
+		border-color: var(--brand-text);
+		color: var(--brand-text);
+		font-weight: 700;
+	}
+
+	.practice-card-skeleton {
+		min-height: 62px;
+		background: var(--surface-muted);
+		animation: practice-pulse 1s ease-in-out infinite alternate;
+	}
+
+	@keyframes practice-pulse {
+		from {
+			opacity: 0.6;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.practice-hub-hero {

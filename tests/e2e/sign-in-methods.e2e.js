@@ -57,10 +57,13 @@ test('a second passkey can be added from another device, and revoking one archiv
 	await expect(page.locator('.passkey-row')).toHaveCount(2);
 	expect(await passkeyCountFor(sql, user.id), 'two credentials should be stored').toBe(2);
 
-	// Two-step confirmation, so the first tap only arms the removal.
+	// Removal goes through the shared confirmation dialog; the row button is
+	// named with its device, the dialog confirms.
 	const firstRow = page.locator('.passkey-row').first();
-	await firstRow.getByRole('button', { name: /^remove$/i }).click();
-	await firstRow.getByRole('button', { name: /confirm remove/i }).click();
+	await firstRow.getByRole('button', { name: /^remove/i }).click();
+	const removeDialog = page.locator('.confirm-dialog');
+	await expect(removeDialog).toBeVisible();
+	await removeDialog.getByRole('button', { name: /^remove$/i }).click();
 
 	await expect(page.locator('.alert-success')).toContainText(/passkey removed/i);
 	expect(await passkeyCountFor(sql, user.id), 'one credential should remain').toBe(1);
@@ -97,7 +100,7 @@ test('the only way in cannot be removed, and says why', async ({ page, request }
 
 	// One passkey, no Google: both controls are disabled and the reason is on
 	// the page rather than discovered by trying.
-	await expect(page.getByRole('button', { name: /^remove$/i })).toBeDisabled();
+	await expect(page.getByRole('button', { name: /^remove/i })).toBeDisabled();
 	await expect(page.getByRole('note')).toContainText(/another way in/i);
 
 	// The API enforces it too, not just the disabled button.
@@ -123,10 +126,11 @@ test('Google can be disconnected once a passkey exists, and the account survives
 	await expect(page.getByText(new RegExp(`connected as ${email}`, 'i'))).toBeVisible();
 
 	await page.getByRole('button', { name: /^disconnect$/i }).click();
-	// The warning about a later Google sign-in starts a new account is shown
-	// before the second tap commits.
-	await expect(page.getByRole('note')).toContainText(/would start a new account/i);
-	await page.getByRole('button', { name: /confirm disconnect/i }).click();
+	// The warning about a later Google sign-in starting a new account is shown
+	// inside the confirmation dialog before it commits.
+	const disconnectDialog = page.locator('.confirm-dialog');
+	await expect(disconnectDialog).toContainText(/would start a new account/i);
+	await disconnectDialog.getByRole('button', { name: /^disconnect$/i }).click();
 
 	await expect(page.locator('.alert-success')).toContainText(/google disconnected/i);
 	await expect(page.getByText(/not connected/i)).toBeVisible();

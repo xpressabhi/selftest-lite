@@ -1,6 +1,5 @@
 <script>
 	import { activeLanguage, t } from '#lib/client/i18n.js';
-	import CtaBanner from '#lib/client/CtaBanner.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { SITE_ORIGIN, localizedPath } from '#lib/shared/seo.js';
@@ -96,7 +95,7 @@
 					{$t('practiceFullMock', { count: fullCount })}
 				</a>
 				<a
-					class="practice-sectional-link"
+					class="btn btn-outline-secondary"
 					href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}&sections=1`}
 				>
 					{$t('practiceSectionalLink')}
@@ -111,21 +110,15 @@
 					<dt>{$t('practiceQuestions')}</dt>
 					<dd>{exam.fullLengthQuestions || exam.defaultNumQuestions}</dd>
 				</div>
-				<div>
-					<dt>{$t('practiceDuration')}</dt>
-					<dd>
-						{exam.durationMinutes
-							? $t('practiceMinutes', { count: exam.durationMinutes })
-							: $t('na')}
-					</dd>
-				</div>
+				{#if exam.durationMinutes}
+					<div>
+						<dt>{$t('practiceDuration')}</dt>
+						<dd>{$t('practiceMinutes', { count: exam.durationMinutes })}</dd>
+					</div>
+				{/if}
 				<div>
 					<dt>{$t('practiceDifficulty')}</dt>
 					<dd>{$t(exam.defaultDifficulty || 'intermediate')}</dd>
-				</div>
-				<div>
-					<dt>{$t('practiceLanguages')}</dt>
-					<dd>{$t('aboutPracticeLanguagesTitle')}</dd>
 				</div>
 			</dl>
 		</section>
@@ -174,13 +167,17 @@
 			</section>
 		{/if}
 
-		<CtaBanner
-			titleKey="blogPracticeCtaTitle"
-			bodyKey="blogPracticeCtaBody"
-			buttonKey="aboutCtaButton"
-			href={`${localizedPath('/', $activeLanguage)}?exam=${exam.id}`}
-			compact
-		/>
+		<section class="practice-section" aria-label={$t('practiceMoreTitle')}>
+			<h2 class="practice-section-title">{$t('practiceMoreTitle')}</h2>
+			<div class="practice-cta-row">
+				<a class="btn btn-primary" href={localizedPath('/practice', $activeLanguage)}>
+					{$t('practiceAllExams')}
+				</a>
+				<a class="btn btn-outline-secondary" href={localizedPath('/exams', $activeLanguage)}>
+					{$t('examsNotificationsShort')}
+				</a>
+			</div>
+		</section>
 	</div>
 </section>
 

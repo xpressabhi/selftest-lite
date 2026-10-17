@@ -11,6 +11,7 @@
 		saveQuestionBookmarks,
 	} from '#lib/client/storage.js';
 	import Icon from '#lib/client/Icon.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import MarkdownContent from '#lib/client/MarkdownContent.svelte';
 	import { hydrateUserState } from '#lib/client/sync.js';
 	import { getIndianExamById, localizedStream } from '#lib/data/indianExams.js';
@@ -18,6 +19,8 @@
 	let examIds = $state([]);
 	let presets = $state([]);
 	let questionBookmarks = $state([]);
+	let pendingRemoval = $state(null);
+	let isHydrating = $state(true);
 
 	let exams = $derived(
 		examIds
@@ -31,37 +34,57 @@
 		presets = getBookmarkedQuizPresets();
 		questionBookmarks = getQuestionBookmarks();
 		// Pull bookmarks saved on other devices / before login.
-		void hydrateUserState().then(() => {
-			examIds = getBookmarkedExamIds();
-			presets = getBookmarkedQuizPresets();
-			questionBookmarks = getQuestionBookmarks();
-		});
+		void hydrateUserState()
+			.catch(() => {})
+			.finally(() => {
+				examIds = getBookmarkedExamIds();
+				presets = getBookmarkedQuizPresets();
+				questionBookmarks = getQuestionBookmarks();
+				isHydrating = false;
+			});
 	});
 
-	function removeExam(examId) {
-		if (!confirm($t('removeBookmarkConfirm'))) {
-			return;
-		}
-		examIds = examIds.filter((id) => id !== examId);
-		saveBookmarkedExamIds(examIds);
-		track('bookmark:remove-exam', { examId });
+	function askRemoveExam(exam) {
+		pendingRemoval = { kind: 'exam', id: exam.id, label: exam.name };
 	}
 
-	function removePreset(presetId) {
-		if (!confirm($t('removeBookmarkConfirm'))) {
-			return;
-		}
-		presets = presets.filter((preset) => preset.id !== presetId);
-		saveBookmarkedQuizPresets(presets);
-		track('bookmark:remove-preset', { presetId });
+	function askRemovePreset(preset) {
+		pendingRemoval = {
+			kind: 'preset',
+			id: preset.id,
+			label: preset.label || preset.topicSeed || $t('quizPractice'),
+		};
 	}
 
-	function removeQuestionBookmark(bookmark) {
-		if (!confirm($t('removeBookmarkConfirm'))) {
+	function askRemoveQuestion(bookmark) {
+		pendingRemoval = {
+			kind: 'question',
+			bookmark,
+			label: bookmark.topic || $t('quizPractice'),
+		};
+	}
+
+	function confirmRemoval() {
+		const pending = pendingRemoval;
+		pendingRemoval = null;
+		if (!pending) {
+			return;
+		}
+		if (pending.kind === 'exam') {
+			examIds = examIds.filter((id) => id !== pending.id);
+			saveBookmarkedExamIds(examIds);
+			track('bookmark:remove-exam', { examId: pending.id });
+			return;
+		}
+		if (pending.kind === 'preset') {
+			presets = presets.filter((preset) => preset.id !== pending.id);
+			saveBookmarkedQuizPresets(presets);
+			track('bookmark:remove-preset', { presetId: pending.id });
 			return;
 		}
 		questionBookmarks = questionBookmarks.filter(
-			(item) => item.question !== bookmark.question || item.answer !== bookmark.answer
+			(item) =>
+				item.question !== pending.bookmark.question || item.answer !== pending.bookmark.answer
 		);
 		saveQuestionBookmarks(questionBookmarks);
 		track('bookmark:remove-question');
@@ -88,12 +111,17 @@
 				<h2 class="bm-title">{$t('bookmarkedExams')}</h2>
 				<span class="bm-count">{exams.length}</span>
 			</header>
-			{#if exams.length === 0}
-				<p class="bm-empty">{$t('noBookmarkedExams')}</p>
+			{#if isHydrating && exams.length === 0}
+				<span class="bm-skeleton" aria-hidden="true"></span>
+			{:else if exams.length === 0}
+				<p class="bm-empty">
+					{$t('noBookmarkedExams')}
+					<a class="bm-empty-cta" href="/practice">{$t('browsePractice')}</a>
+				</p>
 			{:else}
 				{#each exams as exam (exam.id)}
 					<div class="bm-item">
-						<a class="bm-row" href={`/?exam=${exam.id}`}>
+						<a class="bm-row" href={`/practice/${encodeURIComponent(exam.id)}`}>
 							<span class="bm-main">
 								<span class="bm-name">{exam.name}</span>
 								<span class="bm-meta">
@@ -108,7 +136,7 @@
 							class="bm-remove"
 							type="button"
 							aria-label={`${$t('removeBookmark')}: ${exam.name}`}
-							onclick={() => removeExam(exam.id)}
+							onclick={() => askRemoveExam(exam)}
 						>
 							<Icon name="trash" size={18} />
 						</button>
@@ -122,12 +150,17 @@
 				<h2 class="bm-title">{$t('bookmarkedQuizPresets')}</h2>
 				<span class="bm-count">{presets.length}</span>
 			</header>
-			{#if presets.length === 0}
-				<p class="bm-empty">{$t('noBookmarkedQuizPresets')}</p>
+			{#if isHydrating && presets.length === 0}
+				<span class="bm-skeleton" aria-hidden="true"></span>
+			{:else if presets.length === 0}
+				<p class="bm-empty">
+					{$t('noBookmarkedQuizPresets')}
+					<a class="bm-empty-cta" href="/">{$t('startNewTest')}</a>
+				</p>
 			{:else}
 				{#each presets as preset (preset.id)}
 					<div class="bm-item">
-						<div class="bm-row is-static">
+						<a class="bm-row" href={`/?preset=${encodeURIComponent(preset.id)}`}>
 							<span class="bm-main">
 								<span class="bm-name">
 									{preset.label || preset.topicSeed || $t('quizPractice')}
@@ -137,14 +170,15 @@
 									{$t('questions')} · {preset.difficulty || $t('intermediate')}
 								</span>
 							</span>
-						</div>
+							<Icon name="chevron-right" size={18} />
+						</a>
 						<button
 							class="bm-remove"
 							type="button"
 							aria-label={`${$t('removeBookmark')}: ${
 								preset.label || preset.topicSeed || $t('quizPractice')
 							}`}
-							onclick={() => removePreset(preset.id)}
+							onclick={() => askRemovePreset(preset)}
 						>
 							<Icon name="trash" size={18} />
 						</button>
@@ -159,7 +193,9 @@
 			<h2 class="bm-title">{$t('bookmarkedQuestions')}</h2>
 			<span class="bm-count">{questionBookmarks.length}</span>
 		</header>
-		{#if questionBookmarks.length === 0}
+		{#if isHydrating && questionBookmarks.length === 0}
+			<span class="bm-skeleton" aria-hidden="true"></span>
+		{:else if questionBookmarks.length === 0}
 			<p class="bm-empty">{$t('noBookmarksYet')}</p>
 		{:else}
 			<div class="q-list">
@@ -173,7 +209,7 @@
 								aria-label={`${$t('removeBookmark')}: ${
 									bookmark.topic || $t('quizPractice')
 								}`}
-								onclick={() => removeQuestionBookmark(bookmark)}
+								onclick={() => askRemoveQuestion(bookmark)}
 							>
 								<Icon name="trash" size={18} />
 							</button>
@@ -191,6 +227,17 @@
 		{/if}
 	</section>
 </section>
+
+{#if pendingRemoval}
+	<ConfirmDialog
+		title={$t('removeBookmarkConfirm')}
+		body={pendingRemoval.label}
+		confirmLabel={$t('remove')}
+		cancelLabel={$t('cancel')}
+		onconfirm={confirmRemoval}
+		oncancel={() => (pendingRemoval = null)}
+	/>
+{/if}
 
 <style>
 	.page-head {
@@ -240,6 +287,31 @@
 		padding: 16px;
 		color: var(--text-muted);
 		font-size: 0.88rem;
+	}
+
+	.bm-empty-cta {
+		display: inline-block;
+		margin-left: 6px;
+		color: var(--brand-text);
+		font-weight: 600;
+	}
+
+	.bm-skeleton {
+		display: block;
+		margin: 16px;
+		height: 44px;
+		border-radius: var(--radius-control);
+		background: var(--surface-muted);
+		animation: bm-pulse 1s ease-in-out infinite alternate;
+	}
+
+	@keyframes bm-pulse {
+		from {
+			opacity: 0.6;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.bm-item {

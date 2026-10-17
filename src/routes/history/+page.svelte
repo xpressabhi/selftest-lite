@@ -6,6 +6,7 @@
 	import { language } from '#lib/client/preferences.js';
 	import { formatDate, localeFor } from '#lib/client/formatting.js';
 	import FuseButton from '#lib/client/FuseButton.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import { track, trackDebounced } from '#lib/client/telemetry.js';
 	import { buildReviewQueue, formatDuration, getStats } from '#lib/client/learning.js';
@@ -21,9 +22,11 @@
 
 	let history = $state([]);
 	let search = $state('');
-	let isHydrating = $state(false);
+	let isHydrating = $state(true);
+	let hydrateFailed = $state(false);
 	let pendingCount = $state(0);
 	let pendingDelete = $state(null);
+	let showClearConfirm = $state(false);
 	let historyReranked = false;
 
 	let filteredHistory = $derived(
@@ -105,12 +108,10 @@
 	}
 
 	function clearHistory() {
-		if (!confirm($t('clearHistoryConfirm'))) {
-			return;
-		}
 		clearAllHistory();
 		track('history:clear');
 		refreshHistory();
+		showClearConfirm = false;
 	}
 
 	// Deleting is a two-step affordance now: the first press arms the button
@@ -157,6 +158,8 @@
 			isHydrating = true;
 			try {
 				await Promise.all([hydrateHistoryFromServer(), flushPendingAttempts()]);
+			} catch {
+				hydrateFailed = true;
 			} finally {
 				isHydrating = false;
 				refreshHistory();
@@ -207,12 +210,26 @@
 				</span>
 			{/if}
 			{#if history.length > 0}
-				<button class="clear-link" type="button" onclick={clearHistory}>
+				<button class="clear-link" type="button" onclick={() => (showClearConfirm = true)}>
 					{$t('clear')}
 				</button>
 			{/if}
 		</div>
 	</header>
+
+	{#if hydrateFailed}
+		<p class="sync-note" role="status">{$t('syncFailedLocal')}</p>
+	{/if}
+
+	{#if showClearConfirm}
+		<ConfirmDialog
+			title={$t('clearHistoryConfirm')}
+			confirmLabel={$t('clear')}
+			cancelLabel={$t('cancel')}
+			onconfirm={clearHistory}
+			oncancel={() => (showClearConfirm = false)}
+		/>
+	{/if}
 
 	{#if stats.totalTests > 0}
 		<section class="stat-strip" aria-label={$t('history')}>
@@ -268,14 +285,41 @@
 					trackDebounced('history:search', { q: search.trim().slice(0, 64) });
 				}}
 			/>
+			{#if search}
+				<button
+					class="search-clear"
+					type="button"
+					aria-label={$t('clearSearch')}
+					onclick={() => (search = '')}
+				>
+					<Icon name="close" size={16} />
+				</button>
+			{/if}
 		</span>
 	</label>
 
-	{#if filteredHistory.length === 0}
+	{#if isHydrating && history.length === 0}
+		<div class="history-skeleton" role="status" aria-label={$t('loadingHistory')}>
+			{#each [1, 2, 3] as row (row)}
+				<span class="history-skeleton-row"></span>
+			{/each}
+		</div>
+	{:else if filteredHistory.length === 0}
 		<div class="history-empty">
-			<span class="empty-icon" aria-hidden="true"><Icon name="clock" size={22} /></span>
-			<p class="mb-0 text-muted">{$t('noTestsFound')}</p>
-			<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
+			<span class="empty-icon" aria-hidden="true">
+				<Icon name={search.trim() ? 'search' : 'clock'} size={22} />
+			</span>
+			{#if search.trim()}
+				<p class="fw-semibold mb-1">{$t('historyNoResultsTitle')}</p>
+				<p class="small text-muted mb-3">{$t('historyNoResultsBody')}</p>
+				<button class="btn btn-outline-secondary" type="button" onclick={() => (search = '')}>
+					{$t('clearSearch')}
+				</button>
+			{:else}
+				<p class="fw-semibold mb-1">{$t('historyEmptyTitle')}</p>
+				<p class="small text-muted mb-3">{$t('historyEmptyBody')}</p>
+				<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
+			{/if}
 		</div>
 	{:else}
 		{#each historyGroups as group (group.bucket)}
@@ -310,16 +354,14 @@
 									{/if}
 								</span>
 							</span>
-							{#if entry.userAnswers}
-								<span class="score-chip is-scored">
-									{entry.score ?? 0}/{entry.totalQuestions ||
-										entry.questions?.length ||
-										0}
-								</span>
-							{:else}
+							{#if !entry.userAnswers}
 								<span class="score-chip is-unsubmitted"
 									>{$t('unsubmittedTest')}</span
 								>
+							{:else if entry.totalQuestions || entry.questions?.length}
+								<span class="score-chip is-scored">
+									{entry.score ?? 0}/{entry.totalQuestions || entry.questions?.length}
+								</span>
 							{/if}
 						</a>
 						<FuseButton
@@ -396,6 +438,67 @@
 	.clear-link:focus-visible {
 		background: color-mix(in srgb, var(--danger) 8%, transparent);
 		color: var(--danger);
+	}
+
+	.sync-note {
+		margin: 0 0 12px;
+		padding: 8px 12px;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-control);
+		background: var(--surface-muted);
+		color: var(--text-muted);
+		font-size: 0.82rem;
+	}
+
+	.search-field {
+		position: relative;
+	}
+
+	.search-input {
+		padding-right: 44px;
+	}
+
+	.search-clear {
+		position: absolute;
+		top: 50%;
+		right: 4px;
+		display: inline-flex;
+		width: 44px;
+		height: 44px;
+		transform: translateY(-50%);
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		background: none;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+
+	.search-clear:hover {
+		color: var(--text);
+	}
+
+	.history-skeleton {
+		display: grid;
+		gap: 10px;
+		margin-top: 8px;
+	}
+
+	.history-skeleton-row {
+		display: block;
+		height: 58px;
+		border-radius: var(--radius-surface);
+		background: var(--surface-muted);
+		animation: history-pulse 1s ease-in-out infinite alternate;
+	}
+
+	@keyframes history-pulse {
+		from {
+			opacity: 0.6;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.stat-strip {

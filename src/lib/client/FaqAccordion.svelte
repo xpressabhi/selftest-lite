@@ -15,13 +15,14 @@
 
 	let { items = [] } = $props();
 
-	let openId = $state(null);
+	// Independent toggles: comparing two answers should not close the first.
+	let openIds = $state([]);
 
 	onMount(() => {
 		const hash = window.location.hash.replace('#', '');
 		const match = items.find((item) => faqAnchorId(item.id) === hash);
 		if (match) {
-			openId = match.id;
+			openIds = [match.id];
 			// Wait for the panel to render, then bring the question into view.
 			requestAnimationFrame(() => {
 				document.getElementById(faqAnchorId(match.id))?.scrollIntoView({ block: 'start' });
@@ -30,9 +31,11 @@
 	});
 
 	function toggle(item) {
-		const next = openId === item.id ? null : item.id;
-		openId = next;
-		syncHash(next);
+		const next = openIds.includes(item.id)
+			? openIds.filter((id) => id !== item.id)
+			: [...openIds, item.id];
+		openIds = next;
+		syncHash(next.includes(item.id) ? item.id : null);
 	}
 
 	function syncHash(id) {
@@ -60,7 +63,7 @@
 		</style>
 	</noscript>
 	{#each items as item (item.id)}
-		{@const open = openId === item.id}
+		{@const open = openIds.includes(item.id)}
 		{@const anchor = faqAnchorId(item.id)}
 		{@const parts = answerParts(item.answerKeys)}
 		<article class="faq-item" id={anchor}>
@@ -120,7 +123,7 @@
 		border-radius: var(--radius-surface);
 		background: var(--surface);
 		overflow: hidden;
-		scroll-margin-top: 5rem;
+		scroll-margin-top: calc(74px + var(--sat, env(safe-area-inset-top, 0px)));
 	}
 
 	.faq-heading {

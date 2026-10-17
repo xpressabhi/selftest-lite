@@ -39,15 +39,24 @@
 </script>
 
 <section class="app-container py-4 test-stats-page">
+	<a class="stats-back" href="/history">← {$t('history')}</a>
 	<h1 class="text-page mb-1">{$t('testStatsTitle')}</h1>
 	<p class="text-muted small mb-4">
 		{$t('testStatsPageSubtitle', { id: testId || '' })}
 	</p>
 
 	{#if loading}
-		<p class="text-muted small">{$t('testStatsLoading')}</p>
+		<div class="test-stats-tiles" role="status" aria-label={$t('testStatsLoading')}>
+			{#each [1, 2, 3] as tile (tile)}
+				<div class="test-stats-skeleton-tile"></div>
+			{/each}
+		</div>
 	{:else if error}
 		<p class="text-danger small">{error}</p>
+		<div class="d-flex flex-wrap gap-2 mt-2">
+			<a class="btn btn-outline-primary" href="/history">{$t('history')}</a>
+			<a class="btn btn-outline-secondary" href="/">{$t('startNewTest')}</a>
+		</div>
 	{:else if stats}
 		<div class="test-stats-tiles">
 			<div class="test-stats-tile" data-metric="visitors">
@@ -72,16 +81,29 @@
 		{/if}
 
 		<h2 class="text-section mt-4 mb-2">{$t('testStatsDaily')}</h2>
-		<div class="test-stats-daily" aria-hidden="true">
-			{#each stats.daily as day (day.date)}
-				<div class="test-stats-day" title={`${day.date}: ${day.visits}/${day.submissions}`}>
-					<span
-						class="test-stats-day-bar"
-						style={`height: ${Math.max(4, Math.round((Math.max(day.visits, day.submissions) / maxDaily) * 100))}%`}
-					></span>
-				</div>
-			{/each}
-		</div>
+		<figure class="test-stats-daily-figure">
+			<div class="test-stats-daily" aria-hidden="true">
+				{#each stats.daily as day (day.date)}
+					<div class="test-stats-day" title={`${day.date}: ${day.visits}/${day.submissions}`}>
+						<span
+							class="test-stats-day-bar"
+							style={`height: ${Math.max(4, Math.round((Math.max(day.visits, day.submissions) / maxDaily) * 100))}%`}
+						></span>
+					</div>
+				{/each}
+			</div>
+			<ul class="visually-hidden">
+				{#each stats.daily as day (day.date)}
+					<li>
+						{formatDate(day.date, $activeLanguage, { day: 'numeric', month: 'short' })}:
+						{day.visits}
+						{$t('testVisitors')},
+						{day.submissions}
+						{$t('testSubmissions')}
+					</li>
+				{/each}
+			</ul>
+		</figure>
 
 		<h2 class="text-section mt-4 mb-2">{$t('testStatsScores')}</h2>
 		{#if stats.scores.length}
@@ -104,16 +126,53 @@
 			<p class="text-muted small">{$t('testStatsNoScores')}</p>
 		{/if}
 
-		<a
-			class="btn btn-outline-primary mt-4"
-			href={`/test?id=${encodeURIComponent(testId || '')}`}
-		>
-			{$t('openTest')}
-		</a>
+		<div class="d-flex flex-wrap gap-2 mt-4">
+			<a class="btn btn-outline-primary" href={`/test?id=${encodeURIComponent(testId || '')}`}>
+				{$t('openTest')}
+			</a>
+			{#if stats.myAttempt}
+				<a
+					class="btn btn-outline-secondary"
+					href={`/results?id=${encodeURIComponent(testId || '')}`}
+				>
+					{$t('viewResults')}
+				</a>
+			{/if}
+		</div>
 	{/if}
 </section>
 
 <style>
+	.stats-back {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.stats-back:hover {
+		color: var(--brand-text);
+	}
+
+	.test-stats-skeleton-tile {
+		height: 64px;
+		border-radius: var(--radius-surface);
+		background: var(--surface-muted);
+		animation: stats-pulse 1s ease-in-out infinite alternate;
+	}
+
+	@keyframes stats-pulse {
+		from {
+			opacity: 0.6;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
 	.test-stats-tiles {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -170,7 +229,7 @@
 		display: block;
 		width: 100%;
 		border-radius: 3px;
-		background: var(--color-brand-500);
+		background: var(--color-brand-600);
 	}
 
 	.test-stats-scores {

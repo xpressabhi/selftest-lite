@@ -522,6 +522,19 @@
 		streak = getStreak();
 		stats = getStats(historyEntries);
 		historyCount = historyEntries.length;
+		// A saved preset re-runs from the bookmarks page (/?preset=id): read it
+		// once, strip the parameter so a refresh never starts another run, and
+		// hand it to the same quick-start path as the star chips.
+		const presetId = new URLSearchParams(window.location.search).get('preset');
+		if (presetId) {
+			const cleanUrl = new URL(window.location.href);
+			cleanUrl.searchParams.delete('preset');
+			window.history.replaceState(window.history.state, '', cleanUrl);
+			const preset = getBookmarkedQuizPresets().find((item) => item.id === presetId);
+			if (preset) {
+				void quickStartPreset(preset);
+			}
+		}
 		// Central personalization (fail-open, once per load): Jev picks one
 		// entry point to promote; hides stay behind existing toggles/links.
 		// The nudge slice rides the same call; the push ask needs to know
@@ -1932,19 +1945,6 @@
 				{/if}
 			</div>
 		{/if}
-		<div class="daily-five-row mb-4">
-			<button
-				class="daily-five-btn"
-				type="button"
-				disabled={status === 'loading'}
-				onclick={startDailyFive}
-			>
-				<Icon name="zap" size={16} />
-				{$t('dailyFive')}
-			</button>
-			<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
-		</div>
-
 		{#if unsubmittedTest?.id}
 			<div
 				class="alert alert-warning d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3"
@@ -1965,6 +1965,21 @@
 				</a>
 			</div>
 		{/if}
+
+		<div class="daily-five-row mb-4">
+			<button
+				class="daily-five-btn"
+				type="button"
+				disabled={status === 'loading'}
+				onclick={startDailyFive}
+			>
+				<Icon name="zap" size={16} />
+				{$t('dailyFive')}
+			</button>
+			<span class="daily-five-hint">
+				{historyCount > 0 ? $t('dailyFiveHint') : $t('dailyFiveWarmupHint')}
+			</span>
+		</div>
 
 		{#if showStreakCard}
 			<StreakCard

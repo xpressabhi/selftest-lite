@@ -127,7 +127,7 @@
 	}
 
 	.faq-section {
-		scroll-margin-top: 5rem;
+		scroll-margin-top: calc(74px + var(--sat, env(safe-area-inset-top, 0px)));
 	}
 
 	.faq-section-title {

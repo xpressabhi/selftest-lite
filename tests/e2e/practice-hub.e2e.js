@@ -69,6 +69,7 @@ test('hub search filters as you type and clear restores the grouped view', async
 	await page.locator('.practice-search-clear').click();
 	await expect(page.locator('.practice-category').first()).toBeVisible();
 	await expect(page.locator('.practice-search-count')).toHaveCount(0);
+	await expect(page.locator('.practice-total-count')).toContainText(/\d+ exams/);
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',

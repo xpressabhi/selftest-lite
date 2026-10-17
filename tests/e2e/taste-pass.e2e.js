@@ -336,7 +336,9 @@ test('bookmark rows are quiet, labeled and actionable', async ({ page }, testInf
 			height: el.getBoundingClientRect().height
 		}))
 	);
-	await expect(page.locator('a.bm-row').first()).toHaveAttribute('href', /\?exam=/);
+	// Saved exams deep-link to their practice page, matching every other exam
+	// row in the app.
+	await expect(page.locator('a.bm-row').first()).toHaveAttribute('href', /\/practice\//);
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify(audit, null, 2),

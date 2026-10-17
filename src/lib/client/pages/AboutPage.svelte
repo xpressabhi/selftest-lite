@@ -105,9 +105,6 @@
 				<a class="btn btn-primary" href={localizedPath('/', $activeLanguage)}
 					>{$t('aboutCtaButton')}</a
 				>
-				<a class="about-link" href={localizedPath('/faq', $activeLanguage)}
-					>{$t('contactQuickHelpFaq')}</a
-				>
 			</div>
 		</header>
 
@@ -205,7 +202,9 @@
 
 	.about-hero {
 		display: grid;
+		justify-items: center;
 		gap: 0.75rem;
+		text-align: center;
 	}
 
 	.about-title {
@@ -213,6 +212,12 @@
 		font-size: 1.5rem;
 		line-height: 1.15;
 		font-weight: 700;
+	}
+
+	@media (min-width: 768px) {
+		.about-title {
+			font-size: 1.875rem;
+		}
 	}
 
 	.about-lead {

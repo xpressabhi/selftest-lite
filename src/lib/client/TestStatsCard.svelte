@@ -8,11 +8,11 @@
 
 	let stats = $state(null);
 
-	// Shown once more than one identity has seen the test: the visitor count
-	// is the minimum this card promises. A single visitor (usually the creator
-	// alone, or a lone taker whose score already leads the results page) sees
-	// nothing.
-	const visible = $derived(Number(stats?.visitors || 0) >= 2);
+	// Shown once more than one identity has seen the test, or for anyone with
+	// an attempt of their own: a lone taker's score is reason enough to show
+	// the activity, and it keeps the details page reachable on low-traffic
+	// tests.
+	const visible = $derived(Number(stats?.visitors || 0) >= 2 || Boolean(stats?.myAttempt));
 
 	const topScores = $derived((stats?.scores || []).slice(0, 5));
 
@@ -45,7 +45,7 @@
 {#if visible}
 	<section class="test-stats-card" aria-label={$t('testStatsTitle')}>
 		<div class="test-stats-head">
-			<h3 class="test-stats-title">{$t('testStatsTitle')}</h3>
+			<h2 class="test-stats-title">{$t('testStatsTitle')}</h2>
 			{#if stats.myAttempt}
 				<span class="test-stats-my-score">
 					{$t('yourScoreOnTest')}: {stats.myAttempt.score}/{stats.myAttempt.total}
@@ -139,13 +139,13 @@
 	}
 
 	.test-stats-value {
-		font-size: 1.15rem;
+		font-size: 1.25rem;
 		font-weight: 700;
 		line-height: 1.1;
 	}
 
 	.test-stats-label {
-		font-size: 0.7rem;
+		font-size: 0.75rem;
 		color: var(--text-muted);
 	}
 
@@ -188,8 +188,10 @@
 	}
 
 	.test-stats-link {
-		display: inline-block;
-		margin-top: 10px;
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		margin-top: 6px;
 		font-size: 0.82rem;
 		font-weight: 600;
 	}

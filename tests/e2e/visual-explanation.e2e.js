@@ -432,6 +432,10 @@ test('restores a linked visual and opens it inline from the hash deep link', asy
 		topic: 'e2e-links-topic',
 		questionIndex: 0,
 	});
+	// The whole suite's parallel workers exhaust the shared links bucket, which
+	// would silently degrade this restore to the build offer; retire its spent
+	// hits so this read is served (same remedy as the numeric-id test below).
+	await clearLinksRateLimit(sql);
 
 	const builds = countBuilds(page);
 	// The hash card can ask for its verdict before the links read lands. The
@@ -502,6 +506,9 @@ test('arms the linked visual when the wrong-answers action opens the card', asyn
 		topic: 'e2e-links-topic',
 		questionIndex: 0,
 	});
+	// See the deep-link test above: retire the shared links bucket's spent
+	// hits so this read is not rate-limited away under the full suite.
+	await clearLinksRateLimit(sql);
 
 	const builds = countBuilds(page);
 	// Verdicts answer not_visual here too, so the spec stays hermetic and the
@@ -517,7 +524,7 @@ test('arms the linked visual when the wrong-answers action opens the card', asyn
 	// Hero action: narrows the review list to the wrong answers and opens the
 	// first one. That same click must arm the visual section for the card it
 	// opens; the card is never collapsed and re-expanded by hand here.
-	await page.getByRole('button', { name: 'Review wrong answers' }).click();
+	await page.getByRole('button', { name: 'Review incorrect answers' }).click();
 
 	const wrongCard = page.locator('#question-0');
 	await expect(wrongCard.locator('.review-card-body')).toHaveCount(1);
@@ -631,7 +638,7 @@ test('shows the localized build error with a working retry', async ({ page }, te
 
 	const section = page.locator('.visual-explainer');
 	await expect(section.getByText('Rate limit exceeded. Please try again later.')).toBeVisible();
-	const retry = section.getByRole('button', { name: 'Try Again' });
+	const retry = section.getByRole('button', { name: 'Try again' });
 	await expect(retry).toBeVisible();
 
 	// Retry re-runs the build rather than leaving the card stuck.

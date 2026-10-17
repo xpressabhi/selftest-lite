@@ -67,9 +67,12 @@
 		<header class="blog-hero">
 			<h1 class="blog-title">{$t('blogHeroTitle')}</h1>
 			<p class="blog-subtitle">{$t('blogHeroBody')}</p>
+			<a class="btn btn-primary" href={localizedPath('/', $activeLanguage)}>
+				{$t('blogPracticeCtaTitle')}
+			</a>
 		</header>
 
-		<div class="blog-filters" role="group" aria-label={$t('blogHeroTitle')}>
+		<div class="blog-filters" role="group" aria-label={$t('blogTopicsAria')}>
 			<button
 				type="button"
 				class="blog-chip"

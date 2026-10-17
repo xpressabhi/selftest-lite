@@ -4,6 +4,7 @@
 	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import SquishSwitch from '#lib/client/SquishSwitch.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import {
 		fetchProfile,
 		fetchProfileInsights,
@@ -76,6 +77,7 @@
 	let saving = $state(false);
 	let saveQueued = false;
 	let resetting = $state(false);
+	let showResetConfirm = $state(false);
 	let isSigningIn = $state(false);
 	let signInError = $state('');
 	let loadError = $state('');
@@ -242,10 +244,34 @@
 		}
 	}
 
-	async function handleReset() {
-		if (resetting || !window.confirm($t('profileResetConfirm'))) {
+	let examListEl = $state(null);
+
+	function handleExamKeydown(event) {
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
 			return;
 		}
+		const buttons = [...(examListEl?.querySelectorAll('.suggestion-button') ?? [])];
+		if (!buttons.length) {
+			return;
+		}
+		event.preventDefault();
+		const activeIndex = buttons.indexOf(document.activeElement);
+		const nextIndex =
+			event.key === 'ArrowDown'
+				? (activeIndex + 1) % buttons.length
+				: (activeIndex - 1 + buttons.length) % buttons.length;
+		buttons[nextIndex]?.focus();
+	}
+
+	function handleReset() {
+		if (resetting) {
+			return;
+		}
+		showResetConfirm = true;
+	}
+
+	async function confirmReset() {
+		showResetConfirm = false;
 		resetting = true;
 		try {
 			await resetProfile();
@@ -395,9 +421,14 @@
 									id="profile-exam"
 									class="form-control"
 									type="text"
+									role="combobox"
+									aria-expanded={filteredExams.length > 0}
+									aria-controls="profile-exam-listbox"
+									aria-autocomplete="list"
 									placeholder={$t('profileWizardSearchExam')}
 									bind:value={examQuery}
 									maxlength={MAX_SEARCH_CHARS}
+									onkeydown={handleExamKeydown}
 									oninput={(event) => {
 										examQuery = sanitizeInputText(
 											event.currentTarget.value,
@@ -412,12 +443,19 @@
 									}}
 								/>
 								{#if filteredExams.length > 0}
-									<ul class="exam-suggestions">
+									<ul
+										class="exam-suggestions"
+										id="profile-exam-listbox"
+										role="listbox"
+										bind:this={examListEl}
+									>
 										{#each filteredExams as exam (exam.id)}
-											<li>
+											<li role="presentation">
 												<button
 													type="button"
 													class="suggestion-button"
+													role="option"
+													aria-selected={draft.examTarget?.id === exam.id}
 													onclick={() => selectExam(exam)}
 												>
 													{exam.name}
@@ -425,6 +463,10 @@
 											</li>
 										{/each}
 									</ul>
+								{:else if examQuery.trim()}
+									<p class="small text-muted mt-2 mb-0">
+										{$t('profileExamNoMatches')}
+									</p>
 								{/if}
 								{#if draft.examTarget}
 									<button
@@ -448,6 +490,10 @@
 											type="button"
 											class="chip"
 											class:selected={draft.subjects.some(
+												(item) =>
+													item.toLowerCase() === subject.toLowerCase()
+											)}
+											aria-pressed={draft.subjects.some(
 												(item) =>
 													item.toLowerCase() === subject.toLowerCase()
 											)}
@@ -662,6 +708,11 @@
 						>
 							{saving ? $t('profileSaving') : $t('profileSaveButton')}
 						</button>
+					</div>
+
+					<section class="panel">
+						<h2 class="h6 fw-bold mb-2">{$t('profileResetButton')}</h2>
+						<p class="text-muted small mb-2">{$t('profileResetConfirm')}</p>
 						<button
 							type="button"
 							class="btn btn-outline-danger"
@@ -670,7 +721,17 @@
 						>
 							{resetting ? $t('deleting') : $t('profileResetButton')}
 						</button>
-					</div>
+					</section>
+
+					{#if showResetConfirm}
+						<ConfirmDialog
+							title={$t('profileResetConfirm')}
+							confirmLabel={$t('profileResetButton')}
+							cancelLabel={$t('cancel')}
+							onconfirm={confirmReset}
+							oncancel={() => (showResetConfirm = false)}
+						/>
+					{/if}
 				{/if}
 
 				<section class="panel">

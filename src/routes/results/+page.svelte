@@ -5,6 +5,7 @@
 	import Icon from '#lib/client/Icon.svelte';
 	import { getClientHeaders } from '#lib/client/identity.js';
 	import { localizedApiError, t } from '#lib/client/i18n.js';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import { language } from '#lib/client/preferences.js';
 	import { COUNT_UP_MS, countUpValue, shouldCountUp } from '#lib/client/countUp.js';
 	import { HAPTIC_COMMIT, HAPTIC_SUCCESS, triggerVibration } from '#lib/client/haptics.js';
@@ -78,6 +79,8 @@
 	let countUpFrame = null;
 	let countUpStarted = false;
 	let filter = $state('all');
+	let personalizeNotice = $state(false);
+	let explainProgress = $state(null);
 	let resultsHide = $state([]);
 	let challenge = $state(null);
 	let challengeViewTracked = false;
@@ -114,8 +117,6 @@
 	let shareSheetFirstItem = $state();
 	let reminderToggleEl = $state();
 	let showRetakeConfirm = $state(false);
-	let retakeTrigger = $state();
-	let retakeConfirmButton = $state();
 	let nudgeKind = $state(null);
 	let nudgeParams = $state({});
 	let nudgeDismissed = $state(false);
@@ -425,6 +426,7 @@
 					if (decision?.applied) {
 						if (decision.action === 'fix_mistakes' && wrong > 0) {
 							filter = 'incorrect';
+							personalizeNotice = true;
 						}
 						if (Array.isArray(decision.hide) && decision.hide.length > 0) {
 							resultsHide = decision.hide;
@@ -694,15 +696,18 @@
 		}
 		autoExplainRunning = true;
 		autoExplainCanceled = false;
+		explainProgress = { done: 0, total: targets.length };
 		try {
 			for (const index of targets) {
 				if (autoExplainCanceled) {
 					break;
 				}
 				await fetchExplanation(index, questionPaper.questions[index]);
+				explainProgress = { done: explainProgress.done + 1, total: explainProgress.total };
 			}
 		} finally {
 			autoExplainRunning = false;
+			explainProgress = null;
 		}
 	}
 
@@ -1430,16 +1435,12 @@
 		return `/?${params.toString()}`;
 	}
 
-	async function requestRetake() {
+	function requestRetake() {
 		showRetakeConfirm = true;
-		await tick();
-		retakeConfirmButton?.focus({ preventScroll: true });
 	}
 
-	async function cancelRetake() {
+	function cancelRetake() {
 		showRetakeConfirm = false;
-		await tick();
-		retakeTrigger?.focus({ preventScroll: true });
 	}
 
 	function retakeTest() {
@@ -1472,10 +1473,10 @@
 <section class="app-container py-4">
 	{#if loading}
 		<div class="py-5 text-center">
-			<div class="thinking-dots" role="status" aria-label={$t('loading')}>
+			<div class="thinking-dots" role="status" aria-label={$t('loadingResults')}>
 				<span></span><span></span><span></span>
 			</div>
-			<p class="text-muted mt-3">{$t('loading')}</p>
+			<p class="text-muted mt-3">{$t('loadingResults')}</p>
 		</div>
 	{:else if error}
 		<div class="alert alert-warning" role="alert">{error}</div>
@@ -1623,15 +1624,9 @@
 
 		<div class="hero-utility no-print">
 			<button class="utility-link" type="button" onclick={printResult}>{$t('print')}</button>
-			<button
-				bind:this={retakeTrigger}
-				class="utility-link"
-				type="button"
-				onclick={requestRetake}
-			>
+			<button class="utility-link" type="button" onclick={requestRetake}>
 				{$t('retakeTest')}
 			</button>
-			<span class="utility-id">{$t('testId')}: {questionPaper.id}</span>
 			{#if bookmarkedQuestionKeys.length > 0}
 				<span class="bookmark-count" aria-hidden="true">
 					<Icon name="bookmark" size={14} />
@@ -1677,31 +1672,14 @@
 		{/if}
 
 		{#if showRetakeConfirm}
-			<div
-				class="retake-confirm result-retake no-print"
-				role="group"
-				aria-label={$t('retakeConfirmTitle')}
-			>
-				<p class="retake-confirm-title">{$t('retakeConfirmTitle')}</p>
-				<p class="retake-confirm-body">{$t('retakeConfirmBody')}</p>
-				<div class="d-flex flex-wrap gap-2">
-					<button
-						bind:this={retakeConfirmButton}
-						class="btn btn-sm btn-danger"
-						type="button"
-						onclick={retakeTest}
-					>
-						{$t('retakeTest')}
-					</button>
-					<button
-						class="btn btn-sm btn-outline-secondary"
-						type="button"
-						onclick={cancelRetake}
-					>
-						{$t('cancel')}
-					</button>
-				</div>
-			</div>
+			<ConfirmDialog
+				title={$t('retakeConfirmTitle')}
+				body={$t('retakeConfirmBody')}
+				confirmLabel={$t('retakeTest')}
+				cancelLabel={$t('cancel')}
+				onconfirm={retakeTest}
+				oncancel={cancelRetake}
+			/>
 		{/if}
 
 		{#if challengeOutcome}
@@ -1774,7 +1752,10 @@
 				class:active={filter === 'all'}
 				type="button"
 				aria-pressed={filter === 'all'}
-				onclick={() => (filter = 'all')}
+				onclick={() => {
+					filter = 'all';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterAll')}<span class="filter-count">{totalQuestions}</span>
 			</button>
@@ -1783,7 +1764,10 @@
 				class:active={filter === 'correct'}
 				type="button"
 				aria-pressed={filter === 'correct'}
-				onclick={() => (filter = 'correct')}
+				onclick={() => {
+					filter = 'correct';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterCorrect')}<span class="filter-count">{correctCount}</span>
 			</button>
@@ -1792,7 +1776,10 @@
 				class:active={filter === 'incorrect'}
 				type="button"
 				aria-pressed={filter === 'incorrect'}
-				onclick={() => (filter = 'incorrect')}
+				onclick={() => {
+					filter = 'incorrect';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterIncorrect')}<span class="filter-count">{incorrectCount}</span>
 			</button>
@@ -1801,7 +1788,10 @@
 				class:active={filter === 'unanswered'}
 				type="button"
 				aria-pressed={filter === 'unanswered'}
-				onclick={() => (filter = 'unanswered')}
+				onclick={() => {
+					filter = 'unanswered';
+					personalizeNotice = false;
+				}}
 			>
 				{$t('filterUnanswered')}<span class="filter-count">{unansweredCount}</span>
 			</button>
@@ -1817,11 +1807,32 @@
 			{/if}
 		</div>
 
+		{#if personalizeNotice}
+			<div class="personalize-note" role="status">
+				<span class="small">{$t('personalizeFixMistakesNotice')}</span>
+				<button
+					class="btn btn-sm btn-outline-secondary"
+					type="button"
+					onclick={() => {
+						filter = 'all';
+						personalizeNotice = false;
+					}}
+				>
+					{$t('showAllAnswers')}
+				</button>
+			</div>
+		{/if}
+
 		<label class="auto-explain-row no-print">
 			<input type="checkbox" checked={autoExplainEnabled} onchange={toggleAutoExplain} />
-			<span class="small text-muted">
+			<span class="small text-muted" aria-live="polite">
 				{$t('autoExplainWrong')}
-				{#if autoExplainRunning}&middot; {$t('explainingProgress')}{/if}
+				{#if autoExplainRunning && explainProgress}
+					&middot; {$t('explainingProgressCount', {
+						done: explainProgress.done,
+						total: explainProgress.total,
+					})}
+				{/if}
 			</span>
 		</label>
 
@@ -2160,7 +2171,7 @@
 
 	.hero-utility > * + *::before {
 		margin-right: 10px;
-		color: var(--line);
+		color: var(--text-muted);
 		content: '·';
 	}
 
@@ -2174,19 +2185,13 @@
 		color: var(--text-muted);
 		font: inherit;
 		text-decoration: underline;
-		text-decoration-color: var(--line);
+		text-decoration-color: currentColor;
 		text-underline-offset: 3px;
 	}
 
 	.utility-link:hover,
 	.utility-link:focus-visible {
 		color: var(--text);
-	}
-
-	.utility-id {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
 	}
 
 	.reminder-link {
@@ -2198,8 +2203,16 @@
 		color: var(--brand-text);
 	}
 
-	.result-retake {
-		margin-top: 10px;
+	.personalize-note {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px;
+		margin: -6px 0 14px;
+		padding: 8px 12px;
+		border: 1px solid color-mix(in srgb, var(--color-brand-600) 25%, var(--line));
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--color-brand-600) 6%, var(--surface));
 	}
 
 	.auto-explain-row {
@@ -2292,26 +2305,6 @@
 
 	.challenge-card {
 		border-color: color-mix(in srgb, var(--color-brand-600) 35%, transparent);
-	}
-
-	.retake-confirm {
-		flex: 1 1 100%;
-		padding: 10px 12px;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-control);
-		background: var(--surface-muted);
-	}
-
-	.retake-confirm-title {
-		margin: 0;
-		font-size: 0.9rem;
-		font-weight: 700;
-	}
-
-	.retake-confirm-body {
-		margin: 2px 0 10px;
-		color: var(--text-muted);
-		font-size: 0.8rem;
 	}
 
 	.filter-bar {

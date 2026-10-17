@@ -41,6 +41,7 @@
 
 <svelte:head>
 	<title>{paper?.topic ? `${paper.topic} · ` : ''}{$t('print')} | selftest.in</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="print-page">
@@ -52,7 +53,12 @@
 			<Icon name="arrow-left" size={16} />
 			{$t('printBack')}
 		</a>
-		<button class="print-btn" type="button" onclick={printPage}>
+		<button
+			class="print-btn"
+			type="button"
+			disabled={loading || Boolean(error) || !paper}
+			onclick={printPage}
+		>
 			<Icon name="print" size={16} />
 			{$t('print')}
 		</button>
@@ -61,7 +67,14 @@
 	{#if loading}
 		<p class="print-status" role="status">{$t('printLoading')}</p>
 	{:else if error}
-		<p class="print-status print-error">{error}</p>
+		<div class="print-status">
+			<p class="print-error">{error}</p>
+			<p class="print-error-hint">{$t('printErrorHint')}</p>
+			<div class="d-flex flex-wrap gap-2">
+				<a class="print-back" href="/history">{$t('history')}</a>
+				<a class="print-back" href="/">{$t('startNewTest')}</a>
+			</div>
+		</div>
 	{:else if paper}
 		<PrintPaper {paper} language={$activeLanguage} />
 	{/if}
@@ -70,6 +83,7 @@
 <style>
 	.print-page {
 		min-height: 100vh;
+		min-height: 100dvh;
 		background: #eef1f4;
 	}
 
@@ -81,7 +95,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		padding: 8px 16px;
+		padding: calc(8px + var(--sat, env(safe-area-inset-top, 0px))) 16px 8px;
 		border-bottom: 1px solid #d1d5db;
 		background: #fff;
 	}
@@ -113,6 +127,11 @@
 		font-weight: 700;
 	}
 
+	.print-btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
 	.print-status {
 		max-width: 820px;
 		margin: 0 auto;
@@ -122,6 +141,12 @@
 
 	.print-error {
 		color: #b91c1c;
+	}
+
+	.print-error-hint {
+		margin: 0 0 12px;
+		color: #4b5563;
+		font-size: 0.9rem;
 	}
 
 	@media print {

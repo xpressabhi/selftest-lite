@@ -89,7 +89,7 @@ test('hero leads with the score, comparison, and one next step', async ({ page }
 	await expect(page.locator('.hero-cta')).toContainText('Practice 1 weak questions');
 
 	// The follow-up loops stay one tap away, without button chrome.
-	await expect(page.locator('.hero-links')).toContainText('Review wrong answers');
+	await expect(page.locator('.hero-links')).toContainText('Review incorrect answers');
 	// One CTA per intent: the practice CTA lives on .hero-cta, not repeated here.
 	await expect(page.locator('.hero-links')).not.toContainText('Practice more');
 	await expect(page.locator('.hero-links')).toContainText('New quiz');
@@ -97,7 +97,6 @@ test('hero leads with the score, comparison, and one next step', async ({ page }
 	// Utilities and settings live in the quiet rows, not in the hero.
 	await expect(page.locator('.hero-utility')).toContainText('Print');
 	await expect(page.locator('.hero-utility')).toContainText('Retake');
-	await expect(page.locator('.hero-utility')).toContainText('Test ID: e2e-hero');
 	await expect(page.locator('.auto-explain-row')).toBeVisible();
 	await expect(page.locator('.result-footer')).toContainText('Was this test useful?');
 
@@ -113,7 +112,7 @@ test('hero leads with the score, comparison, and one next step', async ({ page }
 				percentage: '67%',
 				correctLine: '2 of 3 correct',
 				cta: 'Practice 1 weak questions',
-				utility: ['Print', 'Retake', 'Test ID'],
+				utility: ['Print', 'Retake'],
 			},
 			null,
 			2
@@ -165,7 +164,7 @@ test('a perfect attempt swaps the CTA to practice more', async ({ page }) => {
 
 	await expect(page.locator('.score-ring-sub')).toHaveText('3 of 3 correct');
 	await expect(page.locator('.hero-cta')).toContainText('Practice more questions');
-	await expect(page.locator('.hero-links')).not.toContainText('Review wrong answers');
+	await expect(page.locator('.hero-links')).not.toContainText('Review incorrect answers');
 	await expect(page.locator('.hero-links')).toContainText('New quiz');
 	expect(errors).toEqual([]);
 });

@@ -1,8 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
-	import { linkGoogleCredential, unlinkGoogle, user } from '#lib/client/auth.js';
+	import { linkGoogleCredential, loginWithGoogleCredential, unlinkGoogle, user } from '#lib/client/auth.js';
 	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import {
 		addPasskeyToAccount,
 		fetchPasskeys,
@@ -21,12 +22,12 @@
 	let lastUserId = $state(null);
 	let passkeys = $state([]);
 	let passkeysLoading = $state(false);
+	let loadFailed = $state(false);
 	let googleLinked = $state(false);
 	let googleEmail = $state('');
 	let passkeySupported = $state(false);
 	let busy = $state('');
-	let pendingRemoveId = $state(null);
-	let confirmUnlink = $state(false);
+	let confirmDialog = $state(null);
 	let errorKey = $state('');
 	let noticeKey = $state('');
 
@@ -63,7 +64,9 @@
 			passkeys = result.passkeys;
 			googleLinked = result.googleLinked;
 			googleEmail = result.googleEmail || '';
+			loadFailed = false;
 		} catch (error) {
+			loadFailed = true;
 			const key = passkeyErrorKey(error);
 			if (key) {
 				errorKey = key;
@@ -102,20 +105,34 @@
 		}
 	}
 
-	/** Two-step confirm: the first tap arms the second, so no native dialog. */
-	async function handleRemovePasskey(passkeyId) {
-		if (pendingRemoveId !== passkeyId) {
-			pendingRemoveId = passkeyId;
-			errorKey = '';
+	async function handleSignedOutGoogle(credential) {
+		busy = 'link';
+		errorKey = '';
+		try {
+			await loginWithGoogleCredential(credential);
+			location.reload();
+		} catch {
+			errorKey = 'settingsGoogleSignInFailed';
+		} finally {
+			busy = '';
+		}
+	}
+
+	function handleRemovePasskey(passkey) {
+		confirmDialog = { kind: 'passkey', passkey };
+	}
+
+	async function confirmRemovePasskey() {
+		const pending = confirmDialog;
+		confirmDialog = null;
+		if (!pending || pending.kind !== 'passkey') {
 			return;
 		}
-
-		pendingRemoveId = null;
 		busy = 'remove';
 		errorKey = '';
 		noticeKey = '';
 		try {
-			await removePasskey(passkeyId);
+			await removePasskey(pending.passkey.id);
 			await loadSignInMethods();
 			noticeKey = 'settingsPasskeyRemoved';
 		} catch (error) {
@@ -128,14 +145,12 @@
 		}
 	}
 
-	async function handleUnlinkGoogle() {
-		if (!confirmUnlink) {
-			confirmUnlink = true;
-			errorKey = '';
-			return;
-		}
+	function handleUnlinkGoogle() {
+		confirmDialog = { kind: 'google' };
+	}
 
-		confirmUnlink = false;
+	async function confirmUnlinkGoogle() {
+		confirmDialog = null;
 		busy = 'unlink';
 		errorKey = '';
 		noticeKey = '';
@@ -182,7 +197,7 @@
 				<p class="text-muted mb-3">{$t('settingsSignInHint')}</p>
 				<div class="d-flex justify-content-center">
 					<GoogleSignInButton
-						onCredential={handleLinkGoogle}
+						onCredential={handleSignedOutGoogle}
 						disabled={busy === 'link'}
 					/>
 				</div>
@@ -196,7 +211,19 @@
 				<p class="text-muted small mb-3">{$t('settingsSignInBody')}</p>
 
 				{#if errorKey}
-					<div class="alert alert-danger small" role="alert">{$t(errorKey)}</div>
+					<div class="alert alert-danger small" role="alert">
+						{$t(errorKey)}
+						{#if loadFailed}
+							<button
+								class="btn btn-sm btn-outline-danger ms-2"
+								type="button"
+								disabled={passkeysLoading}
+								onclick={() => loadSignInMethods()}
+							>
+								{$t('tryAgain')}
+							</button>
+						{/if}
+					</div>
 				{/if}
 				{#if noticeKey}
 					<div class="alert alert-success small" role="status">{$t(noticeKey)}</div>
@@ -210,7 +237,7 @@
 								{$t('settingsGoogleConnected', {
 									email: googleEmail || $user.email || '',
 								})}
-							{:else}
+							{:else if !loadFailed}
 								{$t('settingsGoogleNotConnected')}
 							{/if}
 						</div>
@@ -222,20 +249,12 @@
 							disabled={busy !== '' || removalBlocked}
 							onclick={handleUnlinkGoogle}
 						>
-							{confirmUnlink
-								? $t('settingsGoogleDisconnectConfirm')
-								: $t('settingsGoogleDisconnect')}
+							{$t('settingsGoogleDisconnect')}
 						</button>
 					{/if}
 				</div>
 
-				{#if googleLinked && confirmUnlink}
-					<p class="text-muted small mt-2 mb-0" role="note">
-						{$t('settingsGoogleDisconnectWarning')}
-					</p>
-				{/if}
-
-				{#if !googleLinked}
+				{#if !googleLinked && !loadFailed}
 					<p class="text-muted small mt-3 mb-2">{$t('passkeyLinkGoogleHint')}</p>
 					<div class="d-flex justify-content-center">
 						<GoogleSignInButton
@@ -251,10 +270,10 @@
 				<p class="text-muted small mb-3">{$t('passkeysBody')}</p>
 
 				{#if passkeysLoading}
-					<p class="text-muted small mb-0">{$t('loading')}</p>
-				{:else if passkeys.length === 0}
+					<p class="text-muted small mb-0">{$t('loadingSignInMethods')}</p>
+				{:else if passkeys.length === 0 && !loadFailed}
 					<p class="text-muted small mb-0">{$t('passkeysEmpty')}</p>
-				{:else}
+				{:else if passkeys.length > 0}
 					<ul class="list-unstyled mb-0">
 						{#each passkeys as passkey (passkey.id)}
 							<li class="sign-in-method passkey-row">
@@ -277,11 +296,12 @@
 									type="button"
 									class="btn btn-sm btn-outline-danger"
 									disabled={busy !== '' || removalBlocked}
-									onclick={() => handleRemovePasskey(passkey.id)}
+									aria-label={`${$t('passkeyRemove')}: ${
+										passkey.label || $t('passkeyUnknownDevice')
+									}`}
+									onclick={() => handleRemovePasskey(passkey)}
 								>
-									{pendingRemoveId === passkey.id
-										? $t('passkeyRemoveConfirm')
-										: $t('passkeyRemove')}
+									{$t('passkeyRemove')}
 								</button>
 							</li>
 						{/each}
@@ -306,7 +326,7 @@
 					{/if}
 				{/if}
 
-				{#if removalBlocked}
+				{#if removalBlocked && !loadFailed}
 					<p class="text-muted small mt-3 mb-0" role="note">{$t('signInLastMethod')}</p>
 				{/if}
 				<p class="text-muted small mt-2 mb-0">{$t('settingsNeverDeleted')}</p>
@@ -314,6 +334,26 @@
 		{/if}
 	</div>
 </section>
+
+{#if confirmDialog?.kind === 'passkey'}
+	<ConfirmDialog
+		title={$t('passkeyRemoveTitle')}
+		body={confirmDialog.passkey.label || $t('passkeyUnknownDevice')}
+		confirmLabel={$t('passkeyRemove')}
+		cancelLabel={$t('cancel')}
+		onconfirm={confirmRemovePasskey}
+		oncancel={() => (confirmDialog = null)}
+	/>
+{:else if confirmDialog?.kind === 'google'}
+	<ConfirmDialog
+		title={$t('disconnectGoogleTitle')}
+		body={$t('settingsGoogleDisconnectWarning')}
+		confirmLabel={$t('settingsGoogleDisconnect')}
+		cancelLabel={$t('cancel')}
+		onconfirm={confirmUnlinkGoogle}
+		oncancel={() => (confirmDialog = null)}
+	/>
+{/if}
 
 <style>
 	.settings-wrap {

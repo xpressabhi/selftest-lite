@@ -584,10 +584,15 @@
 					<button
 						class="header-icon lang-toggle"
 						type="button"
-						aria-label={$t('switchLanguageAria')}
+						aria-label={$activeLanguage === 'hindi'
+							? $t('switchToEnglish')
+							: $t('switchToHindi')}
 						onclick={toggleLanguage}
 					>
 						<Icon name="globe" />
+						<span class="lang-toggle-state" aria-hidden="true">
+							{$activeLanguage === 'hindi' ? 'EN' : 'हि'}
+						</span>
 					</button>
 					<button
 						class="header-icon"
@@ -1649,5 +1654,10 @@
 		.bottom-nav a {
 			font-size: 0.72rem;
 		}
+	}
+	.lang-toggle-state {
+		margin-left: 4px;
+		font-size: 0.68rem;
+		font-weight: 700;
 	}
 </style>
