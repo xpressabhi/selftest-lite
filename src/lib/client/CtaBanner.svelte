@@ -68,7 +68,7 @@
 	}
 
 	/* Invert the primary button on the solid brand fill: the default
-	   indigo-on-indigo button would disappear. */
+	   teal-on-teal button would disappear. */
 	.cta-banner .btn-primary {
 		background: var(--on-brand);
 		color: var(--color-brand-700);

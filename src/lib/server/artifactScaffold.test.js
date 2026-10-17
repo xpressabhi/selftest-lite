@@ -107,10 +107,10 @@ describe('composeArtifactDocument', () => {
 		expect(document).toContain('--radius-control: 10px');
 		expect(document).toContain('--radius-surface: 12px');
 		expect(document).toContain('--radius-overlay: 16px');
-		expect(document).toContain('--brand-fill: #4f46e5');
+		expect(document).toContain('--brand-fill: #0f766e');
 		expect(document).toContain('--on-brand: #f8fafc');
-		expect(document).toContain('--surface-muted: #0f172a');
-		expect(document).toContain('--text-muted: #94a3b8');
+		expect(document).toContain('--surface-muted: #0e1116');
+		expect(document).toContain('--text-muted: #9a9a92');
 		// Responsive spacing on the documented breakpoints only.
 		expect(document).toContain('@media (min-width: 480px) { body { padding: 16px; } }');
 		expect(document).toContain('@media (min-width: 768px) { body { padding: 24px; } }');

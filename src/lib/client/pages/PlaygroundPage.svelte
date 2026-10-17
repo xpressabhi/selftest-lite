@@ -549,7 +549,7 @@
 		min-height: 44px;
 		padding: 10px 12px;
 		background: var(--surface, #ffffff);
-		border: 1px solid var(--line, #e2e8f0);
+		border: 1px solid var(--line, #e3ddd0);
 		border-radius: var(--radius-surface, 12px);
 		font: inherit;
 		color: inherit;
@@ -557,7 +557,7 @@
 	}
 
 	.playground-library-item:hover {
-		border-color: var(--brand-text, #4f46e5);
+		border-color: var(--brand-text, #0f766e);
 	}
 
 	.playground-library-item:disabled {
@@ -579,9 +579,9 @@
 
 	.playground-refusal {
 		padding: 12px 14px;
-		background: var(--surface-muted, #f8fafc);
-		border: 1px solid var(--line, #e2e8f0);
-		border-left: 4px solid var(--brand-text, #4f46e5);
+		background: var(--surface-muted, #ece7dc);
+		border: 1px solid var(--line, #e3ddd0);
+		border-left: 4px solid var(--brand-text, #0f766e);
 		border-radius: var(--radius-surface, 12px);
 	}
 
@@ -611,13 +611,13 @@
 		padding: 0 12px;
 		border: 1px solid var(--line);
 		border-radius: 999px;
-		color: var(--brand-text, #4f46e5);
+		color: var(--brand-text, #0f766e);
 		font-size: 0.78rem;
 		font-weight: 600;
 		text-decoration: none;
 	}
 
 	.playground-library-source:hover {
-		border-color: var(--brand-text, #4f46e5);
+		border-color: var(--brand-text, #0f766e);
 	}
 </style>

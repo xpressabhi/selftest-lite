@@ -221,7 +221,7 @@ body {
 	--danger-rgb: 185, 28, 28;
 	/* `--text` as a triplet, so components can build alpha tints with plain
 	   rgba() where color-mix() is unsupported (see `--focus-ring` below). */
-	--text-rgb: 17, 24, 39;
+	--text-rgb: 26, 26, 26;
 	/* Fixed fills for banners and solid state chips (same in both themes). A
 	   fill and its ink are declared together so they cannot drift apart. */
 	--ok-fill: #15803d;
@@ -255,7 +255,7 @@ body {
 	   `box-shadow: 0 0 0 Npx rgba(var(--brand-rgb), X)` variants had drifted
 	   apart — 3px/.15 and 4px/.12 both existed — so the geometry lives here.
 
-	   `rgb()` around the triplet is required: `--brand-rgb` is `79, 70, 229`,
+	   `rgb()` around the triplet is required: `--brand-rgb` is `13, 148, 136`,
 	   a bare comma list, and color-mix() needs a <color>. Without the wrapper
 	   the whole declaration is invalid at computed-value time and box-shadow
 	   silently falls back to none, which is what this token did first.
@@ -268,8 +268,8 @@ body {
 	/* Brand color for text/iconography on surfaces. Dark mode swaps to a
 	   lighter tint so contrast holds on dark backgrounds; fills keep using
 	   --brand-rgb (white text stays readable). */
-	--brand-text-rgb: 13, 148, 136;
-	--brand-text: #0d9488;
+	--brand-text-rgb: 15, 118, 110;
+	--brand-text: #0f766e;
 	/* One border-box shell for every route, header and footer. Desktop
 	   gutters leave 1216px of usable content inside the 1280px frame. */
 	--layout-shell-width: 1280px;
@@ -294,7 +294,7 @@ body {
 	--ok-rgb: 110, 231, 183;
 	--warn-rgb: 252, 211, 77;
 	--danger-rgb: 252, 165, 165;
-	--text-rgb: 248, 250, 252;
+	--text-rgb: 232, 228, 218;
 	--brand-text-rgb: 94, 234, 212;
 	--brand-text: #5eead4;
 	--backdrop: rgb(2 6 23 / 0.72);
