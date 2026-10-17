@@ -20,6 +20,7 @@
 	let presets = $state([]);
 	let questionBookmarks = $state([]);
 	let pendingRemoval = $state(null);
+	let isHydrating = $state(true);
 
 	let exams = $derived(
 		examIds
@@ -33,11 +34,14 @@
 		presets = getBookmarkedQuizPresets();
 		questionBookmarks = getQuestionBookmarks();
 		// Pull bookmarks saved on other devices / before login.
-		void hydrateUserState().then(() => {
-			examIds = getBookmarkedExamIds();
-			presets = getBookmarkedQuizPresets();
-			questionBookmarks = getQuestionBookmarks();
-		});
+		void hydrateUserState()
+			.catch(() => {})
+			.finally(() => {
+				examIds = getBookmarkedExamIds();
+				presets = getBookmarkedQuizPresets();
+				questionBookmarks = getQuestionBookmarks();
+				isHydrating = false;
+			});
 	});
 
 	function askRemoveExam(exam) {
@@ -107,12 +111,17 @@
 				<h2 class="bm-title">{$t('bookmarkedExams')}</h2>
 				<span class="bm-count">{exams.length}</span>
 			</header>
-			{#if exams.length === 0}
-				<p class="bm-empty">{$t('noBookmarkedExams')}</p>
+			{#if isHydrating && exams.length === 0}
+				<span class="bm-skeleton" aria-hidden="true"></span>
+			{:else if exams.length === 0}
+				<p class="bm-empty">
+					{$t('noBookmarkedExams')}
+					<a class="bm-empty-cta" href="/practice">{$t('browsePractice')}</a>
+				</p>
 			{:else}
 				{#each exams as exam (exam.id)}
 					<div class="bm-item">
-						<a class="bm-row" href={`/?exam=${exam.id}`}>
+						<a class="bm-row" href={`/practice/${encodeURIComponent(exam.id)}`}>
 							<span class="bm-main">
 								<span class="bm-name">{exam.name}</span>
 								<span class="bm-meta">
@@ -141,12 +150,17 @@
 				<h2 class="bm-title">{$t('bookmarkedQuizPresets')}</h2>
 				<span class="bm-count">{presets.length}</span>
 			</header>
-			{#if presets.length === 0}
-				<p class="bm-empty">{$t('noBookmarkedQuizPresets')}</p>
+			{#if isHydrating && presets.length === 0}
+				<span class="bm-skeleton" aria-hidden="true"></span>
+			{:else if presets.length === 0}
+				<p class="bm-empty">
+					{$t('noBookmarkedQuizPresets')}
+					<a class="bm-empty-cta" href="/">{$t('startNewTest')}</a>
+				</p>
 			{:else}
 				{#each presets as preset (preset.id)}
 					<div class="bm-item">
-						<div class="bm-row is-static">
+						<a class="bm-row" href={`/?preset=${encodeURIComponent(preset.id)}`}>
 							<span class="bm-main">
 								<span class="bm-name">
 									{preset.label || preset.topicSeed || $t('quizPractice')}
@@ -156,7 +170,8 @@
 									{$t('questions')} · {preset.difficulty || $t('intermediate')}
 								</span>
 							</span>
-						</div>
+							<Icon name="chevron-right" size={18} />
+						</a>
 						<button
 							class="bm-remove"
 							type="button"
@@ -178,7 +193,9 @@
 			<h2 class="bm-title">{$t('bookmarkedQuestions')}</h2>
 			<span class="bm-count">{questionBookmarks.length}</span>
 		</header>
-		{#if questionBookmarks.length === 0}
+		{#if isHydrating && questionBookmarks.length === 0}
+			<span class="bm-skeleton" aria-hidden="true"></span>
+		{:else if questionBookmarks.length === 0}
 			<p class="bm-empty">{$t('noBookmarksYet')}</p>
 		{:else}
 			<div class="q-list">
@@ -270,6 +287,31 @@
 		padding: 16px;
 		color: var(--text-muted);
 		font-size: 0.88rem;
+	}
+
+	.bm-empty-cta {
+		display: inline-block;
+		margin-left: 6px;
+		color: var(--brand-text);
+		font-weight: 600;
+	}
+
+	.bm-skeleton {
+		display: block;
+		margin: 16px;
+		height: 44px;
+		border-radius: var(--radius-control);
+		background: var(--surface-muted);
+		animation: bm-pulse 1s ease-in-out infinite alternate;
+	}
+
+	@keyframes bm-pulse {
+		from {
+			opacity: 0.6;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.bm-item {

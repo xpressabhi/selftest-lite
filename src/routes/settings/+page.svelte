@@ -22,6 +22,7 @@
 	let lastUserId = $state(null);
 	let passkeys = $state([]);
 	let passkeysLoading = $state(false);
+	let loadFailed = $state(false);
 	let googleLinked = $state(false);
 	let googleEmail = $state('');
 	let passkeySupported = $state(false);
@@ -63,7 +64,9 @@
 			passkeys = result.passkeys;
 			googleLinked = result.googleLinked;
 			googleEmail = result.googleEmail || '';
+			loadFailed = false;
 		} catch (error) {
+			loadFailed = true;
 			const key = passkeyErrorKey(error);
 			if (key) {
 				errorKey = key;
@@ -195,7 +198,19 @@
 				<p class="text-muted small mb-3">{$t('settingsSignInBody')}</p>
 
 				{#if errorKey}
-					<div class="alert alert-danger small" role="alert">{$t(errorKey)}</div>
+					<div class="alert alert-danger small" role="alert">
+						{$t(errorKey)}
+						{#if loadFailed}
+							<button
+								class="btn btn-sm btn-outline-danger ms-2"
+								type="button"
+								disabled={passkeysLoading}
+								onclick={() => loadSignInMethods()}
+							>
+								{$t('tryAgain')}
+							</button>
+						{/if}
+					</div>
 				{/if}
 				{#if noticeKey}
 					<div class="alert alert-success small" role="status">{$t(noticeKey)}</div>
@@ -209,7 +224,7 @@
 								{$t('settingsGoogleConnected', {
 									email: googleEmail || $user.email || '',
 								})}
-							{:else}
+							{:else if !loadFailed}
 								{$t('settingsGoogleNotConnected')}
 							{/if}
 						</div>
@@ -226,7 +241,7 @@
 					{/if}
 				</div>
 
-				{#if !googleLinked}
+				{#if !googleLinked && !loadFailed}
 					<p class="text-muted small mt-3 mb-2">{$t('passkeyLinkGoogleHint')}</p>
 					<div class="d-flex justify-content-center">
 						<GoogleSignInButton
@@ -242,10 +257,10 @@
 				<p class="text-muted small mb-3">{$t('passkeysBody')}</p>
 
 				{#if passkeysLoading}
-					<p class="text-muted small mb-0">{$t('loading')}</p>
-				{:else if passkeys.length === 0}
+					<p class="text-muted small mb-0">{$t('loadingSignInMethods')}</p>
+				{:else if passkeys.length === 0 && !loadFailed}
 					<p class="text-muted small mb-0">{$t('passkeysEmpty')}</p>
-				{:else}
+				{:else if passkeys.length > 0}
 					<ul class="list-unstyled mb-0">
 						{#each passkeys as passkey (passkey.id)}
 							<li class="sign-in-method passkey-row">
@@ -298,7 +313,7 @@
 					{/if}
 				{/if}
 
-				{#if removalBlocked}
+				{#if removalBlocked && !loadFailed}
 					<p class="text-muted small mt-3 mb-0" role="note">{$t('signInLastMethod')}</p>
 				{/if}
 				<p class="text-muted small mt-2 mb-0">{$t('settingsNeverDeleted')}</p>

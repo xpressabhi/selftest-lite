@@ -522,6 +522,19 @@
 		streak = getStreak();
 		stats = getStats(historyEntries);
 		historyCount = historyEntries.length;
+		// A saved preset re-runs from the bookmarks page (/?preset=id): read it
+		// once, strip the parameter so a refresh never starts another run, and
+		// hand it to the same quick-start path as the star chips.
+		const presetId = new URLSearchParams(window.location.search).get('preset');
+		if (presetId) {
+			const cleanUrl = new URL(window.location.href);
+			cleanUrl.searchParams.delete('preset');
+			window.history.replaceState(window.history.state, '', cleanUrl);
+			const preset = getBookmarkedQuizPresets().find((item) => item.id === presetId);
+			if (preset) {
+				void quickStartPreset(preset);
+			}
+		}
 		// Central personalization (fail-open, once per load): Jev picks one
 		// entry point to promote; hides stay behind existing toggles/links.
 		// The nudge slice rides the same call; the push ask needs to know

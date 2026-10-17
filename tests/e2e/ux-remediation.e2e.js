@@ -74,6 +74,33 @@ test('clearing history uses the app dialog with the safe default focused', async
 	expect(nativeDialogSeen()).toBe(false);
 });
 
+test('history shows a skeleton, not the empty state, while syncing', async ({ page }) => {
+	await page.route(
+		(url) => url.pathname === '/api/user/history',
+		async (route) => {
+			await new Promise((resolve) => setTimeout(resolve, 800));
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ attempts: [] }),
+			});
+		}
+	);
+	await page.route(
+		(url) => url.pathname === '/api/user/state',
+		(route) => route.fulfill({ status: 401, contentType: 'application/json', body: '{}' })
+	);
+
+	await page.goto('/history');
+	// First paint is the skeleton, never a "No tests yet" flash before the
+	// local + server read settles.
+	await expect(page.locator('.history-skeleton')).toBeVisible();
+	await expect(page.getByText('No tests yet')).toHaveCount(0);
+
+	await expect(page.locator('.history-skeleton')).toHaveCount(0, { timeout: 5000 });
+	await expect(page.getByText('No tests yet')).toBeVisible();
+});
+
 test('removing a bookmark uses the app dialog', async ({ page }) => {
 	const nativeDialogSeen = failOnNativeDialog(page);
 	await stubBackend(page);

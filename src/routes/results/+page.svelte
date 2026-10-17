@@ -1467,10 +1467,10 @@
 <section class="app-container py-4">
 	{#if loading}
 		<div class="py-5 text-center">
-			<div class="thinking-dots" role="status" aria-label={$t('loading')}>
+			<div class="thinking-dots" role="status" aria-label={$t('loadingResults')}>
 				<span></span><span></span><span></span>
 			</div>
-			<p class="text-muted mt-3">{$t('loading')}</p>
+			<p class="text-muted mt-3">{$t('loadingResults')}</p>
 		</div>
 	{:else if error}
 		<div class="alert alert-warning" role="alert">{error}</div>

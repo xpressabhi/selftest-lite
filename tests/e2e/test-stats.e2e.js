@@ -242,8 +242,11 @@ test('challenge name and params survive submission to the results page', async (
 	await expect(page.locator('.challenge-card')).toBeVisible();
 	const stats = await statsViaPage(page, testId);
 	expect(stats.body.scores[0]).toMatchObject({ name: 'Ravi', score: 1, total: 2 });
-	// A lone visitor keeps the activity card hidden: it needs a second one.
-	await expect(page.locator('.test-stats-card')).toHaveCount(0);
+	// A lone visitor with an attempt of their own still gets the activity card,
+	// so the details page stays reachable on low-traffic tests.
+	await expect(page.locator('.test-stats-card')).toBeVisible();
+	await expect(page.locator('.test-stats-my-score')).toContainText('1/2');
+	await expect(page.locator('[data-metric="visitors"] .test-stats-value')).toHaveText('1');
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
