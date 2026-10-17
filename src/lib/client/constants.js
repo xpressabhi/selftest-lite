@@ -21,6 +21,8 @@ export const STORAGE_KEYS = {
 	NUDGE_LEDGER: 'selftest_nudge_ledger',
 	WELCOME_TOUR_DONE_AT: 'selftest_welcome_tour_done_at',
 	QA_TESTER: 'selftest_qa',
+	ONBOARDING_HINT_DISMISSED_AT: 'selftest_onboarding_hint_dismissed_at',
+	ONBOARDING_HINT_SHOWS: 'selftest_onboarding_hint_shows',
 };
 
 export const LOCAL_STORAGE_CHANGE_EVENT = 'selftest-local-change';

@@ -18,6 +18,7 @@
 		planDensity = 'full',
 		onsubmit = () => {},
 		onnavigate = () => {},
+		onuserinput = () => {},
 	} = $props();
 
 	let searchOpen = $state(false);
@@ -265,6 +266,9 @@
 
 	function handleIntentInput(event) {
 		value = sanitizeInputText(event.currentTarget.value, MAX_INTENT_CHARS);
+		if (value) {
+			onuserinput();
+		}
 	}
 
 	function handleKeydown(event) {

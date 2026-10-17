@@ -32,6 +32,8 @@
 		getUnsubmittedTest,
 		saveBookmarkedExamIds,
 		saveCurrentPaper,
+		readJson,
+		writeJson,
 	} from '#lib/client/storage.js';
 	import { mergeRecentTests } from '#lib/client/recentTests.js';
 	import { hydrateHistoryFromServer } from '#lib/client/sync.js';
@@ -47,6 +49,7 @@
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
 	import { getStats, getStreak } from '#lib/client/learning.js';
 	import ChatThread from '#lib/client/ChatThread.svelte';
+	import OnboardingHint from '#lib/client/OnboardingHint.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import PlannerComposer from '#lib/client/PlannerComposer.svelte';
 	import SeoHead from '#lib/client/SeoHead.svelte';
@@ -209,8 +212,12 @@
 	let homeOpenedAt = $state(0);
 	let nudgeTimer = null;
 	let pendingNudge = null;
+	let hintVisible = $state(false);
+	let hintTimer = null;
 
 	const HOME_NUDGE_DWELL_MS = 2000;
+	const HINT_DELAY_MS = 800;
+	const HINT_MAX_SHOWS = 3;
 	let difficultyTouched = $state(false);
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
@@ -405,6 +412,7 @@
 	onDestroy(() => {
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
+			window.clearTimeout(hintTimer);
 		}
 		// A generation still in flight when the page goes away is an abandoned
 		// generation, and without this it is invisible: generate:start was
@@ -451,6 +459,30 @@
 			input.focus({ preventScroll: true });
 		}, 50);
 	}
+
+	onMount(() => {
+		// First-visit coach hint: one quiet, in-flow nudge toward the composer.
+		// Never shown to returning users, at most three times while untouched,
+		// and once used or dismissed it stays gone (reasons: composer, example,
+		// submit, close).
+		if (readJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, null) !== null) {
+			return;
+		}
+		const shows = Number(readJson(STORAGE_KEYS.ONBOARDING_HINT_SHOWS, 0)) || 0;
+		if (shows >= HINT_MAX_SHOWS) {
+			return;
+		}
+		hintTimer = window.setTimeout(() => {
+			hintTimer = null;
+			if (!untrack(() => showWelcome)) {
+				return;
+			}
+			const nextShows = shows + 1;
+			writeJson(STORAGE_KEYS.ONBOARDING_HINT_SHOWS, nextShows);
+			hintVisible = true;
+			track('onboarding:hint-shown', { show: nextShows });
+		}, HINT_DELAY_MS);
+	});
 
 	onMount(() => {
 		homeOpenedAt = Date.now();
@@ -1027,6 +1059,7 @@
 
 	async function sendPlannerIntent(intentText) {
 		if (!intentText || isOffline) return;
+		dismissHint('submit');
 		plannerDraft = beginTurn(plannerDraft, intentText);
 		persistPlannerDraft();
 		intentValue = '';
@@ -1617,8 +1650,32 @@
 		track('tour:start');
 	}
 
+	function dismissHint(reason) {
+		if (!hintVisible) {
+			// Interacting before the hint has appeared cancels it silently.
+			if (hintTimer !== null) {
+				window.clearTimeout(hintTimer);
+				hintTimer = null;
+			}
+			return;
+		}
+		hintVisible = false;
+		writeJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, Date.now());
+		track('onboarding:hint-dismissed', { reason });
+	}
+
+	function switchHintLanguage() {
+		const next = $activeLanguage === 'english' ? 'hindi' : 'english';
+		void setLanguage(next);
+		const twin = languageHref(window.location.pathname, next);
+		if (twin && twin !== window.location.pathname) {
+			void goto(twin);
+		}
+	}
+
 	function handleExampleTap(example) {
 		track('planner:example-tap', { group: example.group, slot: example.slot });
+		dismissHint('example');
 		// Teach, don't act: fill the composer so the user can read and edit the
 		// kind of sentence the planner understands. No submit, no preview.
 		galleryFill = true;
@@ -1785,6 +1842,7 @@
 					bind:value={intentValue}
 					onsubmit={sendPlannerIntent}
 					onnavigate={handleTestNavigate}
+					onuserinput={() => dismissHint('composer')}
 					disabled={status === 'loading' || isOffline}
 					status={intentStatus}
 					planTopic={topic}
@@ -1793,6 +1851,9 @@
 					{planDensity}
 				/>
 			</div>
+			{#if hintVisible}
+				<OnboardingHint ondismiss={dismissHint} onswitch={switchHintLanguage} />
+			{/if}
 			<button class="how-it-works" type="button" onclick={openTour}>
 				{$t('howItWorks')}
 			</button>
