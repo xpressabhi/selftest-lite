@@ -65,7 +65,7 @@ The home kicker is a documented exception: it is a compact one-line H1 pinned by
 - Colour comes from tokens (`--surface`, `--surface-muted`, `--text`, `--text-muted`,
   `--line`, `--brand-*`, `--ok/--warn/--danger`). Components must not hardcode hex or
   rgba values; `color-mix(...)` over a token is the way to build tints.
-- One accent (indigo). Dark mode swaps `--brand-text`; anything that must keep contrast in
+- One accent (teal, deep). Dark mode swaps `--brand-text`; anything that must keep contrast in
   both themes uses `var(--brand-text)` with a token mix, never a fixed `brand-100/700`.
 - Shadows and borders follow the same hue in both themes; no pure black on light surfaces.
 - Tailwind's default palette is `oklch()`-only. Browsers below Chrome/Edge 111 and
