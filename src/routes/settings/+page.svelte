@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
-	import { linkGoogleCredential, unlinkGoogle, user } from '#lib/client/auth.js';
+	import { linkGoogleCredential, loginWithGoogleCredential, unlinkGoogle, user } from '#lib/client/auth.js';
 	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
 	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import {
@@ -105,6 +105,19 @@
 		}
 	}
 
+	async function handleSignedOutGoogle(credential) {
+		busy = 'link';
+		errorKey = '';
+		try {
+			await loginWithGoogleCredential(credential);
+			location.reload();
+		} catch {
+			errorKey = 'settingsGoogleSignInFailed';
+		} finally {
+			busy = '';
+		}
+	}
+
 	function handleRemovePasskey(passkey) {
 		confirmDialog = { kind: 'passkey', passkey };
 	}
@@ -184,7 +197,7 @@
 				<p class="text-muted mb-3">{$t('settingsSignInHint')}</p>
 				<div class="d-flex justify-content-center">
 					<GoogleSignInButton
-						onCredential={handleLinkGoogle}
+						onCredential={handleSignedOutGoogle}
 						disabled={busy === 'link'}
 					/>
 				</div>

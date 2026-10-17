@@ -119,15 +119,17 @@ test('root favicon.ico is served for crawler fallbacks', async ({ request }) => 
 
 test('language toggle navigates between twins and back', async ({ page }) => {
 	await page.goto('/about');
-	// The first click can land before hydration in dev; retry until it takes.
+	// The toggle announces its target language: English UI offers Hindi and
+	// vice versa. The first click can land before hydration in dev; retry
+	// until it takes.
 	await expect(async () => {
-		await page.getByRole('button', { name: 'Switch UI language' }).click();
+		await page.getByRole('button', { name: 'हिंदी में बदलें' }).click();
 		await expect(page).toHaveURL(/\/hi\/about$/, { timeout: 1000 });
 	}).toPass({ timeout: 20000 });
 	await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
 	await expect(page).toHaveTitle(/के बारे में/);
 	await expect(async () => {
-		await page.getByRole('button', { name: 'यूआई भाषा बदलें' }).click();
+		await page.getByRole('button', { name: 'अंग्रेज़ी में बदलें' }).click();
 		await expect(page).toHaveURL(/\/about$/, { timeout: 1000 });
 	}).toPass({ timeout: 20000 });
 	await expect(page).not.toHaveURL(/\/hi\//);

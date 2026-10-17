@@ -11,6 +11,7 @@
 		hourLabel,
 	} from '#lib/client/formatting.js';
 	import { t } from '#lib/client/i18n.js';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import {
 		clampInputText,
 		MAX_ADMIN_FIELD_CHARS,
@@ -31,12 +32,24 @@
 	let healthLoading = $state(false);
 	let days = $state(1);
 	let activeTab = $state('overview');
+
+	onMount(() => {
+		try {
+			const savedTab = window.sessionStorage.getItem('admin-tab');
+			if (savedTab && TABS.some((tab) => tab.id === savedTab)) {
+				activeTab = savedTab;
+			}
+		} catch {
+			// Tab persistence is best-effort.
+		}
+	});
 	let premiumGrants = $state(null);
 	let premiumEmail = $state('');
 	let premiumExpiry = $state('');
 	let premiumNotes = $state('');
 	let premiumBusy = $state(false);
 	let premiumMessage = $state('');
+	let revokeTarget = $state(null);
 	let examPatterns = $state(null);
 	let patternBusyKey = $state('');
 	let patternMessage = $state('');
@@ -243,14 +256,23 @@
 		}
 	}
 
-	async function revokePremium(userId) {
+	function revokePremium(userId) {
+		revokeTarget = { userId };
+	}
+
+	async function confirmRevokePremium() {
+		const target = revokeTarget;
+		revokeTarget = null;
+		if (!target) {
+			return;
+		}
 		premiumBusy = true;
 		premiumMessage = '';
 		try {
 			const response = await fetch('/api/admin/premium', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'revoke', userId }),
+				body: JSON.stringify({ action: 'revoke', userId: target.userId }),
 			});
 			if (!response.ok) throw new Error('Revoke failed');
 			await loadPremium();
@@ -366,7 +388,7 @@
 						autocomplete="current-password"
 					/></label
 				>
-				{#if error}<div class="alert alert-danger mt-3 mb-0">{error}</div>{/if}
+				{#if error}<div class="alert alert-danger mt-3 mb-0" role="alert">{error}</div>{/if}
 				<button
 					class="btn btn-primary w-full mt-3"
 					type="submit"
@@ -402,7 +424,14 @@
 						class:active={activeTab === tab.id}
 						role="tab"
 						aria-selected={activeTab === tab.id}
-						onclick={() => switchTab(tab.id)}>{tab.label}</button
+						onclick={() => {
+							switchTab(tab.id);
+							try {
+								window.sessionStorage.setItem('admin-tab', tab.id);
+							} catch {
+								// Best-effort.
+							}
+						}}>{tab.label}</button
 					>
 				{/each}
 			</div>
@@ -1426,6 +1455,17 @@
 		{/if}
 	</div>
 </section>
+
+{#if revokeTarget}
+	<ConfirmDialog
+		title="Revoke premium access?"
+		body={`User ${revokeTarget.userId}`}
+		confirmLabel="Revoke"
+		cancelLabel="Cancel"
+		onconfirm={confirmRevokePremium}
+		oncancel={() => (revokeTarget = null)}
+	/>
+{/if}
 
 <style>
 	.admin-login {
