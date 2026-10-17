@@ -40,7 +40,6 @@
 	import {
 		beginTour,
 		finishTour,
-		hasFinishedTour,
 		setTourStep,
 		skipTour,
 		welcomeTour,
@@ -209,7 +208,6 @@
 	let reminderOn = $state(false);
 	let homeOpenedAt = $state(0);
 	let nudgeTimer = null;
-	let tourTimer = null;
 	let pendingNudge = null;
 
 	const HOME_NUDGE_DWELL_MS = 2000;
@@ -407,7 +405,6 @@
 	onDestroy(() => {
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
-			window.clearTimeout(tourTimer);
 		}
 		// A generation still in flight when the page goes away is an abandoned
 		// generation, and without this it is invisible: generate:start was
@@ -454,41 +451,6 @@
 			input.focus({ preventScroll: true });
 		}, 50);
 	}
-
-	onMount(() => {
-		// Welcome tour: teach first-time visitors once, only while the welcome
-		// gallery is showing and no one is busy in a field. The app focuses the
-		// empty composer as an invitation, which must not block the tour; typed
-		// text, a filled composer, or any other focused text field does. The
-		// device flag is written on finish or skip, never on a mere open.
-		if (get(welcomeTour).status === 'active' || hasFinishedTour()) {
-			return;
-		}
-		const engagedTextField = () => {
-			const active = document.activeElement;
-			if (
-				!(active instanceof HTMLElement) ||
-				!active.matches('input, textarea, [contenteditable="true"]')
-			) {
-				return false;
-			}
-			if (active.classList.contains('intent-input')) {
-				return plannerTyped || galleryFill || active.value.length > 0;
-			}
-			return true;
-		};
-		if (engagedTextField()) {
-			return;
-		}
-		tourTimer = window.setTimeout(() => {
-			tourTimer = null;
-			if (!untrack(() => showWelcome) || engagedTextField()) {
-				return;
-			}
-			beginTour();
-			track('tour:start');
-		}, 500);
-	});
 
 	onMount(() => {
 		homeOpenedAt = Date.now();
@@ -1648,6 +1610,13 @@
 		await fetchProfileInsights();
 	}
 
+	// The tour is opt-in help: it opens from the "How it works" entry under the
+	// composer and never interrupts a first visit on its own.
+	function openTour() {
+		beginTour();
+		track('tour:start');
+	}
+
 	function handleExampleTap(example) {
 		track('planner:example-tap', { group: example.group, slot: example.slot });
 		// Teach, don't act: fill the composer so the user can read and edit the
@@ -1793,35 +1762,40 @@
 			/>
 		{/snippet}
 
-		<div class="intent-section planner-panel mb-4">
-			<ChatThread
-				messages={plannerDraft.messages}
-				pendingClarify={plannerDraft.pendingClarify}
-				status={intentStatus}
-				planCard={showPlanCard ? planCard : null}
-				recentTests={recentTestsView}
-				welcome={showWelcome}
-				exampleGroups={plannerExampleGroups}
-				onquickreply={answerClarification}
-				onskip={skipClarification}
-				onstartover={resetPlanner}
-				onopentest={handleTestNavigate}
-				onrecenttouch={() => {
-					recentListTouched = true;
-				}}
-				onexample={handleExampleTap}
-			></ChatThread>
-			<PlannerComposer
-				bind:value={intentValue}
-				onsubmit={sendPlannerIntent}
-				onnavigate={handleTestNavigate}
-				disabled={status === 'loading' || isOffline}
-				status={intentStatus}
-				planTopic={topic}
-				planCount={numQuestions}
-				planState={planCardState}
-				{planDensity}
-			/>
+		<div class="planner-block mb-4">
+			<div class="intent-section planner-panel">
+				<ChatThread
+					messages={plannerDraft.messages}
+					pendingClarify={plannerDraft.pendingClarify}
+					status={intentStatus}
+					planCard={showPlanCard ? planCard : null}
+					recentTests={recentTestsView}
+					welcome={showWelcome}
+					exampleGroups={plannerExampleGroups}
+					onquickreply={answerClarification}
+					onskip={skipClarification}
+					onstartover={resetPlanner}
+					onopentest={handleTestNavigate}
+					onrecenttouch={() => {
+						recentListTouched = true;
+					}}
+					onexample={handleExampleTap}
+				></ChatThread>
+				<PlannerComposer
+					bind:value={intentValue}
+					onsubmit={sendPlannerIntent}
+					onnavigate={handleTestNavigate}
+					disabled={status === 'loading' || isOffline}
+					status={intentStatus}
+					planTopic={topic}
+					planCount={numQuestions}
+					planState={planCardState}
+					{planDensity}
+				/>
+			</div>
+			<button class="how-it-works" type="button" onclick={openTour}>
+				{$t('howItWorks')}
+			</button>
 		</div>
 
 		{#if $welcomeTour.status === 'active'}
@@ -2042,6 +2016,24 @@
 		color: var(--text-muted);
 		font-size: 0.82rem;
 		line-height: 1.6;
+	}
+
+	.how-it-works {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin: 4px 0 0 4px;
+		padding: 0 4px;
+		border: 0;
+		background: none;
+		color: var(--text-muted);
+		font-size: 0.82rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.how-it-works:hover {
+		color: var(--text);
 	}
 
 	.intent-section {

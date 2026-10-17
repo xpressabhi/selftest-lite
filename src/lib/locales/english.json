@@ -839,6 +839,7 @@
 	"welcomeTourNext": "Next",
 	"welcomeTourFill": "Fill an example",
 	"welcomeTourStepCounter": "Step {current} of {total}",
+	"howItWorks": "How it works",
 	"searchingTests": "Searching tests…",
 	"retakeConfirmTitle": "Retake this test?",
 	"retakeConfirmBody": "Your score and answers for this attempt will be cleared.",

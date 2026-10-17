@@ -839,6 +839,7 @@
 	"welcomeTourNext": "आगे",
 	"welcomeTourFill": "उदाहरण भरें",
 	"welcomeTourStepCounter": "चरण {current} / {total}",
+	"howItWorks": "यह कैसे काम करता है",
 	"searchingTests": "टेस्ट खोजे जा रहे हैं…",
 	"retakeConfirmTitle": "यह टेस्ट दोबारा दें?",
 	"retakeConfirmBody": "इस प्रयास के अंक और जवाब हटा दिए जाएंगे।",
