@@ -269,12 +269,12 @@
 		white-space: nowrap;
 	}
 
-	/* Phones: the teaser text is the first thing to go when the question
-	   header runs out of room; the state is still exposed on the hint
-	   button itself. */
+	/* Phones: the teaser moves to its own full-width line instead of
+	   disappearing, so the 50-50 unlock state stays discoverable. */
 	@media (max-width: 639.98px) {
 		.hint-soon {
-			display: none;
+			flex-basis: 100%;
+			white-space: normal;
 		}
 	}
 

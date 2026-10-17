@@ -1621,7 +1621,6 @@
 			<button class="utility-link" type="button" onclick={requestRetake}>
 				{$t('retakeTest')}
 			</button>
-			<span class="utility-id">{$t('testId')}: {questionPaper.id}</span>
 			{#if bookmarkedQuestionKeys.length > 0}
 				<span class="bookmark-count" aria-hidden="true">
 					<Icon name="bookmark" size={14} />
@@ -2154,12 +2153,6 @@
 	.utility-link:hover,
 	.utility-link:focus-visible {
 		color: var(--text);
-	}
-
-	.utility-id {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
 	}
 
 	.reminder-link {

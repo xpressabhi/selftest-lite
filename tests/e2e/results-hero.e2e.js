@@ -97,7 +97,6 @@ test('hero leads with the score, comparison, and one next step', async ({ page }
 	// Utilities and settings live in the quiet rows, not in the hero.
 	await expect(page.locator('.hero-utility')).toContainText('Print');
 	await expect(page.locator('.hero-utility')).toContainText('Retake');
-	await expect(page.locator('.hero-utility')).toContainText('Test ID: e2e-hero');
 	await expect(page.locator('.auto-explain-row')).toBeVisible();
 	await expect(page.locator('.result-footer')).toContainText('Was this test useful?');
 
@@ -113,7 +112,7 @@ test('hero leads with the score, comparison, and one next step', async ({ page }
 				percentage: '67%',
 				correctLine: '2 of 3 correct',
 				cta: 'Practice 1 weak questions',
-				utility: ['Print', 'Retake', 'Test ID'],
+				utility: ['Print', 'Retake'],
 			},
 			null,
 			2

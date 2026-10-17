@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { connectOrSkip, sqlClient } from './testDb.js';
 
 // UX remediation suite: pins the behavior of the fixes from the 2026-10-17
 // all-pages UX review. Starting with the unified confirmation dialog — the
@@ -128,4 +129,35 @@ test('removing a bookmark uses the app dialog', async ({ page }) => {
 	await expect(dialog).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /^Remove bookmark:/ })).toHaveCount(0);
 	expect(nativeDialogSeen()).toBe(false);
+});
+
+test('a paper with no questions shows an empty state, never a crash', async ({
+	page,
+	request,
+}, testInfo) => {
+	const sql = sqlClient(request);
+	await connectOrSkip(sql);
+	const rows = await sql`
+		INSERT INTO ai_test (test, topic, language, num_questions)
+		VALUES (
+			${JSON.stringify({ topic: 'E2E empty paper', questions: [] })}::jsonb,
+			'E2E empty paper',
+			'english',
+			0
+		)
+		RETURNING id
+	`;
+	const testId = rows[0].id;
+	const pageErrors = [];
+	page.on('pageerror', (error) => pageErrors.push(String(error?.message || error)));
+
+	await page.goto(`/test?id=${testId}`);
+	await expect(page.getByText('This test has no questions')).toBeVisible({ timeout: 15000 });
+	await expect(page.getByRole('link', { name: 'Create New Test' })).toBeVisible();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ testId, pageErrors }, null, 2),
+	});
+	expect(pageErrors).toEqual([]);
 });

@@ -845,18 +845,32 @@
 
 <section class="app-container test-shell">
 	<div class="visually-hidden" aria-live="polite">{liveAnnouncement}</div>
+	{#if loading || error}
+		<header class="test-header">
+			<button class="test-exit" type="button" onclick={requestExit} aria-label={$t('exit')}>
+				<Icon name="arrow-left" size={18} />
+				<span class="test-exit-label">{$t('exit')}</span>
+			</button>
+			<h1 class="test-topic">{$t('testPrefix')}</h1>
+		</header>
+	{/if}
 	{#if loading}
 		<div class="py-5 text-center">
 			<div
 				class="test-loading-skeleton ai-shimmer"
 				role="status"
-				aria-label={$t('loading')}
+				aria-label={$t('loadingTest')}
 			></div>
-			<p class="text-muted mt-3">{$t('loading')}</p>
+			<p class="text-muted mt-3">{$t('loadingTest')}</p>
 		</div>
 	{:else if error}
 		<div class="test-error-wrap py-4">
 			<div class="alert alert-danger">{error}</div>
+			<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
+		</div>
+	{:else if questionPaper && totalQuestions === 0}
+		<div class="test-error-wrap py-4">
+			<div class="alert alert-warning" role="alert">{$t('testEmptyPaper')}</div>
 			<a class="btn btn-primary" href="/">{$t('startNewTest')}</a>
 		</div>
 	{:else if questionPaper}
@@ -942,6 +956,13 @@
 						<span class="test-meta-chip">
 							{testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}
 						</span>
+						{#if questionPaper.examMeta?.durationMinutes}
+							<span class="test-meta-chip">
+								{$t('durationBudget', {
+									minutes: Number(questionPaper.examMeta.durationMinutes),
+								})}
+							</span>
+						{/if}
 					</div>
 					{#if questionPaper.trimmed && Number(questionPaper.requestedCount) > totalQuestions}
 						<p class="test-trimmed-notice" role="status">
@@ -952,18 +973,29 @@
 						</p>
 					{/if}
 					<p class="test-summary-body">{$t('testSummaryBody')}</p>
-					<p class="test-summary-id">{$t('testId')}: {questionPaper.id}</p>
+					<div class="summary-switch-row">
+						<SquishSwitch
+							checked={$autoAdvance}
+							label={$t('autoAdvance')}
+							onchange={(checked) => {
+								track('settings:auto-advance-toggle', { enabled: checked });
+								setAutoAdvance(checked);
+							}}
+						/>
+					</div>
 					<div class="test-summary-actions">
-						<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
-							{$t('share')}
-						</button>
-						<button class="btn btn-outline-secondary" type="button" onclick={printTest}>
-							<Icon name="print" size={18} />
-							{$t('print')}
-						</button>
 						<button class="btn btn-primary" type="button" onclick={startTest}>
 							{hasDraftAnswers ? $t('continueTest') : $t('startTest')}
 						</button>
+						<div class="test-summary-secondary">
+							<button class="btn btn-outline-primary" type="button" onclick={shareTest}>
+								{$t('share')}
+							</button>
+							<button class="btn btn-outline-secondary" type="button" onclick={printTest}>
+								<Icon name="print" size={18} />
+								{$t('print')}
+							</button>
+						</div>
 					</div>
 				</div>
 				<div class="test-stats-slot">
@@ -1339,10 +1371,21 @@
 	}
 
 	.test-summary-actions {
+		display: grid;
+		gap: 8px;
+	}
+
+	.test-summary-secondary {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px;
+	}
+
+	.summary-switch-row {
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 10px;
+		min-height: 44px;
+		align-items: center;
+		margin-bottom: 10px;
 	}
 
 	.test-summary-actions .btn {
