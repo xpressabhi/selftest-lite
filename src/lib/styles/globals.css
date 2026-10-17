@@ -193,10 +193,10 @@ body {
 :root {
 	color-scheme: light;
 	--surface: #ffffff;
-	--surface-muted: #f8fafc;
-	--text: #111827;
-	--text-muted: #64748b;
-	--line: #e2e8f0;
+	--surface-muted: #ece7dc;
+	--text: #1a1a1a;
+	--text-muted: #5a5a55;
+	--line: #e3ddd0;
 	/* Text/icon color on top of a brand-600 fill. Near-white, never pure #fff. */
 	--on-brand: #f8fafc;
 	/* Semantic state ink. Text/icon only; backgrounds stay Tailwind utilities. */
@@ -247,7 +247,7 @@ body {
 	--motion-slow: 240ms;
 	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 	--ease-commit: cubic-bezier(0.34, 1.46, 0.64, 1);
-	--brand-rgb: 79, 70, 229;
+	--brand-rgb: 13, 148, 136;
 	/* The one focus-ring recipe. Composed inputs (search fields, the planner
 	   composer) replace the native outline with a matching ring; a global
 	   :focus-visible outline covers everything else. Four hand-rolled
@@ -267,8 +267,8 @@ body {
 	/* Brand color for text/iconography on surfaces. Dark mode swaps to a
 	   lighter tint so contrast holds on dark backgrounds; fills keep using
 	   --brand-rgb (white text stays readable). */
-	--brand-text-rgb: 79, 70, 229;
-	--brand-text: #4f46e5;
+	--brand-text-rgb: 13, 148, 136;
+	--brand-text: #0d9488;
 	/* One border-box shell for every route, header and footer. Desktop
 	   gutters leave 1216px of usable content inside the 1280px frame. */
 	--layout-shell-width: 1280px;
