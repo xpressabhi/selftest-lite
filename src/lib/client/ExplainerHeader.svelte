@@ -8,11 +8,15 @@
 	// whose h1 is "Playground". `views` is the public page's viewer counter:
 	// the line renders from the second viewer on; the playground card passes
 	// nothing and stays unchanged.
-	let { title = '', summary = '', tag = 'h2', size = 'card', views = 0, children } = $props();
+	let { title = '', summary = '', tag = 'h2', size = 'card', views = 0, eyebrow = '', children } =
+		$props();
 </script>
 
 <header class="explainer-header" class:is-page={size === 'page'}>
 	<div class="explainer-header-copy">
+		{#if eyebrow}
+			<p class="explainer-header-eyebrow">{$t(eyebrow)}</p>
+		{/if}
 		<svelte:element this={tag} class="explainer-header-title">{title}</svelte:element>
 		{#if summary}
 			<p class="explainer-header-summary">{summary}</p>
@@ -37,6 +41,15 @@
 
 	.explainer-header-copy {
 		min-width: 0;
+	}
+
+	.explainer-header-eyebrow {
+		margin: 0 0 4px;
+		color: var(--brand-text);
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 
 	.explainer-header-title {

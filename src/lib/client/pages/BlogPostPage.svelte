@@ -2,6 +2,7 @@
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import CtaBanner from '#lib/client/CtaBanner.svelte';
 	import Icon from '#lib/client/Icon.svelte';
+	import { shareLink } from '#lib/client/shareLink.js';
 	import { formatBlogDate, getBlogCategory } from '#lib/data/blogPosts.js';
 	import { jsonLdScript } from '#lib/shared/jsonLd.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
@@ -37,6 +38,14 @@
 	);
 
 	const formattedDate = $derived(formatBlogDate(post.date, $activeLanguage));
+
+	async function sharePost() {
+		await shareLink({
+			title: $t(post.titleKey),
+			text: $t(post.excerptKey),
+			url: typeof window !== 'undefined' ? window.location.href : '',
+		});
+	}
 </script>
 
 <SeoHead
@@ -55,7 +64,7 @@
 		<nav class="post-back" aria-label={$t('backToBlog')}>
 			<a class="post-back-link" href={localizedPath('/blog', $activeLanguage)}>
 				<Icon name="arrow-left" size={18} />
-				{$t('blog')}
+				{$t('blogAllPosts')}
 			</a>
 		</nav>
 
@@ -69,6 +78,15 @@
 			<h1 class="post-title">{$t(post.titleKey)}</h1>
 			<p class="post-excerpt measure">{$t(post.excerptKey)}</p>
 			<p class="post-date">{formattedDate}</p>
+			<div class="post-actions">
+				<button
+					class="btn btn-sm btn-outline-secondary"
+					type="button"
+					onclick={() => void sharePost()}
+				>
+					{$t('playgroundShare')}
+				</button>
+			</div>
 		</header>
 
 		<section class="post-points">

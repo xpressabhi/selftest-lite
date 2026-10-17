@@ -45,6 +45,25 @@
 		context.question.length > 160 ? `${context.question.slice(0, 160)}…` : context.question
 	);
 
+	let readyRegion = $state(null);
+	let readyFocused = false;
+
+	$effect(() => {
+		if (status !== 'ready') {
+			readyFocused = false;
+			return;
+		}
+		if (!readyRegion || readyFocused) {
+			return;
+		}
+		readyFocused = true;
+		const heading = readyRegion.querySelector('h1, h2');
+		if (heading instanceof HTMLElement) {
+			heading.setAttribute('tabindex', '-1');
+			heading.focus();
+		}
+	});
+
 	onMount(() => {
 		const params = page.url.searchParams;
 		topic = params.get('topic') ?? '';
@@ -172,9 +191,10 @@
 			void loadLibrary();
 		} catch (error) {
 			status = 'error';
-			// A network failure has no server payload; the localized headline
-			// carries the message.
-			errorMessage = error?.localized === true ? error.message : '';
+			// A network failure has no server payload: name the actual next
+			// step instead of the generic headline.
+			errorMessage =
+				error?.localized === true ? error.message : $t('connectionRetryHint');
 			track('playground:generate-result', {
 				status: 'error',
 				cached: false,
@@ -336,7 +356,7 @@
 	</header>
 
 	{#if status === 'ready' && artifact}
-		<div class="mt-4">
+		<div class="mt-4" bind:this={readyRegion}>
 			<ExplainerHeader title={artifact.title} summary={artifact.summary}>
 				{#if artifact.slug}
 					<button
@@ -377,10 +397,10 @@
 				bind:value={topic}
 			/>
 
-			{#if context.question}
+			{#if hasContext}
 				<details class="playground-context mt-3">
 					<summary>{$t('playgroundFromYourQuestion')}</summary>
-					<p class="small text-muted mb-0 mt-2">{contextPreview}</p>
+					<p class="small text-muted mb-0 mt-2">{contextPreview || context.answer}</p>
 				</details>
 			{/if}
 

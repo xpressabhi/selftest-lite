@@ -73,6 +73,7 @@
 		tag="h1"
 		size="page"
 		views={visitors}
+		eyebrow="explainEyebrow"
 	>
 		<button class="btn btn-sm btn-outline-secondary" type="button" onclick={() => void share()}>
 			{$t('playgroundShare')}

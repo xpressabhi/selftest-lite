@@ -24,6 +24,12 @@
 	let statusFilter = $state('all');
 	let categoryFilter = $state('all');
 	let stateFilter = $state('all');
+	let filtersOpen = $state(false);
+	const activeFilterCount = $derived(
+		(statusFilter !== 'all' ? 1 : 0) +
+			(categoryFilter !== 'all' ? 1 : 0) +
+			(stateFilter !== 'all' ? 1 : 0)
+	);
 	let nowMs = $state(null);
 
 	onMount(() => {
@@ -228,7 +234,18 @@
 			{/if}
 		</div>
 
-		<div class="exams-filters">
+		<button
+			class="exams-filters-toggle"
+			type="button"
+			aria-expanded={filtersOpen}
+			onclick={() => (filtersOpen = !filtersOpen)}
+		>
+			{$t('examsFiltersToggle')}
+			{#if activeFilterCount > 0}
+				<span class="exams-filters-count">{activeFilterCount}</span>
+			{/if}
+		</button>
+		<div class="exams-filters" class:is-open={filtersOpen}>
 			<div class="exams-chip-row" role="group" aria-label={$t('examsFilterStatusLabel')}>
 				{#each statusChips as chip (chip.value)}
 					<button
@@ -312,7 +329,18 @@
 							{/if}
 							<span class="exam-org">{item.org}</span>
 						</div>
-						<h2 class="exam-card-title">{item.title}</h2>
+						<h2 class="exam-card-title">
+							{#if exam}
+								<a
+									class="exam-card-title-link"
+									href={localizedPath(`/practice/${exam.id}`, $activeLanguage)}
+								>
+									{item.title}
+								</a>
+							{:else}
+								{item.title}
+							{/if}
+						</h2>
 						<p class="exam-card-meta">
 							{#if item.publishedAt}
 								<span
@@ -338,6 +366,9 @@
 							{/if}
 							{#if item.qualification}
 								<span>{item.qualification}</span>
+							{/if}
+							{#if stale}
+								<span class="exam-stale-note">{$t('examsStaleCardNote')}</span>
 							{/if}
 						</p>
 						<div class="exam-card-actions">
@@ -404,7 +435,7 @@
 				<h2 class="exams-empty-title">{$t('examsFilterEmptyTitle')}</h2>
 				<p class="exams-empty-body">{$t('examsFilterEmptyHint')}</p>
 				{#if filtersActive}
-					<button type="button" class="exams-chip is-active" onclick={clearFilters}>
+					<button type="button" class="btn btn-primary" onclick={clearFilters}>
 						{$t('examsFilterClear')}
 					</button>
 				{/if}
@@ -726,5 +757,56 @@
 		color: var(--text-muted);
 		font-size: 0.82rem;
 		text-align: center;
+	}
+	.exam-card-title-link {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.exam-card-title-link:hover {
+		color: var(--brand-text);
+		text-decoration: underline;
+	}
+
+	.exam-stale-note {
+		color: var(--text-muted);
+		font-style: italic;
+	}
+
+	.exams-filters-toggle {
+		display: none;
+		min-height: 44px;
+		align-items: center;
+		gap: 8px;
+		padding: 0 14px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.exams-filters-count {
+		display: inline-flex;
+		min-width: 20px;
+		height: 20px;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+		background: var(--brand-text);
+		color: #fff;
+		font-size: 0.72rem;
+	}
+
+	@media (max-width: 767.98px) {
+		.exams-filters-toggle {
+			display: inline-flex;
+		}
+
+		.exams-filters:not(.is-open) {
+			display: none;
+		}
 	}
 </style>

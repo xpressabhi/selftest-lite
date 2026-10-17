@@ -408,6 +408,9 @@ select {
 	.btn-sm {
 		@apply min-h-11 px-3 py-1.5 text-sm;
 	}
+	.btn-lg {
+		@apply min-h-[52px] px-6 py-3 text-base;
+	}
 	.btn-primary {
 		@apply bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600;
 	}
@@ -437,6 +440,9 @@ select {
 	.form-control,
 	.form-select {
 		@apply block min-h-11 w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-xs outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50;
+	}
+	.form-control-lg {
+		@apply min-h-[52px] text-base;
 	}
 	/* Tailwind's preflight builds the placeholder ink with color-mix(); where
 	   that is unsupported the declaration is dropped and placeholders fall

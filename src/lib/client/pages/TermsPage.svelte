@@ -2,6 +2,18 @@
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import SeoHead from '#lib/client/SeoHead.svelte';
 	import { localizedPath } from '#lib/shared/seo.js';
+
+	// Kept deliberately close to the product reality: no payment is taken, the
+	// early-access features can be granted or revoked, and AI content is
+	// best-effort with an in-app report path. Contact is one tap from here.
+	const sections = [
+		['termsSectionUseTitle', 'termsSectionUseBody'],
+		['termsSectionAccountsTitle', 'termsSectionAccountsBody'],
+		['termsSectionContentTitle', 'termsSectionContentBody'],
+		['termsSectionPremiumTitle', 'termsSectionPremiumBody'],
+		['termsSectionChangesTitle', 'termsSectionChangesBody'],
+		['termsSectionLawTitle', 'termsSectionLawBody'],
+	];
 </script>
 
 <SeoHead
@@ -21,16 +33,23 @@
 		<header class="legal-hero">
 			<h1 class="legal-title">{$t('termsHeroTitle')}</h1>
 			<p class="legal-lead measure">{$t('termsHeroBody')}</p>
+			<p class="legal-updated">{$t('termsLastUpdated')}</p>
 		</header>
 		<div class="legal-grid">
-			<article class="legal-card">
-				<h2 class="legal-card-title">{$t('termsSectionUseTitle')}</h2>
-				<p class="legal-card-body">{$t('termsSectionUseBody')}</p>
-			</article>
-			<article class="legal-card">
-				<h2 class="legal-card-title">{$t('termsSectionLiabilityTitle')}</h2>
-				<p class="legal-card-body">{$t('termsSectionLiabilityBody')}</p>
-			</article>
+			{#each sections as section (section[0])}
+				<article class="legal-card">
+					<h2 class="legal-card-title">{$t(section[0])}</h2>
+					<p class="legal-card-body">{$t(section[1])}</p>
+				</article>
+			{/each}
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<a class="btn btn-primary" href={localizedPath('/contact', $activeLanguage)}>
+				{$t('privacyContactButton')}
+			</a>
+			<a class="btn btn-outline-secondary" href={localizedPath('/privacy', $activeLanguage)}>
+				{$t('termsPrivacyLink')}
+			</a>
 		</div>
 	</div>
 </section>
@@ -58,6 +77,12 @@
 		color: var(--text-muted);
 		font-size: 1.05rem;
 		line-height: 1.65;
+	}
+
+	.legal-updated {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: 0.85rem;
 	}
 
 	.legal-grid {

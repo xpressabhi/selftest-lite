@@ -14,12 +14,15 @@
 			description: $t('contactHeroBody'),
 			url: `${SITE_ORIGIN}/contact`,
 			mainEntity: {
-				'@type': 'Person',
-				name: 'Abhishek Maurya',
-				email: 'mailto:akm.nitt@gmail.com',
-				url: 'https://xpressabhi.github.io/',
-				jobTitle: 'AI Engineer',
-				sameAs: ['https://github.com/xpressabhi', 'https://www.linkedin.com/in/akm85/'],
+				'@type': 'Organization',
+				name: 'selftest.in',
+				url: SITE_ORIGIN,
+				contactPoint: {
+					'@type': 'ContactPoint',
+					contactType: 'customer support',
+					email: 'mailto:akm.nitt@gmail.com',
+					url: `${SITE_ORIGIN}/contact`,
+				},
 			},
 		})
 	);
@@ -32,6 +35,12 @@
 	lang={$activeLanguage}
 	title={`${$t('contactHeroTitle')} | selftest.in`}
 	description={$activeLanguage === 'hindi'
+		? $t('contactHeroBody')
+		: 'Contact selftest.in for feedback, questions, and support.'}
+	ogDescription={$activeLanguage === 'hindi'
+		? $t('contactHeroBody')
+		: 'Contact selftest.in for feedback, questions, and support.'}
+	twitterDescription={$activeLanguage === 'hindi'
 		? $t('contactHeroBody')
 		: 'Contact selftest.in for feedback, questions, and support.'}
 />
@@ -65,6 +74,7 @@
 					rel="noopener noreferrer"
 				>
 					{$t('connectOnX')}
+					<span class="visually-hidden">{$t('externalLinkHint')}</span>
 				</a>
 			</article>
 
@@ -80,6 +90,7 @@
 							rel="noopener noreferrer"
 						>
 							{$t('contactBuilderPortfolio')}
+							<span class="visually-hidden">{$t('externalLinkHint')}</span>
 						</a>
 					</li>
 					<li>
@@ -90,6 +101,7 @@
 							rel="noopener noreferrer"
 						>
 							{$t('contactBuilderGithub')}
+							<span class="visually-hidden">{$t('externalLinkHint')}</span>
 						</a>
 					</li>
 					<li>
@@ -100,6 +112,7 @@
 							rel="noopener noreferrer"
 						>
 							{$t('contactBuilderLinkedin')}
+							<span class="visually-hidden">{$t('externalLinkHint')}</span>
 						</a>
 					</li>
 				</ul>

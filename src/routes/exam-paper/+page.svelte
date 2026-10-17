@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import { getClientHeaders } from '#lib/client/identity.js';
@@ -35,6 +35,12 @@
 	let passkeySupported = $state(false);
 	let passkeyBusy = $state(false);
 	let gateError = $state('');
+	let generateStage = $state('');
+	let generateController = null;
+	let stageTimerA = null;
+	let stageTimerB = null;
+	let patternNotice = $state(false);
+	let noticeTimer = null;
 
 	const totalQuestions = $derived(
 		(pattern?.sections || []).reduce((sum, section) => sum + (section.questionCount || 0), 0)
@@ -45,9 +51,8 @@
 			: (pattern?.sections || []).find((section) => section.id === selectedSection) || null
 	);
 
-	onMount(async () => {
-		track('exam-paper:open');
-		passkeySupported = isPasskeySupported();
+	async function checkAccess() {
+		access = null;
 		try {
 			const response = await fetch('/api/premium/access', {
 				headers: getClientHeaders(),
@@ -58,6 +63,12 @@
 		} catch {
 			access = { allowed: false, reason: 'unavailable' };
 		}
+	}
+
+	onMount(() => {
+		track('exam-paper:open');
+		passkeySupported = isPasskeySupported();
+		void checkAccess();
 	});
 
 	/** Both passkey paths reload so the gate re-reads premium access. */
@@ -90,7 +101,7 @@
 			await loginWithGoogleCredential(credential);
 			location.reload();
 		} catch {
-			generateError = $t('examPaperGateBody');
+			gateError = 'examPaperGateSignInFailed';
 		}
 	}
 
@@ -133,12 +144,59 @@
 		}
 	}
 
+	function switchMode(nextMode) {
+		if (pattern) {
+			patternNotice = true;
+			if (noticeTimer !== null) {
+				window.clearTimeout(noticeTimer);
+			}
+			noticeTimer = window.setTimeout(() => (patternNotice = false), 5000);
+		}
+		mode = nextMode;
+		pattern = null;
+	}
+
+	function startStageTimers() {
+		generateStage = $t('examPaperStagePlanning');
+		stageTimerA = window.setTimeout(() => (generateStage = $t('examPaperStageWriting')), 6000);
+		stageTimerB = window.setTimeout(
+			() => (generateStage = $t('examPaperStageFinishing')),
+			20000
+		);
+	}
+
+	function clearStageTimers() {
+		if (stageTimerA !== null) {
+			window.clearTimeout(stageTimerA);
+			stageTimerA = null;
+		}
+		if (stageTimerB !== null) {
+			window.clearTimeout(stageTimerB);
+			stageTimerB = null;
+		}
+		generateStage = '';
+	}
+
+	function cancelGenerate() {
+		generateController?.abort();
+	}
+
+	onDestroy(() => {
+		clearStageTimers();
+		if (noticeTimer !== null) {
+			window.clearTimeout(noticeTimer);
+		}
+	});
+
 	async function generate() {
 		if (generating || !pattern) {
 			return;
 		}
 		generating = true;
 		generateError = '';
+		startStageTimers();
+		const controller = new AbortController();
+		generateController = controller;
 		track('exam-paper:generate', { section: selectedSectionObject?.id || 'full' });
 		try {
 			const body = {
@@ -164,6 +222,7 @@
 				method: 'POST',
 				headers: { ...getClientHeaders(), Accept: 'text/event-stream' },
 				body: JSON.stringify(body),
+				signal: controller.signal,
 			});
 			if (!response.ok) {
 				const data = await response.json().catch(() => ({}));
@@ -187,12 +246,17 @@
 			saveCurrentPaper(finalPaper);
 			await goto(`/test?id=${finalPaper.id}`);
 		} catch (error) {
+			if (error?.name === 'AbortError') {
+				return;
+			}
 			generateError =
 				error.code === 'PREMIUM_REQUIRED'
 					? $t('examPaperPremiumRequired')
 					: error.message || $t('generationFailed');
 		} finally {
 			generating = false;
+			generateController = null;
+			clearStageTimers();
 		}
 	}
 </script>
@@ -202,7 +266,15 @@
 	<p class="text-muted small mb-4">{$t('examPaperSubtitle')}</p>
 
 	{#if access === null}
-		<p class="text-muted small">{$t('loading')}</p>
+		<p class="text-muted small">{$t('checkingAccess')}</p>
+	{:else if !access.allowed && access.reason === 'unavailable'}
+		<div class="exam-paper-gate bg-body border rounded-3 p-4">
+			<h2 class="h6 fw-bold mb-2">{$t('examPaperUnavailableTitle')}</h2>
+			<p class="text-muted small mb-3">{$t('examPaperUnavailableBody')}</p>
+			<button class="btn btn-primary" type="button" onclick={() => checkAccess()}>
+				{$t('tryAgain')}
+			</button>
+		</div>
 	{:else if !access.allowed}
 		<div class="exam-paper-gate bg-body border rounded-3 p-4">
 			<h2 class="h6 fw-bold mb-2">{$t('examPaperGateTitle')}</h2>
@@ -245,10 +317,7 @@
 					type="button"
 					role="tab"
 					aria-selected={mode === 'board'}
-					onclick={() => {
-						mode = 'board';
-						pattern = null;
-					}}
+					onclick={() => switchMode('board')}
 				>
 					{$t('examPaperBoardTab')}
 				</button>
@@ -259,14 +328,14 @@
 					type="button"
 					role="tab"
 					aria-selected={mode === 'paper'}
-					onclick={() => {
-						mode = 'paper';
-						pattern = null;
-					}}
+					onclick={() => switchMode('paper')}
 				>
 					{$t('examPaperNamedTab')}
 				</button>
 			</div>
+			{#if patternNotice}
+				<p class="text-muted small mb-3" role="status">{$t('examPaperPatternCleared')}</p>
+			{/if}
 
 			{#if mode === 'board'}
 				<div class="row g-3">
@@ -338,7 +407,7 @@
 
 			<div class="d-flex flex-wrap gap-2 mt-3">
 				<button
-					class="btn btn-primary btn-sm"
+					class="btn btn-primary"
 					type="button"
 					disabled={patternLoading || (mode === 'paper' && !paperName.trim())}
 					onclick={() => fetchPattern(false)}
@@ -415,14 +484,24 @@
 					{/each}
 				</div>
 
-				<button
-					class="btn btn-primary mt-3"
-					type="button"
-					disabled={generating}
-					onclick={generate}
-				>
-					{generating ? $t('generating') : $t('examPaperGenerate')}
-				</button>
+				<div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+					<button
+						class="btn btn-primary"
+						type="button"
+						disabled={generating}
+						onclick={generate}
+					>
+						{generating ? $t('generating') : $t('examPaperGenerate')}
+					</button>
+					{#if generating}
+						<button class="btn btn-outline-secondary" type="button" onclick={cancelGenerate}>
+							{$t('cancel')}
+						</button>
+					{/if}
+				</div>
+				{#if generating && generateStage}
+					<p class="text-muted small mt-2 mb-0" aria-live="polite">{generateStage}</p>
+				{/if}
 				{#if generateError}
 					<p class="text-danger small mt-2 mb-0">{generateError}</p>
 				{/if}

@@ -127,9 +127,5 @@
 		.legal-grid {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
-
-		.legal-card:nth-child(n + 6) {
-			grid-column: 1 / -1;
-		}
 	}
 </style>
