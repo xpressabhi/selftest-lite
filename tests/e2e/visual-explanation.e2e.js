@@ -517,7 +517,7 @@ test('arms the linked visual when the wrong-answers action opens the card', asyn
 	// Hero action: narrows the review list to the wrong answers and opens the
 	// first one. That same click must arm the visual section for the card it
 	// opens; the card is never collapsed and re-expanded by hand here.
-	await page.getByRole('button', { name: 'Review wrong answers' }).click();
+	await page.getByRole('button', { name: 'Review incorrect answers' }).click();
 
 	const wrongCard = page.locator('#question-0');
 	await expect(wrongCard.locator('.review-card-body')).toHaveCount(1);
@@ -631,7 +631,7 @@ test('shows the localized build error with a working retry', async ({ page }, te
 
 	const section = page.locator('.visual-explainer');
 	await expect(section.getByText('Rate limit exceeded. Please try again later.')).toBeVisible();
-	const retry = section.getByRole('button', { name: 'Try Again' });
+	const retry = section.getByRole('button', { name: 'Try again' });
 	await expect(retry).toBeVisible();
 
 	// Retry re-runs the build rather than leaving the card stuck.

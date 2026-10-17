@@ -210,7 +210,7 @@ test('renders the artifact flow in the sandboxed frame with height fallbacks', a
 	});
 	await page.getByRole('button', { name: 'Create explainer' }).click();
 	await expect(page.getByText('The explainer could not be created.')).toBeVisible();
-	await page.getByRole('button', { name: 'Try Again' }).click();
+	await page.getByRole('button', { name: 'Try again' }).click();
 	await expect(page.getByRole('heading', { name: 'Second title' })).toBeVisible();
 	const secondFrame = page.locator('iframe.artifact-frame');
 	await expect(secondFrame).toHaveAttribute('srcdoc', /marker-two/);

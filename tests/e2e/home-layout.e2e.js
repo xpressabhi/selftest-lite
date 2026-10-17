@@ -59,7 +59,7 @@ test('the kicker is one line and the planner owns the phone first screen', async
 	await page.goto('/');
 	await waitForHydration(page);
 
-	await expect(page.locator('h1.home-kicker')).toHaveText('Practise anything, any exam');
+	await expect(page.locator('h1.home-kicker')).toHaveText('Practice anything, any exam');
 	await expect(page.locator('.hero-block')).toHaveCount(0);
 	await expect(page.locator('.hero-heading')).toHaveCount(0);
 	// The SEO title string stays in <title>; it is no longer the visible h1.
