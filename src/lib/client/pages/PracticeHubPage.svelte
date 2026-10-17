@@ -276,6 +276,8 @@
 		margin: 0 0 0.35rem;
 		font-size: 1.5rem;
 		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.15;
 	}
 
 	.practice-hub-sub {
@@ -463,6 +465,8 @@
 	}
 
 	.practice-card {
+		content-visibility: auto;
+		contain-intrinsic-size: 0 72px;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 0.75rem;

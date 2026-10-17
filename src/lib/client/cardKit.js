@@ -15,15 +15,15 @@ export const CARD_HEIGHT = 1920;
 
 export const CARD_PALETTE = {
 	// globals.css @theme / :root light tokens
-	brand50: '#eef2ff',
-	brand100: '#e0e7ff',
-	brand600: '#4f46e5',
-	brand700: '#4338ca',
+	brand50: '#f0fdfa',
+	brand100: '#ccfbf1',
+	brand600: '#0d9488',
+	brand700: '#0f766e',
 	surface: '#ffffff',
-	surfaceMuted: '#f8fafc',
-	text: '#111827',
-	textMuted: '#64748b',
-	line: '#e2e8f0',
+	surfaceMuted: '#ece7dc',
+	text: '#1a1a1a',
+	textMuted: '#5a5a55',
+	line: '#e3ddd0',
 	// Streak language (matches StreakCard.svelte ball levels)
 	ball1: '#fcd34d',
 	ball1Ink: '#78350f',

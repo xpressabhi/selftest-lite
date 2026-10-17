@@ -53,29 +53,29 @@ const BASE_CSS = `
 	--radius-control: 10px;
 	--radius-surface: 12px;
 	--radius-overlay: 16px;
-	--brand-fill: #4f46e5;
+	--brand-fill: #0f766e;
 	--on-brand: #f8fafc;
 }
 :root[data-theme='light'] {
 	color-scheme: light;
 	--surface: #ffffff;
-	--surface-muted: #f8fafc;
-	--text: #111827;
-	--text-muted: #64748b;
-	--line: #e2e8f0;
-	--brand: #4f46e5;
+	--surface-muted: #ece7dc;
+	--text: #1a1a1a;
+	--text-muted: #5a5a55;
+	--line: #e3ddd0;
+	--brand: #0f766e;
 	--ok: #15803d;
 	--warn: #b45309;
 	--danger: #b91c1c;
 }
 :root[data-theme='dark'] {
 	color-scheme: dark;
-	--surface: #111827;
-	--surface-muted: #0f172a;
-	--text: #f8fafc;
-	--text-muted: #94a3b8;
-	--line: #334155;
-	--brand: #a5b4fc;
+	--surface: #161b22;
+	--surface-muted: #0e1116;
+	--text: #e8e4da;
+	--text-muted: #9a9a92;
+	--line: #2a3038;
+	--brand: #5eead4;
 	--ok: #6ee7b7;
 	--warn: #fcd34d;
 	--danger: #fca5a5;
@@ -180,7 +180,7 @@ body {
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent);
 }
 /* Filled controls: the fill never flips with the theme, so the label stays
-   readable on the indigo in both themes. */
+   readable on the teal in both themes. */
 .control-primary {
 	background: var(--brand-fill);
 	border-color: var(--brand-fill);

@@ -460,6 +460,8 @@
 		margin: 0 0 0.35rem;
 		font-size: 1.5rem;
 		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.15;
 	}
 
 	.exams-sub {
@@ -601,6 +603,8 @@
 	}
 
 	.exam-card {
+		content-visibility: auto;
+		contain-intrinsic-size: 0 200px;
 		display: grid;
 		gap: 0.55rem;
 		padding: 0.95rem 1rem;

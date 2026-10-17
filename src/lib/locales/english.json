@@ -1068,5 +1068,6 @@
 	"visualBuildError": "The visual explanation could not be built. Please retry.",
 	"visualFitNotWorthyTitle": "A visual won't add much here",
 	"visualFitVagueHint": "Add what you want to see: the process, the change, or the relationship.",
-	"visualFitTextFirstHint": "This topic reads as text-first. Name the process or mechanism you have in mind and try again."
+	"visualFitTextFirstHint": "This topic reads as text-first. Name the process or mechanism you have in mind and try again.",
+	"manualSetupHint": "Choose exact count, difficulty and question type."
 }
