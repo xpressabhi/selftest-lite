@@ -1492,7 +1492,7 @@
 			<a class="btn btn-outline-primary" href="/history">{$t('history')}</a>
 		</div>
 	{:else if questionPaper}
-		<div class="result-hero-card mb-4">
+		<div class="result-hero-card mb-6">
 			<div class="hero-top">
 				<span class="hero-eyebrow">{$t('resultsHeroEyebrow')}</span>
 			</div>
@@ -1727,7 +1727,7 @@
 		{/if}
 
 		{#if sectionBreakdown.length > 0}
-			<section class="section-breakdown bg-body border rounded-3 p-3 mb-4">
+			<section class="section-breakdown bg-body border rounded-3 p-3 mb-6">
 				<h2 class="h6 fw-bold mb-2">{$t('sectionBreakdownTitle')}</h2>
 				<ul class="section-breakdown-list">
 					{#each sectionBreakdown as section (section.id)}
