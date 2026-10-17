@@ -6,6 +6,8 @@
 // to a visitor even before login.
 
 import { getClientId } from './identity';
+import { STORAGE_KEYS } from './constants';
+import { readJson, writeJson } from './storage';
 
 const FLUSH_INTERVAL_MS = 30_000;
 const MAX_QUEUE_BEFORE_FLUSH = 20;
@@ -43,6 +45,35 @@ function isLocalhost() {
 	}
 	const hostname = window.location.hostname;
 	return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
+
+// Team QA sessions opened as /?qa=1 are stamped on every event so weekly
+// analysis can exclude them exactly (docs/telemetry.md, "Known QA traffic").
+// Resolved lazily on the first track() so the tag applies no matter when the
+// flag is written relative to the first event.
+let qaTagged = null;
+function isQaTagged() {
+	if (typeof window === 'undefined') {
+		return false;
+	}
+	if (qaTagged !== null) {
+		return qaTagged;
+	}
+	if (readJson(STORAGE_KEYS.QA_TESTER, null) !== null) {
+		qaTagged = true;
+		return true;
+	}
+	try {
+		if (new URLSearchParams(window.location.search).get('qa')) {
+			writeJson(STORAGE_KEYS.QA_TESTER, Date.now());
+			qaTagged = true;
+			return true;
+		}
+	} catch {
+		// Best-effort only; an untagged session is the safe fallback.
+	}
+	qaTagged = false;
+	return false;
 }
 
 function sendBatch(events) {
@@ -83,7 +114,13 @@ export function track(event, props = {}) {
 	if (typeof window === 'undefined' || isLocalhost()) {
 		return;
 	}
-	queue.push({ event, page: getPage(), props, created_at: new Date().toISOString() });
+	const stampedProps = isQaTagged() ? { ...props, qa: true } : props;
+	queue.push({
+		event,
+		page: getPage(),
+		props: stampedProps,
+		created_at: new Date().toISOString(),
+	});
 	if (queue.length >= MAX_QUEUE_BEFORE_FLUSH) {
 		flushTelemetry();
 	}
