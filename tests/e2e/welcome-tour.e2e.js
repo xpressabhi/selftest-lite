@@ -1,14 +1,15 @@
 import { expect, test } from '@playwright/test';
 
-// Welcome tour suite: the one-time first-visit walkthrough — language step,
-// spotlighted composer / examples / Daily 5, and its contract: finish and skip
-// write the device flag, the fill never requests, reduced motion has no
-// transitions, the spotlight follows resizes, and finished devices or
-// returning users never see it.
-// Spec: docs/superpowers/specs/2026-09-28-welcome-tour-design.md
+// Welcome tour suite: the on-demand walkthrough opened from the "How it works"
+// entry under the composer — language step, spotlighted composer / examples /
+// Daily 5, and its contract: it never auto-opens, finish and skip write the
+// device flag, the fill never requests, reduced motion has no transitions, the
+// spotlight follows resizes, and finished devices or returning users are never
+// interrupted but can still replay it.
+// Spec: docs/superpowers/specs/2026-10-17-first-visit-onboarding-design.md
 
-// The rest of the suite suppresses the tour with a storage state so existing
-// specs keep their fresh-visitor behaviour; this file opts out again.
+// The rest of the suite suppresses first-visit surfaces with a storage state so
+// existing specs keep their settled behaviour; this file opts out again.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 const TOUR_DONE_KEY = 'selftest_welcome_tour_done_at';
@@ -80,9 +81,12 @@ async function stubBackend(page) {
 	);
 }
 
+// The tour never opens on its own; the entry is the "How it works" button
+// under the composer.
 async function openTour(page) {
 	await page.goto('/');
 	await waitForHydration(page);
+	await page.locator('.how-it-works').click();
 	await page.locator('.welcome-tour').waitFor({ state: 'visible', timeout: 5000 });
 }
 
@@ -132,9 +136,31 @@ async function expectCardClearOfSpotlight(page) {
 		.toBe(true);
 }
 
-test('new visitor sees the tour: language step in both scripts, 44px controls', async ({
-	page,
-}, testInfo) => {
+test('a new visitor gets no tour until it is asked for', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await stubBackend(page);
+	await page.goto('/');
+	await waitForHydration(page);
+	// Well past the old auto-open delay: nothing may appear on its own.
+	await page.waitForTimeout(1400);
+	const autoCount = await page.locator('.welcome-tour').count();
+	const focusedClass = await page.evaluate(() => document.activeElement?.className || '');
+	await expect(page.locator('.how-it-works')).toBeVisible();
+
+	await page.locator('.how-it-works').click();
+	await expect(page.locator('.welcome-tour')).toBeVisible();
+	await expectTourStep(page, 1);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ autoCount, focusedClass }, null, 2),
+	});
+	expect(autoCount).toBe(0);
+	expect(errors).toEqual([]);
+});
+
+test('the language step speaks both scripts and keeps 44px controls', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await page.setViewportSize({ width: 390, height: 844 });
 	await stubBackend(page);
@@ -368,7 +394,9 @@ test('backdrop tap skips the tour', async ({ page }, testInfo) => {
 	expect(errors).toEqual([]);
 });
 
-test('a finished device never sees the tour again', async ({ page }, testInfo) => {
+test('a finished device never auto-opens the tour, and can still replay it', async ({
+	page,
+}, testInfo) => {
 	const errors = await collectErrors(page);
 	await stubBackend(page);
 	await openTour(page);
@@ -377,16 +405,21 @@ test('a finished device never sees the tour again', async ({ page }, testInfo) =
 	await expect(page.locator('.welcome-tour')).toHaveCount(0);
 	await page.reload();
 	await waitForHydration(page);
-	// Well past the settle delay the tour would use.
+	// Well past the settle delay an auto-open would use.
 	await page.waitForTimeout(1200);
+	const autoCount = await page.locator('.welcome-tour').count();
 
-	await expect(page.locator('.welcome-tour')).toHaveCount(0);
-	await expect(page.locator('.welcome-gallery')).toBeVisible();
+	// Replay affordance survives the finished flag.
+	await page.locator('.how-it-works').click();
+	await expect(page.locator('.welcome-tour')).toBeVisible();
+	await expectTourStep(page, 1);
+
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify(
 			{
-				tourCount: await page.locator('.welcome-tour').count(),
+				autoCount,
+				replayCount: await page.locator('.welcome-tour').count(),
 				galleryCount: await page.locator('.welcome-gallery').count(),
 			},
 			null,
@@ -396,7 +429,9 @@ test('a finished device never sees the tour again', async ({ page }, testInfo) =
 	expect(errors).toEqual([]);
 });
 
-test('returning users never see the tour', async ({ page }, testInfo) => {
+test('returning users are never interrupted, but keep the replay entry', async ({
+	page,
+}, testInfo) => {
 	const errors = await collectErrors(page);
 	await stubBackend(page);
 	await page.addInitScript(() => {
@@ -413,6 +448,7 @@ test('returning users never see the tour', async ({ page }, testInfo) => {
 
 	await expect(page.locator('.recent-item').first()).toBeVisible();
 	await expect(page.locator('.welcome-tour')).toHaveCount(0);
+	await expect(page.locator('.how-it-works')).toBeVisible();
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify(
@@ -451,22 +487,7 @@ test('reduced motion runs the tour without transitions', async ({ page }, testIn
 	expect(errors).toEqual([]);
 });
 
-test('desktop invitation focus does not suppress the tour', async ({ page }, testInfo) => {
-	const errors = await collectErrors(page);
-	await page.setViewportSize({ width: 1280, height: 900 });
-	await stubBackend(page);
-	await openTour(page);
-
-	const focusedClass = await page.evaluate(() => document.activeElement?.className || '');
-	await testInfo.attach('evidence', {
-		contentType: 'application/json',
-		body: JSON.stringify({ focusedBeforeTour: focusedClass }, null, 2),
-	});
-	await expectTourStep(page, 1);
-	expect(errors).toEqual([]);
-});
-
-test('blocked storage still shows and skips the tour', async ({ page }, testInfo) => {
+test('blocked storage still opens and skips the tour', async ({ page }, testInfo) => {
 	const errors = await collectUncaught(page);
 	await stubBackend(page);
 	await page.addInitScript(() => {

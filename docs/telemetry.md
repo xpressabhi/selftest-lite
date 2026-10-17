@@ -99,6 +99,22 @@ production. The report therefore splits them:
   hotspot table, so a dev loop pointed at production stays visible instead of
   being silently filtered.
 
+### Known QA traffic
+
+Team phone testing against production produces real-looking traffic: fresh
+`client_id` per private-tab session, ~2–3 s lifetimes, no product events.
+Observed signature (Oct 2026): iOS Chrome (CriOS) on iPhone, uniform Chrome
+builds, all from one city (Hyderabad), 1–8 new identities/day.
+
+- Exclude it from identity metrics by excluding the `client_id`s joined from
+  `api_request_events` on `user_agent LIKE '%CriOS%' AND ip_city = 'Hyderabad'`
+  (organic iOS Chrome users in other cities are unaffected). Also exclude
+  WebPageTest agents (`user_agent LIKE '%PTST%'`) in ad-hoc analysis.
+- Going forward, open QA sessions as `/?qa=1` (bookmark it). The client stores a
+  sticky flag and attaches `props.qa = true` to every feature event; filter with
+  `COALESCE(props->>'qa','false') <> 'true'`.
+- API rows carry no `qa` prop yet; use the UA + city heuristic there.
+
 ### Quality gates
 
 Gates run over `--gate-days` (default 7) and over production rows only.

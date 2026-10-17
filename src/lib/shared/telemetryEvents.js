@@ -31,6 +31,9 @@ export const TELEMETRY_EVENTS = new Set([
 	'preview:edit-toggle',
 	'preview:edit-chip',
 	'planner:example-tap',
+	// First-visit coach hint
+	'onboarding:hint-shown',
+	'onboarding:hint-dismissed',
 	// Welcome tour (first-visit walkthrough)
 	'tour:start',
 	'tour:step',

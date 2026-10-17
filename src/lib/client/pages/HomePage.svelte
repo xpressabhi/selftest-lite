@@ -32,6 +32,8 @@
 		getUnsubmittedTest,
 		saveBookmarkedExamIds,
 		saveCurrentPaper,
+		readJson,
+		writeJson,
 	} from '#lib/client/storage.js';
 	import { mergeRecentTests } from '#lib/client/recentTests.js';
 	import { hydrateHistoryFromServer } from '#lib/client/sync.js';
@@ -40,7 +42,6 @@
 	import {
 		beginTour,
 		finishTour,
-		hasFinishedTour,
 		setTourStep,
 		skipTour,
 		welcomeTour,
@@ -48,6 +49,7 @@
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
 	import { getStats, getStreak } from '#lib/client/learning.js';
 	import ChatThread from '#lib/client/ChatThread.svelte';
+	import OnboardingHint from '#lib/client/OnboardingHint.svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import PlannerComposer from '#lib/client/PlannerComposer.svelte';
 	import SeoHead from '#lib/client/SeoHead.svelte';
@@ -209,10 +211,14 @@
 	let reminderOn = $state(false);
 	let homeOpenedAt = $state(0);
 	let nudgeTimer = null;
-	let tourTimer = null;
 	let pendingNudge = null;
+	let hintVisible = $state(false);
+	let hintReserved = $state(false);
+	let hintTimer = null;
 
 	const HOME_NUDGE_DWELL_MS = 2000;
+	const HINT_DELAY_MS = 800;
+	const HINT_MAX_SHOWS = 3;
 	let difficultyTouched = $state(false);
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
@@ -407,7 +413,7 @@
 	onDestroy(() => {
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
-			window.clearTimeout(tourTimer);
+			window.clearTimeout(hintTimer);
 		}
 		// A generation still in flight when the page goes away is an abandoned
 		// generation, and without this it is invisible: generate:start was
@@ -456,38 +462,35 @@
 	}
 
 	onMount(() => {
-		// Welcome tour: teach first-time visitors once, only while the welcome
-		// gallery is showing and no one is busy in a field. The app focuses the
-		// empty composer as an invitation, which must not block the tour; typed
-		// text, a filled composer, or any other focused text field does. The
-		// device flag is written on finish or skip, never on a mere open.
-		if (get(welcomeTour).status === 'active' || hasFinishedTour()) {
+		// First-visit coach hint: one quiet, in-flow nudge toward the composer.
+		// Never shown to returning users, at most three times while untouched,
+		// and once used or dismissed it stays gone (reasons: composer, example,
+		// submit, close). The card's box is reserved from the first paint so
+		// the reveal is a visibility flip, not a layout shift.
+		if (readJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, null) !== null) {
 			return;
 		}
-		const engagedTextField = () => {
-			const active = document.activeElement;
-			if (
-				!(active instanceof HTMLElement) ||
-				!active.matches('input, textarea, [contenteditable="true"]')
-			) {
-				return false;
-			}
-			if (active.classList.contains('intent-input')) {
-				return plannerTyped || galleryFill || active.value.length > 0;
-			}
-			return true;
-		};
-		if (engagedTextField()) {
+		const shows = Number(readJson(STORAGE_KEYS.ONBOARDING_HINT_SHOWS, 0)) || 0;
+		if (shows >= HINT_MAX_SHOWS) {
 			return;
 		}
-		tourTimer = window.setTimeout(() => {
-			tourTimer = null;
-			if (!untrack(() => showWelcome) || engagedTextField()) {
+		// Local history decides before the async server hydration can paint a
+		// recent list; a returning user must never see the reserved box collapse.
+		if (getHistory().length > 0) {
+			return;
+		}
+		hintReserved = true;
+		hintTimer = window.setTimeout(() => {
+			hintTimer = null;
+			if (!untrack(() => showWelcome)) {
+				hintReserved = false;
 				return;
 			}
-			beginTour();
-			track('tour:start');
-		}, 500);
+			const nextShows = shows + 1;
+			writeJson(STORAGE_KEYS.ONBOARDING_HINT_SHOWS, nextShows);
+			hintVisible = true;
+			track('onboarding:hint-shown', { show: nextShows });
+		}, HINT_DELAY_MS);
 	});
 
 	onMount(() => {
@@ -1065,6 +1068,7 @@
 
 	async function sendPlannerIntent(intentText) {
 		if (!intentText || isOffline) return;
+		dismissHint('submit');
 		plannerDraft = beginTurn(plannerDraft, intentText);
 		persistPlannerDraft();
 		intentValue = '';
@@ -1648,8 +1652,54 @@
 		await fetchProfileInsights();
 	}
 
+	// The tour is opt-in help: it opens from the "How it works" entry under the
+	// composer and never interrupts a first visit on its own.
+	function openTour() {
+		// The walkthrough teaches the same thing, so opening it retires the
+		// hint for good: silently when the card had not revealed yet (nothing
+		// was shown to dismiss), with the dismissal event when it had.
+		if (hintVisible) {
+			dismissHint('close');
+		} else if (hintReserved) {
+			if (hintTimer !== null) {
+				window.clearTimeout(hintTimer);
+				hintTimer = null;
+			}
+			hintReserved = false;
+			writeJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, Date.now());
+		}
+		beginTour();
+		track('tour:start');
+	}
+
+	function dismissHint(reason) {
+		if (!hintVisible) {
+			// Interacting before the hint has appeared cancels it silently.
+			if (hintTimer !== null) {
+				window.clearTimeout(hintTimer);
+				hintTimer = null;
+			}
+			hintReserved = false;
+			return;
+		}
+		hintVisible = false;
+		hintReserved = false;
+		writeJson(STORAGE_KEYS.ONBOARDING_HINT_DISMISSED_AT, Date.now());
+		track('onboarding:hint-dismissed', { reason });
+	}
+
+	function switchHintLanguage() {
+		const next = $activeLanguage === 'english' ? 'hindi' : 'english';
+		void setLanguage(next);
+		const twin = languageHref(window.location.pathname, next);
+		if (twin && twin !== window.location.pathname) {
+			void goto(twin);
+		}
+	}
+
 	function handleExampleTap(example) {
 		track('planner:example-tap', { group: example.group, slot: example.slot });
+		dismissHint('example');
 		// Teach, don't act: fill the composer so the user can read and edit the
 		// kind of sentence the planner understands. No submit, no preview.
 		galleryFill = true;
@@ -1793,35 +1843,48 @@
 			/>
 		{/snippet}
 
-		<div class="intent-section planner-panel mb-4">
-			<ChatThread
-				messages={plannerDraft.messages}
-				pendingClarify={plannerDraft.pendingClarify}
-				status={intentStatus}
-				planCard={showPlanCard ? planCard : null}
-				recentTests={recentTestsView}
-				welcome={showWelcome}
-				exampleGroups={plannerExampleGroups}
-				onquickreply={answerClarification}
-				onskip={skipClarification}
-				onstartover={resetPlanner}
-				onopentest={handleTestNavigate}
-				onrecenttouch={() => {
-					recentListTouched = true;
-				}}
-				onexample={handleExampleTap}
-			></ChatThread>
-			<PlannerComposer
-				bind:value={intentValue}
-				onsubmit={sendPlannerIntent}
-				onnavigate={handleTestNavigate}
-				disabled={status === 'loading' || isOffline}
-				status={intentStatus}
-				planTopic={topic}
-				planCount={numQuestions}
-				planState={planCardState}
-				{planDensity}
-			/>
+		<div class="planner-block mb-4">
+			<div class="intent-section planner-panel">
+				<ChatThread
+					messages={plannerDraft.messages}
+					pendingClarify={plannerDraft.pendingClarify}
+					status={intentStatus}
+					planCard={showPlanCard ? planCard : null}
+					recentTests={recentTestsView}
+					welcome={showWelcome}
+					exampleGroups={plannerExampleGroups}
+					onquickreply={answerClarification}
+					onskip={skipClarification}
+					onstartover={resetPlanner}
+					onopentest={handleTestNavigate}
+					onrecenttouch={() => {
+						recentListTouched = true;
+					}}
+					onexample={handleExampleTap}
+				></ChatThread>
+				<PlannerComposer
+					bind:value={intentValue}
+					onsubmit={sendPlannerIntent}
+					onnavigate={handleTestNavigate}
+					onuserinput={() => dismissHint('composer')}
+					disabled={status === 'loading' || isOffline}
+					status={intentStatus}
+					planTopic={topic}
+					planCount={numQuestions}
+					planState={planCardState}
+					{planDensity}
+				/>
+			</div>
+			{#if hintReserved}
+				<OnboardingHint
+					ondismiss={dismissHint}
+					onswitch={switchHintLanguage}
+					revealed={hintVisible}
+				/>
+			{/if}
+			<button class="how-it-works" type="button" onclick={openTour}>
+				{$t('howItWorks')}
+			</button>
 		</div>
 
 		{#if $welcomeTour.status === 'active'}
@@ -2042,6 +2105,24 @@
 		color: var(--text-muted);
 		font-size: 0.82rem;
 		line-height: 1.6;
+	}
+
+	.how-it-works {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin: 4px 0 0 4px;
+		padding: 0 4px;
+		border: 0;
+		background: none;
+		color: var(--text-muted);
+		font-size: 0.82rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.how-it-works:hover {
+		color: var(--text);
 	}
 
 	.intent-section {

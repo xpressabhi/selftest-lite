@@ -7,6 +7,10 @@
 				{
 					"name": "selftest_welcome_tour_done_at",
 					"value": "1759000000000"
+				},
+				{
+					"name": "selftest_onboarding_hint_dismissed_at",
+					"value": "1759000000000"
 				}
 			]
 		}
