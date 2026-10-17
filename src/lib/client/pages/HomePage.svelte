@@ -2048,8 +2048,12 @@
 				aria-controls="manual-config-panel"
 				onclick={toggleManualConfig}
 			>
-				{$t('browseTopicsExams')}
+				<Icon name="sliders" size={16} />
+				<span>{$t('browseTopicsExams')}</span>
 			</button>
+			{#if !showManualConfig}
+				<p class="manual-hint small text-muted">{$t('manualSetupHint')}</p>
+			{/if}
 			{#if showManualConfig}
 				<div class="manual-grid" id="manual-config-panel">
 					<TopicBrowser
@@ -2280,18 +2284,27 @@
 	}
 
 	.manual-toggle {
-		display: block;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
 		margin: 0 auto;
-		border: 0;
-		background: transparent;
-		color: var(--text-muted);
-		font-size: 0.8rem;
+		border: 1px solid var(--line);
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.875rem;
 		font-weight: 600;
-		text-decoration: underline;
-		text-underline-offset: 3px;
+		border-radius: var(--radius-control);
 		min-height: 44px;
-		padding: 8px 12px;
+		padding: 8px 16px;
 		cursor: pointer;
+		transition: border-color var(--motion-fast) var(--ease-out);
+	}
+	.manual-toggle:hover {
+		border-color: var(--color-brand-600);
+	}
+	.manual-hint {
+		margin: 8px 0 0;
+		text-align: center;
 	}
 
 	.manual-grid {

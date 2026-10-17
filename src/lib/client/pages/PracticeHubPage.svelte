@@ -463,6 +463,8 @@
 	}
 
 	.practice-card {
+		content-visibility: auto;
+		contain-intrinsic-size: 0 72px;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 0.75rem;

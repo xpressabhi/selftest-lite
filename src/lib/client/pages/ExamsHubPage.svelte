@@ -601,6 +601,8 @@
 	}
 
 	.exam-card {
+		content-visibility: auto;
+		contain-intrinsic-size: 0 200px;
 		display: grid;
 		gap: 0.55rem;
 		padding: 0.95rem 1rem;
