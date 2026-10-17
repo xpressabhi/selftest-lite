@@ -1945,19 +1945,6 @@
 				{/if}
 			</div>
 		{/if}
-		<div class="daily-five-row mb-4">
-			<button
-				class="daily-five-btn"
-				type="button"
-				disabled={status === 'loading'}
-				onclick={startDailyFive}
-			>
-				<Icon name="zap" size={16} />
-				{$t('dailyFive')}
-			</button>
-			<span class="daily-five-hint">{$t('dailyFiveHint')}</span>
-		</div>
-
 		{#if unsubmittedTest?.id}
 			<div
 				class="alert alert-warning d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3"
@@ -1978,6 +1965,21 @@
 				</a>
 			</div>
 		{/if}
+
+		<div class="daily-five-row mb-4">
+			<button
+				class="daily-five-btn"
+				type="button"
+				disabled={status === 'loading'}
+				onclick={startDailyFive}
+			>
+				<Icon name="zap" size={16} />
+				{$t('dailyFive')}
+			</button>
+			<span class="daily-five-hint">
+				{historyCount > 0 ? $t('dailyFiveHint') : $t('dailyFiveWarmupHint')}
+			</span>
+		</div>
 
 		{#if showStreakCard}
 			<StreakCard
