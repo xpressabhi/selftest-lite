@@ -119,6 +119,7 @@
 
 	<div
 		class="chat-log"
+		class:chat-bottom={!showIdleState}
 		role={welcome ? undefined : 'log'}
 		aria-live={welcome ? undefined : 'polite'}
 		bind:this={logRef}
@@ -298,6 +299,18 @@
 		flex: 1;
 		min-height: 0;
 		scroll-behavior: smooth;
+	}
+
+	/* The panel's height is fixed (clamp 440px..720px), so a short thread
+	   leaves a dead band at the bottom of the scroll log. Live content
+	   (messages, plan card) anchors to the bottom, where the composer is and
+	   where the next message will land; the slack then sits above the
+	   conversation instead of between the card and the input. Idle states
+	   (welcome gallery, recent tests) stay top-anchored: they are a list read
+	   downward. `margin-top: auto` collapses to 0 once the log overflows, so
+	   long conversations are unaffected. */
+	.chat-log.chat-bottom > :first-child {
+		margin-top: auto;
 	}
 
 	.chat-row {

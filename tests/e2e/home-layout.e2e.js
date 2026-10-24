@@ -126,6 +126,73 @@ test('the pitch paragraph sits with the exam links, below the planner', async ({
 	expect(errors).toEqual([]);
 });
 
+// The planner panel has a fixed height (clamp 440px..720px), so a short plan
+// card leaves a dead band at the bottom of the scroll log. Live content belongs
+// against the composer — that is where the next message lands — so the leftover
+// height must sit above the card, not between the card and the input.
+test('the plan card sits against the composer, not under a dead band', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await stubBackend(page);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ plan: null, topicSource: 'local' }),
+			})
+	);
+	await page.goto('/');
+	await waitForHydration(page);
+
+	await page.locator('.intent-input').click();
+	await page.locator('.intent-input').fill('python');
+	const card = page.locator('.preview-card');
+	await expect(card).toBeVisible();
+	await expect(card.locator('.preview-topic-label')).toHaveText('python');
+
+	const layout = await page.evaluate(() => {
+		const log = document.querySelector('.chat-log');
+		const plan = document.querySelector('.chat-plan');
+		const logBox = log.getBoundingClientRect();
+		const planBox = plan.getBoundingClientRect();
+		return {
+			panelHeight: Math.round(
+				document.querySelector('.planner-panel').getBoundingClientRect().height
+			),
+			gapAbovePlan: Math.round(
+				planBox.top - document.querySelector('.chat-header').getBoundingClientRect().bottom
+			),
+			gapBelowPlan: Math.round(
+				document.querySelector('.composer-wrap').getBoundingClientRect().top -
+					planBox.bottom
+			),
+			logSlack: Math.round(
+				logBox.bottom - parseFloat(getComputedStyle(log).paddingBottom) - planBox.bottom
+			),
+			logScrollable: log.scrollHeight > log.clientHeight,
+		};
+	});
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(layout, null, 2),
+	});
+
+	// The card hugs the composer (the log's 10px gap plus its 4px padding).
+	expect(layout.gapBelowPlan).toBeLessThanOrEqual(20);
+	// The leftover height is absorbed above the card instead of below it.
+	expect(layout.logSlack).toBeLessThanOrEqual(20);
+	expect(layout.gapAbovePlan).toBeGreaterThan(layout.gapBelowPlan);
+	// The fixed panel height is unchanged by the fix, so nothing else shifts.
+	expect(layout.panelHeight).toBe(612);
+	expect(layout.logScrollable).toBe(false);
+	expect(errors).toEqual([]);
+});
+
 test('typing does not move the kicker or the panel', async ({ page }, testInfo) => {
 	const errors = await collectErrors(page);
 	await page.setViewportSize({ width: 390, height: 844 });
