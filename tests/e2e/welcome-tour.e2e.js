@@ -88,6 +88,15 @@ async function openTour(page) {
 	await waitForHydration(page);
 	await page.locator('.how-it-works').click();
 	await page.locator('.welcome-tour').waitFor({ state: 'visible', timeout: 5000 });
+	// The focus trap moves focus into the dialog on the next animation frame.
+	// Keyboard assertions (Escape) dispatch to the focused element, so they must
+	// not race that frame: under a busy suite the frame lands after the keypress
+	// and the keydown never reaches the dialog.
+	await page.waitForFunction(
+		() => Boolean(document.querySelector('.welcome-tour')?.contains(document.activeElement)),
+		undefined,
+		{ timeout: 5000 }
+	);
 }
 
 async function expectTourStep(page, step) {
