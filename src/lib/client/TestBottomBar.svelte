@@ -22,10 +22,11 @@
 		<button
 			class="test-progress-pill"
 			type="button"
-			aria-label={$t('questionsHeading')}
+			aria-label={`${$t('questionsHeading')} — ${answeredCount}/${totalQuestions}`}
 			onclick={onOpenReview}
 		>
 			<span class="pill-fill" style={`width: ${positionPercent}%`}></span>
+			<Icon name="list" size={15} />
 			<span class="pill-label">{answeredCount}/{totalQuestions}</span>
 		</button>
 		{#if flaggedCount > 0}
@@ -83,11 +84,14 @@
 
 	.test-progress-pill {
 		position: relative;
-		display: grid;
+		display: inline-flex;
 		min-width: 92px;
 		min-height: 48px;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
 		overflow: hidden;
-		place-items: center;
+		padding: 0 14px;
 		border: 1px solid var(--line);
 		border-radius: 999px;
 		background: var(--surface-muted);
@@ -110,6 +114,10 @@
 	.pill-label {
 		position: relative;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.test-progress-pill :global(svg) {
+		position: relative;
 	}
 
 	.test-flag-badge {

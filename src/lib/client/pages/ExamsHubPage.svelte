@@ -14,7 +14,10 @@
 	import { localizedPath } from '#lib/shared/seo.js';
 	import { HUB_CATEGORIES, OBJECTIVE_ONLY_EXAMS } from '#lib/data/indianExams.js';
 	import { MAX_SEARCH_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
-	import { NOTIFICATION_STATUS } from '#lib/shared/examNotificationStatus.js';
+	import {
+		NOTIFICATION_STATUS,
+		notificationDisplayTitle,
+	} from '#lib/shared/examNotificationStatus.js';
 
 	let { notifications = [], lastRunAt = null, lastRunStatus = null } = $props();
 
@@ -335,10 +338,10 @@
 									class="exam-card-title-link"
 									href={localizedPath(`/practice/${exam.id}`, $activeLanguage)}
 								>
-									{item.title}
+									{notificationDisplayTitle(item.title, $activeLanguage)}
 								</a>
 							{:else}
-								{item.title}
+								{notificationDisplayTitle(item.title, $activeLanguage)}
 							{/if}
 						</h2>
 						<p class="exam-card-meta">
@@ -670,9 +673,19 @@
 	}
 
 	.exam-card-title {
+		display: -webkit-box;
 		margin: 0;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+		line-clamp: 3;
 		font-size: 1.02rem;
 		line-height: 1.35;
+		overflow-wrap: anywhere;
+	}
+
+	.exam-card-title-link {
+		display: inline;
 	}
 
 	.exam-card-meta {

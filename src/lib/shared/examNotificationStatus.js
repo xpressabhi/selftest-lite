@@ -35,6 +35,51 @@ export function todayInIst(now = new Date()) {
 	return new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+const DISPLAY_TITLE_MAX = 90;
+const DEVANAGARI = /[\u0900-\u097F]/;
+const LATIN = /[A-Za-z]/;
+
+/**
+ * A short, scannable card title from a scraped notice title.
+ *
+ * Official notices often publish one blob containing the Hindi notice, a slash
+ * and the English notice (or a 240-character paragraph). The card needs a
+ * headline: pick the segment in the reader's language when the source is
+ * bilingual, otherwise take the first sentence, then clamp at a word boundary.
+ * Display-only — the stored title and its dedupe key are untouched.
+ */
+export function notificationDisplayTitle(value, language = 'english') {
+	const text = String(value ?? '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	if (!text) {
+		return '';
+	}
+
+	const segments = text
+		.split(/\s*\/\s*/)
+		.map((segment) => segment.trim())
+		.filter((segment) => segment.length >= 20);
+	let chosen = text;
+	if (segments.length > 1) {
+		const wantsHindi = language === 'hindi';
+		const matching = segments.find((segment) =>
+			wantsHindi ? DEVANAGARI.test(segment) : LATIN.test(segment)
+		);
+		chosen = matching || segments[0];
+	}
+
+	const firstSentence = chosen.split(/(?<=[.!?।])\s+/u)[0]?.trim();
+	if (firstSentence && firstSentence.length >= 24) {
+		chosen = firstSentence;
+	}
+
+	if (chosen.length <= DISPLAY_TITLE_MAX) {
+		return chosen;
+	}
+	return `${chosen.slice(0, DISPLAY_TITLE_MAX).replace(/\s+\S*$/, '')}…`;
+}
+
 /**
  * Read-time status from the dates alone (never stored), so rows cannot go
  * stale waiting for a cron: open → closing_soon (≤7 days) → closed; with no

@@ -211,6 +211,42 @@
 			: 0
 	);
 
+	// A neutral score ring does not tell a student what to do next. The band
+	// gives the number a meaning, and the optional target turns it into a
+	// personal goal (honest where a published cut-off is not available).
+	const TARGET_KEY = 'selftest_target_percent';
+	let targetPercent = $state(null);
+	const verdict = $derived(
+		percentage >= 75 ? 'strong' : percentage >= 50 ? 'on-track' : 'needs-work'
+	);
+	const VERDICT_TITLE = {
+		strong: 'resultsVerdictStrong',
+		'on-track': 'resultsVerdictOnTrack',
+		'needs-work': 'resultsVerdictNeedsWork',
+	};
+	const VERDICT_HINT = {
+		strong: 'resultsVerdictStrongHint',
+		'on-track': 'resultsVerdictOnTrackHint',
+		'needs-work': 'resultsVerdictNeedsWorkHint',
+	};
+	let targetDelta = $derived(targetPercent === null ? 0 : percentage - targetPercent);
+
+	function setTarget(next) {
+		targetPercent = next;
+		try {
+			if (next === null) {
+				window.localStorage.removeItem(TARGET_KEY);
+			} else {
+				window.localStorage.setItem(TARGET_KEY, String(next));
+			}
+		} catch {
+			// Storage unavailable; the in-memory target still renders.
+		}
+		if (next !== null) {
+			track('results:target-set', { target: next });
+		}
+	}
+
 	let correctCount = $derived(
 		(questionPaper?.questions || []).filter(
 			(question, index) =>
@@ -329,6 +365,15 @@
 			autoExplainEnabled = window.localStorage.getItem(AUTO_EXPLAIN_KEY) === 'true';
 		} catch {
 			autoExplainEnabled = false;
+		}
+		try {
+			const rawTarget = window.localStorage.getItem(TARGET_KEY);
+			const stored = rawTarget === null ? Number.NaN : Number(rawTarget);
+			if (Number.isFinite(stored) && stored >= 1 && stored <= 100) {
+				targetPercent = stored;
+			}
+		} catch {
+			targetPercent = null;
 		}
 		historyCount = getHistory().length;
 		const storedReminderHour = getReminderHour();
@@ -1557,6 +1602,44 @@
 						</span>
 					{/if}
 
+					<div class="hero-verdict is-{verdict}">
+						<strong>{$t(VERDICT_TITLE[verdict])}</strong>
+						<span>{$t(VERDICT_HINT[verdict])}</span>
+					</div>
+
+					<div class="hero-target no-print">
+						{#if targetPercent === null}
+							<span class="target-label">{$t('resultsTargetSet')}</span>
+							{#each [60, 75, 85] as value (value)}
+								<button
+									class="target-chip"
+									type="button"
+									onclick={() => setTarget(value)}
+								>
+									{value}%
+								</button>
+							{/each}
+						{:else}
+							<span class="target-label">
+								{$t('resultsTargetValue', { target: targetPercent })}
+								<strong class:is-behind={targetDelta < 0}>
+									{targetDelta >= 0
+										? $t('resultsTargetAhead', { delta: targetDelta })
+										: $t('resultsTargetBehind', {
+												delta: Math.abs(targetDelta),
+											})}
+								</strong>
+							</span>
+							<button
+								class="target-edit"
+								type="button"
+								onclick={() => setTarget(null)}
+							>
+								{$t('edit')}
+							</button>
+						{/if}
+					</div>
+
 					<div class="hero-share-wrap" bind:this={shareSheetWrap}>
 						<button
 							bind:this={shareButton}
@@ -1984,12 +2067,12 @@
 		align-items: center;
 		gap: 8px;
 		padding: 0 18px;
-		border: 1px solid var(--line);
+		border: 1px solid var(--brand-text);
 		border-radius: 999px;
-		background: var(--surface-muted);
+		background: var(--surface);
 		color: var(--brand-text);
 		font-size: 0.9rem;
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.hero-share:hover,
@@ -2102,6 +2185,92 @@
 		border-color: var(--line);
 		color: var(--hero-muted);
 		font-weight: 500;
+	}
+
+	.hero-verdict {
+		display: grid;
+		gap: 1px;
+		width: 100%;
+		margin-top: 12px;
+		padding: 8px 12px;
+		border-radius: var(--radius-surface);
+		font-size: 0.8rem;
+		line-height: 1.4;
+		text-align: left;
+	}
+
+	.hero-verdict strong {
+		font-size: 0.88rem;
+		font-weight: 700;
+	}
+
+	.hero-verdict.is-strong {
+		background: rgba(var(--ok-rgb), 0.1);
+		color: var(--ok);
+	}
+
+	.hero-verdict.is-on-track {
+		background: rgba(var(--brand-rgb), 0.09);
+		color: var(--brand-text);
+	}
+
+	.hero-verdict.is-needs-work {
+		background: rgba(var(--warn-rgb), 0.1);
+		color: var(--warn);
+	}
+
+	.hero-target {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px;
+		margin-top: 10px;
+	}
+
+	.target-label {
+		font-size: 0.78rem;
+		color: var(--hero-muted);
+	}
+
+	.target-label strong {
+		color: var(--hero-text);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.target-label strong.is-behind {
+		color: var(--warn);
+	}
+
+	.target-chip {
+		min-width: 52px;
+		min-height: 44px;
+		padding: 0 10px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--hero-text);
+		font-size: 0.78rem;
+		font-weight: 650;
+		cursor: pointer;
+	}
+
+	.target-chip:hover,
+	.target-chip:focus-visible {
+		border-color: var(--brand-text);
+		color: var(--brand-text);
+	}
+
+	.target-edit {
+		min-height: 44px;
+		padding: 0 6px;
+		border: 0;
+		background: none;
+		color: var(--brand-text);
+		font-size: 0.78rem;
+		font-weight: 600;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		cursor: pointer;
 	}
 
 	.hero-cta {

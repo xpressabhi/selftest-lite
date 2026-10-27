@@ -117,8 +117,23 @@ test.describe('public pages render clean', () => {
 	}
 });
 
-test.describe('theme toggle persistence', () => {
-	test('flips the dark class and preserves it across reload at 390x844', async ({
+test('Hindi routes keep lang="hi" after hydration', async ({ page }) => {
+	await page.goto('/hi');
+	await waitForHydration(page);
+	// The saved language preference defaults to English in a fresh profile;
+	// initializePreferences used to flip <html lang> to "en" on /hi. The URL
+	// must win so screen readers and the :lang(hi) type rules stay correct.
+	await expect
+		.poll(() => page.evaluate(() => document.documentElement.lang), { timeout: 5000 })
+		.toBe('hi');
+	const ratio = await page.evaluate(() => {
+		const style = getComputedStyle(document.body);
+		return Number.parseFloat(style.lineHeight) / Number.parseFloat(style.fontSize);
+	});
+	expect(ratio).toBeGreaterThan(1.55);
+});
+
+test.describe('theme toggle persistence', () => {	test('flips the dark class and preserves it across reload at 390x844', async ({
 		page,
 	}, testInfo) => {
 		const errors = await collectErrors(page);
@@ -126,19 +141,30 @@ test.describe('theme toggle persistence', () => {
 		await page.goto('/');
 		await waitForHydration(page);
 
-		const themeButton = page.locator(THEME_SELECTOR);
-		await expect(themeButton).toHaveCount(1);
-		await expect(themeButton).toBeVisible();
-		const ariaLabel = await themeButton.getAttribute('aria-label');
-		expect(THEME_LABELS).toContain(ariaLabel);
-
 		// The pre-paint inline script and initializePreferences both resolve
 		// the stored/system theme; wait for the applied attribute so `before`
 		// can never be read mid-initialization.
 		await page.waitForFunction(() => document.documentElement.hasAttribute('data-bs-theme'));
-
 		const before = await readTheme(page);
-		await themeButton.click();
+
+		// Phones keep the header light: theme lives in the hamburger menu
+		// there, and moves back to the header from 1024px up.
+		const headerTheme = page.locator(THEME_SELECTOR);
+		const menuTheme = page.locator('.mobile-menu .theme-action');
+		let ariaLabel;
+		if (await headerTheme.isVisible()) {
+			await expect(headerTheme).toHaveCount(1);
+			ariaLabel = await headerTheme.getAttribute('aria-label');
+			expect(THEME_LABELS).toContain(ariaLabel);
+			await headerTheme.click();
+		} else {
+			await page.locator('.menu-control').click();
+			await expect(menuTheme).toBeVisible();
+			ariaLabel = (await menuTheme.textContent()).trim();
+			await menuTheme.click();
+			await expect(menuTheme).toBeHidden();
+		}
+
 		await expect
 			.poll(async () => (await readTheme(page)).dark, { timeout: 5000 })
 			.toBe(!before.dark);

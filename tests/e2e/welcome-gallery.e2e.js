@@ -58,7 +58,7 @@ async function stubBackend(page) {
 	);
 }
 
-test('new user sees the welcome gallery: greeting, three groups, six examples, tip', async ({
+test('new user sees the welcome gallery: three groups, three examples, tip, then more', async ({
 	page,
 }, testInfo) => {
 	const errors = await collectErrors(page);
@@ -77,8 +77,11 @@ test('new user sees the welcome gallery: greeting, three groups, six examples, t
 		'Skills & interviews',
 	]);
 	const examples = page.locator('.welcome-example');
-	await expect(examples).toHaveCount(6);
+	// Collapsed first-run state: one example per group, so the whole gallery
+	// (with its More control) fits a 640px-tall phone without cutting a row.
+	await expect(examples).toHaveCount(3);
 	await expect(examples.first()).toContainText('SSC CGL general awareness practice');
+	await expect(page.locator('.welcome-more')).toContainText('More examples');
 	await expect(page.locator('.welcome-tip')).toContainText('Add a level, count or language');
 
 	const overflow = await page.evaluate(() => {
@@ -102,21 +105,24 @@ test('new user sees the welcome gallery: greeting, three groups, six examples, t
 			2
 		),
 	});
-	// Success criterion at phone width: greeting, tip and the first four
-	// examples are visible without scrolling, and the rest is a short scroll.
-	// Six 44px full-width rows cannot fit the panel (spec §4 / risks), so this
-	// is the honest bound rather than zero overflow.
+	// Success criterion at phone width: greeting, tip and all three examples
+	// are visible without scrolling.
 	const logBox = await page.locator('.chat-log').boundingBox();
 	const greetingBox = await page.locator('.welcome-greeting').boundingBox();
 	expect(greetingBox.y).toBeGreaterThanOrEqual(logBox.y - 1);
 	expect(greetingBox.y + greetingBox.height).toBeLessThanOrEqual(logBox.y + logBox.height + 1);
-	for (let index = 0; index < 4; index += 1) {
+	for (let index = 0; index < 3; index += 1) {
 		const exampleBox = await examples.nth(index).boundingBox();
 		expect(exampleBox.y).toBeGreaterThanOrEqual(logBox.y - 1);
 		expect(exampleBox.y + exampleBox.height).toBeLessThanOrEqual(
 			logBox.y + logBox.height + 1
 		);
 	}
+
+	// The disclosure expands to all six and can collapse again.
+	await page.locator('.welcome-more').click();
+	await expect(examples).toHaveCount(6);
+	await expect(page.locator('.welcome-more')).toContainText('Show fewer examples');
 	expect(errors).toEqual([]);
 });
 

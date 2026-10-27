@@ -1,5 +1,6 @@
 <script>
-	import { t } from '#lib/client/i18n.js';
+	import { onMount } from 'svelte';
+	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import { track } from '#lib/client/telemetry.js';
 	import {
 		isNearInputLimit,
@@ -7,6 +8,8 @@
 		sanitizeInputText,
 	} from '#lib/shared/inputLimits.js';
 	import TestSearchDropdown from './TestSearchDropdown.svelte';
+	import Icon from './Icon.svelte';
+	import { showToast } from './toast.js';
 
 	let {
 		value = $bindable(''),
@@ -16,6 +19,7 @@
 		planCount = 0,
 		planState = '',
 		planDensity = 'full',
+		lite = false,
 		onsubmit = () => {},
 		onnavigate = () => {},
 		onuserinput = () => {},
@@ -26,6 +30,9 @@
 	let formRef = $state(null);
 	let inputRef = $state(null);
 	let listCount = $state(0);
+	let voiceSupported = $state(false);
+	let listening = $state(false);
+	let recognition = null;
 	let baselineHeight = 0;
 	let blurTimer;
 
@@ -209,6 +216,60 @@
 		onsubmit(trimmedValue);
 	}
 
+	onMount(() => {
+		const SpeechRecognition =
+			window.SpeechRecognition || window.webkitSpeechRecognition;
+		voiceSupported = typeof SpeechRecognition === 'function';
+		return () => {
+			recognition?.abort?.();
+			recognition = null;
+		};
+	});
+
+	/**
+	 * One mic button, Hindi or English per the current UI language. The browser
+	 * does the recognition locally enough to be usable on a slow connection and
+	 * the permission prompt only appears after a deliberate tap.
+	 */
+	function toggleVoice() {
+		if (listening) {
+			recognition?.stop?.();
+			return;
+		}
+		const SpeechRecognition =
+			window.SpeechRecognition || window.webkitSpeechRecognition;
+		if (typeof SpeechRecognition !== 'function' || disabled || PARSING) {
+			return;
+		}
+		const lang = $activeLanguage === 'hindi' ? 'hi-IN' : 'en-IN';
+		recognition = new SpeechRecognition();
+		recognition.lang = lang;
+		recognition.interimResults = false;
+		recognition.maxAlternatives = 1;
+		recognition.onresult = (event) => {
+			const transcript = String(event.results?.[0]?.[0]?.transcript || '').trim();
+			if (!transcript) {
+				return;
+			}
+			const next = `${value ? `${value} ` : ''}${transcript}`.slice(0, MAX_INTENT_CHARS);
+			value = next;
+			onuserinput();
+			track('planner:voice-result', { language: lang });
+		};
+		recognition.onerror = (event) => {
+			listening = false;
+			if (event.error !== 'aborted' && event.error !== 'no-speech') {
+				showToast($t('voiceFailed'), 'warning');
+			}
+		};
+		recognition.onend = () => {
+			listening = false;
+		};
+		listening = true;
+		track('planner:voice-start', { language: lang });
+		recognition.start();
+	}
+
 	function handleGenerateNew(query, source = 'no-matches') {
 		const next = String(query || '').trim();
 		if (!next) return;
@@ -311,8 +372,8 @@
 	onfocusin={handleFocusIn}
 	onfocusout={handleFocusOut}
 >
-	<form class="composer-form" bind:this={formRef} onsubmit={handleSubmit}>
-		<div class="composer-group" class:parsing={PARSING}>
+	<form class="composer-form" bind:this={formRef} onsubmit={handleSubmit} action="/" method="get">
+		<div class="composer-group" class:parsing={PARSING} class:is-lite={lite}>
 			<button
 				class="composer-search"
 				type="button"
@@ -332,6 +393,8 @@
 				</svg>
 			</button>
 			<input
+				id="planner-input"
+				name="q"
 				class="intent-input"
 				type="text"
 				bind:value
@@ -340,7 +403,7 @@
 				oninput={handleIntentInput}
 				placeholder={PARSING ? '' : $t('smartIntentPlaceholder')}
 				disabled={disabled || PARSING}
-				aria-label={$t('smartIntentPlaceholder')}
+				aria-label={$t('smartIntentLabel')}
 				autocomplete="off"
 				enterkeyhint="send"
 				role="combobox"
@@ -349,10 +412,22 @@
 				aria-autocomplete="list"
 				aria-haspopup="listbox"
 			/>
+			{#if voiceSupported && !trimmedValue}
+				<button
+					class="composer-voice"
+					class:is-listening={listening}
+					type="button"
+					aria-label={listening ? $t('voiceListening') : $t('voiceInputLabel')}
+					aria-pressed={listening}
+					disabled={disabled || PARSING}
+					onclick={toggleVoice}
+				>
+					<Icon name="mic" size={18} />
+				</button>
+			{/if}
 			{#if trimmedValue && !PARSING}
 				<button
-					class="composer-clear"
-					type="button"
+					class="composer-clear"					type="button"
 					{disabled}
 					aria-label={$t('clearTopicInput')}
 					onmousedown={handleClearMouseDown}
@@ -522,6 +597,16 @@
 		box-shadow: var(--focus-ring);
 	}
 
+	/* Lite budget: slow network, save-data, low RAM/cores or reduced motion.
+	   The celebratory ring is the app's only always-on decoration, so it is
+	   the first thing to drop — a static teal border keeps the composer
+	   recognisable without two infinite conic animations. */
+	.composer-group.is-lite {
+		border-color: var(--ring-base);
+		background-image: none;
+		animation: none;
+	}
+
 	@media (forced-colors: active) {
 		.composer-group {
 			border-color: CanvasText;
@@ -566,6 +651,55 @@
 		transition:
 			color 0.15s ease,
 			background 0.15s ease;
+	}
+
+	.composer-voice {
+		display: flex;
+		width: 44px;
+		height: 44px;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		border-radius: var(--radius-control);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+
+	/* Phones cannot afford both the saved-test search and a full-width input:
+	   44 + 44 + 44 of controls left the field at 88px on a 320px screen. The
+	   numeric-ID path still opens a test, and History has its own search. */
+	@media (max-width: 639.98px) {
+		.composer-search {
+			display: none;
+		}
+	}
+
+	.composer-voice:hover:not(:disabled) {
+		background: var(--surface-muted);
+		color: var(--brand-text);
+	}
+
+	.composer-voice.is-listening {
+		background: rgba(var(--brand-rgb), 0.14);
+		color: var(--brand-text);
+		animation: voice-pulse 1.4s ease-in-out infinite;
+	}
+
+	.composer-voice:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+
+	@keyframes voice-pulse {
+		0%,
+		100% {
+			box-shadow: 0 0 0 0 rgba(var(--brand-rgb), 0.25);
+		}
+		50% {
+			box-shadow: 0 0 0 6px rgba(var(--brand-rgb), 0);
+		}
 	}
 
 	.composer-clear:hover,

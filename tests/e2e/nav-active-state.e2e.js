@@ -228,14 +228,21 @@ test('bottom nav Create entry emphasis follows the route', async ({ page }, test
 		body: JSON.stringify({ onHome, onAbout }, null, 2),
 	});
 
-	// On a page Create does not lead to, it must neither claim to be current nor
-	// render in the current-route colour.
+	// Create is an action, not a second Home route: it never claims to be the
+	// current tab, so Home is the single "you are here" marker in the bar.
 	expect(onAbout.marksCurrent).toBe(false);
 	expect(onAbout.color).toBe(onAbout.siblingColor);
-
-	// On its own route it takes the current-route colour and the marker.
-	expect(onHome.marksCurrent).toBe(true);
-	expect(onHome.color).not.toBe(onAbout.color);
+	expect(onHome.marksCurrent).toBe(false);
+	expect(onHome.color).toBe(onHome.siblingColor);
 	// Bold weight is the persistent cue that keeps it the primary action.
 	expect(onHome.weight).toBe(onAbout.weight);
+	expect(onHome.weight).toBe('700');
+
+	// On the home page it puts the cursor in the planner instead of reloading.
+	await page.goto('/');
+	const input = page.locator('.intent-input');
+	await expect(input).not.toBeFocused();
+	await page.locator('.bottom-nav .create-tab').click();
+	await expect(page).toHaveURL(/\/$/);
+	await expect(input).toBeFocused();
 });

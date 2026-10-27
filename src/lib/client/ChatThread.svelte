@@ -1,18 +1,22 @@
 <script>
 	import { t } from '#lib/client/i18n.js';
+	import Icon from './Icon.svelte';
 
 	let {
 		messages = [],
 		pendingClarify = null,
 		status = 'idle',
 		recentTests = [],
+		weakTopic = null,
 		planCard = null,
 		welcome = false,
+		showTip = true,
 		exampleGroups = [],
 		onquickreply = () => {},
 		onskip = () => {},
 		onstartover = () => {},
 		onopentest = () => {},
+		onpracticetopic = () => {},
 		onexample = () => {},
 		onrecenttouch = () => {},
 	} = $props();
@@ -105,6 +109,30 @@
 		}
 		return option.label || option.value;
 	}
+
+	// First visit: three examples is enough to show the shape of a prompt, and
+	// it keeps every row whole inside the panel on a 640px-tall phone. The rest
+	// stays one tap away instead of being clipped mid-row.
+	let showAllExamples = $state(false);
+	let visibleExampleGroups = $derived.by(() => {
+		if (showAllExamples) {
+			return exampleGroups;
+		}
+		// One example per group while collapsed: it keeps all three labels
+		// visible (exam, school, skills) without turning the first screen into
+		// a six-row menu.
+		return exampleGroups
+			.slice(0, 3)
+			.map((group) => ({ ...group, examples: group.examples.slice(0, 1) }))
+			.filter((group) => group.examples.length > 0);
+	});
+	let totalExampleCount = $derived(
+		exampleGroups.reduce((total, group) => total + group.examples.length, 0)
+	);
+	let hiddenExampleCount = $derived(
+		totalExampleCount -
+			visibleExampleGroups.reduce((total, group) => total + group.examples.length, 0)
+	);
 </script>
 
 <section class="chat-thread" aria-label={$t('plannerChatLabel')}>
@@ -120,6 +148,7 @@
 	<div
 		class="chat-log"
 		class:chat-bottom={!showIdleState}
+		class:chat-gallery={showIdleState && welcome}
 		role={welcome ? undefined : 'log'}
 		aria-live={welcome ? undefined : 'polite'}
 		bind:this={logRef}
@@ -127,9 +156,9 @@
 		{#if showIdleState}
 			<div class="chat-idle">
 				{#if welcome}
-					<div class="welcome-gallery">
+					<div class="welcome-gallery" class:is-expanded={showAllExamples}>
 						<div class="welcome-greeting">{$t('plannerWelcomeGreeting')}</div>
-						{#each exampleGroups as group (group.labelKey)}
+						{#each visibleExampleGroups as group (group.labelKey)}
 							<div class="welcome-group">
 								<span class="welcome-group-label">{$t(group.labelKey)}</span>
 								{#each group.examples as example (example.key)}
@@ -138,11 +167,24 @@
 										type="button"
 										onclick={() => onexample(example)}
 									>
-										{$t(example.key)}
+										<span class="welcome-example-label">{$t(example.key)}</span>
+										<Icon name="chevron-right" size={16} />
 									</button>
 								{/each}
 							</div>
 						{/each}
+						{#if hiddenExampleCount > 0 || showAllExamples}
+							<button
+								class="welcome-more"
+								type="button"
+								aria-expanded={showAllExamples}
+								onclick={() => (showAllExamples = !showAllExamples)}
+							>
+								{showAllExamples
+									? $t('plannerFewerExamples')
+									: $t('plannerMoreExamples', { count: hiddenExampleCount })}
+							</button>
+						{/if}
 					</div>
 				{:else if recentTests.length > 0}
 					<div class="recent-block" role="presentation" onpointerdown={onrecenttouch}>
@@ -158,6 +200,21 @@
 							</button>
 						{/each}
 						<a class="recent-all" href="/history">{$t('plannerViewAll')}</a>
+						{#if weakTopic}
+							<button
+								class="weak-topic"
+								type="button"
+								onclick={() => onpracticetopic(weakTopic.topic)}
+							>
+								<span class="weak-topic-eyebrow">{$t('plannerWeakTopic')}</span>
+								<span class="weak-topic-name">{weakTopic.topic}</span>
+								<span class="weak-topic-meta"
+									>{$t('plannerWeakTopicMeta', {
+										accuracy: weakTopic.averageAccuracy,
+									})}</span
+								>
+							</button>
+						{/if}
 					</div>
 				{:else}
 					<p class="chat-idle-hint">{$t('plannerWelcomeGreeting')}</p>
@@ -249,7 +306,7 @@
 		{/if}
 	</div>
 
-	{#if welcome}
+	{#if welcome && showTip}
 		<p class="welcome-tip">{$t('plannerWelcomeTip')}</p>
 	{/if}
 </section>
@@ -489,11 +546,69 @@
 		text-decoration: none;
 	}
 
+	.weak-topic {
+		display: grid;
+		gap: 1px;
+		width: 100%;
+		min-height: 44px;
+		margin-top: 4px;
+		padding: 10px 12px;
+		border: 1px solid rgba(var(--brand-rgb), 0.32);
+		border-radius: var(--radius-surface);
+		background: rgba(var(--brand-rgb), 0.07);
+		color: var(--text);
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.weak-topic-eyebrow {
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--brand-text);
+	}
+
+	.weak-topic-name {
+		font-size: 0.9rem;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+
+	.weak-topic-meta {
+		font-size: 0.78rem;
+		color: var(--text-muted);
+	}
+
 	.welcome-gallery {
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
 		animation: welcome-in 0.22s ease;
+	}
+
+	/* Short phones: the greeting repeats what the group labels already say,
+	   and the second/third group can wait behind the disclosure. Keeping the
+	   first screen to whole rows is the point; nothing is cut mid-button. */
+	@media (max-height: 819.98px) {
+		.welcome-greeting {
+			display: none;
+		}
+	}
+
+	@media (max-height: 759.98px) {
+		.welcome-gallery:not(.is-expanded) .welcome-group:nth-child(4) {
+			display: none;
+		}
+	}
+
+	/* A clipped scroll edge reads as a bug unless it is signalled. Only the
+	   gallery (not a conversation) gets the fade. */
+	@media (max-width: 639.98px) {
+		.chat-log.chat-gallery {
+			-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+			mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+		}
 	}
 
 	.welcome-greeting {
@@ -518,6 +633,8 @@
 	.welcome-example {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
 		width: 100%;
 		min-height: 44px;
 		padding: 10px 12px;
@@ -534,9 +651,33 @@
 			background 0.15s ease;
 	}
 
+	.welcome-example-label {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.welcome-example :global(svg) {
+		flex: none;
+		color: var(--text-muted);
+	}
+
 	.welcome-example:hover {
 		border-color: rgba(var(--brand-rgb), 0.4);
 		background: rgba(var(--brand-rgb), 0.05);
+	}
+
+	.welcome-more {
+		align-self: flex-start;
+		min-height: 44px;
+		padding: 0 4px;
+		border: 0;
+		background: none;
+		color: var(--brand-text);
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		cursor: pointer;
 	}
 
 	/* From tablet up the gallery stops being a list of full-width bars. Six

@@ -6,8 +6,7 @@
 			name="viewport"
 			content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content, maximum-scale=5, user-scalable=yes"
 		/>
-		<meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
-		<meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#f3eee4" />
 		<meta name="color-scheme" content="light dark" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-title" content="selftest.in" />
@@ -34,6 +33,13 @@
 					if (dark) {
 						document.documentElement.classList.add('dark');
 						document.documentElement.setAttribute('data-bs-theme', 'dark');
+					}
+					// The browser/status bar must match the surface the app is
+					// actually painting, not the OS preference: the in-app theme
+					// toggle can disagree with it.
+					var themeMeta = document.querySelector('meta[name="theme-color"]');
+					if (themeMeta) {
+						themeMeta.setAttribute('content', dark ? '#0e1116' : '#f3eee4');
 					}
 					// The server renders lang="hi" for /hi URLs; only flip from
 					// the stored preference when the URL does not already say.

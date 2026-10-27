@@ -47,7 +47,7 @@
 		welcomeTour,
 	} from '#lib/client/welcomeTour.js';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
-	import { getStats, getStreak } from '#lib/client/learning.js';
+	import { buildTopicMasteryItems, getStats, getStreak } from '#lib/client/learning.js';
 	import ChatThread from '#lib/client/ChatThread.svelte';
 	import OnboardingHint from '#lib/client/OnboardingHint.svelte';
 	import Icon from '#lib/client/Icon.svelte';
@@ -96,8 +96,6 @@
 		remindersSupported,
 	} from '#lib/client/reminders.js';
 	import { showToast } from '#lib/client/toast.js';
-	import TopicBrowser from '#lib/client/TopicBrowser.svelte';
-	import ExamBrowser from '#lib/client/ExamBrowser.svelte';
 	import ProfileWizard from '#lib/client/ProfileWizard.svelte';
 	import GenerationTrace from '#lib/client/GenerationTrace.svelte';
 	import { user } from '#lib/client/auth.js';
@@ -114,6 +112,7 @@
 	const MAX_RETRIES = MAX_GENERATION_ATTEMPTS;
 	const GENERATION_TIMEOUT_MS = CLIENT_GENERATION_TIMEOUT_MS;
 	const PROFILE_WIZARD_DISMISS_KEY = 'selftest_profile_wizard_dismissed_at';
+	const Q_INTENT_HANDLED_KEY = 'selftest_q_intent_handled';
 	const PROFILE_WIZARD_REPROMPT_DAYS = 7;
 	let intentValue = $state('');
 	let plannerTyped = $state(false);
@@ -122,6 +121,11 @@
 	let galleryFill = $state(false);
 	let plannerDraft = $state(createPlannerDraft());
 	let recentTests = $state([]);
+	let masteryItems = $state([]);
+	let liteMode = $state(false);
+	// Loaded on demand when the manual config opens (see loadManualConfig).
+	let TopicBrowser = $state(null);
+	let ExamBrowser = $state(null);
 	let previewStatus = $state('idle');
 	let previewSeq = 0;
 	let previewAbort = null;
@@ -302,6 +306,12 @@
 				test.totalQuestions ? ` · ${test.totalQuestions} ${$t('qsShort')}` : ''
 			} · ${$t('testId')}: ${test.id}`,
 		}))
+	);
+
+	// The weakest topic the learner has actually attempted. It gives the idle
+	// recent-tests panel a next action instead of a 400px empty band.
+	const weakTopic = $derived(
+		masteryItems.find((item) => item.status === 'needs-work') || null
 	);
 
 	function reminderStateForNudge() {
@@ -495,6 +505,20 @@
 
 	onMount(() => {
 		homeOpenedAt = Date.now();
+		const connection =
+			navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+		// Shell-level lite budget, deliberately stricter than the playground's
+		// artifact bucket: a 4-core laptop is not a low-end phone. Only clear
+		// evidence (save-data, 2G/3G, ≤3 GB RAM or ≤2 cores) drops the
+		// always-on ring. Reduced motion is handled by the global freeze.
+		const slowNetwork =
+			connection?.saveData === true ||
+			['slow-2g', '2g', '3g'].includes(String(connection?.effectiveType || ''));
+		const weakDevice =
+			(Number(navigator.deviceMemory) > 0 && Number(navigator.deviceMemory) <= 3) ||
+			(Number(navigator.hardwareConcurrency) > 0 &&
+				Number(navigator.hardwareConcurrency) <= 2);
+		liteMode = slowNetwork || weakDevice;
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
 		unsubmittedTest = getUnsubmittedTest();
@@ -515,13 +539,16 @@
 		void hydrateHistoryFromServer().then((changed) => {
 			if (changed) {
 				paintRecent();
-				stats = getStats(getHistory());
-				historyCount = getHistory().length;
+				const merged = getHistory();
+				stats = getStats(merged);
+				historyCount = merged.length;
+				masteryItems = buildTopicMasteryItems(merged, 3);
 			}
 		});
 		streak = getStreak();
 		stats = getStats(historyEntries);
 		historyCount = historyEntries.length;
+		masteryItems = buildTopicMasteryItems(historyEntries, 3);
 		// A saved preset re-runs from the bookmarks page (/?preset=id): read it
 		// once, strip the parameter so a refresh never starts another run, and
 		// hand it to the same quick-start path as the star chips.
@@ -557,6 +584,7 @@
 					}
 					if (decision.promote?.includes('exam-browser')) {
 						showManualConfig = true;
+						void loadManualConfig();
 					}
 				}
 				if (nudgeEligible) {
@@ -609,8 +637,29 @@
 				void startDailyFive();
 			}, 100);
 		}
+		// Progressive enhancement for the planner form: before hydration it
+		// submits GET /?q=…; this hands that text to the same conversational
+		// path once the app is alive. The URL keeps the query so the link is
+		// shareable; a refresh is a no-op thanks to the one-shot session marker.
+		const queryParam = (params.get('q') || '').trim().slice(0, 400);
+		if (queryParam) {
+			intentValue = queryParam;
+			let alreadyHandled = false;
+			try {
+				alreadyHandled =
+					window.sessionStorage.getItem(Q_INTENT_HANDLED_KEY) === queryParam;
+				window.sessionStorage.setItem(Q_INTENT_HANDLED_KEY, queryParam);
+			} catch {
+				// Storage blocked: treat every load as a fresh query.
+			}
+			if (!alreadyHandled) {
+				window.setTimeout(() => {
+					void sendPlannerIntent(queryParam);
+				}, 100);
+			}
+		}
 		const hasUrlConfig = Boolean(
-			params.get('exam') || params.get('mode') || params.get('daily')
+			params.get('exam') || params.get('mode') || params.get('daily') || queryParam
 		);
 		if (!hasUrlConfig) {
 			const restoredDraft = readPlannerDraft();
@@ -1237,8 +1286,24 @@
 	function toggleManualConfig() {
 		if (!showManualConfig) {
 			track('home:manual-expand');
+			// The manual config is below the fold and behind a toggle; shipping
+			// its two browsers in the first-load chunk cost every visitor on a
+			// slow connection. Fetch them only when the panel is opened.
+			void loadManualConfig();
 		}
 		showManualConfig = !showManualConfig;
+	}
+
+	async function loadManualConfig() {
+		if (TopicBrowser && ExamBrowser) {
+			return;
+		}
+		const [topicModule, examModule] = await Promise.all([
+			import('#lib/client/TopicBrowser.svelte'),
+			import('#lib/client/ExamBrowser.svelte'),
+		]);
+		TopicBrowser = topicModule.default;
+		ExamBrowser = examModule.default;
 	}
 
 	async function loadExamSections(id, { discover = false } = {}) {
@@ -1710,6 +1775,13 @@
 		}
 	}
 
+	function focusPlanner() {
+		const input = document.getElementById('planner-input');
+		input?.scrollIntoView({ block: 'center' });
+		input?.focus({ preventScroll: true });
+		track('home:streak-start');
+	}
+
 	function handleExampleTap(example) {
 		track('planner:example-tap', { group: example.group, slot: example.slot });
 		dismissHint('example');
@@ -1787,6 +1859,19 @@
 		});
 	}
 
+	async function practiceTopic(topic) {
+		track('home:practice-weak-topic', { topic });
+		await runGeneration({
+			...getQuizRequestParams(),
+			topic,
+			selectedTopics: [],
+			examId: null,
+			examName: null,
+			testMode: 'quiz-practice',
+			numQuestions: 10,
+		});
+	}
+
 	async function quickStartPreset(preset) {
 		track('generate:quick-start-preset', { presetId: preset.id });
 		const quizParams = {
@@ -1832,6 +1917,7 @@
 <section class="app-container py-4 py-md-5">
 	<div class="home-wrap">
 		<h1 class="home-kicker">{$t('homeHeading')}</h1>
+		<p class="home-subline">{$t('homeSubline')}</p>
 
 		{#snippet planCard()}
 			<PreviewCard
@@ -1865,6 +1951,9 @@
 					planCard={showPlanCard ? planCard : null}
 					recentTests={recentTestsView}
 					welcome={showWelcome}
+					showTip={!hintReserved}
+					{weakTopic}
+					onpracticetopic={practiceTopic}
 					exampleGroups={plannerExampleGroups}
 					onquickreply={answerClarification}
 					onskip={skipClarification}
@@ -1875,6 +1964,13 @@
 					}}
 					onexample={handleExampleTap}
 				></ChatThread>
+				{#if hintReserved}
+					<OnboardingHint
+						ondismiss={dismissHint}
+						onswitch={switchHintLanguage}
+						revealed={hintVisible}
+					/>
+				{/if}
 				<PlannerComposer
 					bind:value={intentValue}
 					onsubmit={sendPlannerIntent}
@@ -1886,15 +1982,9 @@
 					planCount={numQuestions}
 					planState={planCardState}
 					{planDensity}
+					lite={liteMode}
 				/>
 			</div>
-			{#if hintReserved}
-				<OnboardingHint
-					ondismiss={dismissHint}
-					onswitch={switchHintLanguage}
-					revealed={hintVisible}
-				/>
-			{/if}
 			<button class="how-it-works" type="button" onclick={openTour}>
 				{$t('howItWorks')}
 			</button>
@@ -1981,7 +2071,17 @@
 			</span>
 		</div>
 
-		{#if showStreakCard}
+		{#if showStreakCard && historyCount === 0 && (streak?.currentStreak || 0) === 0}
+			<div class="streak-start panel streak-card">
+				<div class="streak-start-copy">
+					<div class="fw-bold">{$t('streakStartTitle')}</div>
+					<p class="small text-muted mb-0">{$t('streakStartBody')}</p>
+				</div>
+				<button class="btn btn-sm btn-outline-primary" type="button" onclick={focusPlanner}>
+					{$t('streakStartCta')}
+				</button>
+			</div>
+		{:else if showStreakCard}
 			<StreakCard
 				bind:this={streakCardRef}
 				{streak}
@@ -2056,21 +2156,27 @@
 			{/if}
 			{#if showManualConfig}
 				<div class="manual-grid" id="manual-config-panel">
-					<TopicBrowser
-						{selectedCategory}
-						{selectedTopics}
-						ontopicchange={handleTopicBrowserChange}
-					/>
-					<ExamBrowser
-						{examSearchQuery}
-						{examGroupFilter}
-						{showBookmarkedExamsOnly}
-						{bookmarkedExamIds}
-						selectedExamId={examId}
-						onexamchange={handleExamBrowserChange}
-						onbookmarktoggle={toggleExamBookmark}
-						{visibleExams}
-					/>
+					{#if TopicBrowser && ExamBrowser}
+						<TopicBrowser
+							{selectedCategory}
+							{selectedTopics}
+							ontopicchange={handleTopicBrowserChange}
+						/>
+						<ExamBrowser
+							{examSearchQuery}
+							{examGroupFilter}
+							{showBookmarkedExamsOnly}
+							{bookmarkedExamIds}
+							selectedExamId={examId}
+							onexamchange={handleExamBrowserChange}
+							onbookmarktoggle={toggleExamBookmark}
+							{visibleExams}
+						/>
+					{:else}
+						<div class="manual-loading panel" role="status">
+							{$t('loading')}
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -2108,13 +2214,36 @@
 
 <style>
 	.home-kicker {
-		font-size: 1.15rem;
+		font-size: 1.4rem;
 		font-weight: 700;
 		letter-spacing: -0.01em;
 		color: var(--text);
 		text-align: center;
-		margin: 0 0 12px;
+		margin: 0;
 		text-wrap: balance;
+	}
+
+	.home-subline {
+		margin: 4px 0 12px;
+		color: var(--text-muted);
+		font-size: 0.84rem;
+		font-weight: 500;
+		text-align: center;
+		text-wrap: balance;
+	}
+
+	.streak-start {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 12px;
+		margin-bottom: 16px;
+	}
+
+	.streak-start-copy {
+		flex: 1;
+		min-width: 0;
 	}
 
 	.home-pitch {
@@ -2166,8 +2295,12 @@
 			/* vh, not dvh: the declaration is consumed through var(--vvh), so
 			   a dvh variant would be invalid at computed-value time on
 			   browsers without dvh instead of falling back. --vvh tracks the
-			   visual viewport, so the min() picks the same value either way. */
-			height: clamp(300px, calc(min(var(--vvh, 100vh), 100vh) * 0.62), 560px);
+			   visual viewport, so the min() picks the same value either way.
+			   The height now claims the dead band that used to sit between the
+			   panel and the fixed bottom bar, instead of leaving it empty and
+			   squeezing the gallery into a 219px window. */
+			height: clamp(320px, calc(min(var(--vvh, 100vh), 100vh) - 200px), 620px);
+			height: clamp(320px, calc(100dvh - 200px), 620px);
 			padding: 0.75rem;
 		}
 	}
@@ -2351,7 +2484,7 @@
 
 	@media (max-width: 480px) {
 		.home-kicker {
-			font-size: 1rem;
+			font-size: 1.25rem;
 		}
 	}
 </style>

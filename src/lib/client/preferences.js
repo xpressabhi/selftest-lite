@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import { loadDictionary } from './locales';
 import { emitLocalStorageChange } from './storage';
+import { isNoindexPath, splitLang } from '#lib/shared/seo.js';
 
 const LANGUAGE_KEY = 'selftest_language';
 const THEME_KEY = 'selftest_theme';
@@ -70,7 +71,15 @@ export async function setLanguage(nextLanguage, { persist = true } = {}) {
 				// Storage unavailable; the in-memory preference still applies.
 			}
 		}
-		document.documentElement.setAttribute('lang', nextLanguage === 'hindi' ? 'hi' : 'en');
+		// Indexable routes pin their language to the URL: the server already
+		// rendered lang="hi" for /hi, and the saved preference must not flip it
+		// back to "en" on hydration (that broke screen-reader pronunciation and
+		// every :lang(hi) typography rule). App-shell routes have no URL
+		// language, so there the preference owns the attribute.
+		const { path } = splitLang(window.location.pathname);
+		if (isNoindexPath(path)) {
+			document.documentElement.setAttribute('lang', nextLanguage === 'hindi' ? 'hi' : 'en');
+		}
 		if (persist) {
 			emitLocalStorageChange(LANGUAGE_KEY);
 		}
@@ -82,6 +91,12 @@ export function applyTheme(preference) {
 	if (typeof document !== 'undefined') {
 		document.documentElement.setAttribute('data-bs-theme', resolvedTheme);
 		document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+		// Keep the Android status bar / browser chrome in step with the theme
+		// the user chose in the app, not the OS preference. The values mirror
+		// --surface-muted in globals.css.
+		document
+			.querySelector('meta[name="theme-color"]')
+			?.setAttribute('content', resolvedTheme === 'dark' ? '#0e1116' : '#f3eee4');
 	}
 }
 

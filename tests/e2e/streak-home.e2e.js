@@ -142,29 +142,30 @@ test('home shows the streak card with a graded week and headline', async ({
 	});
 });
 
-test('a brand-new visitor sees the empty-state card with no reminder row', async ({
+test('a brand-new visitor sees the start-your-streak card, not a wall of zeros', async ({
 	page,
 }, testInfo) => {
 	const errors = await collectErrors(page);
 	await page.goto('/');
 
 	await expect(page.locator('.streak-card')).toBeVisible();
-	await expect(page.locator('.streak-title')).toHaveText('0-day test streak');
-	await expect(page.locator('.streak-sub')).toHaveClass(/streak-empty/);
-	await expect(page.locator('.streak-sub')).toContainText('Practice today to start your streak');
-
-	await expect(page.locator('.streak-ball')).toHaveCount(7);
-	await expect(page.locator('.streak-day.active')).toHaveCount(0);
-	await expect(page.locator('.streak-badge')).toHaveCount(4);
-	await expect(page.locator('.streak-badge.earned')).toHaveCount(0);
+	await expect(page.locator('.streak-start')).toBeVisible();
+	await expect(page.locator('.streak-start')).toContainText('Start your streak with one test');
+	await expect(page.locator('.streak-start')).toContainText('Any test counts');
+	// The week grid and the four badge tiers only appear once there is
+	// something to show; a first visit gets one line and one action.
+	await expect(page.locator('.streak-ball')).toHaveCount(0);
+	await expect(page.locator('.streak-badge')).toHaveCount(0);
 	await expect(page.locator('.streak-reminder')).toHaveCount(0);
 	await expect(page.locator('.streak-share')).toHaveCount(0);
-	await expect(page.locator('.streak-explainer')).toContainText('at least one test');
+
+	await page.locator('.streak-start button').click();
+	await expect(page.locator('.intent-input')).toBeFocused();
 
 	expect(errors).toEqual([]);
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
-		body: JSON.stringify({ emptyCard: true, activeDays: 0, reminderRows: 0 }, null, 2),
+		body: JSON.stringify({ compactCard: true, activeDays: 0, reminderRows: 0 }, null, 2),
 	});
 });
 

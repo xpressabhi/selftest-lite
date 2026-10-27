@@ -194,10 +194,10 @@ body {
 :root {
 	color-scheme: light;
 	--surface: #ffffff;
-	--surface-muted: #ece7dc;
+	--surface-muted: #f3eee4;
 	--text: #1a1a1a;
 	--text-muted: #5a5a55;
-	--line: #e3ddd0;
+	--line: #ddd6c7;
 	/* Text/icon color on top of a brand-600 fill. Near-white, never pure #fff. */
 	--on-brand: #f8fafc;
 	/* Semantic state ink. Text/icon only; backgrounds stay Tailwind utilities. */

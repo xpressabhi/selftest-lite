@@ -102,7 +102,8 @@
 			<span class="practice-card-meta">
 				{localizedStream(exam.stream, $activeLanguage)} · {exam.fullLengthQuestions ||
 					exam.defaultNumQuestions}
-				{$t('practiceQuestions')}
+				{$t('practiceQuestions')}{#if exam.durationMinutes} · {exam.durationMinutes}
+					{$t('practiceMinutesShort')}{/if}
 			</span>
 		</span>
 		<span class="practice-card-chevron" aria-hidden="true">

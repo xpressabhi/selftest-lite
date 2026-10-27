@@ -55,7 +55,6 @@
 	let showInstallHint = $state(false);
 	let showInstallGuide = $state(false);
 	let isStandalone = $state(false);
-	let isAndroidOS = $state(false);
 	let isIOS = $state(false);
 	let iosBrowser = $state('safari');
 	let isInstalling = $state(false);
@@ -176,11 +175,6 @@
 		const handleBeforeInstallPrompt = (event) => {
 			event.preventDefault();
 			deferredInstallPrompt = event;
-			// Android installs via the APK download card, not the PWA prompt —
-			// never show both to avoid confusing users.
-			if (isAndroidOS) {
-				return;
-			}
 			maybeShowInstallHint();
 		};
 		const handleAppInstalled = () => {
@@ -193,10 +187,10 @@
 		updateNetworkState();
 		updateStandaloneState();
 
-		// One install path per platform: Android gets the APK download card
-		// (home page), iOS and desktop keep the PWA install prompt/steps.
+		// One install path per platform: Android and desktop use the native
+		// beforeinstallprompt card; iOS has no such event and gets the manual
+		// Add-to-Home-Screen steps instead.
 		const platformUa = window.navigator.userAgent || '';
-		isAndroidOS = /android/i.test(platformUa);
 		isIOS =
 			/iphone|ipad|ipod/i.test(platformUa) ||
 			(window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
@@ -292,6 +286,14 @@
 		const next = data?.lang ?? $language;
 		if (get(activeLanguage) !== next) {
 			activeLanguage.set(next);
+		}
+		// Keep the document language in step with what is rendered. On
+		// indexable routes `data.lang` is the URL language, so this never
+		// overrides the server's lang="hi"; on app-shell routes it follows the
+		// saved preference. Doing it here (rather than inside setLanguage on
+		// mount) is what stops a fresh /hi visit flipping to lang="en".
+		if (typeof document !== 'undefined') {
+			document.documentElement.setAttribute('lang', next === 'hindi' ? 'hi' : 'en');
 		}
 	});
 
@@ -478,6 +480,22 @@
 		setThemePreference(next);
 	}
 
+	// The centre tab is an action, not a second Home route: on the home page it
+	// puts the cursor in the planner instead of reloading the same URL. It never
+	// renders as the current tab, so Home is the only "you are here" marker.
+	function handleCreateTab(event) {
+		if (activePath === homeHref) {
+			event.preventDefault();
+			const input =
+				document.getElementById('planner-input') ||
+				document.querySelector('.intent-input');
+			input?.scrollIntoView({ block: 'center' });
+			input?.focus({ preventScroll: true });
+			track('home:create-tab-focus');
+		}
+		isMenuOpen = false;
+	}
+
 	async function handleGoogleCredential(credential) {
 		isSigningIn = true;
 		try {
@@ -582,20 +600,19 @@
 
 				<div class="header-actions">
 					<button
-						class="header-icon lang-toggle"
+						class="lang-toggle"
 						type="button"
 						aria-label={$activeLanguage === 'hindi'
 							? $t('switchToEnglish')
 							: $t('switchToHindi')}
 						onclick={toggleLanguage}
 					>
-						<Icon name="globe" />
-						<span class="lang-toggle-state" aria-hidden="true">
-							{$activeLanguage === 'hindi' ? 'EN' : 'हि'}
-						</span>
+						<span lang={$activeLanguage === 'hindi' ? 'en' : 'hi'}
+							>{$activeLanguage === 'hindi' ? 'English' : 'हिंदी'}</span
+						>
 					</button>
 					<button
-						class="header-icon"
+						class="header-icon desktop-only"
 						type="button"
 						aria-label={$t('toggleThemeAria')}
 						onclick={toggleTheme}
@@ -751,6 +768,17 @@
 						>
 							<Icon name="clock" size={18} />{$t('history')}
 						</a>
+						<button
+							class="menu-action theme-action"
+							type="button"
+							onclick={() => {
+								toggleTheme();
+								isMenuOpen = false;
+							}}
+						>
+							<Icon name={$themePreference === 'dark' ? 'sun' : 'moon'} size={18} />
+							{$themePreference === 'dark' ? $t('switchToLight') : $t('switchToDark')}
+						</button>
 						{#if $user}
 							<button
 								type="button"
@@ -786,7 +814,7 @@
 		</div>
 	{/if}
 
-	{#if showInstallHint && !isStandalone && !isAndroidOS && !isImmersive}
+	{#if showInstallHint && !isStandalone && !isImmersive}
 		<section class="pwa-install-hint" role="status" aria-live="polite">
 			<div>
 				<div class="fw-semibold">{$t('installAppPromptTitle')}</div>
@@ -875,9 +903,8 @@
 			>
 			<a
 				class="create-tab"
-				class:active={isActivePath(homeHref, { exact: true })}
 				href={homeHref}
-				aria-current={isActivePath(homeHref, { exact: true }) ? 'page' : undefined}
+				onclick={handleCreateTab}
 				><Icon name="plus" size={20} /><span class="tab-label">{$t('createTab')}</span></a
 			>
 			<a
@@ -1133,6 +1160,34 @@
 		color: var(--brand-text);
 	}
 
+	/* Language is the one preference this audience changes per test, so it gets
+	   a readable control instead of a globe with a two-letter code stacked
+	   inside a 44px circle. The label is the target language, set in its own
+	   lang so a screen reader pronounces it correctly. */
+	.lang-toggle {
+		display: inline-flex;
+		min-width: 44px;
+		min-height: 44px;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		padding: 0 10px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 0.82rem;
+		font-weight: 700;
+		line-height: 1;
+		text-decoration: none;
+	}
+
+	.lang-toggle:hover,
+	.lang-toggle:focus-visible {
+		border-color: color-mix(in srgb, var(--color-brand-600) 55%, var(--line));
+		color: var(--brand-text);
+	}
+
 	.desktop-only {
 		display: none;
 	}
@@ -1170,8 +1225,14 @@
 
 	.menu-action {
 		display: flex;
+		min-height: 44px;
 		align-items: center;
 		gap: 10px;
+		padding: 0 4px;
+		border: 0;
+		background: none;
+		text-align: left;
+		cursor: pointer;
 	}
 
 	.mobile-menu a.active {
@@ -1358,15 +1419,10 @@
 	}
 
 	/* The centre Create entry keeps its bold weight so the bar still reads as
-	   having a primary action, but the brand colour is the current-route marker.
-	   It used to be painted brand-coloured unconditionally, which is why it read
-	   as permanently selected on pages it does not even lead to. */
+	   having a primary action. It is an action, not a route marker, so it never
+	   takes the current-route colour (Home owns that). */
 	.create-tab {
 		font-weight: 700;
-	}
-
-	.bottom-nav .create-tab.active {
-		color: var(--brand-text);
 	}
 
 	:global(.dark) .bottom-nav a.active,
@@ -1654,10 +1710,5 @@
 		.bottom-nav a {
 			font-size: 0.72rem;
 		}
-	}
-	.lang-toggle-state {
-		margin-left: 4px;
-		font-size: 0.68rem;
-		font-weight: 700;
 	}
 </style>

@@ -146,6 +146,26 @@ Text containers use `min-width: 0` plus `overflow-wrap: anywhere` or ellipsis. L
 strings, score names, toast messages, table cells and Hindi copy must never push a control
 out of its card. Tables scroll inside a wrapper (`overflow-x-auto`), not the page.
 
+## 2026-10 additions
+
+- **Header**: below 1024px the bar carries the brand, the labelled language pill, the
+  notification bell, sign-in and the menu. The theme toggle lives in the menu there and
+  returns to the bar at ≥1024px. The language pill names the target language and sets its
+  own `lang` so it is pronounced correctly.
+- **Home planner panel**: on phones it claims the dead band between the panel and the
+  fixed bottom bar (`clamp(320px, 100dvh − 200px, 620px)`). The welcome gallery shows one
+  example per group plus a "More examples" disclosure; short viewports drop the greeting
+  and the third group rather than clipping a row. The scroll edge carries a fade mask.
+- **First run**: a visitor with no history and no streak sees the compact
+  "Start your streak" card; the week grid and badge carousel appear once there is a test
+  or an existing streak.
+- **Results**: the score ring is paired with a verdict band (Needs work / On track /
+  Strong) and an optional target (60/75/85%) stored on the device. A target is preferred
+  over inventing exam cut-offs.
+- **Timed papers**: when a paper carries `examMeta.durationMinutes`, the test header shows
+  a countdown (red in the last five minutes) and auto-submits once at zero. Papers without
+  a duration keep the elapsed-time clock.
+
 ## Verification
 
 `tests/e2e/design-consistency.e2e.js` generates its route inventory from every SvelteKit page

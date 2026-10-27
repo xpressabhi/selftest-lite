@@ -75,6 +75,11 @@
 	let liveAnnouncement = $state('');
 	let elapsedSeconds = $state(0);
 	let timerInterval = null;
+	let autoSubmitted = false;
+	const timedMinutes = $derived(Number(questionPaper?.examMeta?.durationMinutes) || 0);
+	const timedSecondsLeft = $derived(
+		timedMinutes > 0 ? Math.max(0, timedMinutes * 60 - elapsedSeconds) : null
+	);
 	let swipeStartX = null;
 	let swipeStartY = null;
 	let testMomentFired = false;
@@ -289,9 +294,26 @@
 		elapsedSeconds = 0;
 		questionStartElapsed = 0;
 		skipStreak = 0;
+		autoSubmitted = false;
 		timerInterval = window.setInterval(() => {
 			elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
 			checkHintUnlock();
+			if (
+				timedMinutes > 0 &&
+				elapsedSeconds >= timedMinutes * 60 &&
+				!autoSubmitted &&
+				!submitting
+			) {
+				// Full-length papers have a real clock. Stop the timer and hand
+				// the attempt in exactly once; the student keeps every answer
+				// they had marked.
+				autoSubmitted = true;
+				window.clearInterval(timerInterval);
+				timerInterval = null;
+				track('test:auto-submit', { minutes: timedMinutes });
+				showToast($t('timeUpSubmitting'), 'warning', 4000);
+				void submitTest();
+			}
 		}, 1000);
 		showOverflowMenu = false;
 		track('test:start', {
@@ -885,10 +907,11 @@
 			{#if testStarted}
 				<span
 					class="test-timer"
+					class:is-urgent={timedSecondsLeft !== null && timedSecondsLeft <= 300}
 					role="timer"
-					aria-label={`${$t('timeSpent')}: ${formatElapsed(elapsedSeconds)}`}
+					aria-label={`${timedSecondsLeft === null ? $t('timeSpent') : $t('timeLeft')}: ${formatElapsed(timedSecondsLeft ?? elapsedSeconds)}`}
 				>
-					{formatElapsed(elapsedSeconds)}
+					{formatElapsed(timedSecondsLeft ?? elapsedSeconds)}
 				</span>
 			{/if}
 			<div class="test-header-actions" bind:this={overflowWrapper}>
@@ -1179,6 +1202,12 @@
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		letter-spacing: 0.02em;
+	}
+
+	.test-timer.is-urgent {
+		border-color: rgba(var(--danger-rgb), 0.4);
+		background: rgba(var(--danger-rgb), 0.09);
+		color: var(--danger);
 	}
 
 	.test-header-actions {
