@@ -214,6 +214,13 @@ export function interestsFrom({ bookmarkedExamIds = [], history = [] } = {}) {
 
 const FEED_CACHE_KEY = 'selftest_notifications_feed';
 const FEED_CACHE_TTL_MS = 15 * 60 * 1000;
+/** Fired after a successful feed fetch so the home countdown can reuse it. */
+export const NOTIFICATION_FEED_EVENT = 'selftest:notification-feed';
+
+/** Cached feed for same-session consumers (home countdown), or null. */
+export function readNotificationFeedCache() {
+	return readFeedCache();
+}
 
 function readFeedCache() {
 	if (typeof window === 'undefined') {
@@ -249,6 +256,7 @@ function writeFeedCache(items) {
 	} catch {
 		// Session storage is best-effort; a full quota just means refetching.
 	}
+	window.dispatchEvent(new CustomEvent(NOTIFICATION_FEED_EVENT, { detail: items }));
 }
 
 /**

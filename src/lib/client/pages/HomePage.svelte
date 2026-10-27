@@ -101,6 +101,11 @@
 	import { user } from '#lib/client/auth.js';
 	import { requestPersonalize } from '#lib/client/personalize.js';
 	import {
+		NOTIFICATION_FEED_EVENT,
+		readNotificationFeedCache,
+	} from '#lib/client/notifications.js';
+	import { todayInIst } from '#lib/shared/examNotificationStatus.js';
+	import {
 		fetchProfile,
 		fetchProfileInsights,
 		profile as profileStore,
@@ -123,6 +128,7 @@
 	let recentTests = $state([]);
 	let masteryItems = $state([]);
 	let liteMode = $state(false);
+	let examCountdown = $state(null);
 	// Loaded on demand when the manual config opens (see loadManualConfig).
 	let TopicBrowser = $state(null);
 	let ExamBrowser = $state(null);
@@ -521,6 +527,18 @@
 		liteMode = slowNetwork || weakDevice;
 		bookmarkedExamIds = getBookmarkedExamIds();
 		bookmarkedQuizPresets = getBookmarkedQuizPresets();
+		// Exam countdown reuses the bell's feed: cache first, then the event the
+		// successful fetch dispatches. No extra request on a slow connection.
+		const applyFeed = (items) => {
+			examCountdown = pickExamCountdown(items);
+		};
+		const handleFeedEvent = (event) => applyFeed(event.detail || []);
+		const cachedFeed = readNotificationFeedCache();
+		if (cachedFeed) {
+			applyFeed(cachedFeed);
+		} else {
+			window.addEventListener(NOTIFICATION_FEED_EVENT, handleFeedEvent);
+		}
 		unsubmittedTest = getUnsubmittedTest();
 		const historyEntries = getHistory();
 		// Own tests only: home never lists other people's papers. Local
@@ -731,6 +749,7 @@
 			unsubscribeUser();
 			window.removeEventListener('online', updateNetwork);
 			window.removeEventListener('offline', updateNetwork);
+			window.removeEventListener(NOTIFICATION_FEED_EVENT, handleFeedEvent);
 		};
 	});
 
@@ -1782,6 +1801,42 @@
 		track('home:streak-start');
 	}
 
+	/**
+	 * The nearest exam with a date in the public notification feed. The feed is
+	 * fetched by the bell and cached for the session, so this adds no request:
+	 * it reads the cache and listens for the bell's one fetch. A profile or
+	 * bookmarked exam wins over the globally nearest one.
+	 */
+	function pickExamCountdown(items) {
+		if (!Array.isArray(items) || items.length === 0) {
+			return null;
+		}
+		const today = todayInIst();
+		const todayMs = Date.parse(`${today}T00:00:00Z`);
+		const candidates = items
+			.filter((item) => item?.examId && item?.examDate && getIndianExamById(item.examId))
+			.map((item) => ({
+				...item,
+				days: Math.round(
+					(Date.parse(`${item.examDate}T00:00:00Z`) - todayMs) / 86_400_000
+				),
+			}))
+			.filter((item) => Number.isFinite(item.days) && item.days >= 0 && item.days <= 180)
+			.sort((left, right) => left.days - right.days);
+		if (candidates.length === 0) {
+			return null;
+		}
+		const preferred = [examId, ...bookmarkedExamIds].filter(Boolean);
+		const chosen =
+			candidates.find((item) => preferred.includes(item.examId)) || candidates[0];
+		const exam = getIndianExamById(chosen.examId);
+		return {
+			examId: chosen.examId,
+			name: exam?.name || chosen.org || '',
+			days: chosen.days,
+		};
+	}
+
 	function handleExampleTap(example) {
 		track('planner:example-tap', { group: example.group, slot: example.slot });
 		dismissHint('example');
@@ -1989,6 +2044,23 @@
 				{$t('howItWorks')}
 			</button>
 		</div>
+
+		{#if examCountdown}
+			<a
+				class="exam-countdown"
+				href={localizedPath(`/practice/${examCountdown.examId}`, $activeLanguage)}
+			>
+				<Icon name="target" size={18} />
+				<span class="exam-countdown-name"
+					>{$t('examCountdownLabel', { exam: examCountdown.name })}</span
+				>
+				<strong class="exam-countdown-days">
+					{examCountdown.days === 0
+						? $t('examCountdownToday')
+						: $t('examCountdownDays', { days: examCountdown.days })}
+				</strong>
+			</a>
+		{/if}
 
 		{#if $welcomeTour.status === 'active'}
 			<WelcomeTour
@@ -2244,6 +2316,41 @@
 	.streak-start-copy {
 		flex: 1;
 		min-width: 0;
+	}
+
+	.exam-countdown {
+		display: flex;
+		min-height: 52px;
+		align-items: center;
+		gap: 10px;
+		margin: 0 0 16px;
+		padding: 10px 14px;
+		border: 1px solid rgba(var(--brand-rgb), 0.3);
+		border-radius: var(--radius-surface);
+		background: rgba(var(--brand-rgb), 0.06);
+		color: var(--text);
+		text-decoration: none;
+	}
+
+	.exam-countdown:hover,
+	.exam-countdown:focus-visible {
+		border-color: var(--brand-text);
+	}
+
+	.exam-countdown-name {
+		flex: 1;
+		min-width: 0;
+		font-size: 0.88rem;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+
+	.exam-countdown-days {
+		flex: none;
+		color: var(--brand-text);
+		font-size: 0.88rem;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
 	}
 
 	.home-pitch {

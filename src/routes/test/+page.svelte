@@ -116,6 +116,31 @@
 		}
 		return Math.max(1, Math.round((duration * currentSection.questionCount) / totalQuestions));
 	});
+	// Real exam patterns carry marks and penalties per section. The paper is
+	// graded with them server-side (computeAttemptMarks), so the summary must
+	// say what a wrong answer costs before the student starts.
+	let paperMarks = $derived(
+		paperSections.reduce(
+			(sum, section) =>
+				sum +
+				(Number(section.marksPerQuestion) || 0) *
+					(section.questionIndexes?.length || Number(section.questionCount) || 0),
+			0
+		)
+	);
+	let negativeMarks = $derived.by(() => {
+		const values = [
+			...new Set(
+				paperSections
+					.map((section) => Number(section.negativeMarks))
+					.filter((value) => Number.isFinite(value) && value > 0)
+			),
+		];
+		if (values.length === 0) {
+			return null;
+		}
+		return { max: Math.max(...values), varies: values.length > 1 };
+	});
 	let hintsUsedCount = $derived(Object.keys(eliminated).length);
 	let canUseHint = $derived(
 		testStarted &&
@@ -987,6 +1012,23 @@
 							</span>
 						{/if}
 					</div>
+					{#if paperMarks > 0}
+						<p class="test-marking-row">
+							<span class="test-meta-chip">
+								{$t('paperMarksLabel', { marks: paperMarks })}
+							</span>
+							{#if negativeMarks}
+								<span class="test-marking-negative">
+									{$t(
+										negativeMarks.varies
+											? 'negativeMarkingUpTo'
+											: 'negativeMarkingShort',
+										{ marks: negativeMarks.max }
+									)}
+								</span>
+							{/if}
+						</p>
+					{/if}
 					{#if questionPaper.trimmed && Number(questionPaper.requestedCount) > totalQuestions}
 						<p class="test-trimmed-notice" role="status">
 							{$t('paperTrimmedNotice', {
@@ -1354,6 +1396,24 @@
 		justify-content: center;
 		gap: 8px;
 		margin-bottom: 16px;
+	}
+
+	.test-marking-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		margin: -8px 0 16px;
+	}
+
+	.test-marking-negative {
+		padding: 4px 10px;
+		border-radius: 999px;
+		background: rgba(var(--warn-rgb), 0.1);
+		color: var(--warn);
+		font-size: 0.76rem;
+		font-weight: 650;
 	}
 
 	.test-meta-chip {

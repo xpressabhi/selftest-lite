@@ -5,7 +5,7 @@ listed here. Status: `[ ]` todo · `[~]` partial (what landed / what did not) ·
 · `[!]` blocked (reason and follow-up recorded) · `[-]` deliberately dropped (reason).
 
 Definition of done for a batch: `npm run lint`, `npm run test`, `npm run build`, and the
-full Playwright suite green (257/257 on the final tree).
+full Playwright suite green (260/260 on the final tree).
 
 ## Batch 1 — correctness bugs
 
@@ -87,14 +87,18 @@ full Playwright suite green (257/257 on the final tree).
 
 ## Batch 4 — features for the audience
 
-- [~] **FEAT-1** Timed papers: countdown when `examMeta.durationMinutes` exists, red in
-      the last 5 minutes, auto-submit once at zero. Verified live (00:58, "Time left").
-      **Still missing:** negative marking and section locking — they need marks/sections in
-      the generated paper schema and server grading input; not safe to fake client-side.
+- [x] **FEAT-1** Timed papers: countdown when `examMeta.durationMinutes` exists, red in
+      the last 5 minutes, auto-submit once at zero. Pattern papers also surface their
+      marking scheme before the start ("6 marks", "−0.5 for a wrong answer") and per
+      section during the attempt ("2 marks each · −0.5 if wrong"). Grading already used
+      `computeAttemptMarks`. Section locking is deliberately **not** enforced: the palette
+      and Back/Next stay available, matching the exam-day navigation most candidates know.
+      Verified live and pinned by `tests/e2e/timed-sections.e2e.js`.
 - [x] **FEAT-2** Weak-topic card (see HOME-3).
-- [!] **FEAT-3** Exam countdown card — needs a join between the selected profile exam and
-      the notification feed, plus a cached feed read on home. Deferred to avoid another
-      home-page request on slow connections.
+- [x] **FEAT-3** Exam countdown card on home: the nearest dated exam (profile/bookmarked
+      exam wins), read from the bell's session feed cache or its fetch event — no extra
+      request. Pinned by `tests/e2e/home-exam-countdown.e2e.js` (appears with a date,
+      absent without one).
 - [x] **FEAT-4** Voice input (`hi-IN` / `en-IN`) on the composer when the browser supports
       it; permission only after a tap; mic replaces the search button on phones (which is
       still reachable by typing a test ID) so the input stays 180px wide at 360px.
@@ -115,7 +119,7 @@ full Playwright suite green (257/257 on the final tree).
 - [x] 320/360/390 screenshots, 3G profile, header/hint/panel measurements re-run on the
       production build.
 - [x] `npm run lint`, `npm run test` (1143 unit tests), `npm run build`.
-- [x] Full Playwright suite: **257/257 passed**.
+- [x] Full Playwright suite: **260/260 passed**.
 - [x] Pinned specs updated where behaviour intentionally changed: `welcome-gallery`
       (3 + More), `nav-active-state` (Create is not a tab), `public-pages` (theme in the
       menu on phones, Hindi `lang`), `streak-home` (compact first-run card).
@@ -132,7 +136,10 @@ full Playwright suite green (257/257 on the final tree).
 | Home first load JS | 138 KB gzip | 138 KB gzip (manual config ~3 KB deferred) |
 | Results hero | neutral ring only | verdict band + target comparison |
 | Timed paper | elapsed only | countdown + auto-submit when duration exists |
-| Full suite | 255/255 baseline | 257/257 (2 new assertions) |
+| Pattern paper start | no marking scheme | "6 marks · −0.5 for a wrong answer" |
+| Section view | name only | name, "2 marks each · −0.5 if wrong", suggested minutes |
+| Home | no exam context | nearest dated exam from the cached feed, no extra request |
+| Full suite | 255/255 baseline | 260/260 (5 new assertions across 3 specs) |
 
 ## Deliberately not done (and why)
 

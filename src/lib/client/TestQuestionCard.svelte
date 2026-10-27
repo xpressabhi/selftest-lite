@@ -117,7 +117,11 @@
 							<span class="test-section-marks">
 								{$t('marksEachLabel', {
 									count: currentSection.marksPerQuestion,
-								})}{#if suggestedSectionMinutes}
+								})}{#if Number(currentSection.negativeMarks) > 0}
+									&middot;
+									{$t('marksNegativeLabel', {
+										count: currentSection.negativeMarks,
+									})}{/if}{#if suggestedSectionMinutes}
 									&middot;
 									{$t('sectionMinutesLabel', {
 										minutes: suggestedSectionMinutes,
