@@ -90,6 +90,7 @@ export const TELEMETRY_EVENTS = new Set([
 	'test:flag',
 	'test:exit',
 	'test:submit',
+	'test:offline-submit',
 	'test:auto-submit',
 	'test:submit-fail',
 	'test:share',

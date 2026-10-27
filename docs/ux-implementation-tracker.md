@@ -5,7 +5,7 @@ listed here. Status: `[ ]` todo · `[~]` partial (what landed / what did not) ·
 · `[!]` blocked (reason and follow-up recorded) · `[-]` deliberately dropped (reason).
 
 Definition of done for a batch: `npm run lint`, `npm run test`, `npm run build`, and the
-full Playwright suite green (260/260 on the final tree).
+full Playwright suite green (261/261 on the final tree).
 
 ## Batch 1 — correctness bugs
 
@@ -80,10 +80,11 @@ full Playwright suite green (260/260 on the final tree).
       scroll-anchoring changes, or the risk to `design-consistency`.
 - [-] **PERF-5** Duplicate `/api/personalize` calls — no duplicate call site exists; the
       repeated requests in dev logs came from repeated page loads.
-- [!] **PERF-6** Per-route dictionary split. Blocked on an i18n runtime redesign (the
-      synchronous `t()` + single `english.json` import). Plan: namespace dictionaries
-      (home/test/results/exams/account/legal), make `t()` resolve lazily per route, and
-      keep English as the fallback. Expected saving ~12 KB gzip on non-home routes.
+- [!] **PERF-6** Per-route dictionary split — **dropped after measurement.** Only 3.6%
+      of the English dictionary is used exclusively by content pages, and ~30% of keys are
+      referenced dynamically, so a route split would save roughly 5 KB gzip while touching
+      every `t()` call site. Not worth the regression risk against the 260-test suite; the
+      real remaining weight is the 41 KB `HomePage` chunk, not the dictionary.
 
 ## Batch 4 — features for the audience
 
@@ -103,9 +104,12 @@ full Playwright suite green (260/260 on the final tree).
       it; permission only after a tap; mic replaces the search button on phones (which is
       still reachable by typing a test ID) so the input stays 180px wide at 360px.
 - [x] **FEAT-5** "Report this question" already existed end-to-end; verified and left as is.
-- [!] **FEAT-6** Offline paper packs — grading is server-side and the paper leaves the
-      server without the key, so an offline attempt cannot be scored. Needs either an
-      offline key policy or a deferred-grading queue. Not shippable as a checkbox.
+- [x] **FEAT-6** Offline papers: a generated/opened paper is cached in local history, so
+      the attempt renders with no network. Submission without a connection queues the raw
+      answers (`selftest_pending_grades`); the answer key still never leaves the server.
+      Reconnecting (or "Try again now") replays `/api/test/submit`, stores the graded
+      attempt and lands on the normal results page. Pinned by
+      `tests/e2e/offline-grade.e2e.js`; the start screen advertises "Works offline".
 - [!] **FEAT-7** PYQ bank / cut-off tables — needs a licensed/curated question bank and
       published cut-off data with a source per exam.
 - [!] **FEAT-8** Daily current affairs — needs a verified news source; model-generated
@@ -119,7 +123,7 @@ full Playwright suite green (260/260 on the final tree).
 - [x] 320/360/390 screenshots, 3G profile, header/hint/panel measurements re-run on the
       production build.
 - [x] `npm run lint`, `npm run test` (1143 unit tests), `npm run build`.
-- [x] Full Playwright suite: **260/260 passed**.
+- [x] Full Playwright suite: **261/261 passed**.
 - [x] Pinned specs updated where behaviour intentionally changed: `welcome-gallery`
       (3 + More), `nav-active-state` (Create is not a tab), `public-pages` (theme in the
       menu on phones, Hindi `lang`), `streak-home` (compact first-run card).
@@ -139,7 +143,8 @@ full Playwright suite green (260/260 on the final tree).
 | Pattern paper start | no marking scheme | "6 marks · −0.5 for a wrong answer" |
 | Section view | name only | name, "2 marks each · −0.5 if wrong", suggested minutes |
 | Home | no exam context | nearest dated exam from the cached feed, no extra request |
-| Full suite | 255/255 baseline | 260/260 (5 new assertions across 3 specs) |
+| Offline test | dead-end submit error | queued answers + retry, graded on reconnect |
+| Full suite | 255/255 baseline | 261/261 (6 new assertions across 4 specs) |
 
 ## Deliberately not done (and why)
 

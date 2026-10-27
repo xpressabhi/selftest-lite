@@ -51,6 +51,11 @@ Selftest-lite is a SvelteKit 3 application (Svelte 5, Vite 8, Tailwind CSS 4) de
 
 ## Key Decisions
 
+- **Offline attempts are queued, never locally graded**: a paper is cached in local history
+  when it is generated or opened, so the test renders without a network. Submitting offline
+  stores the raw answers in `selftest_pending_grades`; the reconnect flush replays
+  `/api/test/submit`, so the answer key still never leaves the server and the attempt is not
+  shown as scored until the server has graded it.
 - **Answer keys never leave the server**: grading is server-side, so a fetched paper cannot leak answers to the client.
 - **Auto-created schema**: `ensureStorageSchema` runs idempotent `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` on first use, so no migration tooling is needed.
 - **Fail-open rate limiting**: if rate-limit storage fails, requests are allowed rather than dropping traffic.

@@ -24,6 +24,7 @@
 		user,
 	} from '#lib/client/auth.js';
 	import { flushPendingAttempts, startStateSync } from '#lib/client/sync.js';
+	import { flushPendingGrades } from '#lib/client/pendingGrades.js';
 	import { showToast, toast } from '#lib/client/toast.js';
 	import GoogleSignInButton from '#lib/client/GoogleSignInButton.svelte';
 	import {
@@ -152,10 +153,18 @@
 			refreshSession();
 			stopStateSync = startStateSync();
 			flushPendingAttempts().catch(() => {});
+			flushPendingGrades().catch(() => {});
 		});
 
 		const handleOnlineFlush = () => {
 			flushPendingAttempts().catch(() => {});
+			flushPendingGrades()
+				.then((graded) => {
+					if (graded > 0) {
+						showToast($t('offlineGradesSynced', { count: graded }), 'success');
+					}
+				})
+				.catch(() => {});
 		};
 		window.addEventListener('online', handleOnlineFlush);
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {

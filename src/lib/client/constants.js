@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
 	PWA_INSTALL_DISMISSED_AT: 'selftest_pwa_install_dismissed_at',
 	PWA_INSTALL_PROMPTED_AT: 'selftest_pwa_install_prompted_at',
 	PENDING_ATTEMPTS: 'selftest_pending_attempts',
+	PENDING_GRADES: 'selftest_pending_grades',
 	HIDDEN_HISTORY: 'selftest_hidden_history',
 	PLANNER_DRAFT: 'selftest_planner_draft',
 	REMINDER_HOUR: 'selftest_reminder_hour',

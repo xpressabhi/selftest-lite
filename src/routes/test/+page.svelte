@@ -25,6 +25,7 @@
 		clearDraftFlags,
 		clearDraftHints,
 		clearUnsubmittedTest,
+		getAttemptResult,
 		getHistory,
 		readDraftAnswers,
 		readDraftFlags,
@@ -32,6 +33,7 @@
 		reportTestActivity,
 		resolveTestRecord,
 		saveAttemptResult,
+		saveCurrentPaper,
 		saveUnsubmittedTest,
 		submitTestAnswers,
 		upsertHistory,
@@ -40,6 +42,7 @@
 		writeDraftHints,
 	} from '#lib/client/storage.js';
 	import { pushAttempt } from '#lib/client/sync.js';
+	import { flushPendingGrades, queuePendingGrade } from '#lib/client/pendingGrades.js';
 	import { showToast } from '#lib/client/toast.js';
 	import { requestPersonalize } from '#lib/client/personalize.js';
 	import { parseChallengeParams } from '#lib/client/challenge.js';
@@ -59,6 +62,8 @@
 	let error = $state('');
 	let submitting = $state(false);
 	let testStarted = $state(false);
+	let offlineSubmitted = $state(false);
+	let retryingOffline = $state(false);
 	let startedAt = $state(Date.now());
 	let showReviewSheet = $state(false);
 	let showExitModal = $state(false);
@@ -292,6 +297,11 @@
 			flagged = readDraftFlags(questionPaper.id);
 			eliminated = readDraftHints(questionPaper.id);
 			saveUnsubmittedTest(questionPaper);
+			// Cache the paper in local history so a reload (or an offline
+			// return) resolves it without a network round trip. This is the
+			// same record generation already saves; it makes papers opened
+			// from a shared link behave the same way.
+			saveCurrentPaper(questionPaper);
 			reportTestActivity(questionPaper.id, 'view', { name: challenge?.by || '' });
 		} catch (caughtError) {
 			error = caughtError.message || $t('testNotFound');
@@ -585,6 +595,30 @@
 				showReviewSheet = false;
 				goto(resultUrlWithChallenge(questionPaper.id));
 			} catch (caughtError) {
+				// A network failure (TypeError from fetch, or a browser that
+				// already knows it is offline) must not lose the attempt: the
+				// answers are queued and graded by the server when the link
+				// returns. API errors keep the normal inline message.
+				const networkFailure =
+					caughtError instanceof TypeError ||
+					(typeof navigator !== 'undefined' && navigator.onLine === false);
+				if (networkFailure) {
+					queuePendingGrade({
+						testId: questionPaper.id,
+						answers: finalAnswers,
+						timeTaken,
+						hintedIndexes: eliminated,
+						name: challenge?.by || '',
+					});
+					track('test:offline-submit', { id: questionPaper.id });
+					offlineSubmitted = true;
+					submitting = false;
+					showReviewSheet = false;
+					window.clearInterval(timerInterval);
+					timerInterval = null;
+					stopKeepingScreenAwake();
+					return;
+				}
 				track('test:submit-fail');
 				const localized = caughtError?.data
 					? localizedApiError(caughtError.data, $t, caughtError.status)
@@ -605,6 +639,23 @@
 			return;
 		}
 		await criticalSection();
+	}
+
+	async function retryOfflineGrade() {
+		if (retryingOffline) {
+			return;
+		}
+		retryingOffline = true;
+		try {
+			const graded = await flushPendingGrades();
+			if (graded > 0 && questionPaper?.id && getAttemptResult(questionPaper.id)) {
+				goto(resultUrlWithChallenge(questionPaper.id));
+				return;
+			}
+			showToast($t('offlineGradePending'), 'warning', 4000);
+		} finally {
+			retryingOffline = false;
+		}
 	}
 
 	// Opens the clean paper view (the same /print route the results page uses).
@@ -1004,6 +1055,7 @@
 						<span class="test-meta-chip">
 							{testLanguage === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}
 						</span>
+						<span class="test-meta-chip">{$t('offlineAvailable')}</span>
 						{#if questionPaper.examMeta?.durationMinutes}
 							<span class="test-meta-chip">
 								{$t('durationBudget', {
@@ -1065,6 +1117,29 @@
 				</div>
 				<div class="test-stats-slot">
 					<TestStatsCard testId={questionPaper.id} />
+				</div>
+			</main>
+		{:else if offlineSubmitted}
+			<main class="test-offline-wrap">
+				<div class="test-summary-card">
+					<span class="test-summary-badge" aria-hidden="true">
+						<Icon name="download" size={26} />
+					</span>
+					<h2 class="test-summary-title">{$t('offlineSubmitTitle')}</h2>
+					<p class="test-summary-body">{$t('offlineSubmitBody')}</p>
+					<div class="test-summary-actions">
+						<button
+							class="btn btn-primary"
+							type="button"
+							disabled={retryingOffline}
+							onclick={retryOfflineGrade}
+						>
+							{retryingOffline ? $t('loading') : $t('offlineSubmitRetry')}
+						</button>
+						<a class="btn btn-outline-secondary" href="/history">
+							{$t('offlineSubmitHistory')}
+						</a>
+					</div>
 				</div>
 			</main>
 		{:else}
@@ -1330,6 +1405,14 @@
 		align-items: center;
 		justify-content: center;
 		gap: 16px;
+		padding: 24px 16px calc(24px + var(--sab, env(safe-area-inset-bottom, 0px)));
+	}
+
+	.test-offline-wrap {
+		display: flex;
+		flex: 1 1 auto;
+		align-items: center;
+		justify-content: center;
 		padding: 24px 16px calc(24px + var(--sab, env(safe-area-inset-bottom, 0px)));
 	}
 
