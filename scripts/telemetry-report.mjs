@@ -130,6 +130,65 @@ printTable(
 	]
 );
 
+section('Traffic quality (clients that never emit a feature event)');
+// A JS-capable crawler boots the app shell, calls the boot APIs (state,
+// history, personalize) and closes before the telemetry queue flushes. It
+// therefore looks like a visitor in every country chart but never appears in
+// feature_events. Reading the two tables together is the only way to tell a
+// market from a crawler fleet: real visitors are >80% engaged in IN, while the
+// SG/CN fleets observed in Oct 2026 were ~0%.
+const trafficQuality = await sql`
+	WITH api_clients AS (
+		SELECT
+			COALESCE(ip_country, '(none)') AS country,
+			client_id
+		FROM api_request_events
+		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+			AND client_id IS NOT NULL
+		GROUP BY 1, 2
+	),
+	engaged AS (
+		SELECT DISTINCT client_id
+		FROM feature_events
+		WHERE created_at >= NOW() - ${days}::int * INTERVAL '1 day'
+			AND client_id IS NOT NULL
+	)
+	SELECT
+		a.country,
+		COUNT(*)::int AS clients,
+		COUNT(e.client_id)::int AS engaged,
+		(COUNT(*) - COUNT(e.client_id))::int AS silent,
+		ROUND(100.0 * (COUNT(*) - COUNT(e.client_id)) / COUNT(*))::int AS silent_pct
+	FROM api_clients a
+	LEFT JOIN engaged e USING (client_id)
+	GROUP BY 1
+	ORDER BY clients DESC
+`;
+printTable(trafficQuality.slice(0, 10), [
+	{ key: 'country', label: 'country' },
+	{ key: 'clients', label: 'clients' },
+	{ key: 'engaged', label: 'engaged' },
+	{ key: 'silent', label: 'silent' },
+	{ key: 'silent_pct', label: 'silent %' },
+]);
+const qualityTotals = trafficQuality.reduce(
+	(acc, row) => ({
+		clients: acc.clients + row.clients,
+		engaged: acc.engaged + row.engaged,
+	}),
+	{ clients: 0, engaged: 0 }
+);
+console.log(
+	`\n  ${percent(
+		qualityTotals.clients - qualityTotals.engaged,
+		qualityTotals.clients
+	)} of ${qualityTotals.clients} clients never emitted a feature event.`
+);
+console.log(
+	'  A client that only calls boot APIs is a crawler or a telemetry-blocked browser;'
+);
+console.log('  do not read its country as an audience.');
+
 section('Retention (new vs returning identities)');
 printTable(
 	await sql`

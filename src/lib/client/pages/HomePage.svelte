@@ -99,7 +99,11 @@
 	import ProfileWizard from '#lib/client/ProfileWizard.svelte';
 	import GenerationTrace from '#lib/client/GenerationTrace.svelte';
 	import { user } from '#lib/client/auth.js';
-	import { requestPersonalize } from '#lib/client/personalize.js';
+	import {
+		PERSONALIZE_VISIBLE_DELAY_MS,
+		afterVisibleFor,
+		requestPersonalize,
+	} from '#lib/client/personalize.js';
 	import {
 		NOTIFICATION_FEED_EVENT,
 		readNotificationFeedCache,
@@ -222,6 +226,7 @@
 	let homeOpenedAt = $state(0);
 	let nudgeTimer = null;
 	let pendingNudge = null;
+	let cancelPersonalizeBoot = null;
 	let hintVisible = $state(false);
 	let hintReserved = $state(false);
 	let hintTimer = null;
@@ -430,6 +435,8 @@
 		if (typeof window !== 'undefined') {
 			window.clearTimeout(nudgeTimer);
 			window.clearTimeout(hintTimer);
+			cancelPersonalizeBoot?.();
+			cancelPersonalizeBoot = null;
 		}
 		// A generation still in flight when the page goes away is an abandoned
 		// generation, and without this it is invisible: generate:start was
@@ -584,30 +591,36 @@
 		// entry point to promote; hides stay behind existing toggles/links.
 		// The nudge slice rides the same call; the push ask needs to know
 		// whether reminders are already on before it is even offered.
+		// Model calls wait for a real on-screen session: JS-rendering crawlers
+		// boot the shell and leave in under a second, and they were paying for
+		// a Jev decision on every crawl. A real visitor cannot tell, because
+		// the decision only rearranges an already-painted page.
 		const reminderReady = remindersSupported() ? isReminderEnabled() : Promise.resolve(false);
-		void reminderReady.then((enabled) => {
-			reminderOn = enabled;
-			const nudgeState = buildHomeNudgeState();
-			const nudgeEligible =
-				!nudgeDismissed && nudgeState && eligibleNudgeKinds(nudgeState).length > 0;
-			void requestPersonalize('home', {
-				hasUnsubmitted: Boolean(unsubmittedTest),
-				historyCount: historyEntries.length,
-				streak: streak?.currentStreak || 0,
-				...(nudgeEligible ? { nudge: nudgeState } : {}),
-			}).then((decision) => {
-				if (decision?.applied) {
-					if (decision.hide?.includes('manual-browsers')) {
-						showManualConfig = false;
+		cancelPersonalizeBoot = afterVisibleFor(PERSONALIZE_VISIBLE_DELAY_MS, () => {
+			void reminderReady.then((enabled) => {
+				reminderOn = enabled;
+				const nudgeState = buildHomeNudgeState();
+				const nudgeEligible =
+					!nudgeDismissed && nudgeState && eligibleNudgeKinds(nudgeState).length > 0;
+				void requestPersonalize('home', {
+					hasUnsubmitted: Boolean(unsubmittedTest),
+					historyCount: historyEntries.length,
+					streak: streak?.currentStreak || 0,
+					...(nudgeEligible ? { nudge: nudgeState } : {}),
+				}).then((decision) => {
+					if (decision?.applied) {
+						if (decision.hide?.includes('manual-browsers')) {
+							showManualConfig = false;
+						}
+						if (decision.promote?.includes('exam-browser')) {
+							showManualConfig = true;
+							void loadManualConfig();
+						}
 					}
-					if (decision.promote?.includes('exam-browser')) {
-						showManualConfig = true;
-						void loadManualConfig();
+					if (nudgeEligible) {
+						queueHomeNudge(decision?.nudge, nudgeState);
 					}
-				}
-				if (nudgeEligible) {
-					queueHomeNudge(decision?.nudge, nudgeState);
-				}
+				});
 			});
 		});
 		// Always visible: for a brand-new visitor the empty state and the

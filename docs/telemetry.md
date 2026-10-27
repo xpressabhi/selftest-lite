@@ -61,6 +61,9 @@ It prints:
 - the production / non-production split of `api_request_events`, with the count
   of excluded rows called out (see Production vs non-production below)
 - retention: new vs returning identities per week
+- traffic quality: per-country clients from `api_request_events` versus clients that
+  emitted any feature event, with the silent share called out (a client that only calls
+  boot APIs is a crawler or a telemetry-blocked browser, so its country is not an audience)
 - engaged retention: cohorts that start at the first generate/test start, plus
   the drive-by share (identities that never started one)
 - activation funnel: page view → generate → test start → submit → explain
@@ -98,6 +101,31 @@ production. The report therefore splits them:
 - The report prints the excluded row and client-key count right under the
   hotspot table, so a dev loop pointed at production stays visible instead of
   being silently filtered.
+
+### Known crawler traffic (Singapore and China)
+
+Observed in Oct 2026: 1,023 SG clients and 134 CN clients in 30 days, and **zero**
+of the SG clients emitted a single feature event (one CN client did). Signature:
+
+- 1–2 API calls per client, `/api/user/state` and `/api/user/history`, 20–110 ms
+  apart, then the browser closes before the telemetry queue flushes.
+- 873 distinct IP+UA fingerprints for 1,597 SG requests, 34 user-agent strings
+  shared across both countries, Chrome 99→150 and iOS 11→18.7.
+- Flat across all 24 hours, all HTTP 200, no `user_id`, and zero
+  `/api/generate`, `/api/explain` or `/api/test/submit` calls in the whole table.
+
+That is a JS-rendering crawler fleet, not a market. Vercel Web Analytics counts
+these because they execute the app's JS with a normal Chrome UA; treat its
+country chart as inflated and use the traffic-quality section instead.
+
+Two mitigations are in place:
+
+- Vercel Bot Protection is set to **challenge** (`vercel firewall status`), which
+  filters the fleet at the edge.
+- The home personalization call waits for `PERSONALIZE_VISIBLE_DELAY_MS` (2 s) of
+  continuous visibility and sends `x-client-id`, so a boot-and-die crawler never
+  spends a Jev call and the rows are attributable when one slips through.
+  Pinned by `tests/e2e/personalize-boot-gate.e2e.js`.
 
 ### Known QA traffic
 
