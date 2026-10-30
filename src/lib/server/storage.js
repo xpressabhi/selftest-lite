@@ -83,7 +83,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -456,6 +456,11 @@ export async function ensureStorageSchema() {
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_api_request_events_route_time
 			ON api_request_events (route, created_at DESC)
+		`);
+
+		await query(`
+			CREATE INDEX IF NOT EXISTS idx_api_request_events_created
+			ON api_request_events (created_at)
 		`);
 
 		await query(`
@@ -1737,24 +1742,188 @@ export async function archiveOldRateLimitEvents() {
 	);
 }
 
+function resolveAdminDays(days, fallback) {
+	const value = Number(days);
+	return Number.isFinite(value) ? Math.min(Math.max(Math.trunc(value), 0), 365) : fallback;
+}
+
+const AGENT_FAMILY_SQL = `CASE
+	WHEN user_agent IS NULL OR user_agent = '' THEN 'Unknown'
+	WHEN user_agent ~* '(bot|crawler|spider|curl|wget|python-requests|headless|googlebot|bingbot|lighthouse|facebookexternalhit|slurp|yandex)' THEN 'Bot'
+	WHEN user_agent ~* '(mobi|android|iphone|ipad)' THEN 'Mobile'
+	ELSE 'Desktop'
+END`;
+
+/** Bucket plan for the request trend. UI ranges are 24h/7d/30d/90d/all. */
+function requestSeriesPlan(days) {
+	if (days <= 1) {
+		return {
+			granularity: 'hour',
+			trunc: 'hour',
+			buckets: `generate_series(
+				date_trunc('hour', NOW()) - INTERVAL '23 hours',
+				date_trunc('hour', NOW()),
+				INTERVAL '1 hour'
+			)`,
+			filter: `created_at >= date_trunc('hour', NOW()) - INTERVAL '23 hours'`,
+			previousBuckets: `generate_series(
+				date_trunc('hour', NOW()) - INTERVAL '47 hours',
+				date_trunc('hour', NOW()) - INTERVAL '24 hours',
+				INTERVAL '1 hour'
+			)`,
+			previousFilter: `created_at >= date_trunc('hour', NOW()) - INTERVAL '47 hours'
+				AND created_at < date_trunc('hour', NOW()) - INTERVAL '23 hours'`,
+		};
+	}
+	if (days <= 90) {
+		return {
+			granularity: 'day',
+			trunc: 'day',
+			buckets: `generate_series(
+				date_trunc('day', NOW() - INTERVAL '${days - 1} days'),
+				date_trunc('day', NOW()),
+				INTERVAL '1 day'
+			)`,
+			filter: `created_at >= date_trunc('day', NOW() - INTERVAL '${days - 1} days')`,
+			previousBuckets: `generate_series(
+				date_trunc('day', NOW() - INTERVAL '${days * 2 - 1} days'),
+				date_trunc('day', NOW() - INTERVAL '${days} days'),
+				INTERVAL '1 day'
+			)`,
+			previousFilter: `created_at >= date_trunc('day', NOW() - INTERVAL '${days * 2 - 1} days')
+				AND created_at < date_trunc('day', NOW() - INTERVAL '${days - 1} days')`,
+		};
+	}
+	return {
+		granularity: 'week',
+		trunc: 'week',
+		buckets: `generate_series(
+			date_trunc('week', NOW() - INTERVAL '${days - 1} days'),
+			date_trunc('week', NOW()),
+			INTERVAL '1 week'
+		)`,
+		filter: `created_at >= date_trunc('day', NOW() - INTERVAL '${days - 1} days')`,
+		previousBuckets: '',
+		previousFilter: '',
+	};
+}
+
 export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 	await ensureStorageSchema();
 
 	const cappedRecentLimit = Math.min(Math.max(Number(recentLimit) || 50, 1), 200);
-	const cappedDays = Math.min(Math.max(Number(days) || 0, 0), 365);
+	const cappedDays = resolveAdminDays(days, 0);
 	const durationFilter =
 		cappedDays > 0 ? `created_at >= NOW() - INTERVAL '${cappedDays} days'` : '';
 	const durationWhere = durationFilter ? `WHERE ${durationFilter}` : '';
 	const rateLimitFilter =
+		cappedDays > 0 ? `created_at >= NOW() - INTERVAL '${cappedDays} days'` : 'TRUE';
+	const plan = cappedDays > 0 ? requestSeriesPlan(cappedDays) : null;
+	const seriesQuery = plan
+		? query(
+				`WITH buckets AS (
+					SELECT ${plan.buckets} AS bucket
+				)
+				SELECT
+					b.bucket,
+					COALESCE(a.requests, 0)::INTEGER AS requests,
+					COALESCE(a.errors, 0)::INTEGER AS errors,
+					COALESCE(a.avg_duration_ms, 0)::INTEGER AS avg_duration_ms
+				FROM buckets b
+				LEFT JOIN (
+					SELECT
+						date_trunc('${plan.trunc}', created_at) AS bucket,
+						COUNT(*)::INTEGER AS requests,
+						COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::INTEGER AS errors,
+						COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms
+					FROM api_request_events
+					WHERE ${plan.filter}
+					GROUP BY 1
+				) a ON a.bucket = b.bucket
+				ORDER BY b.bucket`
+			)
+		: query(
+				`WITH bounds AS (
+					SELECT
+						date_trunc('week', MIN(created_at)) AS start,
+						date_trunc('week', NOW()) AS finish
+					FROM api_request_events
+				),
+				buckets AS (
+					SELECT generate_series(start, finish, INTERVAL '1 week') AS bucket
+					FROM bounds
+					WHERE start IS NOT NULL
+				)
+				SELECT
+					b.bucket,
+					COALESCE(a.requests, 0)::INTEGER AS requests,
+					COALESCE(a.errors, 0)::INTEGER AS errors,
+					COALESCE(a.avg_duration_ms, 0)::INTEGER AS avg_duration_ms
+				FROM buckets b
+				LEFT JOIN (
+					SELECT
+						date_trunc('week', created_at) AS bucket,
+						COUNT(*)::INTEGER AS requests,
+						COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::INTEGER AS errors,
+						COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms
+					FROM api_request_events
+					GROUP BY 1
+				) a ON a.bucket = b.bucket
+				ORDER BY b.bucket`
+			);
+	const previousSeriesQuery =
+		plan?.previousBuckets && plan.previousFilter
+			? query(
+					`WITH buckets AS (
+						SELECT ${plan.previousBuckets} AS bucket
+					)
+					SELECT
+						b.bucket,
+						COALESCE(a.requests, 0)::INTEGER AS requests
+					FROM buckets b
+					LEFT JOIN (
+						SELECT
+							date_trunc('${plan.trunc}', created_at) AS bucket,
+							COUNT(*)::INTEGER AS requests
+						FROM api_request_events
+						WHERE ${plan.previousFilter}
+						GROUP BY 1
+					) a ON a.bucket = b.bucket
+					ORDER BY b.bucket`
+				)
+			: Promise.resolve({ rows: [] });
+	const previousTotalsQuery =
 		cappedDays > 0
-			? `created_at >= NOW() - INTERVAL '${cappedDays} days'`
-			: `created_at >= NOW() - INTERVAL '24 hours'`;
+			? query(
+					`SELECT
+						COUNT(*)::INTEGER AS total,
+						COUNT(*) FILTER (WHERE status_code >= 400 AND status_code NOT IN (401, 429))::INTEGER AS errors,
+						COALESCE(ROUND(AVG(duration_ms)), 0)::INTEGER AS avg_duration_ms
+					 FROM api_request_events
+					 WHERE created_at >= NOW() - INTERVAL '${cappedDays * 2} days'
+						AND created_at < NOW() - INTERVAL '${cappedDays} days'`
+				)
+			: Promise.resolve({ rows: [] });
+	const previousRateLimitedQuery =
+		cappedDays > 0
+			? query(
+					`SELECT COUNT(*)::INTEGER AS events
+					 FROM api_rate_limit_events
+					 WHERE created_at >= NOW() - INTERVAL '${cappedDays * 2} days'
+						AND created_at < NOW() - INTERVAL '${cappedDays} days'`
+				)
+			: Promise.resolve({ rows: [] });
+
 	const [
 		totalsResult,
 		byRouteResult,
 		byStatusResult,
-		hourlyResult,
+		seriesResult,
+		previousSeriesResult,
+		previousTotalsResult,
+		previousRateLimitedResult,
 		byCountryResult,
+		byAgentFamilyResult,
 		topAgentsResult,
 		rateLimitedResult,
 		recentResult,
@@ -1789,15 +1958,10 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 GROUP BY status_code
 			 ORDER BY requests DESC`
 		),
-		query(
-			`SELECT
-				date_trunc('hour', created_at) AS bucket,
-				COUNT(*)::INTEGER AS requests
-			 FROM api_request_events
-			 WHERE created_at >= NOW() - INTERVAL '${cappedDays > 0 ? cappedDays : 24} hours'
-			 GROUP BY bucket
-			 ORDER BY bucket`
-		),
+		seriesQuery,
+		previousSeriesQuery,
+		previousTotalsQuery,
+		previousRateLimitedQuery,
 		query(
 			`SELECT
 				COALESCE(NULLIF(ip_country, ''), 'unknown') AS country,
@@ -1807,6 +1971,13 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			 GROUP BY country
 			 ORDER BY requests DESC
 			 LIMIT 20`
+		),
+		query(
+			`SELECT ${AGENT_FAMILY_SQL} AS family, COUNT(*)::INTEGER AS requests
+			 FROM api_request_events
+			 ${durationWhere}
+			 GROUP BY 1
+			 ORDER BY requests DESC`
 		),
 		query(
 			`SELECT
@@ -1850,85 +2021,293 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 		),
 	]);
 
+	let seriesPoints = seriesResult.rows;
+	let truncated = false;
+	if (seriesPoints.length > 260) {
+		seriesPoints = seriesPoints.slice(-260);
+		truncated = true;
+	}
+	const previousRequests = plan?.previousBuckets
+		? previousSeriesResult.rows.map((row) => row.requests)
+		: null;
+	const previousRow = previousTotalsResult.rows[0] || {};
+
 	return {
 		totals: totalsResult.rows[0] || null,
 		byRoute: byRouteResult.rows,
 		byStatus: byStatusResult.rows,
-		hourly: hourlyResult.rows,
+		series: {
+			granularity: plan?.granularity || 'week',
+			points: seriesPoints,
+			previousRequests,
+			truncated,
+		},
+		comparison: {
+			windowDays: cappedDays,
+			previous:
+				cappedDays > 0
+					? {
+							total: previousRow.total || 0,
+							errors: previousRow.errors || 0,
+							avg_duration_ms: previousRow.avg_duration_ms || 0,
+							rate_limited: previousRateLimitedResult.rows[0]?.events || 0,
+						}
+					: null,
+		},
 		byCountry: byCountryResult.rows,
+		byAgentFamily: byAgentFamilyResult.rows,
 		topAgents: topAgentsResult.rows,
 		rateLimited: rateLimitedResult.rows,
 		recent: recentResult.rows,
 	};
 }
 
+function featureTrendPlan(days) {
+	if (days === 0) {
+		return { granularity: 'week', trunc: 'week', buckets: '', filter: '' };
+	}
+	if (days <= 1) {
+		return {
+			granularity: 'hour',
+			trunc: 'hour',
+			buckets: `generate_series(
+				date_trunc('hour', NOW()) - INTERVAL '23 hours',
+				date_trunc('hour', NOW()),
+				INTERVAL '1 hour'
+			)`,
+			filter: `created_at >= date_trunc('hour', NOW()) - INTERVAL '23 hours'`,
+		};
+	}
+	if (days <= 30) {
+		return {
+			granularity: 'day',
+			trunc: 'day',
+			buckets: `generate_series(
+				date_trunc('day', NOW() - INTERVAL '${days - 1} days'),
+				date_trunc('day', NOW()),
+				INTERVAL '1 day'
+			)`,
+			filter: `created_at >= date_trunc('day', NOW() - INTERVAL '${days - 1} days')`,
+		};
+	}
+	return { granularity: 'week', trunc: 'week', buckets: '', filter: '' };
+}
+
+export async function getAdminLogs({
+	days = 7,
+	route = '',
+	status = '',
+	country = '',
+	q = '',
+	before = null,
+	limit = 50,
+} = {}) {
+	await ensureStorageSchema();
+
+	const cappedDays = resolveAdminDays(days, 7);
+	const cappedLimit = Math.min(Math.max(Math.trunc(Number(limit)) || 50, 1), 100);
+	const params = [];
+	const conditions = [];
+
+	if (cappedDays > 0) {
+		params.push(cappedDays);
+		conditions.push(`created_at >= NOW() - ($${params.length}::text || ' days')::interval`);
+	}
+	if (route) {
+		params.push(String(route).slice(0, 200));
+		conditions.push(`route = $${params.length}`);
+	}
+	if (status === 'other') {
+		conditions.push(`(status_code IS NULL OR status_code < 200 OR status_code >= 600)`);
+	} else if (status === '429') {
+		conditions.push(`status_code = 429`);
+	} else {
+		const ranges = { '2xx': 200, '3xx': 300, '4xx': 400, '5xx': 500 };
+		const low = ranges[status];
+		if (low) {
+			params.push(low);
+			conditions.push(`status_code >= $${params.length}`);
+			conditions.push(`status_code < ${low + 100}`);
+		}
+	}
+	if (country) {
+		params.push(String(country).slice(0, 100));
+		conditions.push(`COALESCE(NULLIF(ip_country, ''), 'unknown') = $${params.length}`);
+	}
+	if (q) {
+		params.push(`%${String(q).slice(0, 80)}%`);
+		const placeholder = `$${params.length}`;
+		conditions.push(
+			`(route ILIKE ${placeholder} OR client_key ILIKE ${placeholder} OR error_message ILIKE ${placeholder})`
+		);
+	}
+	if (Number.isFinite(Number(before)) && Number(before) > 0) {
+		params.push(Number(before));
+		conditions.push(`id < $${params.length}`);
+	}
+
+	const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+	params.push(cappedLimit + 1);
+	const result = await query(
+		`SELECT
+			id,
+			route,
+			action,
+			status_code,
+			duration_ms,
+			error_message,
+			client_key,
+			ip_country,
+			ip_city,
+			ip_timezone,
+			user_agent,
+			created_at
+		 FROM api_request_events
+		 ${where}
+		 ORDER BY id DESC
+		 LIMIT $${params.length}`,
+		params
+	);
+
+	const rows = result.rows.slice(0, cappedLimit);
+	return {
+		rows,
+		nextBefore: result.rows.length > cappedLimit ? (rows.at(-1)?.id ?? null) : null,
+	};
+}
+
 export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 	await ensureStorageSchema();
 
-	const cappedDays = Math.min(Math.max(Number(days) || 30, 1), 90);
+	const cappedDays = resolveAdminDays(days, 30);
 	const cappedLimit = Math.min(Math.max(Number(limit) || 60, 1), 200);
+	const durationWhere = `($1::int = 0 OR created_at >= NOW() - ($1::text || ' days')::interval)`;
+	const trendPlan = featureTrendPlan(cappedDays);
+	const trendQuery = trendPlan.buckets
+		? query(
+				`WITH buckets AS (
+					SELECT ${trendPlan.buckets} AS bucket
+				)
+				SELECT
+					b.bucket,
+					COALESCE(a.events, 0)::INTEGER AS events,
+					COALESCE(a.sessions, 0)::INTEGER AS sessions
+				FROM buckets b
+				LEFT JOIN (
+					SELECT
+						date_trunc('${trendPlan.trunc}', created_at) AS bucket,
+						COUNT(*)::INTEGER AS events,
+						COUNT(DISTINCT session_id)::INTEGER AS sessions
+					FROM feature_events
+					WHERE ${trendPlan.filter}
+					GROUP BY 1
+				) a ON a.bucket = b.bucket
+				ORDER BY b.bucket`,
+				[]
+			)
+		: query(
+				`WITH bounds AS (
+					SELECT
+						date_trunc('week', MIN(created_at)) AS start,
+						date_trunc('week', NOW()) AS finish
+					FROM feature_events
+					WHERE ${durationWhere}
+				),
+				buckets AS (
+					SELECT generate_series(start, finish, INTERVAL '1 week') AS bucket
+					FROM bounds
+					WHERE start IS NOT NULL
+				)
+				SELECT
+					b.bucket,
+					COALESCE(a.events, 0)::INTEGER AS events,
+					COALESCE(a.sessions, 0)::INTEGER AS sessions
+				FROM buckets b
+				LEFT JOIN (
+					SELECT
+						date_trunc('week', created_at) AS bucket,
+						COUNT(*)::INTEGER AS events,
+						COUNT(DISTINCT session_id)::INTEGER AS sessions
+					FROM feature_events
+					WHERE ${durationWhere}
+					GROUP BY 1
+				) a ON a.bucket = b.bucket
+				ORDER BY b.bucket`,
+				[cappedDays]
+			);
+	const previousTotalsQuery =
+		cappedDays > 0
+			? query(
+					`SELECT
+						COUNT(*)::INTEGER AS total,
+						COUNT(DISTINCT session_id)::INTEGER AS sessions,
+						COUNT(DISTINCT event)::INTEGER AS distinct_events
+					 FROM feature_events
+					 WHERE created_at >= NOW() - INTERVAL '${cappedDays * 2} days'
+						AND created_at < NOW() - INTERVAL '${cappedDays} days'`,
+					[]
+				)
+			: Promise.resolve({ rows: [] });
 
-	const [totalsResult, byEventResult, byPageResult, trendResult, generateBreakdownResult] =
-		await Promise.all([
-			query(
-				`SELECT
+	const [
+		totalsResult,
+		byEventResult,
+		byPageResult,
+		trendResult,
+		previousTotalsResult,
+		generateBreakdownResult,
+	] = await Promise.all([
+		query(
+			`SELECT
 				COUNT(*)::INTEGER AS total,
 				COUNT(DISTINCT session_id)::INTEGER AS sessions,
+				COUNT(DISTINCT event)::INTEGER AS distinct_events,
 				MIN(created_at) AS first_at,
 				MAX(created_at) AS last_at,
 				COALESCE(ROUND(COUNT(*)::NUMERIC / NULLIF(COUNT(DISTINCT session_id), 0), 1), 0) AS events_per_session
 			 FROM feature_events
-			 WHERE created_at >= NOW() - ($1::text || ' days')::interval`,
-				[cappedDays]
-			),
-			query(
-				`SELECT
+			 WHERE ${durationWhere}`,
+			[cappedDays]
+		),
+		query(
+			`SELECT
 				event,
 				COUNT(*)::INTEGER AS count
 			 FROM feature_events
-			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
+			 WHERE ${durationWhere}
 			 GROUP BY event
 			 ORDER BY count DESC
 			 LIMIT $2`,
-				[cappedDays, cappedLimit]
-			),
-			query(
-				`SELECT
+			[cappedDays, cappedLimit]
+		),
+		query(
+			`SELECT
 				COALESCE(NULLIF(page, ''), '(unknown)') AS page,
 				COUNT(*)::INTEGER AS events
 			 FROM feature_events
-			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
+			 WHERE ${durationWhere}
 			 GROUP BY page
 			 ORDER BY events DESC
 			 LIMIT 25`,
-				[cappedDays]
-			),
-			query(
-				`SELECT
-				date_trunc('day', created_at) AS day,
-				COUNT(*)::INTEGER AS events,
-				COUNT(DISTINCT session_id)::INTEGER AS sessions
-			 FROM feature_events
-			 WHERE created_at >= NOW() - ($1::text || ' days')::interval
-			 GROUP BY day
-			 ORDER BY day`,
-				[cappedDays]
-			),
-			query(
-				`SELECT
+			[cappedDays]
+		),
+		trendQuery,
+		previousTotalsQuery,
+		query(
+			`SELECT
 				COALESCE(props->>'mode', '(none)') AS mode,
 				COALESCE(props->>'difficulty', '(none)') AS difficulty,
 				COALESCE(props->>'language', '(none)') AS language,
 				COUNT(*)::INTEGER AS count
 			 FROM feature_events
 			 WHERE event IN ('generate:start', 'generate:success')
-				AND created_at >= NOW() - ($1::text || ' days')::interval
+				AND ${durationWhere}
 			 GROUP BY mode, difficulty, language
 			 ORDER BY count DESC
 			 LIMIT 30`,
-				[cappedDays]
-			),
-		]);
+			[cappedDays]
+		),
+	]);
 
 	const byEvent = byEventResult.rows;
 	const total = totalsResult.rows?.[0]?.total || 0;
@@ -1936,11 +2315,38 @@ export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {
 		row.pct = total > 0 ? Number(((row.count / total) * 100).toFixed(1)) : 0;
 	}
 
+	let trend = trendResult.rows;
+	let trendTruncated = false;
+	if (trend.length > 260) {
+		trend = trend.slice(-260);
+		trendTruncated = true;
+	}
+	const previous = previousTotalsResult.rows[0] || {};
+	const previousSessions = previous.sessions || 0;
+	const previousTotal = previous.total || 0;
+
 	return {
 		totals: totalsResult.rows[0] || null,
 		byEvent,
 		byPage: byPageResult.rows,
-		trend: trendResult.rows,
+		trend,
+		trendGranularity: trendPlan.granularity,
+		trendTruncated,
+		comparison: {
+			windowDays: cappedDays,
+			previous:
+				cappedDays > 0
+					? {
+							total: previousTotal,
+							sessions: previousSessions,
+							distinct_events: previous.distinct_events || 0,
+							events_per_session:
+								previousSessions > 0
+									? Number((previousTotal / previousSessions).toFixed(1))
+									: 0,
+						}
+					: null,
+		},
 		generateBreakdown: generateBreakdownResult.rows,
 	};
 }
@@ -1954,7 +2360,7 @@ const DEVICE_BUCKET_ORDER = {
 export async function getDeviceNetworkStats({ days = 30 } = {}) {
 	await ensureStorageSchema();
 
-	const cappedDays = Math.min(Math.max(Number(days) || 30, 1), 90);
+	const cappedDays = resolveAdminDays(days, 30);
 
 	const [tiersResult, modelsResult, networkResult, generateResult, coverageResult] =
 		await Promise.all([
@@ -1965,7 +2371,7 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 						props
 					FROM feature_events
 					WHERE event = 'device:profile'
-						AND created_at >= NOW() - ($1::text || ' days')::interval
+						AND ($1::int = 0 OR created_at >= NOW() - ($1::text || ' days')::interval)
 						AND COALESCE(user_id::text, client_id) IS NOT NULL
 					ORDER BY COALESCE(user_id::text, client_id), created_at DESC
 				)
@@ -1984,7 +2390,7 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 						props
 					FROM feature_events
 					WHERE event = 'device:profile'
-						AND created_at >= NOW() - ($1::text || ' days')::interval
+						AND ($1::int = 0 OR created_at >= NOW() - ($1::text || ' days')::interval)
 						AND COALESCE(user_id::text, client_id) IS NOT NULL
 					ORDER BY COALESCE(user_id::text, client_id), created_at DESC
 				)
@@ -2011,7 +2417,7 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 					FROM feature_events
 					WHERE event IN ('device:profile', 'net:change')
 						AND session_id IS NOT NULL
-						AND created_at >= NOW() - ($1::text || ' days')::interval
+						AND ($1::int = 0 OR created_at >= NOW() - ($1::text || ' days')::interval)
 					GROUP BY session_id
 				)
 				SELECT 'type' AS dimension,
@@ -2058,7 +2464,7 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 					LIMIT 1
 				) net ON TRUE
 				WHERE fe.event IN ('generate:success', 'generate:fail')
-					AND fe.created_at >= NOW() - ($1::text || ' days')::interval
+					AND ($1::int = 0 OR fe.created_at >= NOW() - ($1::text || ' days')::interval)
 				GROUP BY 1`,
 				[cappedDays]
 			),
@@ -2069,7 +2475,7 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 				FROM feature_events
 				WHERE event IN ('page:view', 'device:profile')
 					AND session_id IS NOT NULL
-					AND created_at >= NOW() - ($1::text || ' days')::interval`,
+					AND ($1::int = 0 OR created_at >= NOW() - ($1::text || ' days')::interval)`,
 				[cappedDays]
 			),
 		]);
@@ -2190,8 +2596,12 @@ export async function getDeviceNetworkStats({ days = 30 } = {}) {
 export async function getDatabaseOverview({ days = 7 } = {}) {
 	await ensureStorageSchema();
 
-	const cappedDays = Math.min(Math.max(Number(days) || 7, 1), 365);
-	const filter = `created_at >= NOW() - INTERVAL '${cappedDays} days'`;
+	const cappedDays = resolveAdminDays(days, 7);
+	const filter = cappedDays > 0 ? `created_at >= NOW() - INTERVAL '${cappedDays} days'` : 'TRUE';
+	const userFilter =
+		cappedDays > 0 ? `last_login_at >= NOW() - INTERVAL '${cappedDays} days'` : 'TRUE';
+	const stateFilter =
+		cappedDays > 0 ? `updated_at >= NOW() - INTERVAL '${cappedDays} days'` : 'TRUE';
 
 	const [
 		tests,
@@ -2214,11 +2624,11 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_seconds FROM ai_test_attempts`
 		),
 		query(
-			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user`
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${userFilter})::INTEGER AS recent FROM app_user`
 		),
 		query(`SELECT COUNT(*)::INTEGER AS active FROM app_user_session WHERE expires_at > NOW()`),
 		query(
-			`SELECT COUNT(DISTINCT COALESCE(user_id::text, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id::text, client_id)) FILTER (WHERE updated_at >= NOW() - INTERVAL '${cappedDays} days')::INTEGER AS recent FROM app_user_state`
+			`SELECT COUNT(DISTINCT COALESCE(user_id::text, client_id))::INTEGER AS total, COUNT(DISTINCT COALESCE(user_id::text, client_id)) FILTER (WHERE ${stateFilter})::INTEGER AS recent FROM app_user_state`
 		),
 		query(
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM api_rate_limit_events`

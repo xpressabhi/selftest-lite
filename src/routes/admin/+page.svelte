@@ -1,22 +1,27 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { ADMIN_UNAUTHORIZED, adminFetch } from '#lib/client/adminApi.js';
-	import {
-		agentFamily,
-		dayLabel,
-		formatBytes,
-		formatNumber,
-		formatTime,
-		formatValue,
-		hourLabel,
-	} from '#lib/client/formatting.js';
-	import { t } from '#lib/client/i18n.js';
-	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import {
 		clampInputText,
 		MAX_ADMIN_FIELD_CHARS,
 		sanitizeInputText,
 	} from '#lib/shared/inputLimits.js';
+	import { t } from '#lib/client/i18n.js';
+	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
+	import AdminToolbar from '#lib/client/admin/AdminToolbar.svelte';
+	import AdminOverview from '#lib/client/admin/AdminOverview.svelte';
+	import AdminTraffic from '#lib/client/admin/AdminTraffic.svelte';
+	import AdminEngagement from '#lib/client/admin/AdminEngagement.svelte';
+	import AdminReliability from '#lib/client/admin/AdminReliability.svelte';
+	import AdminLogs from '#lib/client/admin/AdminLogs.svelte';
+	import AdminHealth from '#lib/client/admin/AdminHealth.svelte';
+	import AdminManage from '#lib/client/admin/AdminManage.svelte';
+	import {
+		ADMIN_TAB_IDS,
+		buildAdminSearch,
+		parseAdminState,
+	} from '#lib/client/admin/adminState.js';
 
 	let authed = $state(false);
 	let checking = $state(true);
@@ -24,165 +29,207 @@
 	let username = $state('');
 	let password = $state('');
 	let error = $state('');
+
+	let activeTab = $state('overview');
+	let days = $state(1);
+	let compare = $state(true);
+	let healthWindow = $state(60);
+	let logFilters = $state({ route: '', status: '', country: '', q: '' });
+
 	let stats = $state(null);
 	let featureUsage = $state(null);
 	let deviceNetwork = $state(null);
+	let logs = $state({ rows: [], nextBefore: null });
 	let health = $state(null);
-	let healthWindow = $state(60);
-	let healthLoading = $state(false);
-	let days = $state(1);
-	let activeTab = $state('overview');
-
-	onMount(() => {
-		try {
-			const savedTab = window.sessionStorage.getItem('admin-tab');
-			if (savedTab && TABS.some((tab) => tab.id === savedTab)) {
-				activeTab = savedTab;
-			}
-		} catch {
-			// Tab persistence is best-effort.
-		}
-	});
 	let premiumGrants = $state(null);
-	let premiumEmail = $state('');
-	let premiumExpiry = $state('');
-	let premiumNotes = $state('');
+	let examPatterns = $state(null);
+
 	let premiumBusy = $state(false);
 	let premiumMessage = $state('');
 	let revokeTarget = $state(null);
-	let examPatterns = $state(null);
 	let patternBusyKey = $state('');
 	let patternMessage = $state('');
 
-	const TABS = [
-		{ id: 'overview', label: 'Overview' },
-		{ id: 'traffic', label: 'Traffic' },
-		{ id: 'geo', label: 'Geo & Agents' },
-		{ id: 'recent', label: 'Recent Events' },
-		{ id: 'features', label: 'Feature Usage' },
-		{ id: 'device', label: 'Device & Network' },
-		{ id: 'patterns', label: 'Exam Patterns' },
-		{ id: 'premium', label: 'Premium' },
-		{ id: 'health', label: 'Health' },
-	];
-
-	const HEALTH_WINDOWS = [
-		{ value: 60, label: '1m' },
-		{ value: 300, label: '5m' },
-		{ value: 900, label: '15m' },
-		{ value: 3600, label: '1h' },
-	];
-
-	const DURATION_OPTIONS = [
-		{ value: 1, label: '24h' },
-		{ value: 7, label: `7 ${$t('adminDaysShort')}` },
-		{ value: 30, label: `30 ${$t('adminDaysShort')}` },
-		{ value: 90, label: `90 ${$t('adminDaysShort')}` },
-		{ value: 0, label: 'All time' },
-	];
-
-	onMount(() => {
-		void loadAll();
+	let loading = $state({
+		stats: false,
+		feature: false,
+		device: false,
+		logs: false,
+		health: false,
 	});
+	let errors = $state({ stats: '', feature: '', device: '', logs: '', health: '' });
+	let refreshedAt = $state(null);
 
-	$effect(() => {
-		if (!authed || activeTab !== 'health') return;
-		const interval = setInterval(() => void loadHealth(), 30000);
-		return () => clearInterval(interval);
-	});
+	let loaded = $state({ statsDays: null, featureDays: null, deviceDays: null });
+	const requestSeq = { stats: 0, feature: 0, device: 0, logs: 0, health: 0 };
+	const controllers = { stats: null, feature: null, device: null, logs: null, health: null };
+	let logSearchTimer = 0;
 
 	function markUnauthorized() {
 		authed = false;
 	}
 
-	async function loadHealth() {
-		healthLoading = true;
-		try {
-			const data = await adminFetch(`/api/admin/health?window=${healthWindow}`, {
-				cache: 'no-store',
-				fallbackError: 'Failed to load health',
-				onUnauthorized: markUnauthorized,
-			});
-			if (data === ADMIN_UNAUTHORIZED) return;
-			health = data;
-		} catch (caughtError) {
-			console.error(caughtError);
-		} finally {
-			healthLoading = false;
-		}
+	function nextRequest(key) {
+		requestSeq[key] += 1;
+		controllers[key]?.abort();
+		controllers[key] = new AbortController();
+		return { token: requestSeq[key], signal: controllers[key].signal };
 	}
 
-	async function loadAll() {
-		await Promise.all([loadStats(), loadFeatureUsage(), loadDeviceNetwork()]);
+	function current(key, token) {
+		return requestSeq[key] === token;
 	}
 
-	async function loadDeviceNetwork() {
-		if (activeTab !== 'device' && deviceNetwork) return;
-		try {
-			const durationDays = days > 0 ? days : 90;
-			const data = await adminFetch(`/api/admin/device-network?days=${durationDays}`, {
-				cache: 'no-store',
-				fallbackError: 'Failed',
-				onUnauthorized: markUnauthorized,
-			});
-			if (data === ADMIN_UNAUTHORIZED) return;
-			deviceNetwork = data;
-		} catch (caughtError) {
-			console.error(caughtError);
-			deviceNetwork = null;
-		}
-	}
-
-	async function loadFeatureUsage() {
-		if (activeTab !== 'features' && featureUsage) return;
-		try {
-			const durationDays = days > 0 ? days : 90;
-			const data = await adminFetch(`/api/admin/feature-usage?days=${durationDays}`, {
-				cache: 'no-store',
-				fallbackError: 'Failed',
-				onUnauthorized: markUnauthorized,
-			});
-			if (data === ADMIN_UNAUTHORIZED) return;
-			featureUsage = data;
-		} catch (caughtError) {
-			console.error(caughtError);
-			featureUsage = null;
-		}
-	}
-
-	async function loadStats() {
-		checking = true;
-		error = '';
+	async function loadStats({ force = false } = {}) {
+		if (!force && stats && loaded.statsDays === days) return;
+		const { token, signal } = nextRequest('stats');
+		loading.stats = true;
 		try {
 			const data = await adminFetch(`/api/admin/stats?days=${days}`, {
 				cache: 'no-store',
+				signal,
 				fallbackError: 'Failed to load stats',
 				onUnauthorized: markUnauthorized,
 			});
-			if (data === ADMIN_UNAUTHORIZED) return;
+			if (data === ADMIN_UNAUTHORIZED || !current('stats', token)) return;
 			authed = true;
 			stats = data;
+			loaded.statsDays = days;
+			errors.stats = '';
+			error = '';
+			refreshedAt = Date.now();
 		} catch (caughtError) {
-			error = caughtError.message || 'Failed to load stats';
+			if (caughtError?.name === 'AbortError' || !current('stats', token)) return;
+			errors.stats = caughtError.message || 'Failed to load stats';
+			if (!stats) error = errors.stats;
 		} finally {
-			checking = false;
+			if (current('stats', token)) loading.stats = false;
 		}
 	}
 
-	function switchTab(tabId) {
-		activeTab = tabId;
-		if (tabId === 'features' && !featureUsage) void loadFeatureUsage();
-		if (tabId === 'device' && !deviceNetwork) void loadDeviceNetwork();
-		if (tabId === 'premium') void loadPremium();
-		if (tabId === 'patterns') void loadPatterns();
-		if (tabId === 'health') void loadHealth();
+	async function loadFeature({ force = false } = {}) {
+		if (!force && featureUsage && loaded.featureDays === days) return;
+		const { token, signal } = nextRequest('feature');
+		loading.feature = true;
+		try {
+			const data = await adminFetch(`/api/admin/feature-usage?days=${days}`, {
+				cache: 'no-store',
+				signal,
+				fallbackError: 'Failed to load feature usage',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED || !current('feature', token)) return;
+			featureUsage = data;
+			loaded.featureDays = days;
+			errors.feature = '';
+			refreshedAt = Date.now();
+		} catch (caughtError) {
+			if (caughtError?.name === 'AbortError' || !current('feature', token)) return;
+			errors.feature = caughtError.message || 'Failed to load feature usage';
+		} finally {
+			if (current('feature', token)) loading.feature = false;
+		}
+	}
+
+	async function loadDevice({ force = false } = {}) {
+		if (!force && deviceNetwork && loaded.deviceDays === days) return;
+		const { token, signal } = nextRequest('device');
+		loading.device = true;
+		try {
+			const data = await adminFetch(`/api/admin/device-network?days=${days}`, {
+				cache: 'no-store',
+				signal,
+				fallbackError: 'Failed to load device stats',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED || !current('device', token)) return;
+			deviceNetwork = data;
+			loaded.deviceDays = days;
+			errors.device = '';
+			refreshedAt = Date.now();
+		} catch (caughtError) {
+			if (caughtError?.name === 'AbortError' || !current('device', token)) return;
+			errors.device = caughtError.message || 'Failed to load device stats';
+		} finally {
+			if (current('device', token)) loading.device = false;
+		}
+	}
+
+	async function loadLogs({ append = false } = {}) {
+		const { token, signal } = nextRequest('logs');
+		loading.logs = true;
+		try {
+			const params = new URLSearchParams({ days: String(days), limit: '50' });
+			if (logFilters.route) params.set('route', logFilters.route);
+			if (logFilters.status) params.set('status', logFilters.status);
+			if (logFilters.country) params.set('country', logFilters.country);
+			if (logFilters.q) params.set('q', logFilters.q);
+			if (append && logs?.nextBefore) params.set('before', String(logs.nextBefore));
+			const data = await adminFetch(`/api/admin/logs?${params.toString()}`, {
+				cache: 'no-store',
+				signal,
+				fallbackError: 'Failed to load logs',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED || !current('logs', token)) return;
+			logs = append
+				? {
+						rows: [...(logs?.rows || []), ...(data.rows || [])],
+						nextBefore: data.nextBefore,
+					}
+				: { rows: data.rows || [], nextBefore: data.nextBefore };
+			errors.logs = '';
+			refreshedAt = Date.now();
+		} catch (caughtError) {
+			if (caughtError?.name === 'AbortError' || !current('logs', token)) return;
+			errors.logs = caughtError.message || 'Failed to load logs';
+		} finally {
+			if (current('logs', token)) loading.logs = false;
+		}
+	}
+
+	async function loadHealth() {
+		const { token, signal } = nextRequest('health');
+		loading.health = true;
+		try {
+			const data = await adminFetch(`/api/admin/health?window=${healthWindow}`, {
+				cache: 'no-store',
+				signal,
+				fallbackError: 'Failed to load health',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED || !current('health', token)) return;
+			health = data;
+			errors.health = '';
+			refreshedAt = Date.now();
+		} catch (caughtError) {
+			if (caughtError?.name === 'AbortError' || !current('health', token)) return;
+			errors.health = caughtError.message || 'Failed to load health';
+		} finally {
+			if (current('health', token)) loading.health = false;
+		}
+	}
+
+	async function loadPremium() {
+		try {
+			const data = await adminFetch('/api/admin/premium', {
+				cache: 'no-store',
+				fallbackError: 'Failed to load premium grants',
+				onUnauthorized: markUnauthorized,
+			});
+			if (data === ADMIN_UNAUTHORIZED) return;
+			premiumGrants = data.grants || [];
+		} catch (caughtError) {
+			console.error(caughtError);
+			premiumGrants = null;
+		}
 	}
 
 	async function loadPatterns() {
 		try {
 			const data = await adminFetch('/api/admin/patterns', {
 				cache: 'no-store',
-				fallbackError: 'Failed',
+				fallbackError: 'Failed to load patterns',
 				onUnauthorized: markUnauthorized,
 			});
 			if (data === ADMIN_UNAUTHORIZED) return;
@@ -193,7 +240,220 @@
 		}
 	}
 
-	async function refreshPatternRow(patternKey) {
+	async function loadTab(tab, { force = false } = {}) {
+		if (tab === 'health') {
+			await loadHealth();
+			return;
+		}
+		if (tab === 'manage') {
+			await Promise.all([loadPremium(), loadPatterns()]);
+			return;
+		}
+		await loadStats({ force });
+		if (!authed) return;
+		if (tab === 'overview') {
+			await Promise.all([loadFeature({ force }), loadDevice({ force })]);
+		} else if (tab === 'traffic') {
+			// stats is the only dataset this tab needs.
+		} else if (tab === 'engagement') {
+			await loadFeature({ force });
+		} else if (tab === 'reliability') {
+			await loadDevice({ force });
+		} else if (tab === 'logs') {
+			await loadLogs();
+		}
+	}
+
+	function syncUrl({ push = false } = {}) {
+		if (typeof window === 'undefined') return;
+		const search = buildAdminSearch({
+			tab: activeTab,
+			days,
+			compare,
+			window: healthWindow,
+			...logFilters,
+		});
+		const next = `${window.location.pathname}${search ? `?${search}` : ''}`;
+		if (next === `${window.location.pathname}${window.location.search}`) return;
+		void goto(next, {
+			replace: !push,
+			shallow: true,
+			reset: false,
+		}).catch((error) => {
+			console.warn('admin goto failed', error?.message || error);
+		});
+	}
+
+	function applyUrlState(state) {
+		activeTab = state.tab;
+		days = state.days;
+		compare = state.compare;
+		healthWindow = state.window;
+		logFilters = {
+			route: state.route,
+			status: state.status,
+			country: state.country,
+			q: state.q,
+		};
+	}
+
+	async function boot() {
+		checking = true;
+		try {
+			await loadStats({ force: true });
+			if (!authed) return;
+			await loadTab(activeTab);
+		} finally {
+			checking = false;
+		}
+	}
+
+	function setTab(tab) {
+		if (!ADMIN_TAB_IDS.has(tab) || tab === activeTab) return;
+		activeTab = tab;
+		syncUrl({ push: true });
+		void loadTab(tab);
+	}
+
+	function setDays(next) {
+		if (next === days) return;
+		days = next;
+		loaded.statsDays = null;
+		loaded.featureDays = null;
+		loaded.deviceDays = null;
+		if (activeTab === 'logs') logs = { rows: [], nextBefore: null };
+		syncUrl();
+		void loadTab(activeTab, { force: true });
+	}
+
+	function setCompare(next) {
+		compare = next;
+		syncUrl();
+	}
+
+	function setHealthWindow(next) {
+		if (next === healthWindow) return;
+		healthWindow = next;
+		syncUrl();
+		void loadHealth();
+	}
+
+	function setLogFilter(patch) {
+		logFilters = { ...logFilters, ...patch };
+		logs = { rows: [], nextBefore: null };
+		syncUrl();
+		clearTimeout(logSearchTimer);
+		const delay = Object.keys(patch).includes('q') ? 300 : 0;
+		logSearchTimer = setTimeout(() => void loadLogs(), delay);
+	}
+
+	function refresh() {
+		if (activeTab === 'manage') {
+			void Promise.all([loadPremium(), loadPatterns()]);
+			return;
+		}
+		if (activeTab === 'health') {
+			void loadHealth();
+			return;
+		}
+		if (activeTab === 'logs') {
+			void loadStats({ force: true });
+			void loadLogs();
+			return;
+		}
+		loaded.statsDays = null;
+		loaded.featureDays = null;
+		loaded.deviceDays = null;
+		void loadTab(activeTab, { force: true });
+	}
+
+	function retry(source) {
+		if (source === 'stats') void loadStats({ force: true });
+		else if (source === 'feature') void loadFeature({ force: true });
+		else if (source === 'device') void loadDevice({ force: true });
+		else if (source === 'logs') void loadLogs();
+		else if (source === 'health') void loadHealth();
+	}
+
+	async function login() {
+		if (!username.trim() || !password || loggingIn) return;
+		loggingIn = true;
+		error = '';
+		try {
+			await adminFetch('/api/admin/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: username.trim(), password }),
+				fallbackError: $t('adminInvalidCredentials'),
+			});
+			password = '';
+			await boot();
+		} catch (caughtError) {
+			error = caughtError.message || $t('adminInvalidCredentials');
+		} finally {
+			loggingIn = false;
+		}
+	}
+
+	async function logout() {
+		await fetch('/api/admin/logout', { method: 'POST' });
+		authed = false;
+		stats = null;
+		featureUsage = null;
+		deviceNetwork = null;
+		logs = { rows: [], nextBefore: null };
+		health = null;
+		premiumGrants = null;
+		examPatterns = null;
+		loaded = { statsDays: null, featureDays: null, deviceDays: null };
+	}
+
+	async function grantPremium(payload) {
+		if (premiumBusy) return;
+		premiumBusy = true;
+		premiumMessage = '';
+		try {
+			await adminFetch('/api/admin/premium', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+				fallbackError: 'Grant failed',
+			});
+			premiumMessage = `Granted access to ${payload.email}`;
+			await loadPremium();
+		} catch (caughtError) {
+			premiumMessage = caughtError.message || 'Grant failed';
+		} finally {
+			premiumBusy = false;
+		}
+	}
+
+	function revokePremium(userId) {
+		revokeTarget = { userId };
+	}
+
+	async function confirmRevokePremium() {
+		const target = revokeTarget;
+		revokeTarget = null;
+		if (!target) return;
+		premiumBusy = true;
+		premiumMessage = '';
+		try {
+			await adminFetch('/api/admin/premium', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'revoke', userId: target.userId }),
+				fallbackError: 'Revoke failed',
+			});
+			await loadPremium();
+		} catch (caughtError) {
+			premiumMessage = caughtError.message || 'Revoke failed';
+		} finally {
+			premiumBusy = false;
+		}
+	}
+
+	async function refreshPattern(patternKey) {
 		if (patternBusyKey) return;
 		patternBusyKey = patternKey;
 		patternMessage = '';
@@ -213,109 +473,38 @@
 		}
 	}
 
-	async function loadPremium() {
-		try {
-			const data = await adminFetch('/api/admin/premium', {
-				cache: 'no-store',
-				fallbackError: 'Failed',
-				onUnauthorized: markUnauthorized,
-			});
-			if (data === ADMIN_UNAUTHORIZED) return;
-			premiumGrants = data.grants || [];
-		} catch (caughtError) {
-			console.error(caughtError);
-			premiumGrants = null;
-		}
+	function openLogs(status = '') {
+		logFilters = { ...logFilters, status };
+		activeTab = 'logs';
+		syncUrl({ push: true });
+		void loadStats();
+		void loadLogs();
 	}
 
-	async function grantPremium(event) {
-		event.preventDefault();
-		if (!premiumEmail.trim() || premiumBusy) return;
-		premiumBusy = true;
-		premiumMessage = '';
-		try {
-			await adminFetch('/api/admin/premium', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					email: premiumEmail.trim(),
-					expiresAt: premiumExpiry ? new Date(premiumExpiry).toISOString() : null,
-					notes: premiumNotes.trim() || null,
-				}),
-				fallbackError: 'Grant failed',
-			});
-			premiumMessage = `Granted access to ${premiumEmail.trim()}`;
-			premiumEmail = '';
-			premiumExpiry = '';
-			premiumNotes = '';
-			await loadPremium();
-		} catch (caughtError) {
-			premiumMessage = caughtError.message || 'Grant failed';
-		} finally {
-			premiumBusy = false;
-		}
+	function onPopState() {
+		applyUrlState(parseAdminState(window.location.search));
+		void loadTab(activeTab);
 	}
 
-	function revokePremium(userId) {
-		revokeTarget = { userId };
-	}
+	$effect(() => {
+		if (!authed || activeTab !== 'health') return;
+		const interval = setInterval(() => void loadHealth(), 30000);
+		return () => clearInterval(interval);
+	});
 
-	async function confirmRevokePremium() {
-		const target = revokeTarget;
-		revokeTarget = null;
-		if (!target) {
-			return;
-		}
-		premiumBusy = true;
-		premiumMessage = '';
-		try {
-			const response = await fetch('/api/admin/premium', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'revoke', userId: target.userId }),
-			});
-			if (!response.ok) throw new Error('Revoke failed');
-			await loadPremium();
-		} catch (caughtError) {
-			premiumMessage = caughtError.message || 'Revoke failed';
-		} finally {
-			premiumBusy = false;
-		}
-	}
+	onMount(() => {
+		applyUrlState(parseAdminState(window.location.search));
+		window.addEventListener('popstate', onPopState);
+		void boot();
+		return () => {
+			window.removeEventListener('popstate', onPopState);
+			clearTimeout(logSearchTimer);
+		};
+	});
 
-	async function login() {
-		if (!username.trim() || !password || loggingIn) return;
-		loggingIn = true;
-		error = '';
-		try {
-			await adminFetch('/api/admin/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username: username.trim(), password }),
-				fallbackError: $t('adminInvalidCredentials'),
-			});
-			password = '';
-			await loadAll();
-		} catch (caughtError) {
-			error = caughtError.message || $t('adminInvalidCredentials');
-		} finally {
-			loggingIn = false;
-		}
-	}
-
-	async function logout() {
-		await fetch('/api/admin/logout', { method: 'POST' });
-		authed = false;
-		stats = null;
-		featureUsage = null;
-		deviceNetwork = null;
-		health = null;
-	}
-
-	function onDurationChange() {
-		activeTab = 'overview';
-		void loadAll();
-	}
+	onDestroy(() => {
+		for (const controller of Object.values(controllers)) controller?.abort();
+	});
 </script>
 
 <svelte:head>
@@ -329,14 +518,6 @@
 			<h1 class="h3 fw-bold mb-0">{$t('adminStatsTitle')}</h1>
 			{#if authed}
 				<div class="d-flex gap-2">
-					<button
-						class="btn btn-sm btn-outline-secondary"
-						type="button"
-						onclick={() => void loadAll()}
-						disabled={checking}
-					>
-						{$t('adminRefresh')}
-					</button>
 					<button class="btn btn-sm btn-outline-danger" type="button" onclick={logout}>
 						{$t('adminLogout')}
 					</button>
@@ -397,1060 +578,86 @@
 					{loggingIn ? $t('adminSigningIn') : $t('adminSignIn')}
 				</button>
 			</form>
-		{:else if stats}
+		{:else}
 			{#if error}<div class="alert alert-danger mb-3">{error}</div>{/if}
 
-			<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-				<span class="text-muted small">Duration:</span>
-				{#each DURATION_OPTIONS as opt (opt.value)}
-					<button
-						class="btn btn-sm"
-						class:btn-primary={days === opt.value}
-						class:btn-outline-secondary={days !== opt.value}
-						type="button"
-						disabled={checking}
-						onclick={() => {
-							days = opt.value;
-							onDurationChange();
-						}}>{opt.label}</button
-					>
-				{/each}
-			</div>
+			<AdminToolbar
+				{activeTab}
+				{days}
+				{compare}
+				{healthWindow}
+				{refreshedAt}
+				loading={loading.stats ||
+					loading.feature ||
+					loading.device ||
+					loading.logs ||
+					loading.health}
+				onTabChange={setTab}
+				onDaysChange={setDays}
+				onCompareChange={setCompare}
+				onHealthWindowChange={setHealthWindow}
+				onRefresh={refresh}
+			/>
 
-			<div class="tab-bar mb-4" role="tablist" aria-label={$t('adminFeatureUsage')}>
-				{#each TABS as tab (tab.id)}
-					<button
-						class="tab-btn"
-						class:active={activeTab === tab.id}
-						role="tab"
-						aria-selected={activeTab === tab.id}
-						onclick={() => {
-							switchTab(tab.id);
-							try {
-								window.sessionStorage.setItem('admin-tab', tab.id);
-							} catch {
-								// Best-effort.
-							}
-						}}>{tab.label}</button
-					>
-				{/each}
-			</div>
-
-			<!-- OVERVIEW TAB -->
-			{#if activeTab === 'overview' && stats.overview}
-				{@const o = stats.overview}
-				<div class="stat-cards mb-4">
-					<div class="bg-body border rounded-3 p-3">
-						<strong>{formatNumber(stats.totals?.total)}</strong>
-						<span>{$t('adminTotalRequests')}</span>
-					</div>
-					<div class="bg-body border rounded-3 p-3">
-						<strong>{formatNumber(stats.totals?.errors)}</strong>
-						<span>{$t('adminErrors')}</span>
-					</div>
-					<div class="bg-body border rounded-3 p-3">
-						<strong>{stats.totals?.avg_duration_ms || 0} ms</strong>
-						<span>{$t('adminAvgDuration')}</span>
-					</div>
-					<div class="bg-body border rounded-3 p-3">
-						<strong
-							>{formatNumber(
-								stats.rateLimited?.reduce((sum, item) => sum + item.events, 0)
-							)}</strong
-						>
-						<span>{$t('adminRateLimited')}</span>
-					</div>
-				</div>
-
-				<h2 class="h6 fw-bold mb-2">Database Overview ({o.durationDays}d window)</h2>
-				<div class="overview-grid mb-4">
-					<div class="overview-card">
-						<div class="overview-label">ai_test</div>
-						<div class="overview-total">{formatNumber(o.tables.ai_test.total)}</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.ai_test.recent)} in period
-						</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">attempts</div>
-						<div class="overview-total">
-							{formatNumber(o.tables.ai_test_attempts.total)}
-						</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.ai_test_attempts.recent)} · avg {o.tables
-								.ai_test_attempts.avg_score}%
-						</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">users</div>
-						<div class="overview-total">{formatNumber(o.tables.app_user.total)}</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.app_user.recent)} active
-						</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">sessions</div>
-						<div class="overview-total">
-							{formatNumber(o.tables.app_user_session.active)}
-						</div>
-						<div class="overview-recent">active now</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">state users</div>
-						<div class="overview-total">
-							{formatNumber(o.tables.app_user_state.distinct_users)}
-						</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.app_user_state.recent)} in period
-						</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">rate limits</div>
-						<div class="overview-total">
-							{formatNumber(o.tables.api_rate_limit_events.total)}
-						</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.api_rate_limit_events.recent)} in period
-						</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">api events</div>
-						<div class="overview-total">
-							{formatNumber(o.tables.api_request_events.total)}
-						</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.api_request_events.recent)} · {formatNumber(
-								o.tables.api_request_events.errors
-							)} errors
-						</div>
-					</div>
-					<div class="overview-card">
-						<div class="overview-label">feature events</div>
-						<div class="overview-total">
-							{formatNumber(o.tables.feature_events.total)}
-						</div>
-						<div class="overview-recent">
-							+{formatNumber(o.tables.feature_events.recent)} · {formatNumber(
-								o.tables.feature_events.sessions
-							)} sessions
-						</div>
-					</div>
-				</div>
-
-				{#if o.testBreakdown?.byMode?.length || o.testBreakdown?.byDifficulty?.length || o.testBreakdown?.byLanguage?.length}
-					<div class="row g-3 mb-4">
-						{#if o.testBreakdown?.byMode?.length}
-							<section class="col-md-4">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Tests by Mode</h3>
-									{#each o.testBreakdown.byMode as item (item.test_mode)}
-										<div
-											class="d-flex justify-content-between align-items-center border-bottom py-2"
-										>
-											<span>{item.test_mode || '-'}</span><strong
-												>{item.count}</strong
-											>
-										</div>
-									{/each}
-								</div>
-							</section>
-						{/if}
-						{#if o.testBreakdown?.byDifficulty?.length}
-							<section class="col-md-4">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Tests by Difficulty</h3>
-									{#each o.testBreakdown.byDifficulty as item (item.difficulty)}
-										<div
-											class="d-flex justify-content-between align-items-center border-bottom py-2"
-										>
-											<span>{item.difficulty || '-'}</span><strong
-												>{item.count}</strong
-											>
-										</div>
-									{/each}
-								</div>
-							</section>
-						{/if}
-						{#if o.testBreakdown?.byLanguage?.length}
-							<section class="col-md-4">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Tests by Language</h3>
-									{#each o.testBreakdown.byLanguage as item (item.language)}
-										<div
-											class="d-flex justify-content-between align-items-center border-bottom py-2"
-										>
-											<span>{item.language || '-'}</span><strong
-												>{item.count}</strong
-											>
-										</div>
-									{/each}
-								</div>
-							</section>
-						{/if}
-					</div>
-				{/if}
-
-				{#if o.attemptStats}
-					<div class="bg-body border rounded-3 p-3 mb-4">
-						<h3 class="h6 fw-bold mb-2">Attempt Quality (period)</h3>
-						<div class="d-flex flex-wrap gap-3">
-							<span
-								>Avg Score: <strong>{o.attemptStats.avg_score ?? '-'}%</strong
-								></span
-							>
-							<span
-								>Median Score: <strong>{o.attemptStats.median_score ?? '-'}%</strong
-								></span
-							>
-							<span
-								>Perfect Scores: <strong
-									>{formatNumber(o.attemptStats.perfect_scores)}</strong
-								></span
-							>
-						</div>
-					</div>
-				{/if}
-			{/if}
-
-			<!-- TRAFFIC TAB -->
-			{#if activeTab === 'traffic'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<h2 class="h6 fw-bold mb-3">Requests ({days > 0 ? `${days}d` : 'all time'})</h2>
-					{#if stats.hourly?.length}
-						{@const maxRequests = Math.max(
-							...stats.hourly.map((item) => item.requests),
-							1
-						)}
-						<div class="hour-chart">
-							{#each stats.hourly as item (item.bucket)}
-								<div
-									class="hour-bar"
-									title={`${hourLabel(item.bucket)} — ${item.requests}`}
-								>
-									<div
-										class="hour-bar-fill"
-										style={`height: ${Math.max((item.requests / maxRequests) * 100, 3)}%`}
-									></div>
-									<span class="hour-bar-label">{item.requests}</span>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-muted small mb-0">{$t('adminEmpty')}</p>
-					{/if}
-				</div>
-
-				<div class="row g-3">
-					<section class="col-lg-6">
-						<div class="bg-body border rounded-3 p-3">
-							<h2 class="h6 fw-bold mb-2">{$t('adminByRoute')}</h2>
-							<div class="overflow-x-auto">
-								<table class="admin-table">
-									<thead
-										><tr
-											><th>{$t('adminColumnRoute')}</th><th
-												>{$t('adminColumnRequests')}</th
-											><th>{$t('adminErrors')}</th><th
-												>{$t('adminAvgDuration')}</th
-											></tr
-										></thead
-									>
-									<tbody>
-										{#each stats.byRoute || [] as item (item.route)}
-											<tr
-												><td class="mono">{item.route}</td><td
-													>{formatNumber(item.requests)}</td
-												><td>{formatNumber(item.errors)}</td><td
-													>{item.avg_duration_ms} ms</td
-												></tr
-											>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						</div>
-					</section>
-					<section class="col-lg-6">
-						<div class="bg-body border rounded-3 p-3">
-							<h2 class="h6 fw-bold mb-2">{$t('adminByStatus')}</h2>
-							{#each stats.byStatus || [] as item (item.status_code)}
-								<div
-									class="d-flex justify-content-between align-items-center border-bottom py-2"
-								>
-									<span>{item.status_code ?? '-'}</span><strong
-										>{formatNumber(item.requests)}</strong
-									>
-								</div>
-							{/each}
-							{#if !stats.byStatus?.length}<p class="text-muted small mb-0">
-									{$t('adminEmpty')}
-								</p>{/if}
-						</div>
-					</section>
-				</div>
-			{/if}
-
-			<!-- GEO & AGENTS TAB -->
-			{#if activeTab === 'geo'}
-				<div class="row g-3">
-					<section class="col-lg-6">
-						<div class="bg-body border rounded-3 p-3">
-							<h2 class="h6 fw-bold mb-2">{$t('adminByCountry')}</h2>
-							{#each stats.byCountry || [] as item (item.country)}
-								<div
-									class="d-flex justify-content-between align-items-center border-bottom py-2"
-								>
-									<span>{item.country}</span><strong
-										>{formatNumber(item.requests)}</strong
-									>
-								</div>
-							{/each}
-							{#if !stats.byCountry?.length}<p class="text-muted small mb-0">
-									{$t('adminEmpty')}
-								</p>{/if}
-						</div>
-					</section>
-					<section class="col-lg-6">
-						<div class="bg-body border rounded-3 p-3">
-							<h2 class="h6 fw-bold mb-2">{$t('adminTopAgents')}</h2>
-							{#each stats.topAgents || [] as item (item.user_agent)}
-								<div
-									class="d-flex justify-content-between align-items-start gap-2 border-bottom py-2"
-								>
-									<div class="min-w-0">
-										<div class="small text-truncate mono">
-											{item.user_agent}
-										</div>
-										<span class="badge text-bg-secondary"
-											>{agentFamily(item.user_agent)}</span
-										>
-									</div>
-									<strong>{formatNumber(item.requests)}</strong>
-								</div>
-							{/each}
-							{#if !stats.topAgents?.length}<p class="text-muted small mb-0">
-									{$t('adminEmpty')}
-								</p>{/if}
-						</div>
-					</section>
-				</div>
-			{/if}
-
-			<!-- RECENT EVENTS TAB -->
-			{#if activeTab === 'recent'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<h2 class="h6 fw-bold mb-2">{$t('adminRecentEvents')}</h2>
-					<div class="overflow-x-auto">
-						<table class="admin-table">
-							<thead
-								><tr
-									><th>{$t('adminColumnTime')}</th><th
-										>{$t('adminColumnRoute')}</th
-									><th>{$t('adminColumnAction')}</th><th
-										>{$t('adminColumnStatus')}</th
-									><th>{$t('adminColumnDuration')}</th><th
-										>{$t('adminColumnCountry')}</th
-									><th>{$t('adminColumnCity')}</th><th
-										>{$t('adminColumnClient')}</th
-									></tr
-								></thead
-							>
-							<tbody>
-								{#each stats.recent || [] as item (item.id)}
-									<tr>
-										<td>{formatTime(item.created_at)}</td>
-										<td class="mono">{item.route}</td>
-										<td class="mono">{item.action || '-'}</td>
-										<td>{item.status_code ?? '-'}</td>
-										<td>{item.duration_ms ?? '-'}</td>
-										<td>{item.ip_country || '-'}</td>
-										<td>{item.ip_city || '-'}</td>
-										<td class="mono"
-											>{item.client_key
-												? `${item.client_key.slice(0, 8)}…`
-												: '-'}</td
-										>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-					{#if !stats.recent?.length}<p class="text-muted small mb-0">
-							{$t('adminEmpty')}
-						</p>{/if}
-				</div>
-			{/if}
-
-			<!-- FEATURE USAGE TAB -->
-			{#if activeTab === 'features'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<div
-						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
-					>
-						<h2 class="h6 fw-bold mb-0">{$t('adminFeatureUsage')}</h2>
-						<button
-							class="btn btn-sm btn-outline-secondary"
-							type="button"
-							onclick={() => void loadFeatureUsage()}>{$t('adminRefresh')}</button
-						>
-					</div>
-					{#if featureUsage}
-						<div class="stat-cards mb-4">
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatNumber(featureUsage.totals?.total)}</strong><span
-									>{$t('adminFeatureEvents')}</span
-								>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatNumber(featureUsage.totals?.sessions)}</strong><span
-									>{$t('adminFeatureSessions')}</span
-								>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{featureUsage.totals?.events_per_session || 0}</strong><span
-									>{$t('adminFeaturePerSession')}</span
-								>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatNumber(featureUsage.byEvent?.length)}</strong><span
-									>{$t('adminFeatureDistinct')}</span
-								>
-							</div>
-						</div>
-						<div class="row g-3 mb-4">
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">{$t('adminFeatureRanking')}</h3>
-									{#each featureUsage.byEvent || [] as item (item.event)}
-										{@const maxCount = featureUsage.byEvent?.[0]?.count || 1}
-										<div class="mb-2">
-											<div
-												class="d-flex justify-content-between gap-2 small mb-1"
-											>
-												<span class="mono text-truncate">{item.event}</span>
-												<span class="text-nowrap"
-													><strong>{formatNumber(item.count)}</strong>
-													<span class="text-muted"
-														>({item.pct ?? 0}%)</span
-													></span
-												>
-											</div>
-											<div class="feature-bar">
-												<div
-													class="feature-bar-fill"
-													style={`width: ${Math.max((item.count / maxCount) * 100, 2)}%`}
-												></div>
-											</div>
-										</div>
-									{/each}
-									{#if !featureUsage.byEvent?.length}<p
-											class="text-muted small mb-0"
-										>
-											{$t('adminEmpty')}
-										</p>{/if}
-								</div>
-							</section>
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">{$t('adminFeatureTrend')}</h3>
-									{#if featureUsage.trend?.length}
-										{@const maxTrend = Math.max(
-											...featureUsage.trend.map((item) => item.events),
-											1
-										)}
-										<div class="hour-chart">
-											{#each featureUsage.trend as item (item.day)}
-												<div
-													class="hour-bar"
-													title={`${dayLabel(item.day)} — ${item.events} (${item.sessions} sessions)`}
-												>
-													<div
-														class="hour-bar-fill"
-														style={`height: ${Math.max((item.events / maxTrend) * 100, 3)}%`}
-													></div>
-													<span class="hour-bar-label"
-														>{item.sessions}</span
-													>
-												</div>
-											{/each}
-										</div>
-									{:else}<p class="text-muted small mb-0">
-											{$t('adminEmpty')}
-										</p>{/if}
-								</div>
-							</section>
-						</div>
-						<div class="row g-3">
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">{$t('adminFeatureByPage')}</h3>
-									{#each featureUsage.byPage || [] as item (item.page)}
-										<div
-											class="d-flex justify-content-between align-items-center border-bottom py-2"
-										>
-											<span class="mono text-truncate pe-2">{item.page}</span
-											><strong>{formatNumber(item.events)}</strong>
-										</div>
-									{/each}
-									{#if !featureUsage.byPage?.length}<p
-											class="text-muted small mb-0"
-										>
-											{$t('adminEmpty')}
-										</p>{/if}
-								</div>
-							</section>
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">
-										{$t('adminFeatureGenerateBreakdown')}
-									</h3>
-									<div class="overflow-x-auto">
-										<table class="admin-table">
-											<thead
-												><tr
-													><th>{$t('adminFeatureMode')}</th><th
-														>{$t('adminFeatureDifficulty')}</th
-													><th>{$t('adminFeatureLanguage')}</th><th
-														>{$t('adminFeatureCount')}</th
-													></tr
-												></thead
-											>
-											<tbody>
-												{#each featureUsage.generateBreakdown || [] as item (`${item.mode}-${item.difficulty}-${item.language}`)}
-													<tr
-														><td class="mono">{item.mode}</td><td
-															class="mono">{item.difficulty}</td
-														><td class="mono">{item.language}</td><td
-															>{formatNumber(item.count)}</td
-														></tr
-													>
-												{/each}
-											</tbody>
-										</table>
-									</div>
-									{#if !featureUsage.generateBreakdown?.length}<p
-											class="text-muted small mb-0"
-										>
-											{$t('adminEmpty')}
-										</p>{/if}
-								</div>
-							</section>
-						</div>
-					{:else}
-						<div class="py-4 text-center">
-							<div class="thinking-dots" role="status">
-								<span></span><span></span><span></span>
-							</div>
-						</div>
-					{/if}
-				</div>
-			{/if}
-
-			<!-- DEVICE & NETWORK TAB -->
-			{#if activeTab === 'device'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<div
-						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
-					>
-						<h2 class="h6 fw-bold mb-0">Device &amp; network</h2>
-						<button
-							class="btn btn-sm btn-outline-secondary"
-							type="button"
-							onclick={() => void loadDeviceNetwork()}>Refresh</button
-						>
-					</div>
-					{#if deviceNetwork}
-						<div class="stat-cards mb-4">
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatNumber(deviceNetwork.identities)}</strong><span
-									>profiled identities</span
-								>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{deviceNetwork.coverage?.sharePct ?? '-'}%</strong><span
-									>profile coverage</span
-								>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{deviceNetwork.floor?.bucket ?? '-'}</strong><span
-									>supported floor (Mbps)</span
-								>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{deviceNetwork.floor?.failPct ?? '-'}%</strong><span
-									>generate failure at floor</span
-								>
-							</div>
-						</div>
-						<div class="row g-3">
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Device tier (per identity)</h3>
-									<div class="overflow-x-auto">
-										<table class="admin-table">
-											<thead
-												><tr
-													><th>Tier</th><th>Identities</th><th>Share</th
-													></tr
-												></thead
-											>
-											<tbody>
-												{#each deviceNetwork.tiers || [] as row (row.tier)}
-													<tr
-														><td class="mono">{row.tier}</td><td
-															>{formatNumber(row.identities)}</td
-														><td>{row.pct}%</td></tr
-													>
-												{/each}
-											</tbody>
-										</table>
-									</div>
-									{#if !deviceNetwork.tiers?.length}<p
-											class="text-muted small mb-0"
-										>
-											{$t('adminEmpty')}
-										</p>{/if}
-								</div>
-							</section>
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Top low-tier models</h3>
-									<div class="overflow-x-auto">
-										<table class="admin-table">
-											<thead
-												><tr
-													><th>Model</th><th>Android</th><th
-														>Identities</th
-													></tr
-												></thead
-											>
-											<tbody>
-												{#each deviceNetwork.topLowModels || [] as row (`${row.model}-${row.android}`)}
-													<tr
-														><td class="mono">{row.model}</td><td
-															class="mono">{row.android}</td
-														><td>{formatNumber(row.identities)}</td></tr
-													>
-												{/each}
-											</tbody>
-										</table>
-									</div>
-									{#if !deviceNetwork.topLowModels?.length}<p
-											class="text-muted small mb-0"
-										>
-											{$t('adminEmpty')}
-										</p>{/if}
-								</div>
-							</section>
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Network mix (worst per session)</h3>
-									{#each [['type', 'Effective type'], ['downlink', 'Downlink (Mbps)'], ['rtt', 'RTT (ms)']] as [key, label] (key)}
-										<h4 class="small fw-semibold mt-3 mb-1">{label}</h4>
-										<div class="overflow-x-auto">
-											<table class="admin-table">
-												<thead
-													><tr
-														><th>Bucket</th><th>Sessions</th><th>%</th
-														></tr
-													></thead
-												>
-												<tbody>
-													{#each deviceNetwork.network?.[key] || [] as row (row.bucket)}
-														<tr
-															><td class="mono">{row.bucket}</td><td
-																>{formatNumber(row.sessions)}</td
-															><td>{row.pct}%</td></tr
-														>
-													{/each}
-												</tbody>
-											</table>
-										</div>
-									{/each}
-								</div>
-							</section>
-							<section class="col-lg-6">
-								<div class="panel h-full">
-									<h3 class="h6 fw-bold mb-2">Generate outcomes by downlink</h3>
-									<div class="overflow-x-auto">
-										<table class="admin-table">
-											<thead
-												><tr
-													><th>Downlink</th><th>Started</th><th>Failed</th
-													><th>Fail %</th><th>Avg fail s</th></tr
-												></thead
-											>
-											<tbody>
-												{#each deviceNetwork.generateByDownlink || [] as row (row.bucket)}
-													<tr
-														><td class="mono">{row.bucket}</td><td
-															>{formatNumber(row.started)}</td
-														><td>{formatNumber(row.failed)}</td><td
-															>{row.failRate ?? '-'}</td
-														><td>{row.avgFailSeconds ?? '-'}</td></tr
-													>
-												{/each}
-											</tbody>
-										</table>
-									</div>
-								</div>
-							</section>
-						</div>
-						{#if deviceNetwork.floor}
-							<p class="text-muted small mt-3 mb-0">
-								Supported floor: downlink {deviceNetwork.floor.bucket} Mbps (p10, covers
-								{deviceNetwork.floor.coveragePct}% of sessions with a known
-								downlink) · RTT p90 {deviceNetwork.floor.rttBucket ?? 'unknown'} ms ·
-								generate failure at or below: {deviceNetwork.floor.failPct ?? '-'}%
-								({deviceNetwork.floor.failedBelow}/{deviceNetwork.floor
-									.startedBelow})
-							</p>
-						{/if}
-					{:else}
-						<div class="py-4 text-center">
-							<div class="thinking-dots" role="status">
-								<span></span><span></span><span></span>
-							</div>
-						</div>
-					{/if}
-				</div>
-			{/if}
-
-			<!-- HEALTH TAB -->
-			{#if activeTab === 'patterns'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<div
-						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
-					>
-						<h2 class="h6 fw-bold mb-0">Exam patterns</h2>
-						<button
-							class="btn btn-sm btn-outline-secondary"
-							type="button"
-							onclick={() => void loadPatterns()}>Refresh list</button
-						>
-					</div>
-					{#if patternMessage}
-						<p class="small text-muted">{patternMessage}</p>
-					{/if}
-					{#if examPatterns}
-						{#if examPatterns.length === 0}
-							<p class="text-muted small mb-0">No patterns cached yet.</p>
-						{:else}
-							<div class="overflow-x-auto">
-								<table class="table table-sm align-middle mb-0">
-									<thead>
-										<tr>
-											<th>Key</th>
-											<th>Exam</th>
-											<th>Year</th>
-											<th>Sections</th>
-											<th>Fetched</th>
-											<th>Expires</th>
-											<th></th>
-										</tr>
-									</thead>
-									<tbody>
-										{#each examPatterns as pattern (pattern.patternKey)}
-											<tr>
-												<td class="text-muted small"
-													>{pattern.patternKey}</td
-												>
-												<td>{pattern.examName || '-'}</td>
-												<td>{pattern.patternYear || '-'}</td>
-												<td>{pattern.sectionCount}</td>
-												<td>{formatTime(pattern.fetchedAt)}</td>
-												<td>{formatTime(pattern.expiresAt)}</td>
-												<td>
-													<button
-														class="btn btn-sm btn-outline-secondary"
-														type="button"
-														disabled={!pattern.refreshable ||
-															patternBusyKey === pattern.patternKey}
-														onclick={() =>
-															refreshPatternRow(pattern.patternKey)}
-													>
-														Refresh
-													</button>
-												</td>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						{/if}
-					{:else}
-						<p class="text-muted small mb-0">Failed to load patterns.</p>
-					{/if}
-				</div>
-			{/if}
-
-			{#if activeTab === 'premium'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<h2 class="h6 fw-bold mb-3">Premium access</h2>
-					<form class="row g-3 align-items-end mb-3" onsubmit={grantPremium}>
-						<div class="col-md-4">
-							<label class="form-label small" for="premium-email">User email</label>
-							<input
-								id="premium-email"
-								class="form-control"
-								type="email"
-								bind:value={premiumEmail}
-								required
-							/>
-						</div>
-						<div class="col-md-3">
-							<label class="form-label small" for="premium-expiry"
-								>Expires (optional)</label
-							>
-							<input
-								id="premium-expiry"
-								class="form-control"
-								type="date"
-								bind:value={premiumExpiry}
-							/>
-						</div>
-						<div class="col-md-3">
-							<label class="form-label small" for="premium-notes">Notes</label>
-							<input
-								id="premium-notes"
-								class="form-control"
-								type="text"
-								maxlength="200"
-								bind:value={premiumNotes}
-							/>
-						</div>
-						<div class="col-md-2">
-							<button
-								class="btn btn-sm btn-primary w-full"
-								type="submit"
-								disabled={premiumBusy}
-							>
-								Grant
-							</button>
-						</div>
-					</form>
-					{#if premiumMessage}
-						<p class="small text-muted">{premiumMessage}</p>
-					{/if}
-					{#if premiumGrants}
-						<div class="overflow-x-auto">
-							<table class="table table-sm align-middle mb-0">
-								<thead>
-									<tr>
-										<th>User</th>
-										<th>Feature</th>
-										<th>Status</th>
-										<th>Granted</th>
-										<th>Expires</th>
-										<th></th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each premiumGrants as grant (grant.id)}
-										<tr>
-											<td>
-												{grant.email || `user #${grant.user_id}`}
-												{#if grant.name}
-													<span class="text-muted small">
-														· {grant.name}</span
-													>
-												{/if}
-											</td>
-											<td>{grant.feature}</td>
-											<td>{grant.status}</td>
-											<td>{formatTime(grant.granted_at)}</td>
-											<td
-												>{grant.expires_at
-													? formatTime(grant.expires_at)
-													: 'never'}</td
-											>
-											<td>
-												{#if grant.status === 'active'}
-													<button
-														class="btn btn-sm btn-outline-secondary"
-														type="button"
-														disabled={premiumBusy}
-														onclick={() => revokePremium(grant.user_id)}
-													>
-														Revoke
-													</button>
-												{/if}
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<p class="text-muted small mb-0">No grants yet.</p>
-					{/if}
-				</div>
-			{/if}
-
-			{#if activeTab === 'health'}
-				<div class="bg-body border rounded-3 p-3 mb-4">
-					<div
-						class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
-					>
-						<div class="d-flex align-items-center gap-2">
-							<h2 class="h6 fw-bold mb-0">Live health</h2>
-							{#if health}
-								<span
-									class="badge"
-									class:text-bg-success={health.status === 'ok'}
-									class:text-bg-warning={health.status !== 'ok'}
-								>
-									{health.status === 'ok' ? 'OK' : 'Degraded'}
-								</span>
-							{/if}
-						</div>
-						<div class="d-flex align-items-center gap-2">
-							<div class="btn-group btn-group-sm" role="group" aria-label="Window">
-								{#each HEALTH_WINDOWS as opt (opt.value)}
-									<button
-										class="btn"
-										class:btn-primary={healthWindow === opt.value}
-										class:btn-outline-secondary={healthWindow !== opt.value}
-										type="button"
-										onclick={() => {
-											healthWindow = opt.value;
-											void loadHealth();
-										}}>{opt.label}</button
-									>
-								{/each}
-							</div>
-							<button
-								class="btn btn-sm btn-outline-secondary"
-								type="button"
-								disabled={healthLoading}
-								onclick={() => void loadHealth()}>Refresh</button
-							>
-						</div>
-					</div>
-
-					{#if health}
-						<p class="text-muted small mb-3">
-							Deployment:
-							<span class="mono">
-								{health.deployment?.provider || '-'} · {health.deployment
-									?.environment || '-'}
-								{#if health.deployment?.region}· {health.deployment.region}{/if}
-								{#if health.deployment?.commit}· {health.deployment.commit}{/if}
-								{#if health.deployment?.branch}· {health.deployment.branch}{/if}
-								{#if health.deployment?.runtime}· {health.deployment.runtime}{/if}
-							</span>
-						</p>
-
-						{#if health.status !== 'ok'}
-							<div class="alert alert-warning py-2 small mb-3">
-								Some metrics could not be loaded. Check the database connection and
-								server logs.
-							</div>
-						{/if}
-
-						<div class="stat-cards mb-4">
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.requests?.requestsPerSecond)}</strong>
-								<span>Requests/sec</span>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.requests?.avgLatencyMs, ' ms')}</strong>
-								<span>Avg latency</span>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.requests?.p90LatencyMs, ' ms')}</strong>
-								<span>p90 latency</span>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.requests?.p99LatencyMs, ' ms')}</strong>
-								<span>p99 latency</span>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.requests?.errorRate, '%')}</strong>
-								<span>Error rate</span>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.system?.cpu?.usagePercent, '%')}</strong
-								>
-								<span>CPU usage (per core)</span>
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatBytes(health.system?.memory?.rssBytes)}</strong>
-								<span>Memory usage</span>
-								{#if health.system?.memory?.rssPercentOfLimit != null}
-									<span class="text-muted small">
-										{health.system.memory.rssPercentOfLimit}% of {formatBytes(
-											health.system.memory.limitBytes
-										)}
-									</span>
-								{/if}
-							</div>
-							<div class="bg-body border rounded-3 p-3">
-								<strong>{formatValue(health.database?.latencyMs, ' ms')}</strong>
-								<span>DB latency</span>
-							</div>
-						</div>
-
-						<div class="row g-3">
-							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3">
-									<h3 class="h6 fw-bold mb-2">DB connections</h3>
-									<div class="d-flex flex-wrap gap-3">
-										<span
-											>Total:
-											<strong
-												>{health.database?.connections?.total ??
-													'-'}</strong
-											></span
-										>
-										<span
-											>Active:
-											<strong
-												>{health.database?.connections?.active ??
-													'-'}</strong
-											></span
-										>
-										<span
-											>Idle:
-											<strong
-												>{health.database?.connections?.idle ?? '-'}</strong
-											></span
-										>
-									</div>
-									<p class="text-muted small mb-0 mt-2">
-										Instance pool:
-										{health.database?.connections?.instancePool?.total ?? '-'} total
-										·
-										{health.database?.connections?.instancePool?.idle ?? '-'} idle
-										·
-										{health.database?.connections?.instancePool?.waiting ?? '-'} waiting
-									</p>
-								</div>
-							</section>
-							<section class="col-lg-6">
-								<div class="bg-body border rounded-3 p-3">
-									<h3 class="h6 fw-bold mb-2">Health</h3>
-									<p class="text-muted small mb-0">
-										CPU and memory are for the serverless instance that served
-										this request. Requests and database metrics span all
-										instances.
-									</p>
-									<p class="text-muted small mb-0 mt-2">
-										Deployment: {health.deployment?.environment || '-'}
-										{#if health.deployment?.region}· {health.deployment
-												.region}{/if}
-									</p>
-								</div>
-							</section>
-						</div>
-					{:else}
-						<div class="py-4 text-center">
-							<div class="thinking-dots" role="status">
-								<span></span><span></span><span></span>
-							</div>
-						</div>
-					{/if}
-				</div>
+			{#if activeTab === 'overview'}
+				<AdminOverview
+					{stats}
+					{featureUsage}
+					{deviceNetwork}
+					{days}
+					{compare}
+					{loading}
+					{errors}
+					onRetry={retry}
+					onNavigate={setTab}
+					onOpenLogs={openLogs}
+				/>
+			{:else if activeTab === 'traffic'}
+				<AdminTraffic {stats} {days} {compare} {loading} {errors} onRetry={retry} />
+			{:else if activeTab === 'engagement'}
+				<AdminEngagement
+					{featureUsage}
+					{days}
+					{compare}
+					{loading}
+					{errors}
+					onRetry={retry}
+				/>
+			{:else if activeTab === 'reliability'}
+				<AdminReliability {deviceNetwork} {days} {loading} {errors} onRetry={retry} />
+			{:else if activeTab === 'logs'}
+				<AdminLogs
+					{stats}
+					{logs}
+					filters={logFilters}
+					{days}
+					loading={loading.logs}
+					error={errors.logs}
+					onFilterChange={setLogFilter}
+					onLoadMore={() => void loadLogs({ append: true })}
+					onRetry={() => void loadLogs()}
+				/>
+			{:else if activeTab === 'health'}
+				<AdminHealth
+					{health}
+					{healthWindow}
+					loading={loading.health}
+					error={errors.health}
+					onRetry={() => void loadHealth()}
+				/>
+			{:else if activeTab === 'manage'}
+				<AdminManage
+					{premiumGrants}
+					{premiumBusy}
+					{premiumMessage}
+					onGrant={grantPremium}
+					onRevoke={revokePremium}
+					{examPatterns}
+					{patternBusyKey}
+					{patternMessage}
+					onRefreshPatterns={() => void loadPatterns()}
+					onRefreshPattern={(key) => void refreshPattern(key)}
+				/>
 			{/if}
 		{/if}
 	</div>
@@ -1470,173 +677,5 @@
 <style>
 	.admin-login {
 		max-width: 420px;
-	}
-
-	.tab-bar {
-		display: flex;
-		flex-wrap: nowrap;
-		gap: 0;
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
-		scrollbar-width: thin;
-		border-bottom: 2px solid var(--line);
-	}
-	.tab-btn {
-		flex: none;
-		min-height: 44px;
-		padding: 10px 18px;
-		font-size: 0.85rem;
-		font-weight: 600;
-		white-space: nowrap;
-		color: var(--text-muted);
-		background: none;
-		border: none;
-		border-bottom: 2px solid transparent;
-		margin-bottom: -2px;
-		cursor: pointer;
-		transition:
-			color 0.15s,
-			border-color 0.15s;
-	}
-	.tab-btn:hover {
-		color: var(--text);
-	}
-	.tab-btn.active {
-		color: var(--brand-text);
-		border-bottom-color: var(--brand-text);
-	}
-
-	.stat-cards {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 12px;
-	}
-	.stat-cards > div,
-	.overview-card {
-		display: flex;
-		min-height: 72px;
-		align-items: center;
-		flex-direction: column;
-		justify-content: center;
-		text-align: center;
-	}
-	.stat-cards strong,
-	.overview-total {
-		font-size: 1.25rem;
-		font-weight: 700;
-	}
-	.stat-cards span {
-		color: var(--text-muted);
-		font-size: 0.75rem;
-	}
-
-	.overview-grid {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 10px;
-	}
-	.overview-card {
-		background: var(--surface);
-		border: 1px solid var(--line);
-		border-radius: var(--radius-surface);
-		padding: 12px 8px;
-		min-height: 76px;
-	}
-	.overview-label {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: var(--text-muted);
-	}
-	.overview-recent {
-		color: var(--text-muted);
-		font-size: 0.65rem;
-		margin-top: 2px;
-	}
-
-	.hour-chart {
-		display: flex;
-		height: 140px;
-		align-items: flex-end;
-		gap: 3px;
-	}
-	.hour-bar {
-		display: flex;
-		flex: 1;
-		min-width: 0;
-		height: 100%;
-		align-items: center;
-		flex-direction: column;
-		justify-content: flex-end;
-		gap: 2px;
-	}
-	.hour-bar-fill {
-		width: 100%;
-		min-height: 3px;
-		border-radius: 4px 4px 0 0;
-		background: var(--color-brand-600);
-	}
-	.hour-bar-label {
-		color: var(--text-muted);
-		font-size: 0.65rem;
-	}
-
-	.feature-bar {
-		height: 8px;
-		overflow: hidden;
-		border-radius: 4px;
-		background: color-mix(in srgb, var(--line) 60%, transparent);
-	}
-	.feature-bar-fill {
-		height: 100%;
-		border-radius: 4px;
-		background: var(--color-brand-600);
-	}
-
-	.admin-table {
-		width: 100%;
-		font-size: 0.85rem;
-		border-collapse: collapse;
-	}
-	.admin-table th {
-		padding: 8px 10px;
-		text-align: left;
-		border-bottom: 1px solid var(--line);
-		color: var(--text-muted);
-		font-size: 0.75rem;
-		white-space: nowrap;
-	}
-	.admin-table td {
-		padding: 7px 10px;
-		border-bottom: 1px solid var(--line);
-		vertical-align: top;
-		white-space: nowrap;
-	}
-	.admin-table tr:last-child td {
-		border-bottom: 0;
-	}
-	.mono {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 0.78rem;
-	}
-	.min-w-0 {
-		min-width: 0;
-	}
-
-	@media (max-width: 767.98px) {
-		.stat-cards,
-		.overview-grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.tab-btn {
-			padding: 10px 12px;
-			font-size: 0.78rem;
-		}
-		/* 24 hourly labels cannot sit side by side on a phone; keep the
-		   six-hour marks (00, 06, 12, 18) and drop the rest. */
-		.hour-bar:not(:nth-child(6n + 1)) .hour-bar-label {
-			display: none;
-		}
 	}
 </style>

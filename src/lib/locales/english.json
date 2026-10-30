@@ -621,7 +621,6 @@
 	"adminFeatureByPage": "Events by page",
 	"adminFeatureTrend": "Daily events",
 	"adminFeatureGenerateBreakdown": "Generation breakdown (mode · difficulty · language)",
-	"adminDaysShort": "days",
 	"adminFeatureDistinct": "Distinct events",
 	"adminFeatureMode": "Mode",
 	"adminFeatureDifficulty": "Difficulty",

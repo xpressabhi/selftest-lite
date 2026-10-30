@@ -1,7 +1,7 @@
 import { dev } from '$app/env';
 import { E2E_DB_BRIDGE, DATABASE_URL } from '$app/env/private';
 import { parseRequestBody } from '#lib/server/requestBody.js';
-import { query } from '#lib/server/storage.js';
+import { query, ensureStorageSchema } from '#lib/server/storage.js';
 import { clearTestResponseCaches } from '#lib/server/testResponseCache.js';
 import { isPgliteUrl } from '#lib/server/testDb.js';
 
@@ -25,6 +25,7 @@ export async function POST({ request }) {
 		if (typeof sql !== 'string' || sql.trim().length === 0 || sql.length > MAX_SQL_CHARS) {
 			return Response.json({ error: 'Invalid SQL' }, { status: 400 });
 		}
+		await ensureStorageSchema();
 		const result = await query(sql, Array.isArray(params) ? params : []);
 		// Seeding can make any cached read stale; clearing here keeps the e2e
 		// suite deterministic now that GET /api/test serves cached reads.

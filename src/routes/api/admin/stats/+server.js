@@ -21,14 +21,18 @@ export async function GET({ request, url }) {
 		}
 
 		const recentLimit = Number(url.searchParams.get('recent')) || 50;
-		const days = Number(url.searchParams.get('days')) || 0;
+		const daysParam = Number(url.searchParams.get('days'));
+		const days = Number.isFinite(daysParam) ? daysParam : 0;
 		const [stats, overview] = await Promise.all([
 			getAdminStats({ recentLimit, days }),
-			getDatabaseOverview({ days: days || 7 }),
+			getDatabaseOverview({ days }),
 		]);
 		return Response.json({ ...stats, overview });
 	} catch (error) {
 		console.error(error);
-		return Response.json({ error: 'Failed to load stats', code: 'ADMIN_STATS_ERROR' }, { status: 500 });
+		return Response.json(
+			{ error: 'Failed to load stats', code: 'ADMIN_STATS_ERROR' },
+			{ status: 500 }
+		);
 	}
 }

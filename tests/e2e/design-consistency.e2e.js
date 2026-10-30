@@ -597,7 +597,7 @@ test('authenticated admin uses the shared desktop shell', async ({ page }, testI
 	});
 	expect(login.status()).toBe(200);
 	await page.goto('/admin', { waitUntil: 'load' });
-	await page.locator('.tab-bar').waitFor({ state: 'visible' });
+	await page.locator('.desktop-tabs').waitFor({ state: 'visible' });
 	await settled(page);
 	const report = await page.evaluate(auditDesktopShell);
 	await testInfo.attach('evidence', {

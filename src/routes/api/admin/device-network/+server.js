@@ -20,7 +20,8 @@ export async function GET({ request, url }) {
 			return rateLimited(rateLimit);
 		}
 
-		const days = Number(url.searchParams.get('days')) || 30;
+		const daysParam = Number(url.searchParams.get('days'));
+		const days = Number.isFinite(daysParam) ? daysParam : 30;
 		const stats = await getDeviceNetworkStats({ days });
 		return Response.json(stats);
 	} catch (error) {
