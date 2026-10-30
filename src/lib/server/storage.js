@@ -1913,6 +1913,83 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 						AND created_at < NOW() - INTERVAL '${cappedDays} days'`
 				)
 			: Promise.resolve({ rows: [] });
+	const activityQuery = plan
+		? query(
+				`WITH buckets AS (
+					SELECT ${plan.buckets} AS bucket
+				)
+				SELECT
+					b.bucket,
+					COALESCE(t.created, 0)::INTEGER AS created,
+					COALESCE(a.attempted, 0)::INTEGER AS attempted,
+					COALESCE(v.visits, 0)::INTEGER AS visits
+				FROM buckets b
+				LEFT JOIN (
+					SELECT date_trunc('${plan.trunc}', created_at) AS bucket, COUNT(*)::INTEGER AS created
+					FROM ai_test
+					WHERE ${plan.filter}
+					GROUP BY 1
+				) t ON t.bucket = b.bucket
+				LEFT JOIN (
+					SELECT date_trunc('${plan.trunc}', created_at) AS bucket, COUNT(*)::INTEGER AS attempted
+					FROM ai_test_attempts
+					WHERE ${plan.filter}
+					GROUP BY 1
+				) a ON a.bucket = b.bucket
+				LEFT JOIN (
+					SELECT
+						date_trunc('${plan.trunc}', created_at) AS bucket,
+						COUNT(DISTINCT COALESCE(session_id, client_id))::INTEGER AS visits
+					FROM feature_events
+					WHERE event = 'page:view' AND ${plan.filter}
+					GROUP BY 1
+				) v ON v.bucket = b.bucket
+				ORDER BY b.bucket`
+			)
+		: query(
+				`WITH bounds AS (
+					SELECT
+						date_trunc(
+							'week',
+							LEAST(
+								(SELECT MIN(created_at) FROM ai_test),
+								(SELECT MIN(created_at) FROM ai_test_attempts),
+								(SELECT MIN(created_at) FROM feature_events WHERE event = 'page:view')
+							)
+						) AS start,
+						date_trunc('week', NOW()) AS finish
+				),
+				buckets AS (
+					SELECT generate_series(start, finish, INTERVAL '1 week') AS bucket
+					FROM bounds
+					WHERE start IS NOT NULL
+				)
+				SELECT
+					b.bucket,
+					COALESCE(t.created, 0)::INTEGER AS created,
+					COALESCE(a.attempted, 0)::INTEGER AS attempted,
+					COALESCE(v.visits, 0)::INTEGER AS visits
+				FROM buckets b
+				LEFT JOIN (
+					SELECT date_trunc('week', created_at) AS bucket, COUNT(*)::INTEGER AS created
+					FROM ai_test
+					GROUP BY 1
+				) t ON t.bucket = b.bucket
+				LEFT JOIN (
+					SELECT date_trunc('week', created_at) AS bucket, COUNT(*)::INTEGER AS attempted
+					FROM ai_test_attempts
+					GROUP BY 1
+				) a ON a.bucket = b.bucket
+				LEFT JOIN (
+					SELECT
+						date_trunc('week', created_at) AS bucket,
+						COUNT(DISTINCT COALESCE(session_id, client_id))::INTEGER AS visits
+					FROM feature_events
+					WHERE event = 'page:view'
+					GROUP BY 1
+				) v ON v.bucket = b.bucket
+				ORDER BY b.bucket`
+			);
 
 	const [
 		totalsResult,
@@ -1922,6 +1999,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 		previousSeriesResult,
 		previousTotalsResult,
 		previousRateLimitedResult,
+		activityResult,
 		byCountryResult,
 		byAgentFamilyResult,
 		topAgentsResult,
@@ -1962,6 +2040,7 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 		previousSeriesQuery,
 		previousTotalsQuery,
 		previousRateLimitedQuery,
+		activityQuery,
 		query(
 			`SELECT
 				COALESCE(NULLIF(ip_country, ''), 'unknown') AS country,
@@ -2027,6 +2106,8 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 		seriesPoints = seriesPoints.slice(-260);
 		truncated = true;
 	}
+	const activityPoints =
+		activityResult.rows.length > 260 ? activityResult.rows.slice(-260) : activityResult.rows;
 	const previousRequests = plan?.previousBuckets
 		? previousSeriesResult.rows.map((row) => row.requests)
 		: null;
@@ -2041,6 +2122,9 @@ export async function getAdminStats({ recentLimit = 50, days = 0 } = {}) {
 			points: seriesPoints,
 			previousRequests,
 			truncated,
+		},
+		activity: {
+			points: activityPoints,
 		},
 		comparison: {
 			windowDays: cappedDays,
@@ -2621,7 +2705,7 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent FROM ai_test`
 		),
 		query(
-			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_seconds FROM ai_test_attempts`
+			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${filter})::INTEGER AS recent, COALESCE(ROUND(AVG(score::numeric / NULLIF(total_questions, 0) * 100) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_score, COALESCE(ROUND(AVG(time_taken) FILTER (WHERE ${filter})), 0)::INTEGER AS avg_time_seconds FROM ai_test_attempts`
 		),
 		query(
 			`SELECT COUNT(*)::INTEGER AS total, COUNT(*) FILTER (WHERE ${userFilter})::INTEGER AS recent FROM app_user`
@@ -2649,7 +2733,7 @@ export async function getDatabaseOverview({ days = 7 } = {}) {
 			`SELECT language, COUNT(*)::INTEGER AS count FROM ai_test WHERE ${filter} GROUP BY language ORDER BY count DESC`
 		),
 		query(
-			`SELECT ROUND(AVG(score))::INTEGER AS avg_score, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score)::INTEGER AS median_score, COUNT(*) FILTER (WHERE score = total_questions)::INTEGER AS perfect_scores FROM ai_test_attempts WHERE ${filter}`
+			`SELECT ROUND(AVG(score::numeric / NULLIF(total_questions, 0) * 100))::INTEGER AS avg_score, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (score::numeric / NULLIF(total_questions, 0) * 100)::double precision)::INTEGER AS median_score, COUNT(*) FILTER (WHERE score = total_questions AND total_questions > 0)::INTEGER AS perfect_scores FROM ai_test_attempts WHERE ${filter}`
 		),
 	]);
 

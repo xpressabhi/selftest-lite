@@ -160,6 +160,24 @@ async function seed(sql) {
 			NOW() - (g || ' hours')::interval - INTERVAL '1 second'
 		FROM generate_series(1, 8) AS g
 	`;
+
+	// Tests and attempts power the activity chart. Attempts need a real FK row.
+	const testRows = await sql`
+		INSERT INTO ai_test (test, topic, language, num_questions, test_mode, difficulty, created_at)
+		SELECT
+			'{"topic":"e2e activity","questions":[]}'::jsonb, 'E2E activity', 'english', 4,
+			'quiz', 'medium', NOW() - (g || ' days')::interval
+		FROM generate_series(0, 3) AS g
+		RETURNING id
+	`;
+	const testId = testRows[0]?.id;
+	if (testId) {
+		await sql`
+			INSERT INTO ai_test_attempts (test_id, score, total_questions, time_taken, created_at)
+			SELECT ${testId}, 3, 4, 120, NOW() - ((g / 2) || ' days')::interval
+			FROM generate_series(0, 7) AS g
+		`;
+	}
 }
 
 test('admin charts expose deterministic buckets and keep the tab on filter change', async ({
@@ -172,6 +190,20 @@ test('admin charts expose deterministic buckets and keep the tab on filter chang
 	await expect(page.locator('.tab-btn.active')).toHaveText('Overview');
 	await expect(page.locator('.trend[data-window="7"]').first()).toBeVisible();
 	await page.screenshot({ path: 'test-results/admin-overview.png', fullPage: true });
+
+	const tabLabels = await page.locator('.desktop-tabs .tab-btn').allTextContents();
+	expect(tabLabels.slice(0, 2)).toEqual(['Overview', 'Tests']);
+	await page.getByRole('button', { name: 'Tests', exact: true }).click();
+	await expect(page.locator('.tab-btn.active')).toHaveText('Tests');
+	await expect(page.getByRole('heading', { name: 'Tests & visits' })).toBeVisible();
+	await expect(page.locator('.activity .legend')).toContainText('Tests created');
+	await expect(page.locator('.activity .legend')).toContainText('Attempts');
+	await expect(page.getByRole('heading', { name: 'Attempt quality' })).toBeVisible();
+	await expect(page.locator('.chart-card').filter({ hasText: 'Attempt quality' })).toContainText(
+		'% avg'
+	);
+	await expect(page.getByRole('heading', { name: 'Tests by language' })).toBeVisible();
+	await page.screenshot({ path: 'test-results/admin-tests.png', fullPage: true });
 
 	for (const [days, granularity, points] of [
 		[1, 'hour', 24],
@@ -187,6 +219,16 @@ test('admin charts expose deterministic buckets and keep the tab on filter chang
 		expect(body.series.points.every((point) => Number.isFinite(point.requests))).toBe(true);
 		expect(body.series.previousRequests).toHaveLength(points);
 		expect(body.comparison.previous).not.toBeNull();
+		expect(body.activity.points).toHaveLength(points);
+		expect(
+			body.activity.points.reduce((sum, point) => sum + Number(point.created), 0)
+		).toBeGreaterThan(0);
+		expect(
+			body.activity.points.reduce((sum, point) => sum + Number(point.attempted), 0)
+		).toBeGreaterThan(0);
+		expect(
+			body.activity.points.reduce((sum, point) => sum + Number(point.visits), 0)
+		).toBeGreaterThan(0);
 		if (days === 7) {
 			expect(body.comparison.previous.total).toBeGreaterThan(0);
 		}
@@ -196,6 +238,7 @@ test('admin charts expose deterministic buckets and keep the tab on filter chang
 	expect(allTime.series.granularity).toBe('week');
 	expect(allTime.comparison.previous).toBeNull();
 	expect(allTime.overview.durationDays).toBe(0);
+	expect(allTime.activity.points.length).toBeGreaterThan(0);
 
 	const featureWeek = await (await page.request.get('/api/admin/feature-usage?days=7')).json();
 	expect(featureWeek.trendGranularity).toBe('day');
@@ -263,6 +306,8 @@ test('admin charts expose deterministic buckets and keep the tab on filter chang
 			{
 				buckets: { hour: 24, day7: 7, day30: 30, day90: 90, allTime: 'week' },
 				featureTrendPoints: 7,
+				activitySeries: ['created', 'attempted', 'visits'],
+				testsTabBesideOverview: true,
 				tabRetainedOnFilterChange: true,
 				reloadPreservedUrlState: true,
 				backButtonRestoredTab: true,
@@ -324,6 +369,12 @@ test('mobile uses the picker and charts never overflow', async ({ page }, testIn
 		() => document.documentElement.scrollWidth - window.innerWidth
 	);
 	expect(overflow).toBeLessThanOrEqual(1);
+	await page.screenshot({ path: 'test-results/admin-mobile-overview.png', fullPage: true });
+
+	await page.getByLabel('Admin section', { exact: true }).selectOption('tests');
+	await expect(page.getByRole('heading', { name: 'Tests & visits' })).toBeVisible();
+	await expect(page.locator('.activity')).toBeVisible();
+	await page.screenshot({ path: 'test-results/admin-mobile-tests.png', fullPage: true });
 
 	await page.getByLabel('Admin section', { exact: true }).selectOption('reliability');
 	await expect(page.locator('select[aria-label="Admin section"]')).toHaveValue('reliability');

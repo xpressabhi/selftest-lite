@@ -3,6 +3,7 @@
 
 export const ADMIN_TABS = [
 	{ id: 'overview', label: 'Overview', group: 'Insights' },
+	{ id: 'tests', label: 'Tests', group: 'Insights' },
 	{ id: 'traffic', label: 'Traffic', group: 'Insights' },
 	{ id: 'engagement', label: 'Engagement', group: 'Insights' },
 	{ id: 'reliability', label: 'Reliability', group: 'Insights' },
@@ -12,7 +13,7 @@ export const ADMIN_TABS = [
 ];
 
 export const ADMIN_TAB_IDS = new Set(ADMIN_TABS.map((tab) => tab.id));
-export const INSIGHT_TABS = new Set(['overview', 'traffic', 'engagement', 'reliability']);
+export const INSIGHT_TABS = new Set(['overview', 'tests', 'traffic', 'engagement', 'reliability']);
 export const COMPARE_TABS = new Set(['overview', 'traffic', 'engagement']);
 
 export const DURATION_OPTIONS = [

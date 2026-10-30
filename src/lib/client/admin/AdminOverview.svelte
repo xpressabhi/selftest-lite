@@ -12,7 +12,6 @@
 		errorRateValues,
 		kpiDelta,
 		rankRows,
-		segmentsFromRows,
 		seriesLabels,
 		seriesValues,
 		statusSegments,
@@ -59,16 +58,6 @@
 		rankRows(stats?.byRoute, { key: 'requests', labelKey: 'route', limit: 8 })
 	);
 	const needsAttention = $derived(attentionItems({ stats, featureUsage, deviceNetwork }));
-	const modeSegments = $derived(
-		segmentsFromRows(overview?.testBreakdown?.byMode || [], 'test_mode', 'count')
-	);
-	const difficultySegments = $derived(
-		segmentsFromRows(overview?.testBreakdown?.byDifficulty || [], 'difficulty', 'count')
-	);
-	const languageSegments = $derived(
-		segmentsFromRows(overview?.testBreakdown?.byLanguage || [], 'language', 'count')
-	);
-	const attemptStats = $derived(overview?.attemptStats || null);
 	const periodLabel = $derived(days === 0 ? 'all time' : 'in period');
 	const previousLabel = $derived(
 		days === 0 ? '' : days === 1 ? 'vs previous 24h' : `vs previous ${days}d`
@@ -305,66 +294,6 @@
 			</div>
 		</section>
 	{/if}
-
-	{#if modeSegments.length || difficultySegments.length || languageSegments.length}
-		<div class="breakdown-grid">
-			{#if languageSegments.length}
-				<ChartCard title="Tests by language" subtitle={windowLabel(days)}>
-					<DonutChart
-						segments={languageSegments}
-						centerLabel="tests"
-						centerValue={formatNumber(
-							languageSegments.reduce((sum, item) => sum + item.value, 0)
-						)}
-						ariaLabel="Tests by language"
-						size={150}
-					/>
-				</ChartCard>
-			{/if}
-			{#if modeSegments.length}
-				<ChartCard title="Tests by mode" subtitle={windowLabel(days)}>
-					<RankBars
-						items={modeSegments.map((item) => ({ ...item, value: item.value }))}
-					/>
-				</ChartCard>
-			{/if}
-			{#if difficultySegments.length}
-				<ChartCard title="Tests by difficulty" subtitle={windowLabel(days)}>
-					<RankBars items={difficultySegments} />
-				</ChartCard>
-			{/if}
-		</div>
-	{/if}
-
-	{#if attemptStats && Number(overview?.tables?.ai_test_attempts?.total) > 0}
-		<ChartCard
-			title="Attempt quality"
-			subtitle={windowLabel(days)}
-			value={attemptStats.avg_score ?? 0}
-			valueSuffix="% avg"
-			caption={`Median ${attemptStats.median_score ?? 0}% · ${formatNumber(
-				attemptStats.perfect_scores
-			)} perfect scores`}
-		>
-			<div class="score-bar" aria-hidden="true">
-				<span
-					style={`width: ${Math.min(Math.max(Number(attemptStats.avg_score) || 0, 0), 100)}%`}
-				></span>
-			</div>
-			<div class="score-meta">
-				<span>Median <strong>{attemptStats.median_score ?? 0}%</strong></span>
-				<span>Perfect <strong>{formatNumber(attemptStats.perfect_scores)}</strong></span>
-				{#if overview?.tables?.ai_test_attempts?.avg_time_seconds}
-					<span
-						>Avg time
-						<strong
-							>{Math.round(overview.tables.ai_test_attempts.avg_time_seconds / 60)} min</strong
-						></span
-					>
-				{/if}
-			</div>
-		</ChartCard>
-	{/if}
 </section>
 
 <style>
@@ -388,12 +317,6 @@
 	.split-even {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 12px;
-	}
-
-	.breakdown-grid {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 12px;
 	}
 
@@ -458,37 +381,9 @@
 		font-size: 0.65rem;
 	}
 
-	.score-bar {
-		height: 10px;
-		overflow: hidden;
-		border-radius: 999px;
-		background: var(--surface-muted);
-	}
-
-	.score-bar span {
-		display: block;
-		height: 100%;
-		border-radius: inherit;
-		background: var(--brand-text);
-	}
-
-	.score-meta {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px 16px;
-		margin-top: 10px;
-		color: var(--text-muted);
-		font-size: 0.72rem;
-	}
-
-	.score-meta strong {
-		color: var(--text);
-	}
-
 	@media (max-width: 1023px) {
 		.split-main,
-		.split-even,
-		.breakdown-grid {
+		.split-even {
 			grid-template-columns: minmax(0, 1fr);
 		}
 

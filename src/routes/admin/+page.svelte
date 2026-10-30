@@ -11,6 +11,7 @@
 	import ConfirmDialog from '#lib/client/ConfirmDialog.svelte';
 	import AdminToolbar from '#lib/client/admin/AdminToolbar.svelte';
 	import AdminOverview from '#lib/client/admin/AdminOverview.svelte';
+	import AdminTests from '#lib/client/admin/AdminTests.svelte';
 	import AdminTraffic from '#lib/client/admin/AdminTraffic.svelte';
 	import AdminEngagement from '#lib/client/admin/AdminEngagement.svelte';
 	import AdminReliability from '#lib/client/admin/AdminReliability.svelte';
@@ -253,6 +254,8 @@
 		if (!authed) return;
 		if (tab === 'overview') {
 			await Promise.all([loadFeature({ force }), loadDevice({ force })]);
+		} else if (tab === 'tests') {
+			// stats carries the activity series and test breakdowns.
 		} else if (tab === 'traffic') {
 			// stats is the only dataset this tab needs.
 		} else if (tab === 'engagement') {
@@ -612,6 +615,8 @@
 					onNavigate={setTab}
 					onOpenLogs={openLogs}
 				/>
+			{:else if activeTab === 'tests'}
+				<AdminTests {stats} {days} {loading} {errors} onRetry={retry} />
 			{:else if activeTab === 'traffic'}
 				<AdminTraffic {stats} {days} {compare} {loading} {errors} onRetry={retry} />
 			{:else if activeTab === 'engagement'}
