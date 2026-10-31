@@ -6,15 +6,17 @@
 	import QuestionAssertionReasoning from './QuestionAssertionReasoning.svelte';
 	import QuestionMatching from './QuestionMatching.svelte';
 	import { formatDate } from './formatting.js';
-	import { estimatePrintLayout } from './printLayout.js';
+	import { estimatePrintLayoutInWorker } from './printLayout.js';
 	import { t } from './i18n';
 
 	let { paper = null, language = 'english', onpages = () => {} } = $props();
 
 	let splittable = $state(new Set());
+	let layoutSource = $state('');
 
 	$effect(() => {
 		const current = paper;
+		const locale = language === 'hindi' ? 'hi' : 'en';
 		if (!current) {
 			splittable = new Set();
 			onpages(0);
@@ -22,11 +24,14 @@
 		}
 		let cancelled = false;
 		const run = async () => {
-			const result = await estimatePrintLayout(current);
+			const root =
+				Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+			const result = await estimatePrintLayoutInWorker(current, { locale, root });
 			if (cancelled) {
 				return;
 			}
 			splittable = result.splittable;
+			layoutSource = result.source;
 			onpages(result.pages);
 		};
 		const idle = typeof requestIdleCallback === 'function';
@@ -85,7 +90,7 @@
 	}
 </script>
 
-<article class="print-paper">
+<article class="print-paper" data-layout-source={layoutSource}>
 	<div class="print-watermark" aria-hidden="true">selftest.in</div>
 
 	<header class="print-head">

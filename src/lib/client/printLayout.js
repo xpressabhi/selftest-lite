@@ -170,3 +170,71 @@ export async function estimatePrintLayout(paper, options = {}) {
 }
 
 export { A4_CONTENT_HEIGHT, A4_CONTENT_WIDTH };
+
+let workerRequest = 0;
+
+/**
+ * Measures large papers in a module worker (OffscreenCanvas + Pretext) so a
+ * 200-question print preview never runs its layout arithmetic on the main
+ * thread. Small papers use the idle main-thread path, which avoids fetching
+ * the worker bundle at all. Any worker failure falls back to the main thread.
+ */
+export async function estimatePrintLayoutInWorker(paper, options = {}) {
+	const count = Array.isArray(paper?.questions) ? paper.questions.length : 0;
+	const threshold = options.threshold ?? 40;
+	let offscreen = false;
+	if (typeof OffscreenCanvas !== 'undefined') {
+		try {
+			offscreen = Boolean(new OffscreenCanvas(1, 1).getContext('2d'));
+		} catch {
+			offscreen = false;
+		}
+	}
+	if (count < threshold || typeof Worker === 'undefined' || !offscreen) {
+		return { ...(await estimatePrintLayout(paper, options)), source: 'main' };
+	}
+
+	const id = ++workerRequest;
+	let payload;
+	try {
+		// Svelte state is a proxy; worker messaging needs a plain object.
+		payload = JSON.parse(JSON.stringify(paper));
+	} catch {
+		return { ...(await estimatePrintLayout(paper, options)), source: 'main' };
+	}
+	return new Promise((resolve) => {
+		let worker;
+		try {
+			worker = new Worker(new URL('./printLayout.worker.js', import.meta.url), {
+				type: 'module',
+			});
+		} catch {
+			void (async () => {
+				resolve({ ...(await estimatePrintLayout(paper, options)), source: 'main' });
+			})();
+			return;
+		}
+		const fallback = async () => {
+			worker.terminate();
+			resolve({ ...(await estimatePrintLayout(paper, options)), source: 'main' });
+		};
+		worker.onmessage = (event) => {
+			const data = event.data;
+			if (!data || data.id !== id) {
+				return;
+			}
+			worker.terminate();
+			if (!data.ok) {
+				void fallback();
+				return;
+			}
+			resolve({ pages: data.pages, splittable: new Set(data.splittable), source: 'worker' });
+		};
+		worker.onerror = () => void fallback();
+		try {
+			worker.postMessage({ id, paper: payload, locale: options.locale, root: options.root });
+		} catch {
+			void fallback();
+		}
+	});
+}
