@@ -83,10 +83,16 @@ function cacheKey(text, font, options) {
 
 function prepareCached(api, text, font, options) {
 	const key = cacheKey(text, font, options);
-	if (!preparedTextCache.has(key)) {
-		remember(preparedTextCache, key, api.prepare(text, font, options));
+	if (preparedTextCache.has(key)) {
+		return preparedTextCache.get(key);
 	}
-	return preparedTextCache.get(key);
+	try {
+		return remember(preparedTextCache, key, api.prepare(text, font, options));
+	} catch {
+		// Unsupported text (e.g. a script that needs Intl.Segmenter) or a font
+		// Canvas rejects: leave the estimate to the ResizeObserver.
+		return null;
+	}
 }
 
 function validWidth(width) {
@@ -130,7 +136,11 @@ export function layoutPreparedText(prepared, maxWidth, lineHeight) {
 	if (!prepared || !pretextApi || !validWidth(maxWidth)) {
 		return null;
 	}
-	return pretextApi.layout(prepared, maxWidth, lineHeight);
+	try {
+		return pretextApi.layout(prepared, maxWidth, lineHeight);
+	} catch {
+		return null;
+	}
 }
 
 /** Width of the widest line when only explicit line breaks apply. */
@@ -140,7 +150,14 @@ export async function measureNaturalWidth(text, font, options = {}) {
 		return null;
 	}
 	const prepared = prepareCached(api, String(text || ''), font || canvasFont(16), options);
-	return api.measureNaturalWidth(prepared);
+	if (!prepared) {
+		return null;
+	}
+	try {
+		return api.measureNaturalWidth(prepared);
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -154,45 +171,57 @@ export async function tightWidth(text, font, maxWidth, lineHeight, options = {})
 		return null;
 	}
 	const prepared = prepareCached(api, String(text || ''), font || canvasFont(16), options);
-	const initial = api.layout(prepared, maxWidth, lineHeight);
-	if (!initial || initial.lineCount === 0) {
+	if (!prepared) {
 		return null;
 	}
-	let lo = 1;
-	let hi = Math.ceil(maxWidth);
-	while (lo < hi) {
-		const mid = Math.floor((lo + hi) / 2);
-		const result = api.layout(prepared, mid, lineHeight);
-		if (result.lineCount <= initial.lineCount) {
-			hi = mid;
-		} else {
-			lo = mid + 1;
+	try {
+		const initial = api.layout(prepared, maxWidth, lineHeight);
+		if (!initial || initial.lineCount === 0) {
+			return null;
 		}
+		let lo = 1;
+		let hi = Math.ceil(maxWidth);
+		while (lo < hi) {
+			const mid = Math.floor((lo + hi) / 2);
+			const result = api.layout(prepared, mid, lineHeight);
+			if (result.lineCount <= initial.lineCount) {
+				hi = mid;
+			} else {
+				lo = mid + 1;
+			}
+		}
+		let maxLineWidth = 0;
+		const lineCount = api.walkLineRanges(prepared, lo, (line) => {
+			if (line.width > maxLineWidth) {
+				maxLineWidth = line.width;
+			}
+		});
+		return {
+			width: Math.ceil(maxLineWidth),
+			lineCount,
+			height: lineCount * lineHeight,
+		};
+	} catch {
+		return null;
 	}
-	let maxLineWidth = 0;
-	const lineCount = api.walkLineRanges(prepared, lo, (line) => {
-		if (line.width > maxLineWidth) {
-			maxLineWidth = line.width;
-		}
-	});
-	return {
-		width: Math.ceil(maxLineWidth),
-		lineCount,
-		height: lineCount * lineHeight,
-	};
 }
 
 /**
  * Line count and widest line of a mixed-font inline paragraph (text runs with
  * their own fonts, chips, boxes). Used for the section banner, whose label,
  * name and marks are different sizes on one wrapping row.
- */export async function measureRichInlineLines(items, maxWidth, options = {}) {
+ */
+export async function measureRichInlineLines(items, maxWidth, options = {}) {
 	const api = await loadRichInline();
 	if (!api || !validWidth(maxWidth) || !Array.isArray(items) || items.length === 0) {
 		return null;
 	}
-	const prepared = api.prepareRichInline(items, options);
-	return api.measureRichInlineStats(prepared, maxWidth);
+	try {
+		const prepared = api.prepareRichInline(items, options);
+		return api.measureRichInlineStats(prepared, maxWidth);
+	} catch {
+		return null;
+	}
 }
 
 export async function measureText(text, font, maxWidth, lineHeight, options = {}) {
@@ -322,8 +351,12 @@ export async function estimateQuestionCardHeight(question, cardWidth, context = 
 
 	const questionFont = canvasFont(fontPx(root * 1.05), 600);
 	const questionLineHeight = px(root * 1.05 * 1.5);
+	// A matching question renders its columns as a grid, which measureMatching()
+	// already accounts for. questionTextFor() would count those columns twice.
+	const questionText =
+		question.format === 'matching' ? question.question || '' : questionTextFor(question);
 	const questionResult = await measureText(
-		questionTextFor(question),
+		questionText,
 		questionFont,
 		contentWidth,
 		questionLineHeight
