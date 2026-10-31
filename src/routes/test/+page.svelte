@@ -217,9 +217,38 @@
 			return;
 		}
 
+		const section = currentSection;
+		const bannerItems = [];
+		if (section) {
+			bannerItems.push(
+				$t('sectionLabel', {
+					index: currentSectionPosition,
+					total: paperSections.length,
+				}),
+				section.name
+			);
+			if (section.marksPerQuestion) {
+				let marks = $t('marksEachLabel', { count: section.marksPerQuestion });
+				if (Number(section.negativeMarks) > 0) {
+					marks += ` · ${$t('marksNegativeLabel', { count: section.negativeMarks })}`;
+				}
+				if (suggestedSectionMinutes) {
+					marks += ` · ${$t('sectionMinutesLabel', {
+						minutes: suggestedSectionMinutes,
+					})}`;
+				}
+				bannerItems.push(marks);
+			}
+		}
+
 		let cancelled = false;
 		questionCardEstimate = null;
-		void estimateQuestionCardHeight(question, questionCardWidth).then((height) => {
+		void estimateQuestionCardHeight(question, questionCardWidth, {
+			bannerItems,
+			instructions:
+				section && sectionFirstQuestion ? section.instructions || '' : '',
+			viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1024,
+		}).then((height) => {
 			if (!cancelled) {
 				questionCardEstimate = height;
 			}

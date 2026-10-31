@@ -97,6 +97,7 @@
 	<AnimatedHeight
 		class="test-card bg-body border rounded-3 p-3 p-md-4 shadow-sm"
 		{estimatedHeight}
+		data-estimated-height={estimatedHeight ?? ''}
 	>
 		{#key questionIndex}
 			<div

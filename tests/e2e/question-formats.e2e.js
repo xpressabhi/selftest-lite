@@ -464,3 +464,73 @@ test('weak-area practice keeps structured format fields', async ({ page }, testI
 	});
 	expect(errors).toEqual([]);
 });
+
+// The card animates to a pretext-computed height before it mounts, then a
+// ResizeObserver corrects it. If the estimate drifts from the CSS, the second
+// correction is visible as a jump; keep the two within 25%.
+test('question card height estimate matches the rendered card', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	const longOption =
+		'Photosynthesis converts light energy into chemical energy stored in glucose, while respiration releases that energy.';
+	const paper = {
+		id: 'e2e-formats-estimate',
+		topic: 'Estimate',
+		testMode: 'quiz-practice',
+		language: 'english',
+		sections: [
+			{
+				id: 'section-a',
+				name: 'Section A',
+				questionIndexes: [0],
+				questionCount: 1,
+				marksPerQuestion: 2,
+				negativeMarks: 0.5,
+				instructions: 'Answer all questions. Each question carries two marks.',
+			},
+		],
+		questions: [
+			{
+				format: 'mcq',
+				question:
+					'रसायन विज्ञान में अम्ल, क्षार और लवण की पहचान कैसे की जाती है? 👨‍👩‍👧‍👦 Explain with one example.',
+				options: [longOption, longOption, longOption, longOption],
+				answer: longOption,
+			},
+		],
+	};
+	await seedPaper(page, paper);
+	await page.setViewportSize({ width: 390, height: 844 });
+
+	await page.goto('/test');
+	await page.getByRole('button', { name: 'Start Test' }).click();
+
+	const card = page.locator('.test-card');
+	await expect(card).toHaveAttribute('data-estimated-height', /\d+/);
+	await page.waitForTimeout(700);
+	const measured = await card.evaluate((element) => ({
+		actual: element.getBoundingClientRect().height,
+		estimated: Number(element.dataset.estimatedHeight),
+	}));
+
+	expect(measured.estimated).toBeGreaterThan(0);
+	expect(Math.abs(measured.estimated - measured.actual)).toBeLessThan(measured.actual * 0.15);
+
+	// The desktop card uses the `p-md-4` padding; the estimate must follow it.
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await expect
+		.poll(async () => Number(await card.getAttribute('data-estimated-height')))
+		.not.toBe(measured.estimated);
+	await page.waitForTimeout(700);
+	const desktop = await card.evaluate((element) => ({
+		actual: element.getBoundingClientRect().height,
+		estimated: Number(element.dataset.estimatedHeight),
+	}));
+	expect(desktop.estimated).toBeGreaterThan(0);
+	expect(Math.abs(desktop.estimated - desktop.actual)).toBeLessThan(desktop.actual * 0.15);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ mobile: measured, desktop }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
