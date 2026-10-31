@@ -19,7 +19,7 @@ export default defineConfig(({ command }) => {
 	return {
 		plugins: [
 			sveltekit({
-				adapter: adapter({ runtime: 'nodejs22.x' }),
+				adapter: adapter({ runtime: 'nodejs24.x' }),
 				// Inline stylesheet chunks into the SSR HTML. Saves a network round trip
 				// on slow connections (FCP win) at the cost of a larger document; the
 				// document is cached by the service worker on repeat visits.

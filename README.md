@@ -31,7 +31,7 @@ Selftest-lite is a SvelteKit web app for generating and taking AI-powered multip
 
 ## Prerequisites
 
-- **Node.js 20.19+ or 22.12+** (required by Vite 8)
+- **Node.js 24.x** (as declared in `package.json` `engines`)
 - **npm**
 - A [Google AI Studio](https://aistudio.google.com/) API key
 - (Optional) A Neon PostgreSQL database
