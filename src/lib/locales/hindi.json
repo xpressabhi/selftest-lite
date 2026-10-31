@@ -290,6 +290,8 @@
 	"print": "प्रिंट",
 	"printBack": "परिणाम पर वापस",
 	"printLoading": "पेपर लोड हो रहा है…",
+	"printEstimatedPages": "≈ {count} पृष्ठ",
+	"printEstimatedPagesOne": "≈ 1 पृष्ठ",
 	"printErrorHint": "हो सकता है यह पेपर हट गया हो, या इस डिवाइस पर सहेजा न हो। कृपया इसे History से खोलें।",
 	"close": "बंद करें",
 	"cancel": "रद्द करें",

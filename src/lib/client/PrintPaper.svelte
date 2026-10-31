@@ -6,9 +6,40 @@
 	import QuestionAssertionReasoning from './QuestionAssertionReasoning.svelte';
 	import QuestionMatching from './QuestionMatching.svelte';
 	import { formatDate } from './formatting.js';
+	import { estimatePrintLayout } from './printLayout.js';
 	import { t } from './i18n';
 
-	let { paper = null, language = 'english' } = $props();
+	let { paper = null, language = 'english', onpages = () => {} } = $props();
+
+	let splittable = $state(new Set());
+
+	$effect(() => {
+		const current = paper;
+		if (!current) {
+			splittable = new Set();
+			onpages(0);
+			return;
+		}
+		let cancelled = false;
+		const run = async () => {
+			const result = await estimatePrintLayout(current);
+			if (cancelled) {
+				return;
+			}
+			splittable = result.splittable;
+			onpages(result.pages);
+		};
+		const idle = typeof requestIdleCallback === 'function';
+		const handle = idle ? requestIdleCallback(run, { timeout: 1200 }) : setTimeout(run, 60);
+		return () => {
+			cancelled = true;
+			if (idle && typeof cancelIdleCallback === 'function') {
+				cancelIdleCallback(handle);
+			} else {
+				clearTimeout(handle);
+			}
+		};
+	});
 
 	let questions = $derived(Array.isArray(paper?.questions) ? paper.questions : []);
 	let sections = $derived(Array.isArray(paper?.sections) ? paper.sections : []);
@@ -91,7 +122,10 @@
 					{/if}
 				</li>
 			{/if}
-			<li class="print-question">
+			<li
+				class="print-question"
+				class:print-question-splittable={splittable.has(index)}
+			>
 				<div class="print-question-body">
 					<span class="print-question-no">{index + 1}.</span>
 					<div class="print-question-main">
@@ -336,6 +370,13 @@
 		.print-foot {
 			break-inside: avoid;
 			page-break-inside: avoid;
+		}
+
+		/* A block taller than a sheet cannot be kept whole; letting it split
+		   avoids pushing it to a fresh page and leaving the rest blank. */
+		.print-question.print-question-splittable {
+			break-inside: auto;
+			page-break-inside: auto;
 		}
 
 		.print-head,

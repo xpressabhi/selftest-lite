@@ -290,6 +290,8 @@
 	"print": "Print",
 	"printBack": "Back to results",
 	"printLoading": "Loading paper…",
+	"printEstimatedPages": "≈ {count} pages",
+	"printEstimatedPagesOne": "≈ 1 page",
 	"printErrorHint": "The paper may have been removed, or this device does not have it saved. Open it from History.",
 	"close": "Close",
 	"cancel": "Cancel",

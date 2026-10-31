@@ -12,6 +12,11 @@
 	let paper = $state(null);
 	let loading = $state(true);
 	let error = $state('');
+	let estimatedPages = $state(0);
+
+	function handlePages(count) {
+		estimatedPages = count;
+	}
 
 	const testId = $derived(page.url.searchParams.get('t'));
 
@@ -53,15 +58,25 @@
 			<Icon name="arrow-left" size={16} />
 			{$t('printBack')}
 		</a>
-		<button
-			class="print-btn"
-			type="button"
-			disabled={loading || Boolean(error) || !paper}
-			onclick={printPage}
-		>
-			<Icon name="print" size={16} />
-			{$t('print')}
-		</button>
+		<div class="print-actions">
+			{#if estimatedPages > 0}
+				<span class="print-pages">
+					{$t(
+						estimatedPages === 1 ? 'printEstimatedPagesOne' : 'printEstimatedPages',
+						{ count: estimatedPages }
+					)}
+				</span>
+			{/if}
+			<button
+				class="print-btn"
+				type="button"
+				disabled={loading || Boolean(error) || !paper}
+				onclick={printPage}
+			>
+				<Icon name="print" size={16} />
+				{$t('print')}
+			</button>
+		</div>
 	</div>
 
 	{#if loading}
@@ -76,7 +91,7 @@
 			</div>
 		</div>
 	{:else if paper}
-		<PrintPaper {paper} language={$activeLanguage} />
+		<PrintPaper {paper} language={$activeLanguage} onpages={handlePages} />
 	{/if}
 </div>
 
@@ -112,6 +127,25 @@
 
 	.print-back:hover {
 		color: #111827;
+	}
+
+	.print-actions {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-left: auto;
+	}
+
+	.print-pages {
+		color: #4b5563;
+		font-size: 0.82rem;
+		white-space: nowrap;
+	}
+
+	@media (max-width: 520px) {
+		.print-pages {
+			display: none;
+		}
 	}
 
 	.print-btn {
