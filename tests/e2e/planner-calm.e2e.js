@@ -441,3 +441,152 @@ test('a long chat bubble shrinks to its measured width', async ({ page }, testIn
 	});
 	expect(errors).toEqual([]);
 });
+
+// Gravity Letters, adapted for the live preview: the topic and changed config
+// values render as grapheme spans with a drop-and-settle animation.
+test('preview text and changed config values settle with gravity letters', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	await stubHistoryAndTests(page);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan: {
+						topic: 'photosynthesis',
+						testType: 'multiple-choice',
+						difficulty: 'intermediate',
+						numQuestions: 10,
+						examId: null,
+						isFullExam: false,
+						language: 'english',
+					},
+					topicSource: 'local',
+					confidence: 'high',
+				}),
+			})
+	);
+	await page.goto('/');
+	await page.locator('.intent-input').click();
+	await page.locator('.intent-input').pressSequentially('photosynthesis in plants', {
+		delay: 2,
+	});
+
+	const topic = page.locator('.preview-topic-label');
+	await expect(topic).toContainText('photosynthesis', { timeout: 8000 });
+	const topicLetter = topic.locator('.gravity-letter').first();
+	await expect(topicLetter).toBeVisible();
+	expect(
+		await topicLetter.evaluate((node) => getComputedStyle(node).animationName)
+	).toContain('gravity-letter-drop');
+
+	const questionsTile = page.locator('.spec-tile').filter({ hasText: 'Questions' }).first();
+	await questionsTile.click();
+	await page.locator('.preset-btn').filter({ hasText: '20' }).click();
+	await expect(page.locator('.spec-tile').filter({ hasText: 'Questions' })).toHaveAttribute(
+		'aria-label',
+		'Questions: 20'
+	);
+	const valueLetter = page
+		.locator('.spec-tile')
+		.filter({ hasText: 'Questions' })
+		.locator('.gravity-letter')
+		.first();
+	await expect(valueLetter).toBeVisible();
+
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	const reducedAnimation = await valueLetter.evaluate(
+		(node) => getComputedStyle(node).animationName
+	);
+	expect(reducedAnimation).toBe('none');
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ topic: await topic.textContent(), reducedAnimation }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
+
+// When Pretext is already in memory (a test, print or chat loaded it), the
+// topic change runs the full Gravity Letters physics on a canvas overlay.
+test('topic changes use the canvas gravity animation once pretext is loaded', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	await stubHistoryAndTests(page);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) => {
+			const body = JSON.parse(route.request().postData() || '{}');
+			const intent = String(body.intent || '').toLowerCase();
+			const topic = intent.includes('gravity')
+				? 'gravity in the solar system'
+				: 'photosynthesis';
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan: {
+						topic,
+						testType: 'multiple-choice',
+						difficulty: 'intermediate',
+						numQuestions: 10,
+						examId: null,
+						isFullExam: false,
+						language: 'english',
+					},
+					topicSource: 'local',
+					confidence: 'high',
+				}),
+			});
+		}
+	);
+	await page.goto('/');
+	const input = page.locator('.intent-input');
+	await input.click();
+	await input.pressSequentially('photosynthesis in plants', {
+		delay: 2,
+	});
+	await expect(page.locator('.preview-topic-label')).toContainText('photosynthesis', {
+		timeout: 8000,
+	});
+
+	// Warm the engine exactly as a test/print/chat interaction would.
+	await page.evaluate(async () => {
+		const module = await import('/src/lib/client/pretextLayout.js');
+		await module.measureNaturalWidth('warm', '400 16px sans-serif');
+	});
+
+	// Change the topic from the composer so the preview label (and its
+	// GravityTopic instance) stays mounted.
+	await input.fill('');
+	await input.pressSequentially('gravity in the solar system', { delay: 2 });
+	await expect(page.locator('.preview-topic-label')).toContainText('gravity', {
+		timeout: 8000,
+	});
+
+	const canvas = page.locator('.gravity-topic canvas');
+	await expect(canvas).toHaveClass(/gravity-visible/, { timeout: 3000 });
+	const text = page.locator('.gravity-topic .gravity-topic-text');
+	await expect(text).toHaveClass(/gravity-hidden/);
+
+	const box = await canvas.evaluate((node) => ({
+		width: node.width,
+		height: node.height,
+		dpr: window.devicePixelRatio,
+	}));
+	expect(box.width).toBeGreaterThan(0);
+	expect(box.height).toBeGreaterThan(0);
+	await expect(canvas).not.toHaveClass(/gravity-visible/, { timeout: 3000 });
+	await expect(text).not.toHaveClass(/gravity-hidden/);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(box, null, 2),
+	});
+	expect(errors).toEqual([]);
+});

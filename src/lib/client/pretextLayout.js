@@ -124,6 +124,59 @@ export async function setPretextLocale(locale) {
 	}
 }
 
+/** Whether the layout engine is already in memory (no import needed). */
+export function isPretextReady() {
+	return Boolean(pretextApi);
+}
+
+/** Loads the engine without measuring, for animations that will need it next. */
+export async function warmPretext() {
+	await loadPretext();
+}
+
+function linesFromResult(result) {
+	return result?.lines?.map((line) => line.text) ?? null;
+}
+
+/**
+ * The text of each wrapped line at `maxWidth`. This is the same
+ * `prepareWithSegments()` + `layoutWithLines()` pair the Gravity Letters demo
+ * uses to place per-character particles.
+ */
+export async function layoutTextLines(text, font, maxWidth, lineHeight) {
+	const api = await loadPretext();
+	if (!api || !validWidth(maxWidth) || !Number.isFinite(lineHeight) || lineHeight <= 0) {
+		return null;
+	}
+	try {
+		const prepared = api.prepareWithSegments(String(text || ''), font || canvasFont(16));
+		return linesFromResult(api.layoutWithLines(prepared, maxWidth, lineHeight));
+	} catch {
+		return null;
+	}
+}
+
+/** Synchronous variant for animations that cannot wait on the dynamic import. */
+export function layoutTextLinesIfReady(text, font, maxWidth, lineHeight) {
+	if (
+		!pretextApi ||
+		!validWidth(maxWidth) ||
+		!Number.isFinite(lineHeight) ||
+		lineHeight <= 0
+	) {
+		return null;
+	}
+	try {
+		const prepared = pretextApi.prepareWithSegments(
+			String(text || ''),
+			font || canvasFont(16)
+		);
+		return linesFromResult(pretextApi.layoutWithLines(prepared, maxWidth, lineHeight));
+	} catch {
+		return null;
+	}
+}
+
 export async function prepareText(text, font, options = {}) {
 	const api = await loadPretext();
 	if (!api) {
