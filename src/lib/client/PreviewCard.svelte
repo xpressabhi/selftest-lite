@@ -231,6 +231,7 @@
 	class:tier-full={density === 'full'}
 	class:tier-dense={density === 'dense'}
 	class:tier-micro={density === 'micro'}
+	data-changed-fields={changedFields.join(',')}
 	bind:this={cardRef}
 >
 	<div class="preview-top">

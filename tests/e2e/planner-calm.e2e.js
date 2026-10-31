@@ -590,3 +590,72 @@ test('topic changes use the canvas gravity animation once pretext is loaded', as
 	});
 	expect(errors).toEqual([]);
 });
+
+// A submit is authoritative: when Jev changes the plan, the affected spec
+// tiles pulse and their values animate, so the user notices the update.
+test('Jev result changes pulse and animate the affected config tiles', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	await stubHistoryAndTests(page);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) => {
+			const body = JSON.parse(route.request().postData() || '{}');
+			if (body.mode === 'preview') {
+				return route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ plan: null, topicSource: 'local' }),
+				});
+			}
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan: {
+						topic: 'photosynthesis',
+						testType: 'true-false',
+						difficulty: 'advanced',
+						numQuestions: 20,
+						language: 'hindi',
+						examId: null,
+						isFullExam: false,
+					},
+					topicSource: 'jev',
+					messageKey: 'plannerPlanReady',
+				}),
+			});
+		}
+	);
+	await page.goto('/');
+	const input = page.locator('.intent-input');
+	await input.click();
+	await input.pressSequentially('photosynthesis in plants', { delay: 2 });
+	await expect(page.locator('.preview-topic-label')).toContainText('photosynthesis', {
+		timeout: 8000,
+	});
+	// Let the live-preview turn settle; the submit handler ignores clicks while
+	// PARSING.
+	await page.waitForTimeout(1200);
+	await page.getByRole('button', { name: 'Build my test plan' }).click();
+
+	const card = page.locator('.preview-card');
+	await expect(card).toHaveAttribute('data-changed-fields', /numQuestions/, {
+		timeout: 8000,
+	});
+	await expect(card).toHaveAttribute('data-changed-fields', /testType/);
+	await expect(card).toHaveAttribute('data-changed-fields', /difficulty/);
+	await expect(card).toHaveAttribute('data-changed-fields', /language/);
+	await expect(page.getByRole('button', { name: 'Questions: 20' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Format: True/False' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Difficulty: Advanced' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Language: Hindi' })).toBeVisible();
+	const changed = await card.getAttribute('data-changed-fields');
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ changed }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});

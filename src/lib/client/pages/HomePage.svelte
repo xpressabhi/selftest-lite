@@ -858,7 +858,7 @@
 		window.clearTimeout(committedPulseTimer);
 		committedPulseTimer = window.setTimeout(() => {
 			committedPulseFields = [];
-		}, 700);
+		}, 1200);
 	}
 
 	/**
@@ -1098,6 +1098,17 @@
 				apiError.statusCode = response.status;
 				throw apiError;
 			}
+			// Snapshot before the server plan lands so the card can pulse the
+			// fields Jev actually changed, not just the locally previewed ones.
+			const beforeTurn = {
+				topic,
+				numQuestions,
+				testType,
+				difficulty,
+				language: paperLanguage,
+				examId,
+				isFullExam,
+			};
 			const plan = data.plan || null;
 			const pendingTopicClarify = data.clarify?.id === 'topic';
 			const meaningful = isMeaningfulPreview({
@@ -1112,10 +1123,22 @@
 			} else {
 				applyPlannerPlan(plan);
 			}
+			const apiChanged = [];
+			if (topic !== beforeTurn.topic) apiChanged.push('topic');
+			if (Number(numQuestions) !== Number(beforeTurn.numQuestions)) {
+				apiChanged.push('numQuestions');
+			}
+			if (testType !== beforeTurn.testType) apiChanged.push('testType');
+			if (difficulty !== beforeTurn.difficulty) apiChanged.push('difficulty');
+			if (paperLanguage !== beforeTurn.language) apiChanged.push('language');
+			if (examId !== beforeTurn.examId || isFullExam !== beforeTurn.isFullExam) {
+				apiChanged.push('examId');
+			}
 			// A submitted turn is authoritative: drop preview challengers and the
 			// quiet re-check so the card reflects the negotiated plan only.
 			settleState = resetSettleState();
 			committedPulseFields = [];
+			pulseCommittedFields(apiChanged);
 			window.clearTimeout(settleTickTimer);
 			plannerDraft = applyTurnResult(plannerDraft, data);
 			persistPlannerDraft();
