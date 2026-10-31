@@ -13,6 +13,7 @@ import { addDays, todayInIst } from '#lib/shared/examNotificationStatus.js';
 import { normalizeReminderLanguage } from '#lib/shared/reminderCopy.js';
 import { parseReminderHour } from '#lib/shared/reminders.js';
 import { sanitizeHintedIndexes } from './hint.js';
+import { serializeAuditPayload } from './auditPayload.js';
 
 let poolInstance = null;
 let poolPromise = null;
@@ -83,7 +84,7 @@ export function normalizeUserIdValue(value) {
 // version match. schemaMigrations.test.js fingerprints the DDL block and fails
 // when it changes without a matching bump, because a missing bump means the
 // statement only ever runs on a cold start.
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 export async function ensureStorageSchema() {
 	if (schemaReadyPromise) {
@@ -447,6 +448,12 @@ export async function ensureStorageSchema() {
 		`);
 		await query(`
 			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS client_id TEXT
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS request_payload JSONB
+		`);
+		await query(`
+			ALTER TABLE api_request_events ADD COLUMN IF NOT EXISTS response_payload JSONB
 		`);
 		await query(`
 			CREATE INDEX IF NOT EXISTS idx_api_request_events_user
@@ -1531,6 +1538,8 @@ export async function logApiEvent({
 	metadata = {},
 	request = null,
 	userId = null,
+	requestPayload = null,
+	responsePayload = null,
 }) {
 	try {
 		await ensureStorageSchema();
@@ -1541,8 +1550,8 @@ export async function logApiEvent({
 			typeof clientId === 'string' && clientId.length <= 64 ? clientId : null;
 		await query(
 			`INSERT INTO api_request_events
-			 (route, action, client_key, client_id, status_code, duration_ms, error_message, metadata, user_agent, ip_country, ip_city, ip_region, ip_timezone, user_id)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12, $13, $14)`,
+			 (route, action, client_key, client_id, status_code, duration_ms, error_message, metadata, user_agent, ip_country, ip_city, ip_region, ip_timezone, user_id, request_payload, response_payload)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12, $13, $14, $15::jsonb, $16::jsonb)`,
 			[
 				route,
 				action,
@@ -1558,6 +1567,8 @@ export async function logApiEvent({
 				ipRegion,
 				ipTimezone,
 				normalizedUserId,
+				serializeAuditPayload(requestPayload),
+				serializeAuditPayload(responsePayload),
 			]
 		);
 	} catch (error) {
@@ -2245,6 +2256,7 @@ export async function getAdminLogs({
 			ip_city,
 			ip_timezone,
 			user_agent,
+			(request_payload IS NOT NULL OR response_payload IS NOT NULL) AS has_payload,
 			created_at
 		 FROM api_request_events
 		 ${where}
@@ -2258,6 +2270,35 @@ export async function getAdminLogs({
 		rows,
 		nextBefore: result.rows.length > cappedLimit ? (rows.at(-1)?.id ?? null) : null,
 	};
+}
+
+/**
+ * One audit row with the full Jev request/response payloads. Called by the
+ * admin logs view through its session-cookie link.
+ */
+export async function getJevAuditEvent(id) {
+	await ensureStorageSchema();
+	const numeric = Number(id);
+	if (!Number.isInteger(numeric) || numeric <= 0) {
+		return null;
+	}
+	const result = await query(
+		`SELECT
+			id,
+			route,
+			action,
+			status_code,
+			duration_ms,
+			error_message,
+			metadata,
+			request_payload,
+			response_payload,
+			created_at
+		 FROM api_request_events
+		 WHERE id = $1 AND route = '/api/parse-intent'`,
+		[numeric]
+	);
+	return result.rows[0] || null;
 }
 
 export async function getFeatureUsageStats({ days = 30, limit = 60 } = {}) {

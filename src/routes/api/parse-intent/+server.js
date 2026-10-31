@@ -95,6 +95,7 @@ function withTimeout(promise, timeoutMs) {
 
 export async function POST({ request, cookies }) {
 	const { startedAt, clientKey, user, clientId } = await resolveRequestContext(request, cookies);
+	const jevAudit = { request: null, response: null };
 
 	try {
 		let body;
@@ -191,7 +192,7 @@ export async function POST({ request, cookies }) {
 
 			const candidates = buildTopicCandidates(intent);
 			const mentioned = extractMentionedFields(intent);
-			const questions = buildIntentQuestions({
+			const jevQuestions = buildIntentQuestions({
 				candidates,
 				maxCandidates: isPreview ? PREVIEW_TOPIC_CANDIDATES : MAX_TOPIC_CANDIDATES,
 				only: isPreview
@@ -204,18 +205,24 @@ export async function POST({ request, cookies }) {
 					: null,
 			});
 
-			const hasQuestions = Object.keys(questions).length > 0;
+			const hasQuestions = Object.keys(jevQuestions).length > 0;
+			const jevState = buildState({
+				intent,
+				recentMessages: isPreview ? [] : recentMessages,
+				answers,
+				plan,
+				studentContext: isPreview ? null : studentContext,
+			});
+			jevAudit.request = {
+				model: INTENT_MODEL,
+				state: jevState,
+				questions: jevQuestions,
+			};
 			const aiResponse = hasQuestions
 				? await withTimeout(
 						client.systemOne({
-							state: buildState({
-								intent,
-								recentMessages: isPreview ? [] : recentMessages,
-								answers,
-								plan,
-								studentContext: isPreview ? null : studentContext,
-							}),
-							questions,
+							state: jevState,
+							questions: jevQuestions,
 							model: INTENT_MODEL,
 						}),
 						isPreview ? PREVIEW_TIMEOUT_MS : PARSE_TIMEOUT_MS
@@ -233,6 +240,15 @@ export async function POST({ request, cookies }) {
 				round,
 				preferredLanguage,
 			});
+
+			jevAudit.response = {
+				raw: {
+					answers: aiResponse.answers || {},
+					model: aiResponse.model || null,
+					usage: aiResponse.usage || null,
+				},
+				derived: result,
+			};
 
 			if (!isPreview) {
 				await logApiEvent({
@@ -258,11 +274,38 @@ export async function POST({ request, cookies }) {
 						usedStudentContext: studentContext !== null,
 						usage: aiResponse.usage || null,
 					},
+					requestPayload: jevAudit.request,
+					responsePayload: jevAudit.response,
 				});
 			}
 
 			if (isPreview) {
-				// Previews fire often; only the fields the card needs go back.
+				// Previews fire often; audit the full Jev exchange so topic
+				// regressions can be inspected against the live preview path too.
+				await logApiEvent({
+					route: '/api/parse-intent',
+					action: 'parse_intent_preview',
+					clientKey,
+					clientId,
+					request,
+					statusCode: 200,
+					durationMs: Date.now() - startedAt,
+					userId: user?.id || null,
+					metadata: {
+						intent: intent.slice(0, 200),
+						provider: 'typesafe',
+						model: aiResponse.model,
+						mode: 'preview',
+						round,
+						confidence: result.confidence,
+						topicSource: result.topicSource,
+						fieldConfidence: result.fieldConfidence,
+						usage: aiResponse.usage || null,
+					},
+					requestPayload: jevAudit.request,
+					responsePayload: jevAudit.response,
+				});
+				// Only the fields the card needs go back.
 				return Response.json({
 					plan: result.plan,
 					confidence: result.confidence,
@@ -300,6 +343,8 @@ export async function POST({ request, cookies }) {
 					mode: isPreview ? 'preview' : 'turn',
 					round,
 				},
+				requestPayload: jevAudit.request,
+				responsePayload: jevAudit.response || { error: aiError.message },
 			});
 
 			return Response.json({ error: message, code }, { status: statusCode });
@@ -317,6 +362,8 @@ export async function POST({ request, cookies }) {
 			durationMs: Date.now() - startedAt,
 			userId: user?.id || null,
 			errorMessage: error.message,
+			requestPayload: jevAudit.request,
+			responsePayload: jevAudit.response,
 		});
 
 		return Response.json(

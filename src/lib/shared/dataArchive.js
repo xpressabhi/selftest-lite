@@ -12,6 +12,8 @@ export const ARCHIVE_TABLE_STATEMENTS = [
 	`ALTER TABLE feature_events_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 	`CREATE TABLE IF NOT EXISTS api_request_events_archive (LIKE api_request_events INCLUDING DEFAULTS)`,
 	`ALTER TABLE api_request_events_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
+	`ALTER TABLE api_request_events_archive ADD COLUMN IF NOT EXISTS request_payload JSONB`,
+	`ALTER TABLE api_request_events_archive ADD COLUMN IF NOT EXISTS response_payload JSONB`,
 	`CREATE TABLE IF NOT EXISTS api_rate_limit_events_archive (LIKE api_rate_limit_events INCLUDING DEFAULTS)`,
 	`ALTER TABLE api_rate_limit_events_archive ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 	`CREATE TABLE IF NOT EXISTS app_user_state_archive (LIKE app_user_state INCLUDING DEFAULTS)`,
