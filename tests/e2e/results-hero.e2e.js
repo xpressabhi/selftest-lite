@@ -302,6 +302,7 @@ test('print opens a clean, chrome-free paper page', async ({ page }) => {
 	await expect(page.locator('.app-header')).toHaveCount(0);
 	await expect(page.locator('.bottom-nav')).toHaveCount(0);
 	await expect(page.locator('.print-btn')).toBeVisible();
+	await expect(page.locator('.print-pages')).toContainText('≈');
 	await expect(page.locator('.print-watermark')).toHaveText('selftest.in');
 
 	// Print media: the toolbar hides, the watermark becomes a fixed mark that

@@ -513,7 +513,7 @@ test('question card height estimate matches the rendered card', async ({ page },
 	}));
 
 	expect(measured.estimated).toBeGreaterThan(0);
-	expect(Math.abs(measured.estimated - measured.actual)).toBeLessThan(measured.actual * 0.15);
+	expect(Math.abs(measured.estimated - measured.actual)).toBeLessThan(measured.actual * 0.10);
 
 	// The desktop card uses the `p-md-4` padding; the estimate must follow it.
 	await page.setViewportSize({ width: 1280, height: 900 });
@@ -526,7 +526,7 @@ test('question card height estimate matches the rendered card', async ({ page },
 		estimated: Number(element.dataset.estimatedHeight),
 	}));
 	expect(desktop.estimated).toBeGreaterThan(0);
-	expect(Math.abs(desktop.estimated - desktop.actual)).toBeLessThan(desktop.actual * 0.15);
+	expect(Math.abs(desktop.estimated - desktop.actual)).toBeLessThan(desktop.actual * 0.10);
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',

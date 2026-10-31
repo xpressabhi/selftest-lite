@@ -614,6 +614,8 @@
 		display: flex;
 		align-items: center;
 		gap: 4px;
+		content-visibility: auto;
+		contain-intrinsic-size: auto 72px;
 	}
 
 	.history-row + .history-row {

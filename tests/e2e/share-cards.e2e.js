@@ -107,3 +107,73 @@ test('without native share the test card downloads and toasts', async ({ page },
 		body: JSON.stringify({ fallback: download.suggestedFilename() }, null, 2),
 	});
 });
+
+// The renderers wrap text with canvas measurements, so a jsdom unit test
+// cannot exercise them. Paint all three in a real browser with long Hindi
+// copy, a ZWJ emoji cluster and an unbroken URL, and check opaque pixels.
+test('share cards paint measured Hindi and emoji copy', async ({ page }, testInfo) => {
+	await page.goto('/');
+
+	const result = await page.evaluate(async () => {
+		const { drawTestCard } = await import('/src/lib/client/testCard.js');
+		const { drawScoreCard } = await import('/src/lib/client/scoreCard.js');
+		const { drawStreakCard } = await import('/src/lib/client/streakCard.js');
+
+		const topic =
+			'रसायन विज्ञान: अम्ल, क्षार और लवण की पहचान 👨‍👩‍👧‍👦🧪 ' +
+			'Photosynthesis and cellular respiration in plants. '.repeat(8);
+		const url = `https://selftest.in/test?id=${'a'.repeat(140)}`;
+		const canvas = document.createElement('canvas');
+		canvas.width = 1080;
+		canvas.height = 1920;
+		const ctx = canvas.getContext('2d');
+
+		const testOk = drawTestCard(canvas, {
+			kicker: 'Practice test',
+			topic,
+			chips: ['Class 10', 'NCERT', '20 questions'],
+			cta: 'Try it',
+			ctaSub: 'Free · 10 questions',
+			url,
+		});
+		const testAlpha = ctx.getImageData(540, 580, 1, 1).data[3];
+
+		const scoreOk = drawScoreCard(canvas, {
+			topic,
+			score: 8,
+			total: 10,
+			pct: 80,
+			timeLabel: '3:20',
+			challenge: 'Beat my score on this paper',
+			link: url,
+		});
+		const scoreAlpha = ctx.getImageData(540, 1220, 1, 1).data[3];
+
+		const streakOk = drawStreakCard(canvas, {
+			headline: '7 day streak',
+			subtitle: topic,
+			week: [],
+			stats: { tests: 12, accuracy: '78%', best: '92%', max: 21 },
+			labels: { tests: 'tests', accuracy: 'accuracy', best: 'best', max: 'longest' },
+			badges: [{ meta: '5', title: 'Streak', earned: true }],
+			url,
+		});
+		const streakAlpha = ctx.getImageData(540, 545, 1, 1).data[3];
+		const footerAlpha = ctx.getImageData(540, 1690, 1, 1).data[3];
+
+		return { testOk, scoreOk, streakOk, testAlpha, scoreAlpha, streakAlpha, footerAlpha };
+	});
+
+	expect(result.testOk).toBe(true);
+	expect(result.scoreOk).toBe(true);
+	expect(result.streakOk).toBe(true);
+	expect(result.testAlpha).toBeGreaterThan(0);
+	expect(result.scoreAlpha).toBeGreaterThan(0);
+	expect(result.streakAlpha).toBeGreaterThan(0);
+	expect(result.footerAlpha).toBeGreaterThan(0);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(result, null, 2),
+	});
+});

@@ -33,7 +33,7 @@
 	let isCorrect = $derived(question.correct ?? userAnswer === question.answer);
 </script>
 
-<article id={`question-${index}`} class="bg-body border rounded-3 p-3 shadow-sm">
+<article id={`question-${index}`} class="review-card bg-body border rounded-3 p-3 shadow-sm">
 	<button
 		class="review-card-head"
 		type="button"
@@ -299,6 +299,11 @@
 		100% {
 			transform: scale(1) rotate(0);
 		}
+	}
+
+	.review-card {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 220px;
 	}
 
 	.review-card-head {
