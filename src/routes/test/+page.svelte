@@ -5,7 +5,7 @@
 	import { localizedApiError, t } from '#lib/client/i18n.js';
 	import { track } from '#lib/client/telemetry.js';
 	import Icon from '#lib/client/Icon.svelte';
-	import { estimateQuestionCardHeight } from '#lib/client/pretextLayout.js';
+	import { estimateQuestionCardLayout } from '#lib/client/pretextLayout.js';
 	import { recordStreakActivity, unlockAchievements } from '#lib/client/learning.js';
 	import MarkdownContent from '#lib/client/MarkdownContent.svelte';
 	import ReviewSheet from '#lib/client/ReviewSheet.svelte';
@@ -76,6 +76,7 @@
 	let overflowMenuElement = $state();
 	let questionCardWidth = $state(0);
 	let questionCardEstimate = $state(null);
+	let questionCardOptionWidths = $state([]);
 	let autoAdvanceTimer = null;
 	let liveAnnouncement = $state('');
 	let elapsedSeconds = $state(0);
@@ -214,6 +215,7 @@
 		const question = questionPaper?.questions?.[currentQuestionIndex];
 		if (!question || questionCardWidth <= 0) {
 			questionCardEstimate = null;
+			questionCardOptionWidths = [];
 			return;
 		}
 
@@ -243,14 +245,16 @@
 
 		let cancelled = false;
 		questionCardEstimate = null;
-		void estimateQuestionCardHeight(question, questionCardWidth, {
+		questionCardOptionWidths = [];
+		void estimateQuestionCardLayout(question, questionCardWidth, {
 			bannerItems,
 			instructions:
 				section && sectionFirstQuestion ? section.instructions || '' : '',
 			viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1024,
-		}).then((height) => {
+		}).then((layout) => {
 			if (!cancelled) {
-				questionCardEstimate = height;
+				questionCardEstimate = layout?.height ?? null;
+				questionCardOptionWidths = layout?.optionWidths ?? [];
 			}
 		});
 
@@ -1195,6 +1199,7 @@
 					{sectionFirstQuestion}
 					{suggestedSectionMinutes}
 					estimatedHeight={questionCardEstimate}
+					optionWidths={questionCardOptionWidths}
 					selectedAnswer={answers[currentQuestionIndex]}
 					eliminatedOptions={eliminated[currentQuestionIndex]}
 					flagActive={flagged.includes(currentQuestionIndex)}
