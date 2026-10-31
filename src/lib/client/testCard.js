@@ -11,7 +11,8 @@ import {
 	drawCardLogo,
 	roundedRectPath,
 } from './cardKit.js';
-import { wrapCardText } from './scoreCard.js';
+import { fitTextToLines } from './cardText.js';
+import { stripCardText } from './scoreCard.js';
 
 function drawChips(ctx, chips, y) {
 	const labels = (Array.isArray(chips) ? chips : [])
@@ -64,17 +65,25 @@ export function drawTestCard(canvas, data = {}, logo = null) {
 	ctx.fillStyle = CARD_PALETTE.brand600;
 	ctx.fillText(String(kicker).toUpperCase(), CARD_WIDTH / 2, 330);
 
-	const topicLines = wrapCardText(topic, 20, 3);
-	ctx.font = cardFont(88, 800);
+	const topicFit = fitTextToLines(stripCardText(topic), [88, 78, 68], {
+		maxWidth: CARD_WIDTH - 160,
+		maxLines: 3,
+		measureForSize: (size) => {
+			ctx.font = cardFont(size, 800);
+			return (value) => ctx.measureText(value).width;
+		},
+	});
+	ctx.font = cardFont(topicFit.size, 800);
 	ctx.fillStyle = CARD_PALETTE.text;
-	topicLines.forEach((line, index) => {
-		ctx.fillText(line, CARD_WIDTH / 2, 580 + index * 110);
+	const topicGap = Math.round(topicFit.size * 1.25);
+	topicFit.lines.forEach((line, index) => {
+		ctx.fillText(line, CARD_WIDTH / 2, 580 + index * topicGap);
 	});
 
 	// Shorter topics leave more air before the CTA; long ones keep their
 	// distance so the CTA never crowds the URL line.
-	const ctaGap = topicLines.length >= 3 ? 240 : 480;
-	let y = 580 + Math.max(0, topicLines.length - 1) * 110 + 120;
+	const ctaGap = topicFit.lines.length >= 3 ? 240 : 480;
+	let y = 580 + Math.max(0, topicFit.lines.length - 1) * topicGap + 120;
 	y = drawChips(ctx, chips, y) + ctaGap;
 
 	ctx.textAlign = 'center';

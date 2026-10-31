@@ -9,6 +9,7 @@
 // shared from can never render in two different faces.
 
 import { canvasFont } from './fontStack.js';
+import { truncateToWidth } from './cardText.js';
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
@@ -65,14 +66,10 @@ export function drawCardFooter(ctx, url = '') {
 }
 
 function stripToWidth(ctx, text, maxWidth) {
-	let value = String(text || '');
-	if (ctx.measureText(value).width <= maxWidth) {
-		return value;
-	}
-	while (value.length > 1 && ctx.measureText(`${value}…`).width > maxWidth) {
-		value = value.slice(0, -1);
-	}
-	return `${value}…`;
+	return truncateToWidth(String(text || ''), {
+		maxWidth,
+		measure: (value) => ctx.measureText(value).width,
+	});
 }
 
 /** Trims the caption and appends the URL on its own line when missing. */

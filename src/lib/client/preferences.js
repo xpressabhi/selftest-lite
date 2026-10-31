@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import { loadDictionary } from './locales';
 import { emitLocalStorageChange } from './storage';
+import { resetPretextLayout } from './pretextLayout.js';
 import { isNoindexPath, splitLang } from '#lib/shared/seo.js';
 
 const LANGUAGE_KEY = 'selftest_language';
@@ -79,6 +80,9 @@ export async function setLanguage(nextLanguage, { persist = true } = {}) {
 		const { path } = splitLang(window.location.pathname);
 		if (isNoindexPath(path)) {
 			document.documentElement.setAttribute('lang', nextLanguage === 'hindi' ? 'hi' : 'en');
+			// Line breaking and emoji widths depend on the page language, so
+			// prepared text from the previous language must not be reused.
+			resetPretextLayout(nextLanguage === 'hindi' ? 'hi' : 'en');
 		}
 		if (persist) {
 			emitLocalStorageChange(LANGUAGE_KEY);

@@ -11,6 +11,7 @@ import {
 	drawCardFooter,
 	drawCardLogo,
 } from './cardKit.js';
+import { fitTextToLines, truncateToWidth } from './cardText.js';
 
 // Re-exported for existing consumers; the kit is the single source.
 export { CARD_HEIGHT, CARD_WIDTH };
@@ -122,17 +123,29 @@ export function drawScoreCard(canvas, data = {}, logo = null) {
 		context.fillText(timeLabel, centerX, centerY + 380);
 	}
 
-	const lines = wrapCardText(topic, 22, 3);
-	context.font = cardFont(72, 800);
+	const topicFit = fitTextToLines(stripCardText(topic), [72, 64, 56], {
+		maxWidth: CARD_WIDTH - 160,
+		maxLines: 3,
+		measureForSize: (size) => {
+			context.font = cardFont(size, 800);
+			return (value) => context.measureText(value).width;
+		},
+	});
+	context.font = cardFont(topicFit.size, 800);
 	context.fillStyle = CARD_PALETTE.text;
-	lines.forEach((line, index) => {
-		context.fillText(line, centerX, 1220 + index * 88);
+	const topicGap = Math.round(topicFit.size * 1.22);
+	topicFit.lines.forEach((line, index) => {
+		context.fillText(line, centerX, 1220 + index * topicGap);
 	});
 
 	if (challenge) {
 		context.font = cardFont(46, 800);
 		context.fillStyle = CARD_PALETTE.brand600;
-		context.fillText(stripCardText(challenge).slice(0, 60), centerX, 1560);
+		const challengeLine = truncateToWidth(stripCardText(challenge), {
+			maxWidth: CARD_WIDTH - 160,
+			measure: (value) => context.measureText(value).width,
+		});
+		context.fillText(challengeLine, centerX, 1560);
 	}
 	drawCardFooter(context, link);
 	context.restore();

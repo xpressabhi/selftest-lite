@@ -10,7 +10,8 @@ import {
 	drawCardFooter,
 	drawCardLogo,
 } from './cardKit.js';
-import { wrapCardText } from './scoreCard.js';
+import { fitTextToLines } from './cardText.js';
+import { stripCardText } from './scoreCard.js';
 
 const FLAME_PATH =
 	'M12 3.5c3.5 4 6 7 6 10.5a6 6 0 0 1-12 0c0-3.5 2.5-6.5 6-10.5Z M12 12c1.7 2 2.5 3.2 2.5 4.5a2.5 2.5 0 0 1-5 0c0-1.3.8-2.5 2.5-4.5Z';
@@ -189,11 +190,19 @@ export function drawStreakCard(canvas, data = {}, logo = null) {
 	ctx.fillStyle = CARD_PALETTE.text;
 	ctx.fillText(headline, CARD_WIDTH / 2, 470);
 
-	const subtitleLines = wrapCardText(subtitle, 42, 2);
-	ctx.font = cardFont(40, 500);
+	const subtitleFit = fitTextToLines(stripCardText(subtitle), [40, 36, 32], {
+		maxWidth: CARD_WIDTH - 160,
+		maxLines: 2,
+		measureForSize: (size) => {
+			ctx.font = cardFont(size, 500);
+			return (value) => ctx.measureText(value).width;
+		},
+	});
+	ctx.font = cardFont(subtitleFit.size, 500);
 	ctx.fillStyle = CARD_PALETTE.textMuted;
-	subtitleLines.forEach((line, index) => {
-		ctx.fillText(line, CARD_WIDTH / 2, 545 + index * 52);
+	const subtitleGap = Math.round(subtitleFit.size * 1.3);
+	subtitleFit.lines.forEach((line, index) => {
+		ctx.fillText(line, CARD_WIDTH / 2, 545 + index * subtitleGap);
 	});
 
 	drawWeek(ctx, week);
