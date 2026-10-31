@@ -534,3 +534,66 @@ test('question card height estimate matches the rendered card', async ({ page },
 	});
 	expect(errors).toEqual([]);
 });
+
+// Matching draws its columns as a grid, so the estimate must not also count
+// the composed column text; assertion-reasoning has an empty stem and is
+// composed from the two labelled rows. Both are measured against the real card.
+for (const variant of [
+	{
+		name: 'matching',
+		question: matchingQuestion('Match the vitamin with the deficiency disease.'),
+	},
+	{
+		name: 'assertion-reasoning',
+		question: assertionReasoningQuestion(
+			'Iron displaces copper from copper sulphate solution.',
+			'Iron is more reactive than copper in the reactivity series.'
+		),
+	},
+]) {
+	test(`estimate matches the rendered ${variant.name} card`, async ({ page }, testInfo) => {
+		const errors = await collectErrors(page);
+		const paper = {
+			id: `e2e-estimate-${variant.name}`,
+			topic: `Estimate ${variant.name}`,
+			testMode: 'quiz-practice',
+			language: 'english',
+			sections: [
+				{
+					id: 'section-a',
+					name: 'Section A',
+					questionIndexes: [0],
+					questionCount: 1,
+					marksPerQuestion: 2,
+					negativeMarks: 0.5,
+					instructions: 'Answer all questions. Each question carries two marks.',
+				},
+			],
+			questions: [variant.question],
+		};
+		await seedPaper(page, paper);
+		await page.setViewportSize({ width: 390, height: 844 });
+
+		await page.goto('/test');
+		await page.getByRole('button', { name: 'Start Test' }).click();
+
+		const card = page.locator('.test-card');
+		await expect(card).toHaveAttribute('data-estimated-height', /\d+/);
+		await page.waitForTimeout(700);
+		const measured = await card.evaluate((element) => ({
+			actual: element.getBoundingClientRect().height,
+			estimated: Number(element.dataset.estimatedHeight),
+		}));
+
+		expect(measured.estimated).toBeGreaterThan(0);
+		expect(Math.abs(measured.estimated - measured.actual)).toBeLessThan(
+			measured.actual * 0.15
+		);
+
+		await testInfo.attach('evidence', {
+			contentType: 'application/json',
+			body: JSON.stringify(measured, null, 2),
+		});
+		expect(errors).toEqual([]);
+	});
+}

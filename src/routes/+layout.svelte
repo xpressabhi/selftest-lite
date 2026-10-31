@@ -12,6 +12,7 @@
 		themePreference,
 	} from '#lib/client/preferences.js';
 	import { STORAGE_KEYS } from '#lib/client/constants.js';
+	import { resetPretextLayout } from '#lib/client/pretextLayout.js';
 	import NotificationsBell from '#lib/client/NotificationsBell.svelte';
 	import { startDeviceProfileTracking } from '#lib/client/deviceProfile.js';
 	import { focusTrap } from '#lib/client/focusTrap.js';
@@ -221,6 +222,19 @@
 		window.addEventListener('online', updateNetworkState);
 		window.addEventListener('offline', updateNetworkState);
 		window.addEventListener('resize', updateStandaloneState);
+
+		// Emoji paint widths follow devicePixelRatio on macOS, and a zoom or a
+		// monitor change alters it. Prepared handles keep the old widths, so
+		// drop them when the ratio moves.
+		let currentDpr = window.devicePixelRatio || 1;
+		const handleDprChange = () => {
+			const next = window.devicePixelRatio || 1;
+			if (Math.abs(next - currentDpr) > 0.01) {
+				currentDpr = next;
+				resetPretextLayout();
+			}
+		};
+		window.addEventListener('resize', handleDprChange);
 		window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 		window.addEventListener('appinstalled', handleAppInstalled);
 		const connection =
@@ -233,6 +247,7 @@
 			window.removeEventListener('offline', updateNetworkState);
 			window.removeEventListener('online', handleOnlineFlush);
 			window.removeEventListener('resize', updateStandaloneState);
+			window.removeEventListener('resize', handleDprChange);
 			window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 			window.removeEventListener('appinstalled', handleAppInstalled);
 			connection?.removeEventListener?.('change', updateNetworkState);

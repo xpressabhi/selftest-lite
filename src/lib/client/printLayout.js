@@ -139,6 +139,9 @@ export async function estimatePrintLayout(paper, options = {}) {
 		});
 	}
 
+	// .print-foot: 28px margin-top, 10px padding-top, 1px rule and one 0.75rem line.
+	blocks.push({ height: Math.ceil(root * 0.75 * 1.55 + 28 + 10 + 1) });
+
 	const splittable = new Set();
 	let pages = 1;
 	let used = 0;
