@@ -378,3 +378,66 @@ test('plan card keyboard tiers: full, dense, micro', async ({ page }, testInfo) 
 	});
 	expect(errors).toEqual([]);
 });
+
+// Ported from Pretext's `bubbles` demo: a multiline bubble should sit at the
+// width of its widest line, not at its max-width with dead space on the right.
+test('a long chat bubble shrinks to its measured width', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await stubHistoryAndTests(page);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan: {
+						topic: 'photosynthesis',
+						testType: 'multiple-choice',
+						difficulty: 'intermediate',
+						numQuestions: 10,
+						examId: null,
+						isFullExam: false,
+						language: 'english',
+					},
+					messageKey: 'plannerPlanReady',
+				}),
+			})
+	);
+	await page.goto('/');
+
+	const message =
+		'Explain photosynthesis in plants for a class ten science test, ' +
+		'including the light-dependent reactions, the Calvin cycle, ' +
+		'and why chlorophyll looks green to the human eye.';
+	const input = page.locator('.intent-input');
+	await input.click();
+	await input.pressSequentially(message, { delay: 2 });
+	// The composer runs a live-preview parse while typing; its submit handler
+	// ignores a click until that turn settles.
+	await page.waitForTimeout(1200);
+	const send = page.getByRole('button', { name: 'Build my test plan' });
+	await expect(send).toBeEnabled();
+	await send.click();
+
+	const bubble = page.locator('.chat-bubble-user').last();
+	await expect(bubble).toBeVisible({ timeout: 10000 });
+	await expect(bubble).toHaveAttribute('data-tight-width', 'true', { timeout: 8000 });
+	const measured = await bubble.evaluate((node) => {
+		const log = node.closest('.chat-log');
+		return {
+			width: node.getBoundingClientRect().width,
+			logWidth: log ? log.clientWidth : 0,
+			text: (node.textContent || '').trim().length,
+		};
+	});
+	expect(measured.width).toBeGreaterThan(0);
+	expect(measured.width).toBeLessThan(measured.logWidth * 0.86);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(measured, null, 2),
+	});
+	expect(errors).toEqual([]);
+});

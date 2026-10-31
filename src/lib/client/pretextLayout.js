@@ -144,11 +144,49 @@ export async function measureNaturalWidth(text, font, options = {}) {
 }
 
 /**
+ * The narrowest width that keeps `text` on the same number of lines. A
+ * multiline chat bubble then sits at its widest line instead of at its
+ * max-width with dead space on the right.
+ */
+export async function tightWidth(text, font, maxWidth, lineHeight, options = {}) {
+	const api = await loadPretext();
+	if (!api || !validWidth(maxWidth) || !Number.isFinite(lineHeight) || lineHeight <= 0) {
+		return null;
+	}
+	const prepared = prepareCached(api, String(text || ''), font || canvasFont(16), options);
+	const initial = api.layout(prepared, maxWidth, lineHeight);
+	if (!initial || initial.lineCount === 0) {
+		return null;
+	}
+	let lo = 1;
+	let hi = Math.ceil(maxWidth);
+	while (lo < hi) {
+		const mid = Math.floor((lo + hi) / 2);
+		const result = api.layout(prepared, mid, lineHeight);
+		if (result.lineCount <= initial.lineCount) {
+			hi = mid;
+		} else {
+			lo = mid + 1;
+		}
+	}
+	let maxLineWidth = 0;
+	const lineCount = api.walkLineRanges(prepared, lo, (line) => {
+		if (line.width > maxLineWidth) {
+			maxLineWidth = line.width;
+		}
+	});
+	return {
+		width: Math.ceil(maxLineWidth),
+		lineCount,
+		height: lineCount * lineHeight,
+	};
+}
+
+/**
  * Line count and widest line of a mixed-font inline paragraph (text runs with
  * their own fonts, chips, boxes). Used for the section banner, whose label,
  * name and marks are different sizes on one wrapping row.
- */
-export async function measureRichInlineLines(items, maxWidth, options = {}) {
+ */export async function measureRichInlineLines(items, maxWidth, options = {}) {
 	const api = await loadRichInline();
 	if (!api || !validWidth(maxWidth) || !Array.isArray(items) || items.length === 0) {
 		return null;
