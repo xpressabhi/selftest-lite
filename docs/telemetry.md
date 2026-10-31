@@ -243,7 +243,8 @@ seconds in the `generate:fail` event props.
 ## Conversational planner diagnostics
 
 The home planner records one `api_request_events` row per
-`/api/parse-intent` turn (server) plus client feature events:
+`/api/parse-intent` call — `parse_intent` for an authoritative turn and
+`parse_intent_preview` for a live preview — plus client feature events:
 
 | Client event                    | Props                                                                        | Meaning                               |
 | ------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------- |
@@ -271,6 +272,24 @@ Server metadata on each successful turn:
 Use it to answer: how often does the planner ask questions (and about what),
 how often are topics span-extracted vs raw, is failure rate stable, and whether
 Hindi turns show lower confidence or more failures.
+
+### Jev request/response audit
+
+Every parse-intent row also stores `request_payload` and `response_payload`
+(JSONB, each capped at 96 KB by `serializeAuditPayload()`). The request is the
+exact `{ model, state, questions }` sent to Jev; the response is the raw
+`answers`/`model`/`usage` plus the derived plan, confidence and topic source.
+This is what makes a bad topic reproducible after the fact.
+
+Open the full exchange from **Admin → Request logs → Payload** (the link calls
+`/api/admin/jev-audit?id=...` with the admin session cookie). Payloads follow the
+same retention as the event row and are copied into
+`api_request_events_archive` by `npm run telemetry:archive`.
+
+Topics are cleaned before they reach the plan: `topicFromIntent()` extracts the
+content span (counts, difficulty, language, format and filler removed), and
+`cleanTopic()` strips settings from model spans and clarification answers. The
+`topicSource` field still records where the topic came from.
 
 ## Device & network diagnostics
 

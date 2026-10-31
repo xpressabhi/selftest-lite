@@ -597,3 +597,132 @@ export function detectTestType(intent) {
 	}
 	return null;
 }
+
+// ---------------------------------------------------------------------------
+// Topic cleanup
+// ---------------------------------------------------------------------------
+
+export const MAX_TOPIC_CHARS = 160;
+
+const TOPIC_FILLER =
+	/^(?:please\s+)?(?:can\s+you\s+|could\s+you\s+)?(?:make|create|generate|build|prepare|give\s+me|i\s+want|i\s+need)\b(?:\s+(?:me|us|a|an|the|some|one))?\s*/iu;
+const TOPIC_LEAD_CONNECTOR = /^(?:on|about|for|regarding|covering|related\s+to|based\s+on)\s+/iu;
+const TOPIC_TRAILING_FILLER = /\s+(?:for\s+me|please|thanks|asap|now)$/iu;
+const TOPIC_EDGE_TEST =
+	/^(?:a|an|the)?\s*(?:test|tests|quiz|quizzes|paper|papers|mock|exam)\s+(?:on|about|for|of)\s+/iu;
+const TOPIC_TRAILING_TEST =
+	/\s+(?:test|tests|quiz|quizzes|paper|papers|mock|exam|question|questions|mcq|mcqs)$/iu;
+const TOPIC_MOCK_PHRASE =
+	/\b(?:full\s*(?:length|mock)|mock|practice|sample|previous\s*year)\s+(?:test|paper|exam)\b/giu;
+const TOPIC_FORMAT_PHRASE =
+	/\b(?:multiple\s*-?\s*choice|mcq|mcqs|true\s*[-/]?\s*false|binary|assertion\s*[-/]?\s*reason(?:ing)?|match(?:ing)?\s+(?:the\s+)?columns?|speed\s*challenge|objective|subjective|one\s*-?\s*liner|fill\s+in\s+the\s+blanks?)(?:\s+(?:test|quiz|paper|questions?|exam|mock))?\b/giu;
+const TOPIC_LANGUAGE_CLAUSE =
+	/\b(?:in|into|using|written\s+in)\s+(?:hindi|english|hinglish)\b/giu;
+const TOPIC_LANGUAGE_TRAILING = /\s+(?:hindi|english|hinglish)$/iu;
+const TOPIC_DIFFICULTY_CLAUSE =
+	/\b(?:easy|hard|difficult|advanced|expert|beginner|intermediate|simple|basic)\s+(?:level|mode|questions?|test|quiz|paper|exam)\b/giu;
+const TOPIC_ANSWER_CLAUSE =
+	/\b(?:with|without)\s+(?:answers?|answer\s*key|solutions?|explanations?)\b/giu;
+const TOPIC_TIME = /\b\d{1,3}\s*(?:minutes?|mins?|hours?|hrs?)\b/giu;
+
+const TOPIC_COUNT_PATTERNS = [
+	new RegExp(
+		`(?<![\\p{L}\\p{M}])\\d{1,3}(?:\\s+[^\\s\\d]+){0,4}\\s+(?:${QUESTION_WORDS})(?![\\p{L}\\p{M}])`,
+		'giu'
+	),
+	new RegExp(
+		`(?<![\\p{L}\\p{M}])(?:${QUESTION_WORDS})\\s*[:=-]?\\s*\\d{1,3}(?![\\p{L}\\p{M}])`,
+		'giu'
+	),
+	new RegExp(
+		`(?<![\\p{L}\\p{M}])(?:${NUMBER_WORD_KEYS})\\s+(?:${QUESTION_WORDS})(?![\\p{L}\\p{M}])`,
+		'giu'
+	),
+	new RegExp(
+		`(?<![\\p{L}\\p{M}])(?:${QUESTION_WORDS})\\s*[:=-]?\\s*(?:${NUMBER_WORD_KEYS})(?![\\p{L}\\p{M}])`,
+		'giu'
+	),
+];
+
+function trimTopic(value, maxChars) {
+	const text = String(value || '')
+		.replace(/^[\s,;:.\-–—]+|[\s,;:.\-–—]+$/gu, '')
+		.trim();
+	if (text.length <= maxChars) {
+		return text;
+	}
+	const clipped = text.slice(0, maxChars);
+	const lastSpace = clipped.lastIndexOf(' ');
+	return (lastSpace > maxChars * 0.6 ? clipped.slice(0, lastSpace) : clipped).trim();
+}
+
+/**
+ * Removes planning settings from a topic candidate: question counts, the
+ * language clause, format/test words, difficulty-level clauses, timers and
+ * imperative wrappers. It is conservative about language and difficulty words
+ * that are part of the subject ("Hindi literature", "advanced physics").
+ */
+export function cleanTopic(value, { maxChars = MAX_TOPIC_CHARS } = {}) {
+	let text = typeof value === 'string' ? value : '';
+	if (!text.trim()) {
+		return '';
+	}
+	text = text
+		.replace(/[\p{Cc}]/gu, ' ')
+		.replace(/\s+/gu, ' ')
+		.trim();
+
+	for (let pass = 0; pass < 2; pass += 1) {
+		// Counts first: "20 multiple choice questions" must lose the whole
+		// phrase, not just the format words and leave a bare number behind.
+		for (const pattern of TOPIC_COUNT_PATTERNS) {
+			text = text.replace(pattern, ' ');
+		}
+		text = text
+			.replace(TOPIC_FILLER, '')
+			.replace(TOPIC_EDGE_TEST, '')
+			.replace(TOPIC_MOCK_PHRASE, ' ')
+			.replace(TOPIC_FORMAT_PHRASE, ' ')
+			.replace(TOPIC_LANGUAGE_CLAUSE, ' ')
+			.replace(TOPIC_DIFFICULTY_CLAUSE, ' ')
+			.replace(TOPIC_ANSWER_CLAUSE, ' ')
+			.replace(TOPIC_TIME, ' ');
+		text = text
+			.replace(TOPIC_LANGUAGE_TRAILING, '')
+			.replace(TOPIC_TRAILING_TEST, '')
+			.replace(TOPIC_TRAILING_FILLER, '')
+			.replace(TOPIC_LEAD_CONNECTOR, '')
+			.replace(/\s+/gu, ' ')
+			.trim();
+	}
+
+	text = trimTopic(text, maxChars);
+	if (!text || /^(?:test|quiz|paper|exam|mock|question|questions|mcq|mcqs)$/iu.test(text)) {
+		return '';
+	}
+	return text;
+}
+
+/**
+ * The best subject phrase for a message, using the lexicon's content spans
+ * (which already exclude counts and settings) and the span repair pass. This
+ * is the safe fallback when Jev did not pick a topic span.
+ */
+export function topicFromIntent(intent) {
+	const text = typeof intent === 'string' ? intent.trim() : '';
+	if (!text) {
+		return '';
+	}
+	// "Hindi literature" and "English grammar" are subjects, not language
+	// settings; the lexicon treats the language word as config elsewhere.
+	const languageSubject = text.match(
+		/\b(?:hindi|english|sanskrit|urdu|french|spanish|german)\s+(?:literature|grammar|poetry|prose|drama|novels?|stories|essays?)\b/iu
+	);
+	if (languageSubject) {
+		return cleanTopic(languageSubject[0]);
+	}
+	const candidates = buildTopicCandidates(text);
+	const candidate = candidates[0] || '';
+	const repaired = candidate ? repairTopicSpan(text, candidate) : '';
+	return cleanTopic(repaired || candidate) || cleanTopic(text);
+}

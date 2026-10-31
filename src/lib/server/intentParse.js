@@ -24,10 +24,12 @@ import {
 	MIN_QUESTIONS,
 	buildTopicCandidates,
 	clampQuestions,
+	cleanTopic,
 	extractMentionedFields,
 	extractQuestionCount,
 	hasDifficultyContradiction,
 	repairTopicSpan,
+	topicFromIntent,
 } from '#lib/shared/intentLexicon.js';
 
 export {
@@ -36,10 +38,12 @@ export {
 	MIN_QUESTIONS,
 	buildTopicCandidates,
 	clampQuestions,
+	cleanTopic,
 	extractMentionedFields,
 	extractQuestionCount,
 	hasDifficultyContradiction,
 	repairTopicSpan,
+	topicFromIntent,
 };
 
 export const INTENT_MODEL = 'jev-latest';
@@ -135,7 +139,7 @@ const INSTRUCTIONS = {
 	language:
 		'Which language should the test be written in? Choose hindi when the request uses Devanagari or Hindi words; otherwise use the language in the student context; default to english.',
 	topic_span:
-		'Which phrase from the request names the subject the test should cover? Pick the most specific complete subject phrase. Ignore question counts, difficulty, format, language, and audience words. Choose none when no subject is stated.',
+		'Which phrase from the request names the subject the test should cover? Pick the most specific complete subject phrase. Return the subject only: never include the number of questions, difficulty, language, format, exam settings, or the words test/quiz/paper. Keep it under 12 words. Choose none when no subject is stated.',
 };
 
 /**
@@ -542,26 +546,30 @@ export function deriveIntentParams({
 	}
 
 	// --- topic --------------------------------------------------------------
+	const previousTopic = cleanTopic(base.topic);
+	const answeredTopic =
+		typeof answers.topic === 'string' ? cleanTopic(answers.topic) : '';
 	let topic;
 	let topicSource;
-	if (typeof answers.topic === 'string' && answers.topic.trim()) {
-		topic = answers.topic.trim().slice(0, 500);
+	if (answeredTopic) {
+		topic = answeredTopic;
 		topicSource = 'answer';
-	} else if (explicit.topic && !topicAccepted) {
-		topic = base.topic || intent.trim();
-		topicSource = base.topic ? 'previous' : 'raw';
+	} else if (explicit.topic) {
+		topic = previousTopic || topicFromIntent(intent);
+		topicSource = previousTopic ? 'previous' : 'raw';
 	} else if (topicAccepted) {
 		const exam = examId ? getIndianExamById(examId) : null;
-		const repaired = repairTopicSpan(intent, topicChoice.choice);
-		topic = exam ? `${repaired} (${exam.name})` : repaired;
+		const repaired =
+			cleanTopic(repairTopicSpan(intent, topicChoice.choice)) || topicFromIntent(intent);
+		topic = exam ? `${repaired} (${exam.name})`.trim() : repaired;
 		topicSource = 'span';
 	} else if (examId) {
 		const exam = getIndianExamById(examId);
-		topic = exam ? `${exam.name} objective exam paper` : base.topic || intent.trim();
+		topic = exam?.name || previousTopic || topicFromIntent(intent);
 		topicSource = 'exam';
 	} else {
-		topic = base.topic || intent.trim();
-		topicSource = base.topic ? 'previous' : 'raw';
+		topic = previousTopic || topicFromIntent(intent);
+		topicSource = previousTopic ? 'previous' : 'raw';
 	}
 
 	const plan = normalizePlan({
@@ -575,7 +583,7 @@ export function deriveIntentParams({
 	});
 
 	const fieldConfidence = {
-		topic: hasOwn(answers, 'topic') ? 1 : topicAccepted ? topicChoice.probability : null,
+		topic: answeredTopic ? 1 : topicAccepted ? topicChoice.probability : null,
 		exam: hasOwn(answers, 'examId') ? 1 : examChoice ? examChoice.probability : null,
 		isExam: isExamSignal,
 		testType: hasOwn(answers, 'testType')
@@ -593,7 +601,7 @@ export function deriveIntentParams({
 		examAccepted ? examChoice.confidence : null,
 		hasOwn(answers, 'examId') ? 1 : null,
 		topicAccepted ? topicChoice.confidence : null,
-		hasOwn(answers, 'topic') ? 1 : null,
+		answeredTopic ? 1 : null,
 		fieldConfidence.testType,
 		fieldConfidence.difficulty,
 		fieldConfidence.language,
@@ -611,7 +619,7 @@ export function deriveIntentParams({
 		candidates,
 		topicConfident:
 			topicAccepted ||
-			hasOwn(answers, 'topic') ||
+			Boolean(answeredTopic) ||
 			Boolean(examId) ||
 			Boolean(previousPlan?.topic),
 	});

@@ -412,7 +412,7 @@ describe('deriveIntentParams', () => {
 	it('returns safe defaults and asks for a topic when nothing identifies it', () => {
 		const result = deriveIntentParams({ intent: 'photosynthesis test', judgments: {} });
 		expect(result.plan).toMatchObject({
-			topic: 'photosynthesis test',
+			topic: 'photosynthesis',
 			testType: 'multiple-choice',
 			difficulty: 'intermediate',
 			numQuestions: 10,
@@ -458,7 +458,7 @@ describe('deriveIntentParams', () => {
 		});
 		expect(result.plan.examId).toBe('jee-main');
 		expect(result.plan.isFullExam).toBe(true);
-		expect(result.plan.topic).toBe('JEE Main objective exam paper');
+		expect(result.plan.topic).toBe('JEE Main');
 		expect(result.plan.numQuestions).toBe(20);
 	});
 
@@ -575,5 +575,37 @@ describe('deriveIntentParams', () => {
 				.numQuestions
 		).toBe(MAX_QUESTIONS);
 		expect(clampQuestions(0)).toBe(MIN_QUESTIONS);
+	});
+});
+
+describe('topic cleanup in deriveIntentParams', () => {
+	it('uses the subject, not the raw config-heavy request', () => {
+		const result = deriveIntentParams({
+			intent: '10 hard photosynthesis questions in Hindi',
+		});
+		expect(result.plan.topic).toBe('photosynthesis');
+	});
+
+	it('cleans an accepted model span', () => {
+		const result = deriveIntentParams({
+			intent: 'create a 20 question multiple choice test on the French Revolution for class 10',
+			judgments: {
+				topic_span: choice(
+					'French Revolution questions',
+					{ 'French Revolution questions': 0.9 },
+					0.9
+				),
+			},
+		});
+		expect(result.plan.topic).toBe('French Revolution');
+	});
+
+	it('cleans a user topic answer', () => {
+		const result = deriveIntentParams({
+			intent: 'make a test',
+			answers: { topic: '10 questions on photosynthesis' },
+		});
+		expect(result.plan.topic).toBe('photosynthesis');
+		expect(result.topicSource).toBe('answer');
 	});
 });

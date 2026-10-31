@@ -125,6 +125,7 @@
 					<th>Country</th>
 					<th>City</th>
 					<th>Client</th>
+					<th>Payload</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -144,10 +145,22 @@
 						<td class="mono"
 							>{row.client_key ? `${row.client_key.slice(0, 8)}…` : '-'}</td
 						>
+						<td>
+							{#if row.has_payload}
+								<a
+									class="payload-link"
+									href={`/api/admin/jev-audit?id=${row.id}`}
+									target="_blank"
+									rel="noopener">View</a
+								>
+							{:else}
+								-
+							{/if}
+						</td>
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="8" class="empty">
+						<td colspan="9" class="empty">
 							{loading ? 'Loading request logs…' : 'No requests match these filters.'}
 						</td>
 					</tr>
@@ -322,6 +335,12 @@
 		padding: 24px;
 		color: var(--text-muted);
 		text-align: center;
+	}
+
+	.payload-link {
+		color: var(--brand-text);
+		font-weight: 600;
+		text-decoration: underline;
 	}
 
 	.status {
