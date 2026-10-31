@@ -1,6 +1,8 @@
 <script>
 	import { t } from '#lib/client/i18n.js';
 	import Icon from '#lib/client/Icon.svelte';
+	import GravityText from './GravityText.svelte';
+	import GravityTopic from './GravityTopic.svelte';
 	import { track } from '#lib/client/telemetry.js';
 	import { OBJECTIVE_ONLY_EXAMS, getIndianExamById } from '#lib/data/indianExams.js';
 	import {
@@ -229,6 +231,7 @@
 	class:tier-full={density === 'full'}
 	class:tier-dense={density === 'dense'}
 	class:tier-micro={density === 'micro'}
+	data-changed-fields={changedFields.join(',')}
 	bind:this={cardRef}
 >
 	<div class="preview-top">
@@ -367,7 +370,9 @@
 							title={$t('plannerEditTopic')}
 							aria-label={`${$t('plannerEditTopic')}: ${topic || $t('untitledTest')}`}
 						>
-							<span class="preview-topic-label">{topic || $t('untitledTest')}</span>
+							<span class="preview-topic-label">
+								<GravityTopic text={topic || $t('untitledTest')} />
+							</span>
 							<svg
 								class="topic-edit-icon"
 								viewBox="0 0 24 24"
@@ -409,7 +414,7 @@
 					aria-label={`${$t('previewQuestions')}: ${numQuestions}`}
 					onclick={() => handlePickerClick('questions')}
 				>
-					<span class="spec-value">{numQuestions}</span>
+					<span class="spec-value"><GravityText text={String(numQuestions)} /></span>
 					<span class="spec-label">
 						{$t('previewQuestions')}
 						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -434,7 +439,9 @@
 					aria-label={`${$t('previewFormat')}: ${FORMAT_LABEL[testType] || testType}`}
 					onclick={() => handlePickerClick('format')}
 				>
-					<span class="spec-value">{FORMAT_LABEL[testType] || testType}</span>
+					<span class="spec-value"
+						><GravityText text={FORMAT_LABEL[testType] || testType} /></span
+					>
 					<span class="spec-label">
 						{$t('previewFormat')}
 						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -459,7 +466,9 @@
 					aria-label={`${$t('previewDifficulty')}: ${DIFFICULTY_LABEL[difficulty] || difficulty}`}
 					onclick={() => handlePickerClick('difficulty')}
 				>
-					<span class="spec-value">{DIFFICULTY_LABEL[difficulty] || difficulty}</span>
+					<span class="spec-value"
+						><GravityText text={DIFFICULTY_LABEL[difficulty] || difficulty} /></span
+					>
 					<span class="spec-label">
 						{$t('previewDifficulty')}
 						<svg class="spec-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -487,7 +496,9 @@
 					onclick={() => handlePickerClick('language')}
 				>
 					<span class="spec-value"
-						>{language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}</span
+						><GravityText
+							text={language === 'hindi' ? $t('hindiLabel') : $t('englishLabel')}
+						/></span
 					>
 					<span class="spec-label">
 						{$t('previewLanguage')}
@@ -514,7 +525,7 @@
 						aria-label={`${$t('previewExam')}: ${selectedExam.name}`}
 						onclick={() => handlePickerClick('exam')}
 					>
-						<span class="spec-value">{selectedExam.name}</span>
+						<span class="spec-value"><GravityText text={selectedExam.name} /></span>
 						<span class="spec-label">
 							{$t('previewExam')}
 							<svg
@@ -1334,10 +1345,21 @@
 		0% {
 			background: rgba(var(--brand-rgb), 0.16);
 			border-color: rgb(var(--brand-rgb));
+			transform: translateY(0);
+		}
+		22% {
+			transform: translateY(-3px);
+		}
+		46% {
+			transform: translateY(1px);
+		}
+		68% {
+			transform: translateY(-1px);
 		}
 		100% {
 			background: var(--surface-muted);
 			border-color: var(--line);
+			transform: translateY(0);
 		}
 	}
 
