@@ -1,6 +1,7 @@
 <script>
 	import { t } from '#lib/client/i18n.js';
 	import Icon from './Icon.svelte';
+	import { canvasFont } from './fontStack.js';
 
 	let {
 		messages = [],
@@ -29,6 +30,82 @@
 	const PARSING = $derived(status === 'parsing');
 	const hasConversation = $derived(messages.length > 0 || Boolean(pendingClarify));
 	const showIdleState = $derived(!hasConversation && !planCard && !PARSING);
+
+	// A multiline bubble in a flex row takes its full max-width even when its
+	// longest line is much shorter. Measure the tight width after the message
+	// settles (idle, and never on Save-Data) and let the bubble shrink to it.
+	const TIGHT_MIN_LENGTH = 48;
+	const TIGHT_MIN_SAVING = 12;
+	let bubbleMeasureToken = 0;
+
+	function bubbleNodes() {
+		if (!logRef) {
+			return [];
+		}
+		return Array.from(
+			logRef.querySelectorAll('.chat-bubble-user, .chat-bubble-assistant')
+		).filter(
+			(node) =>
+				!node.classList.contains('chat-question') &&
+				!node.classList.contains('chat-thinking')
+		);
+	}
+
+	function clearTightBubbleWidths() {
+		bubbleMeasureToken += 1;
+		for (const node of bubbleNodes()) {
+			node.style.removeProperty('width');
+			delete node.dataset.tightWidth;
+		}
+	}
+
+	async function measureTightBubbles() {
+		if (typeof window === 'undefined' || !logRef) {
+			return;
+		}
+		if (navigator.connection?.saveData) {
+			return;
+		}
+		if (
+			typeof window.matchMedia === 'function' &&
+			window.matchMedia('(prefers-reduced-data: reduce)').matches
+		) {
+			return;
+		}
+		const nodes = bubbleNodes();
+		const logWidth = logRef.clientWidth;
+		if (nodes.length === 0 || logWidth <= 0) {
+			return;
+		}
+		const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+		const font = canvasFont(Math.round(root * 0.9), 400);
+		const lineHeight = root * 0.9 * 1.45;
+		const { tightWidth, measureNaturalWidth } = await import('./pretextLayout.js');
+		const chWidth = (await measureNaturalWidth('0', font)) || root * 0.5;
+		const contentMax = Math.max(
+			120,
+			Math.min(Math.floor(logWidth * 0.86), Math.floor(chWidth * 72)) - 28
+		);
+		const token = ++bubbleMeasureToken;
+		for (const node of nodes) {
+			if (token !== bubbleMeasureToken) {
+				return;
+			}
+			const text = (node.textContent || '').trim();
+			if (text.length < TIGHT_MIN_LENGTH) {
+				continue;
+			}
+			const result = await tightWidth(text, font, contentMax, lineHeight);
+			if (!result || result.lineCount < 2) {
+				continue;
+			}
+			const width = Math.ceil(result.width + 28);
+			if (width <= contentMax + 28 - TIGHT_MIN_SAVING) {
+				node.style.width = `${width}px`;
+				node.dataset.tightWidth = 'true';
+			}
+		}
+	}
 
 	function scrollLogToBottom(force = false) {
 		const log = logRef;
@@ -83,6 +160,51 @@
 			resizeObserver.disconnect();
 			log.removeEventListener('scroll', onScroll);
 			if (frame) cancelAnimationFrame(frame);
+		};
+	});
+
+	$effect(() => {
+		// Re-measure when the conversation grows. Pretext is imported inside the
+		// idle callback so the home page never pays for it during first paint.
+		const list = messages;
+		const clarifyId = pendingClarify?.id;
+		if (list.length === 0 && !clarifyId) {
+			return;
+		}
+		let cancelled = false;
+		const run = () => {
+			if (!cancelled) {
+				void measureTightBubbles();
+			}
+		};
+		const idle = typeof requestIdleCallback === 'function';
+		const handle = idle ? requestIdleCallback(run, { timeout: 900 }) : setTimeout(run, 150);
+		return () => {
+			cancelled = true;
+			if (idle && typeof cancelIdleCallback === 'function') {
+				cancelIdleCallback(handle);
+			} else {
+				clearTimeout(handle);
+			}
+		};
+	});
+
+	$effect(() => {
+		if (typeof window === 'undefined') {
+			return;
+		}
+		let timer = 0;
+		const onResize = () => {
+			window.clearTimeout(timer);
+			timer = window.setTimeout(() => {
+				clearTightBubbleWidths();
+				void measureTightBubbles();
+			}, 180);
+		};
+		window.addEventListener('resize', onResize);
+		return () => {
+			window.removeEventListener('resize', onResize);
+			window.clearTimeout(timer);
 		};
 	});
 
