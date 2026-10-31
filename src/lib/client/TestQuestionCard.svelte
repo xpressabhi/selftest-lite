@@ -18,6 +18,7 @@
 		sectionFirstQuestion = false,
 		suggestedSectionMinutes = null,
 		estimatedHeight = null,
+		optionWidths = [],
 		selectedAnswer = null,
 		eliminatedOptions = null,
 		flagActive = false,
@@ -166,6 +167,9 @@
 							aria-pressed={selectedAnswer === option}
 							aria-disabled={isEliminated(optionIndex)}
 							disabled={isEliminated(optionIndex)}
+							style:width={optionWidths[optionIndex]
+								? `${optionWidths[optionIndex] + (selectedAnswer === option ? 40 : 0)}px`
+								: null}
 							onclick={() => onAnswer(option)}
 						>
 							<span class="test-option-letter" aria-hidden="true">
@@ -363,8 +367,11 @@
 	.test-option {
 		position: relative;
 		display: flex;
+		width: fit-content;
+		max-width: 100%;
 		min-height: 52px;
 		align-items: center;
+		justify-self: start;
 		gap: 12px;
 		padding: 8px 12px;
 		border: 1px solid var(--line);

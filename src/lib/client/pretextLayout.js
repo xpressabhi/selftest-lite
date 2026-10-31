@@ -241,10 +241,11 @@ function px(value) {
 	return Math.round(value * 100) / 100;
 }
 
-// Firefox measures canvas text at a rounded font size, so pass whole pixels;
-// the CSS may still paint at a fraction, but this keeps the two closest.
+// Keep fractional sizes: Chrome and Safari measure them exactly. Firefox
+// rounds canvas font sizes internally, so it cannot match the painted 15.2px
+// either way; whole pixels only moved the error to Chrome.
 function fontPx(value) {
-	return Math.max(1, Math.round(value));
+	return px(value);
 }
 
 async function measureBanner(items, contentWidth, root, rich) {
@@ -336,7 +337,7 @@ async function measureMatching(question, contentWidth, root) {
  * TestQuestionCard.svelte and QuestionMatching.svelte; if those styles change,
  * update this function with them.
  */
-export async function estimateQuestionCardHeight(question, cardWidth, context = {}) {
+export async function estimateQuestionCardLayout(question, cardWidth, context = {}) {
 	if (!question || !validWidth(cardWidth)) {
 		return null;
 	}
@@ -379,25 +380,65 @@ export async function estimateQuestionCardHeight(question, cardWidth, context = 
 	const options = Array.isArray(question.options) ? question.options : [];
 	const optionFont = canvasFont(fontPx(root * 0.95), 500);
 	const optionLineHeight = px(root * 0.95 * 1.55);
-	// 12px horizontal padding each side, the 22px letter and its 12px gap.
-	const optionTextWidth = Math.max(80, contentWidth - 24 - 34);
-	const optionHeights = await Promise.all(
+	// 12px horizontal padding each side, the 32px letter, its 12px gap and the
+	// 1px border. The 28px check and its 12px gap are reserved so selecting an
+	// option never reflows the label.
+	const optionChrome = 24 + 32 + 12 + 2;
+	const checkChrome = 28 + 12;
+	const optionTextWidth = Math.max(80, contentWidth - optionChrome - checkChrome);
+	const optionResults = await Promise.all(
 		options.map(async (option) => {
-			const measured = await measureText(option, optionFont, optionTextWidth, optionLineHeight);
-			return Math.max(52, (measured?.height ?? optionLineHeight) + 16 + 2);
+			const tight = await tightWidth(option, optionFont, optionTextWidth, optionLineHeight);
+			let textWidth = optionTextWidth;
+			let width = null;
+			if (tight) {
+				const tightMeasured = await measureText(
+					option,
+					optionFont,
+					tight.width,
+					optionLineHeight
+				);
+				// The tight width must not add a line. If it does, the browser
+				// would wrap the option taller than the full-width layout.
+				if ((tightMeasured?.lineCount ?? 0) === tight.lineCount) {
+					textWidth = tight.width;
+					width = Math.min(
+						contentWidth - checkChrome,
+						Math.ceil(tight.width + optionChrome)
+					);
+				}
+			}
+			const measured = await measureText(option, optionFont, textWidth, optionLineHeight);
+			return {
+				height: Math.max(52, (measured?.height ?? optionLineHeight) + 16 + 2),
+				width:
+					width ??
+					Math.min(contentWidth - checkChrome, Math.ceil(textWidth + optionChrome)),
+			};
 		})
 	);
+	const optionHeights = optionResults.map((result) => result.height);
+	const optionWidths = optionResults.map((result) => result.width);
 	const optionsHeight =
 		optionHeights.reduce((total, height) => total + height, 0) +
 		Math.max(0, optionHeights.length - 1) * 8;
 
-	return Math.ceil(
-		padding * 2 +
-			bannerHeight +
-			instructionsHeight +
-			questionHeight +
-			14 +
-			matchingHeight +
-			optionsHeight
-	);
+	return {
+		height: Math.ceil(
+			padding * 2 +
+				bannerHeight +
+				instructionsHeight +
+				questionHeight +
+				14 +
+				matchingHeight +
+				optionsHeight
+		),
+		optionWidths,
+	};
+}
+
+/** Height only, for callers that do not render the tight option widths. */
+export async function estimateQuestionCardHeight(question, cardWidth, context = {}) {
+	const layout = await estimateQuestionCardLayout(question, cardWidth, context);
+	return layout?.height ?? null;
 }

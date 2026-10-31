@@ -597,3 +597,76 @@ for (const variant of [
 		expect(errors).toEqual([]);
 	});
 }
+
+// Ported from Pretext's `bubbles` demo: each option sits at the tight width of
+// its own text (plus the letter and padding), so short choices become compact
+// pills while long choices keep their full measured width.
+test('options shrink-wrap short labels and widen for long labels', async ({
+	page,
+}, testInfo) => {
+	const errors = await collectErrors(page);
+	const paper = {
+		id: 'e2e-options-tight',
+		topic: 'Tight options',
+		testMode: 'quiz-practice',
+		language: 'english',
+		questions: [
+			{
+				format: 'mcq',
+				question: 'Pick a colour.',
+				options: ['Red', 'Blue', 'Green', 'White'],
+				answer: 'Red',
+			},
+		],
+	};
+	await seedPaper(page, paper);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('/test');
+	await page.getByRole('button', { name: 'Start Test' }).click();
+
+	const card = page.locator('.test-card');
+	await expect(card).toHaveAttribute('data-estimated-height', /\d+/);
+	await page.waitForTimeout(600);
+	const shortWidths = await page
+		.locator('.test-option')
+		.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().width)));
+	const cardWidth = await card.evaluate((node) => node.getBoundingClientRect().width);
+	expect(shortWidths.every((width) => width >= 44)).toBe(true);
+	expect(shortWidths.every((width) => width < cardWidth * 0.7)).toBe(true);
+
+	const longPaper = {
+		id: 'e2e-options-long',
+		topic: 'Long options',
+		testMode: 'quiz-practice',
+		language: 'english',
+		questions: [
+			{
+				format: 'mcq',
+				question: 'Pick the correct statement.',
+				options: [
+					'Photosynthesis converts light energy into chemical energy stored in glucose.',
+					'Respiration releases the energy stored in glucose for the cell to use.',
+					'Chlorophyll absorbs green light most strongly and reflects red and blue.',
+					'Stomata are the main site of the Calvin cycle in a plant leaf.',
+				],
+				answer: 'Photosynthesis converts light energy into chemical energy stored in glucose.',
+			},
+		],
+	};
+	await seedPaper(page, longPaper);
+	await page.goto('/test');
+	await page.getByRole('button', { name: 'Start Test' }).click();
+	await expect(card).toHaveAttribute('data-estimated-height', /\d+/);
+	await page.waitForTimeout(600);
+	const longWidths = await page
+		.locator('.test-option')
+		.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().width)));
+	expect(longWidths.every((width) => width > cardWidth * 0.65)).toBe(true);
+	expect(longWidths.every((width) => width > Math.max(...shortWidths) * 1.5)).toBe(true);
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify({ cardWidth: Math.round(cardWidth), shortWidths, longWidths }, null, 2),
+	});
+	expect(errors).toEqual([]);
+});
