@@ -17,6 +17,7 @@ const preparedTextCache = new Map();
 
 let pretextApiPromise;
 let pretextApi;
+let richInlineApiPromise;
 
 function remember(cache, key, value) {
 	cache.set(key, value);
@@ -28,6 +29,13 @@ function remember(cache, key, value) {
 }
 
 function canMeasureText() {
+	if (typeof OffscreenCanvas !== 'undefined') {
+		try {
+			return Boolean(new OffscreenCanvas(1, 1).getContext('2d'));
+		} catch {
+			// Fall through to the DOM canvas check.
+		}
+	}
 	return (
 		typeof window !== 'undefined' &&
 		typeof document !== 'undefined' &&
@@ -42,7 +50,7 @@ async function loadPretext() {
 
 	if (!pretextApiPromise) {
 		pretextApiPromise = (async () => {
-			if (document.fonts?.ready) {
+			if (typeof document !== 'undefined' && document.fonts?.ready) {
 				await document.fonts.ready;
 			}
 			return import('@chenglou/pretext');
@@ -55,6 +63,18 @@ async function loadPretext() {
 	}
 
 	return pretextApiPromise;
+}
+
+// Rich inline ships on its own subpath and carries its own (larger) bundle;
+// only the section banner needs it.
+async function loadRichInline() {
+	if (!canMeasureText()) {
+		return null;
+	}
+	if (!richInlineApiPromise) {
+		richInlineApiPromise = import('@chenglou/pretext/rich-inline').catch(() => null);
+	}
+	return richInlineApiPromise;
 }
 
 function cacheKey(text, font, options) {
@@ -90,6 +110,14 @@ export function resetPretextLayout(locale) {
 	}
 }
 
+/** Sets the locale of a freshly loaded module, e.g. inside a worker. */
+export async function setPretextLocale(locale) {
+	const api = await loadPretext();
+	if (api?.setLocale) {
+		api.setLocale(locale || undefined);
+	}
+}
+
 export async function prepareText(text, font, options = {}) {
 	const api = await loadPretext();
 	if (!api) {
@@ -115,6 +143,20 @@ export async function measureNaturalWidth(text, font, options = {}) {
 	return api.measureNaturalWidth(prepared);
 }
 
+/**
+ * Line count and widest line of a mixed-font inline paragraph (text runs with
+ * their own fonts, chips, boxes). Used for the section banner, whose label,
+ * name and marks are different sizes on one wrapping row.
+ */
+export async function measureRichInlineLines(items, maxWidth, options = {}) {
+	const api = await loadRichInline();
+	if (!api || !validWidth(maxWidth) || !Array.isArray(items) || items.length === 0) {
+		return null;
+	}
+	const prepared = api.prepareRichInline(items, options);
+	return api.measureRichInlineStats(prepared, maxWidth);
+}
+
 export async function measureText(text, font, maxWidth, lineHeight, options = {}) {
 	const prepared = await prepareText(text, font, options);
 	return layoutPreparedText(prepared, maxWidth, lineHeight);
@@ -138,7 +180,7 @@ function fontPx(value) {
 	return Math.max(1, Math.round(value));
 }
 
-async function measureBanner(items, contentWidth, root) {
+async function measureBanner(items, contentWidth, root, rich) {
 	const texts = (Array.isArray(items) ? items : []).map((item) => String(item || '')).filter(Boolean);
 	if (texts.length === 0) {
 		return 0;
@@ -151,18 +193,40 @@ async function measureBanner(items, contentWidth, root) {
 	const widths = await Promise.all(
 		texts.map((text, index) => measureNaturalWidth(text, fonts[index] || fonts[0]))
 	);
+	const totalWidth =
+		widths.reduce((sum, width) => sum + (width ?? 0), 0) + Math.max(0, texts.length - 1) * 8;
 	let rows = 1;
-	let rowWidth = 0;
-	widths.forEach((rawWidth) => {
-		const itemWidth = rawWidth ?? 0;
-		const extra = rowWidth > 0 ? itemWidth + 8 : itemWidth;
-		if (rowWidth > 0 && rowWidth + extra > contentWidth) {
-			rows += 1;
-			rowWidth = itemWidth;
+	if (totalWidth > contentWidth) {
+		if (rich) {
+			// The banner is a wrapping flex row with an 8px gap. Rich inline lays
+			// the same mixed-font runs out as one paragraph; 4px extra each side
+			// stands in for the gap between neighbours. Only multi-row banners pay
+			// for the separate ~44 KB rich-inline bundle.
+			const stats = await measureRichInlineLines(
+				texts.map((text, index) => ({
+					text: `${text} `,
+					font: fonts[index] || fonts[0],
+					extraWidth: 4,
+				})),
+				contentWidth
+			);
+			rows = Math.max(1, stats?.lineCount ?? 1);
 		} else {
-			rowWidth += extra;
+			// Mobile keeps the lightweight path: rich inline is a separate bundle
+			// and the low-end Android baseline should not pay for it.
+			let rowWidth = 0;
+			widths.forEach((rawWidth) => {
+				const itemWidth = rawWidth ?? 0;
+				const extra = rowWidth > 0 ? itemWidth + 8 : itemWidth;
+				if (rowWidth > 0 && rowWidth + extra > contentWidth) {
+					rows += 1;
+					rowWidth = itemWidth;
+				} else {
+					rowWidth += extra;
+				}
+			});
 		}
-	});
+	}
 	const lineHeight = px(root * 0.85 * 1.55);
 	// padding-bottom: 8px, margin-bottom: 10px, 4px row gap
 	return px(rows * lineHeight + (rows - 1) * 4 + 8 + 10);
@@ -228,7 +292,7 @@ export async function estimateQuestionCardHeight(question, cardWidth, context = 
 	);
 	const questionHeight = questionResult?.height ?? 0;
 
-	const bannerHeight = await measureBanner(context.bannerItems, contentWidth, root);
+	const bannerHeight = await measureBanner(context.bannerItems, contentWidth, root, desktop);
 	const instructionsHeight = context.instructions
 		? ((await measureText(
 				context.instructions,

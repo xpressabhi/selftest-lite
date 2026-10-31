@@ -272,6 +272,8 @@
 	"shareTestKicker": "Practice paper",
 	"shareTestCta": "Think you can ace this paper?",
 	"shareTestCtaSub": "Open the link to attempt the same questions",
+	"sharePaperPreview": "Share paper preview",
+	"paperPreviewDownloaded": "Paper preview downloaded",
 	"shareTestText": "I'm attempting \"{topic}\" on selftest.in",
 	"testCardSaved": "Test card downloaded",
 	"challengeVs": "Friendly challenge: {by} scored {score}",

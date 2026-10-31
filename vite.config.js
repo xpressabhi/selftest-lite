@@ -135,6 +135,12 @@ export default defineConfig(({ command }) => {
 				},
 			}),
 		],
+		// Pre-bundle the lazily imported layout engine. Without this, the first
+		// page that estimates text triggers a mid-session re-optimization, which
+		// invalidates other dynamic imports and makes the e2e dev server flaky.
+		optimizeDeps: {
+			include: ['@chenglou/pretext', '@chenglou/pretext/rich-inline'],
+		},
 		build: {
 			sourcemap: false,
 			// The CSS floor is deliberately lower than the JS baseline

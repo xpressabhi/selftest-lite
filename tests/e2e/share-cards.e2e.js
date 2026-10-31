@@ -118,6 +118,7 @@ test('share cards paint measured Hindi and emoji copy', async ({ page }, testInf
 		const { drawTestCard } = await import('/src/lib/client/testCard.js');
 		const { drawScoreCard } = await import('/src/lib/client/scoreCard.js');
 		const { drawStreakCard } = await import('/src/lib/client/streakCard.js');
+		const { drawPaperCard } = await import('/src/lib/client/paperCard.js');
 
 		const topic =
 			'रसायन विज्ञान: अम्ल, क्षार और लवण की पहचान 👨‍👩‍👧‍👦🧪 ' +
@@ -161,19 +162,85 @@ test('share cards paint measured Hindi and emoji copy', async ({ page }, testInf
 		const streakAlpha = ctx.getImageData(540, 545, 1, 1).data[3];
 		const footerAlpha = ctx.getImageData(540, 1690, 1, 1).data[3];
 
-		return { testOk, scoreOk, streakOk, testAlpha, scoreAlpha, streakAlpha, footerAlpha };
+		const paperOk = drawPaperCard(canvas, {
+			kicker: 'Practice paper',
+			topic,
+			meta: ['10 Questions', 'Section A'],
+			questions: [
+				'Explain why chlorophyll appears green and what that means for photosynthesis.',
+				'Compare the light-dependent reactions with the Calvin cycle.',
+				'रसायन विज्ञान में अम्ल और क्षार की पहचान कैसे करें? 🧪',
+			],
+			cta: 'Try it',
+			ctaSub: 'Open the link to attempt the same questions',
+			url,
+		});
+		const paperAlpha = ctx.getImageData(540, 390, 1, 1).data[3];
+
+		return {
+			testOk,
+			scoreOk,
+			streakOk,
+			paperOk,
+			testAlpha,
+			scoreAlpha,
+			streakAlpha,
+			footerAlpha,
+			paperAlpha,
+		};
 	});
 
 	expect(result.testOk).toBe(true);
 	expect(result.scoreOk).toBe(true);
 	expect(result.streakOk).toBe(true);
+	expect(result.paperOk).toBe(true);
 	expect(result.testAlpha).toBeGreaterThan(0);
 	expect(result.scoreAlpha).toBeGreaterThan(0);
 	expect(result.streakAlpha).toBeGreaterThan(0);
 	expect(result.footerAlpha).toBeGreaterThan(0);
+	expect(result.paperAlpha).toBeGreaterThan(0);
+
+	// Rich-inline (the section banner's mixed fonts) loads from its own subpath.
+	const rich = await page.evaluate(async () => {
+		const { measureRichInlineLines } = await import('/src/lib/client/pretextLayout.js');
+		return measureRichInlineLines(
+			[
+				{ text: 'Section 1 of 2 ', font: '700 12px sans-serif', extraWidth: 4 },
+				{ text: 'Some Physics ', font: '700 14px sans-serif', extraWidth: 4 },
+				{ text: '1 mark each ', font: '700 12px sans-serif', extraWidth: 4 },
+			],
+			120
+		);
+	});
+	expect(rich.lineCount).toBeGreaterThan(1);
+	expect(rich.maxLineWidth).toBeGreaterThan(0);
 
 	await testInfo.attach('evidence', {
 		contentType: 'application/json',
 		body: JSON.stringify(result, null, 2),
 	});
+});
+
+test('print page shares a paper preview card', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await stubShare(page);
+	await page.addInitScript((seed) => {
+		window.localStorage.setItem('selftest_history', JSON.stringify([seed]));
+	}, seededPaper());
+	await page.goto('/print?t=e2e-share-test');
+
+	await page.getByRole('button', { name: 'Share paper preview' }).click();
+	await expect.poll(() => page.evaluate(() => window.__shareCalls.length)).toBe(1);
+
+	const call = await page.evaluate(() => window.__shareCalls[0]);
+	expect(call.files).toBe(1);
+	expect(call.name).toBe('selftest-paper.png');
+	expect(call.type).toBe('image/png');
+	expect(call.text).toContain('/test?id=e2e-share-test');
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(call, null, 2),
+	});
+	expect(errors).toEqual([]);
 });

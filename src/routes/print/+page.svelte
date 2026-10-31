@@ -6,6 +6,8 @@
 	import { onMount } from 'svelte';
 	import Icon from '#lib/client/Icon.svelte';
 	import PrintPaper from '#lib/client/PrintPaper.svelte';
+	import { drawPaperCard } from '#lib/client/paperCard.js';
+	import { shareCard } from '#lib/client/shareCardFlow.js';
 	import { activeLanguage, t } from '#lib/client/i18n.js';
 	import { resolveTestRecord } from '#lib/client/storage.js';
 
@@ -42,6 +44,35 @@
 	function printPage() {
 		window.print();
 	}
+
+	async function sharePreview() {
+		if (!paper) {
+			return;
+		}
+		const url = `${window.location.origin}/test?id=${encodeURIComponent(paper.id)}`;
+		await shareCard({
+			draw: drawPaperCard,
+			card: {
+				kicker: $t('shareTestKicker'),
+				topic: paper.topic || '',
+				meta: [
+					$t('questionsCountFormat', { count: paper.questions?.length || 0 }),
+					...(paper.sections || []).map((section) => section.name).filter(Boolean).slice(0, 2),
+				],
+				questions: (paper.questions || [])
+					.slice(0, 3)
+					.map((question) => question.question || ''),
+				cta: $t('shareTestCta'),
+				ctaSub: $t('shareTestCtaSub'),
+				url,
+			},
+			kind: 'paper',
+			title: paper.topic || '',
+			text: $t('shareTestText', { topic: paper.topic || '' }),
+			url,
+			savedToastKey: 'paperPreviewDownloaded',
+		});
+	}
 </script>
 
 <svelte:head>
@@ -67,6 +98,16 @@
 					)}
 				</span>
 			{/if}
+			<button
+				class="print-share"
+				type="button"
+				disabled={loading || Boolean(error) || !paper}
+				aria-label={$t('sharePaperPreview')}
+				title={$t('sharePaperPreview')}
+				onclick={sharePreview}
+			>
+				<Icon name="share" size={18} />
+			</button>
 			<button
 				class="print-btn"
 				type="button"
@@ -134,6 +175,23 @@
 		align-items: center;
 		gap: 12px;
 		margin-left: auto;
+	}
+
+	.print-share {
+		display: inline-flex;
+		width: 44px;
+		height: 44px;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid #d1d5db;
+		border-radius: 999px;
+		background: #fff;
+		color: #374151;
+	}
+
+	.print-share:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
 	}
 
 	.print-pages {

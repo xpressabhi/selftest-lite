@@ -87,7 +87,7 @@ export function shareCardText(caption, url) {
 
 /** File name for a card kind; unknown kinds fall back to a generic name. */
 export function cardFilename(kind) {
-	const safe = ['streak', 'test', 'score'].includes(kind) ? kind : 'card';
+	const safe = ['streak', 'test', 'score', 'paper'].includes(kind) ? kind : 'card';
 	return `selftest-${safe}.png`;
 }
 
