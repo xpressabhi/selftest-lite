@@ -20,7 +20,7 @@ Flow: home conversation → `/api/parse-intent` (stateless turns against client-
 
 ## Constraints
 
-- Compatibility: mobile-first from 320px; iOS safe-area insets; ≥44×44px tap targets; low-end Android on slow networks is the optimization baseline; Node 22.x (`engines`).
+- Compatibility: mobile-first from 320px; iOS safe-area insets; ≥44×44px tap targets; low-end Android on slow networks is the optimization baseline; Node 24.x (`engines`).
 - Security/privacy: model output is sanitized (`rehype-sanitize`) before rendering; answer keys never leave the server and grading is server-side; secrets live in `src/lib/server/` via `$app/env/private` (`src/env.js`); do not break Google Adsense or PWA behavior.
 - Localization: all user-facing UI text needs English and Hindi entries in `src/lib/locales/`; `/admin` and `/api/admin/*` are English-only by exception.
 - Telemetry: every tracked event must be allowlisted in `src/lib/shared/telemetryEvents.js`; telemetry rows are archived, never deleted; `docs/telemetry.md` is the runbook.
@@ -29,7 +29,7 @@ Flow: home conversation → `/api/parse-intent` (stateless turns against client-
 
 ## Build and verification
 
-Setup: Node 22.x + npm; `npm install`; `cp .env.example .env.local`, then set `GEMINI_API_KEY` and `TYPESAFE_API_KEY` (required). `DATABASE_URL` is required for persistence, rate limiting, and admin stats; without it the app runs but stores nothing.
+Setup: Node 24.x + npm; `npm install`; `cp .env.example .env.local`, then set `GEMINI_API_KEY` and `TYPESAFE_API_KEY` (required). `DATABASE_URL` is required for persistence, rate limiting, and admin stats; without it the app runs but stores nothing.
 
 Commands (run from the repository root; all expected to pass):
 - `npm run dev` — dev server at http://localhost:5173.
