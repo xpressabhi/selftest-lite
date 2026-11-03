@@ -224,16 +224,6 @@
 		gap: 0.25rem 1rem;
 	}
 
-	.practice-sectional-link {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		color: var(--brand-text);
-		font-weight: 600;
-		font-size: 0.9rem;
-		text-decoration: none;
-	}
-
 	.practice-section {
 		display: grid;
 		gap: 0.75rem;

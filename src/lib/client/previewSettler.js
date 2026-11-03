@@ -17,7 +17,7 @@ export const WINS_REQUIRED = 2;
 export const SETTLE_TICK_MS = 400;
 
 /** Plan fields the settler governs. */
-export const SETTLE_FIELDS = [
+const SETTLE_FIELDS = [
 	'topic',
 	'testType',
 	'difficulty',

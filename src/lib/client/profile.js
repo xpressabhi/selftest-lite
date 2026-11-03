@@ -11,12 +11,12 @@ import { createDefaultProfile, normalizeProfile } from '../shared/userProfile';
 export const profile = writable(null);
 export const profileInsights = writable(null);
 
-export function readLocalProfile() {
+function readLocalProfile() {
 	const stored = readJson(STORAGE_KEYS.USER_PROFILE, null);
 	return normalizeProfile(stored);
 }
 
-export function writeLocalProfile(profileValue) {
+function writeLocalProfile(profileValue) {
 	if (profileValue === null || profileValue === undefined) {
 		removeKey(STORAGE_KEYS.USER_PROFILE);
 		return;

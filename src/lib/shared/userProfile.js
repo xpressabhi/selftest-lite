@@ -6,7 +6,7 @@ export const PROFILE_STATE_KEY = 'selftest_user_profile';
 
 export const PROFILE_VERSION = 1;
 
-export const VALID_CLASSES = [
+const VALID_CLASSES = [
 	'class-8',
 	'class-9',
 	'class-10',
@@ -17,7 +17,7 @@ export const VALID_CLASSES = [
 	'other',
 ];
 
-export const VALID_PROFESSIONS = [
+const VALID_PROFESSIONS = [
 	'software-engineering',
 	'engineering-non-it',
 	'banking-finance',
@@ -30,12 +30,12 @@ export const VALID_PROFESSIONS = [
 	'other',
 ];
 
-export const VALID_LANGUAGES = ['english', 'hindi'];
+const VALID_LANGUAGES = ['english', 'hindi'];
 
-export const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
+const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 
-export const MAX_SUBJECTS = 12;
-export const MAX_FOCUS_TOPICS = 10;
+const MAX_SUBJECTS = 12;
+const MAX_FOCUS_TOPICS = 10;
 export const MAX_FOCUS_TOPIC_LENGTH = 80;
 export const MAX_EXAM_NAME_LENGTH = 120;
 

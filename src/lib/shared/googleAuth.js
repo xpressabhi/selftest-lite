@@ -5,7 +5,7 @@
 // fallback so sign-in keeps working even when PUBLIC_GOOGLE_CLIENT_ID is
 // missing from a deployment's environment. Environment variables always win
 // when present.
-export const GOOGLE_CLIENT_ID_FALLBACK =
+const GOOGLE_CLIENT_ID_FALLBACK =
 	'712722478360-2mrcdd0c746u7muep4dsctl7c0ih8goe.apps.googleusercontent.com';
 
 /** Returns the configured client id, falling back to the built-in one. */

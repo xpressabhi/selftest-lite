@@ -7,9 +7,9 @@ import { MAX_PATTERN_OUTPUT_TOKENS } from './quizConfig.js';
 
 const PATTERN_MODEL = 'gemini-flash-lite-latest';
 const PATTERN_TIMEOUT_MS = 45000;
-export const PATTERN_TTL_MS = 45 * 24 * 60 * 60 * 1000;
+const PATTERN_TTL_MS = 45 * 24 * 60 * 60 * 1000;
 /** Forced refreshes younger than this are ignored (serves the cache). */
-export const PATTERN_REFRESH_MIN_AGE_MS = 6 * 60 * 60 * 1000;
+const PATTERN_REFRESH_MIN_AGE_MS = 6 * 60 * 60 * 1000;
 const MAX_SECTIONS = 20;
 /** Per-section question ceiling for a discovered pattern. Real papers top out
  *  well below this; the bound only exists to cap generation fan-out. */
@@ -345,7 +345,7 @@ async function requestPatternText(ai, prompt, deadlineMs) {
 }
 
 /** One model call that returns a normalized, validated pattern. */
-export async function discoverExamPattern(
+async function discoverExamPattern(
 	target,
 	{ language = 'english', researchNotes = null } = {}
 ) {

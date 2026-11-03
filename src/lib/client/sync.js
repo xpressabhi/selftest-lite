@@ -66,7 +66,7 @@ function writePendingAttempts(attempts) {
 	}
 }
 
-export function queuePendingAttempt(attempt) {
+function queuePendingAttempt(attempt) {
 	const pending = readPendingAttempts().filter(
 		(item) => !(item.testId === attempt.testId && item.submittedAt === attempt.submittedAt)
 	);

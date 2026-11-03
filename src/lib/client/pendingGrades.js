@@ -20,7 +20,6 @@ import {
 } from './storage.js';
 
 const PENDING_LIMIT = 10;
-export const PENDING_GRADES_EVENT = 'selftest:pending-grades';
 
 function readPending() {
 	const value = readJson(STORAGE_KEYS.PENDING_GRADES, []);
@@ -54,14 +53,6 @@ export function queuePendingGrade({
 		queuedAt: Date.now(),
 	});
 	writePending(pending);
-}
-
-export function readPendingGrades() {
-	return readPending();
-}
-
-export function hasPendingGrade(testId) {
-	return readPending().some((entry) => String(entry.testId) === String(testId));
 }
 
 /**
@@ -124,10 +115,5 @@ export async function flushPendingGrades() {
 	}
 
 	writePending(remaining);
-	if (graded > 0) {
-		window.dispatchEvent(
-			new CustomEvent(PENDING_GRADES_EVENT, { detail: { graded } })
-		);
-	}
 	return graded;
 }

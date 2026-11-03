@@ -90,7 +90,7 @@ export async function setLanguage(nextLanguage, { persist = true } = {}) {
 	}
 }
 
-export function applyTheme(preference) {
+function applyTheme(preference) {
 	const resolvedTheme = preference === 'system' ? getSystemTheme() : preference;
 	if (typeof document !== 'undefined') {
 		document.documentElement.setAttribute('data-bs-theme', resolvedTheme);

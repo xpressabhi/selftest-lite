@@ -10,7 +10,7 @@ import { STORAGE_KEYS } from './constants.js';
 import { requestPersonalize } from './personalize.js';
 import { MAX_NOTIFICATION_CANDIDATES, nudgeKindGroup } from '#lib/shared/nudgePolicy.js';
 
-export const NUDGE_LEDGER_VERSION = 1;
+const NUDGE_LEDGER_VERSION = 1;
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -18,10 +18,10 @@ const DAY_MS = 24 * HOUR_MS;
 export const MOMENT_GLOBAL_COOLDOWN_MS = 24 * HOUR_MS;
 export const SHARE_COOLDOWN_MS = 3 * DAY_MS;
 export const PUSH_COOLDOWN_MS = 7 * DAY_MS;
-export const DISMISS_BACKOFF_MS = [14 * DAY_MS, 30 * DAY_MS, 90 * DAY_MS];
+const DISMISS_BACKOFF_MS = [14 * DAY_MS, 30 * DAY_MS, 90 * DAY_MS];
 export const INTERRUPT_COOLDOWN_MS = 24 * HOUR_MS;
-export const QUIET_START_HOUR = 21;
-export const QUIET_END_HOUR = 7;
+const QUIET_START_HOUR = 21;
+const QUIET_END_HOUR = 7;
 export const MAX_SEEN_KEYS = 200;
 
 export function emptyLedger() {
@@ -107,7 +107,7 @@ export function writeNudgeLedger(ledger) {
 	}
 }
 
-export function dismissBackoffMs(dismissals) {
+function dismissBackoffMs(dismissals) {
 	const index = Math.min(Math.max(Number(dismissals) || 1, 1), DISMISS_BACKOFF_MS.length) - 1;
 	return DISMISS_BACKOFF_MS[index];
 }

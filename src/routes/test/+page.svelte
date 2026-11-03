@@ -1567,15 +1567,6 @@
 		line-height: 1.45;
 	}
 
-	.test-summary-id {
-		margin: -10px 0 18px;
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		font-variant-numeric: tabular-nums;
-	}
-
 	.test-summary-actions {
 		display: grid;
 		gap: 8px;

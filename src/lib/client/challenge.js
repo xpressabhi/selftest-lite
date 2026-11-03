@@ -2,8 +2,8 @@
 // No network, no Svelte, no storage. Claimed scores are fun-first and never
 // treated as verified results.
 
-export const MAX_CHALLENGER_NAME = 24;
-export const MAX_CHALLENGE_SCORE = 1000;
+const MAX_CHALLENGER_NAME = 24;
+const MAX_CHALLENGE_SCORE = 1000;
 
 /**
  * Parses `ch` (challenger score) and `by` (challenger name) from a query

@@ -13,8 +13,8 @@ export const ADMIN_TABS = [
 ];
 
 export const ADMIN_TAB_IDS = new Set(ADMIN_TABS.map((tab) => tab.id));
-export const INSIGHT_TABS = new Set(['overview', 'tests', 'traffic', 'engagement', 'reliability']);
-export const COMPARE_TABS = new Set(['overview', 'traffic', 'engagement']);
+const INSIGHT_TABS = new Set(['overview', 'tests', 'traffic', 'engagement', 'reliability']);
+const COMPARE_TABS = new Set(['overview', 'traffic', 'engagement']);
 
 export const DURATION_OPTIONS = [
 	{ value: 1, label: '24h' },
@@ -31,7 +31,7 @@ export const HEALTH_WINDOWS = [
 	{ value: 3600, label: '1h' },
 ];
 
-export const LOG_STATUS_OPTIONS = [
+const LOG_STATUS_OPTIONS = [
 	{ value: '', label: 'Any status' },
 	{ value: '2xx', label: '2xx success' },
 	{ value: '3xx', label: '3xx redirect' },

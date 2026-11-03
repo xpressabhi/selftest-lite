@@ -103,7 +103,6 @@ describe('validateTelemetryPayload', () => {
 			'generate:start',
 			'test:answer',
 			'results:explain',
-			'bookmark:add-exam',
 			'history:view',
 			'settings:theme-toggle',
 			'pwa:install-accepted',

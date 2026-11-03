@@ -21,8 +21,8 @@ export const MATCHING_PAIR_COUNT = 4;
 export const MATCHING_ITEM_MAX_CHARS = 120;
 export const MATCHING_DISTRACTOR_MIN_DIFFS = 2;
 
-export const MATCHING_ISSUE_INVALID = 'matching-pairs-invalid';
-export const MATCHING_ISSUE_TOO_LONG = 'matching-item-too-long';
+const MATCHING_ISSUE_INVALID = 'matching-pairs-invalid';
+const MATCHING_ISSUE_TOO_LONG = 'matching-item-too-long';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 const COMBINATION_PATTERN = /^1-([A-D]), 2-([A-D]), 3-([A-D]), 4-([A-D])$/;
@@ -43,7 +43,7 @@ export function parseCombination(text) {
 	return new Set(letters).size === letters.length ? letters : null;
 }
 
-export function formatCombination(letters) {
+function formatCombination(letters) {
 	return letters.map((letter, index) => `${index + 1}-${letter}`).join(', ');
 }
 

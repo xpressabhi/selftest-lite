@@ -5,8 +5,6 @@
 // a co-study session rather than a scheduled robot: stable all day, fresh the
 // next. Both languages must always carry the same number of variants.
 
-export const REMINDER_COPY_LANGUAGES = ['en', 'hi'];
-
 export const REMINDER_COPY = {
 	en: [
 		{

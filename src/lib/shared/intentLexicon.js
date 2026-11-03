@@ -602,7 +602,7 @@ export function detectTestType(intent) {
 // Topic cleanup
 // ---------------------------------------------------------------------------
 
-export const MAX_TOPIC_CHARS = 160;
+const MAX_TOPIC_CHARS = 160;
 
 const TOPIC_FILLER =
 	/^(?:please\s+)?(?:can\s+you\s+|could\s+you\s+)?(?:make|create|generate|build|prepare|give\s+me|i\s+want|i\s+need)\b(?:\s+(?:me|us|a|an|the|some|one))?\s*/iu;

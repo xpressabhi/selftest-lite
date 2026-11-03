@@ -38,31 +38,29 @@ export {
 	MIN_QUESTIONS,
 	buildTopicCandidates,
 	clampQuestions,
-	cleanTopic,
 	extractMentionedFields,
 	extractQuestionCount,
 	hasDifficultyContradiction,
 	repairTopicSpan,
-	topicFromIntent,
 };
 
 export const INTENT_MODEL = 'jev-latest';
 
-export const MAX_CLARIFY_ROUNDS = 2;
+const MAX_CLARIFY_ROUNDS = 2;
 export const MAX_RECENT_MESSAGES = 8;
 export const MAX_RECENT_MESSAGE_CHARS = 300;
 
 // Exam acceptance: a wrong exam is worse than no exam.
-export const EXAM_MIN_CONFIDENCE = 0.6;
-export const EXAM_MIN_PROBABILITY = 0.5;
+const EXAM_MIN_CONFIDENCE = 0.6;
+const EXAM_MIN_PROBABILITY = 0.5;
 // Ask only when an exam is plausible but not certain.
-export const EXAM_ASK_PROBABILITY = 0.3;
+const EXAM_ASK_PROBABILITY = 0.3;
 
 // Topic span acceptance and clarification options.
-export const TOPIC_MIN_PROBABILITY = 0.3;
+const TOPIC_MIN_PROBABILITY = 0.3;
 
-export const CONFIDENCE_HIGH = 0.8;
-export const CONFIDENCE_MEDIUM = 0.5;
+const CONFIDENCE_HIGH = 0.8;
+const CONFIDENCE_MEDIUM = 0.5;
 
 export const VALID_TEST_TYPES = [
 	'multiple-choice',
@@ -75,7 +73,7 @@ export const VALID_TEST_TYPES = [
 export const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 export const VALID_LANGUAGES = ['english', 'hindi'];
 
-export const DEFAULT_PLAN = Object.freeze({
+const DEFAULT_PLAN = Object.freeze({
 	topic: '',
 	testType: 'multiple-choice',
 	difficulty: 'intermediate',

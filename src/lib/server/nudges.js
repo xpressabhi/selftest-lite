@@ -10,42 +10,20 @@
 import { createHash } from 'node:crypto';
 import * as z from 'zod';
 import {
-	CHALLENGE_MIN_PCT,
 	MAX_NOTIFICATION_CANDIDATES,
 	NUDGE_CONFIDENCE_HIGH,
 	NUDGE_CONFIDENCE_MIN,
 	NUDGE_HOLDOUT_PERCENT,
-	NUDGE_KINDS,
 	NUDGE_PAGES,
 	NOTIFICATION_RELEVANCE_MIN,
 	RECEPTIVITY_MIN,
 	REMINDER_FIT_MIN,
 	SHARE_KINDS,
 	SHARE_PRIDE_MIN,
-	STREAK_SHARE_MIN,
 	eligibleNudgeKinds,
-	nudgeCohort,
-	nudgeKindGroup,
 } from '#lib/shared/nudgePolicy.js';
 
-export {
-	CHALLENGE_MIN_PCT,
-	MAX_NOTIFICATION_CANDIDATES,
-	NUDGE_CONFIDENCE_HIGH,
-	NUDGE_CONFIDENCE_MIN,
-	NUDGE_HOLDOUT_PERCENT,
-	NUDGE_KINDS,
-	NUDGE_PAGES,
-	NOTIFICATION_RELEVANCE_MIN,
-	RECEPTIVITY_MIN,
-	REMINDER_FIT_MIN,
-	SHARE_KINDS,
-	SHARE_PRIDE_MIN,
-	STREAK_SHARE_MIN,
-	eligibleNudgeKinds,
-	nudgeCohort,
-	nudgeKindGroup,
-};
+export { MAX_NOTIFICATION_CANDIDATES, eligibleNudgeKinds };
 
 // ---- State sanitizing -------------------------------------------------------
 // One hostile or stale field must never break the whole nudge (fail-open), so

@@ -2,7 +2,7 @@
 // store, the sync pipeline and the browser hub. Deliberately free of
 // node:crypto and any server imports so client components can use it.
 
-export const CLOSING_SOON_DAYS = 7;
+const CLOSING_SOON_DAYS = 7;
 
 export const NOTIFICATION_STATUS = Object.freeze({
 	UPCOMING: 'upcoming',

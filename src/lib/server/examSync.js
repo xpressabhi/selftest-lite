@@ -28,7 +28,7 @@ import {
 	validateNotificationDates,
 } from '../shared/examNotifications.js';
 
-export const DEFAULT_MAX_LINK_CHECKS_PER_SOURCE = 25;
+const DEFAULT_MAX_LINK_CHECKS_PER_SOURCE = 25;
 
 function defaultShouldRetry(error) {
 	const message = String(error?.message || error);

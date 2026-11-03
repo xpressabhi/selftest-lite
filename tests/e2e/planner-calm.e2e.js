@@ -108,6 +108,73 @@ test('live preview commits once: partial topic fragments never reach the card', 
 	expect(errors).toEqual([]);
 });
 
+test('sending a plan hands focus to Generate Test', async ({ page }, testInfo) => {
+	const errors = await collectErrors(page);
+	await stubHistoryAndTests(page);
+	await page.route(
+		(url) => url.pathname === '/api/parse-intent',
+		(route) => {
+			const body = JSON.parse(route.request().postData() || '{}');
+			if (body.mode === 'preview') {
+				return route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ plan: null, topicSource: 'local' }),
+				});
+			}
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					plan: {
+						topic: 'photosynthesis',
+						testType: 'multiple-choice',
+						difficulty: 'intermediate',
+						numQuestions: 10,
+						examId: null,
+						isFullExam: false,
+						language: 'english',
+					},
+					topicSource: 'span',
+					messageKey: 'plannerPlanReady',
+				}),
+			});
+		}
+	);
+
+	await page.goto('/');
+	const input = page.locator('.intent-input');
+	await input.click();
+	await input.pressSequentially('photosynthesis in plants', { delay: 20 });
+	await expect(page.locator('.preview-topic-label')).toHaveText('photosynthesis', {
+		timeout: 6000,
+	});
+	// Let the live-preview turn settle before the submit handler accepts a click.
+	await page.waitForTimeout(1200);
+
+	const send = page.getByRole('button', { name: 'Send to planner' });
+	await expect(send).toBeEnabled();
+	await send.click();
+
+	const generate = page.getByRole('button', { name: /Generate Test/ });
+	await expect(generate).toBeEnabled({ timeout: 8000 });
+	await expect(generate).toBeFocused({ timeout: 8000 });
+	await expect(send).not.toBeFocused();
+
+	await testInfo.attach('evidence', {
+		contentType: 'application/json',
+		body: JSON.stringify(
+			{
+				generateFocused: await generate.evaluate((node) => node === document.activeElement),
+				handoff: await generate.evaluate((node) => node.classList.contains('handoff')),
+			},
+			null,
+			2
+		),
+	});
+	expect(errors).toEqual([]);
+});
+
 test('a weak Jev challenger holds the last committed topic; strong evidence commits', async ({
 	page,
 }, testInfo) => {
@@ -417,7 +484,7 @@ test('a long chat bubble shrinks to its measured width', async ({ page }, testIn
 	// The composer runs a live-preview parse while typing; its submit handler
 	// ignores a click until that turn settles.
 	await page.waitForTimeout(1200);
-	const send = page.getByRole('button', { name: 'Build my test plan' });
+	const send = page.getByRole('button', { name: 'Send to planner' });
 	await expect(send).toBeEnabled();
 	await send.click();
 
@@ -638,7 +705,7 @@ test('Jev result changes pulse and animate the affected config tiles', async ({
 	// Let the live-preview turn settle; the submit handler ignores clicks while
 	// PARSING.
 	await page.waitForTimeout(1200);
-	await page.getByRole('button', { name: 'Build my test plan' }).click();
+	await page.getByRole('button', { name: 'Send to planner' }).click();
 
 	const card = page.locator('.preview-card');
 	await expect(card).toHaveAttribute('data-changed-fields', /numQuestions/, {

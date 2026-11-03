@@ -1,11 +1,11 @@
 import { isAdminConfigured, isAdminRequest } from './adminAuth.js';
 import { ensureStorageSchema, normalizeUserIdValue, query } from './storage.js';
 
-export const PREMIUM_FEATURE_EXAM_PAPER = 'exam-paper';
+const PREMIUM_FEATURE_EXAM_PAPER = 'exam-paper';
 const VALID_FEATURES = new Set([PREMIUM_FEATURE_EXAM_PAPER]);
 const MAX_NOTES_LENGTH = 200;
 
-export function isPremiumFeature(feature) {
+function isPremiumFeature(feature) {
 	return VALID_FEATURES.has(feature);
 }
 

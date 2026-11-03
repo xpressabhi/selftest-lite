@@ -1,4 +1,5 @@
 <script>
+	import { onDestroy } from 'svelte';
 	import { t } from '#lib/client/i18n.js';
 	import Icon from '#lib/client/Icon.svelte';
 	import GravityText from './GravityText.svelte';
@@ -35,6 +36,39 @@
 	let openPicker = $state(null);
 	let examPickerQuery = $state('');
 	let cardRef = $state(null);
+	let generateBtnRef = $state(null);
+	let handoff = $state(false);
+	let handoffTimer = null;
+
+	onDestroy(() => {
+		if (typeof window !== 'undefined') window.clearTimeout(handoffTimer);
+	});
+
+	/**
+	 * Hand the planner turn off to the expensive action: scroll the plan's
+	 * Generate Test button into view, focus it, and pulse it once. Called by the
+	 * home page after a submitted turn produced a ready plan.
+	 */
+	export function focusGenerate() {
+		const button = generateBtnRef;
+		if (!button || button.disabled) {
+			return;
+		}
+		const reduceMotion =
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+		button.scrollIntoView({
+			block: 'center',
+			inline: 'nearest',
+			behavior: reduceMotion ? 'auto' : 'smooth',
+		});
+		button.focus({ preventScroll: true });
+		handoff = true;
+		window.clearTimeout(handoffTimer);
+		handoffTimer = window.setTimeout(() => {
+			handoff = false;
+		}, 1400);
+	}
 
 	let selectedExam = $derived(getIndianExamById(examId));
 
@@ -705,6 +739,8 @@
 		<div class="preview-footer">
 			<button
 				class="generate-btn"
+				class:handoff
+				bind:this={generateBtnRef}
 				disabled={GENERATING || !topic || checking}
 				onclick={handleGenerate}
 				type="button"
@@ -1278,6 +1314,30 @@
 	.generate-btn:disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
+	}
+
+	.generate-btn.handoff {
+		animation: generate-handoff 1.1s ease-out;
+	}
+
+	@keyframes generate-handoff {
+		0% {
+			box-shadow: 0 0 0 0 rgba(var(--brand-rgb), 0.55);
+		}
+		70% {
+			box-shadow: 0 0 0 10px rgba(var(--brand-rgb), 0);
+		}
+		100% {
+			box-shadow: 0 0 0 0 rgba(var(--brand-rgb), 0);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.generate-btn.handoff {
+			animation: none;
+			outline: 3px solid rgb(var(--brand-rgb));
+			outline-offset: 3px;
+		}
 	}
 
 	.generate-time {

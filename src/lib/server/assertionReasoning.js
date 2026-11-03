@@ -27,8 +27,8 @@ export const AR_OPTIONS = {
 	],
 };
 
-export const AR_ISSUE_ANSWER_INVALID = 'ar-answer-invalid';
-export const AR_ISSUE_STATEMENTS_INVALID = 'ar-statements-invalid';
+const AR_ISSUE_ANSWER_INVALID = 'ar-answer-invalid';
+const AR_ISSUE_STATEMENTS_INVALID = 'ar-statements-invalid';
 
 export function optionsForLanguage(language) {
 	return AR_OPTIONS[language] || AR_OPTIONS.english;

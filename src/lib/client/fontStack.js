@@ -28,7 +28,7 @@ const FALLBACK_STACK =
  * The app's declared font stack, which is what the DOM renders with.
  * Safe to call during SSR (returns the fallback stack).
  */
-export function resolveFontStack() {
+function resolveFontStack() {
 	if (typeof document === 'undefined' || typeof window === 'undefined') {
 		return FALLBACK_STACK;
 	}

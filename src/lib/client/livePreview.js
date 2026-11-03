@@ -18,8 +18,8 @@ import {
 	hasDifficultyContradiction,
 } from '#lib/shared/intentLexicon.js';
 
-export const PREVIEW_MIN_CHARS = 3;
-export const PREVIEW_MIN_INTERVAL_MS = 700;
+const PREVIEW_MIN_CHARS = 3;
+const PREVIEW_MIN_INTERVAL_MS = 700;
 export const PREVIEW_DEBOUNCE_MS = 900;
 
 // The lexicon's exam pattern only covers acronyms; for previews the words

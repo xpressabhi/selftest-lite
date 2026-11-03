@@ -3,7 +3,7 @@ import { archiveOldRateLimitEvents, ensureStorageSchema, getClientKey, query } f
 const DEFAULT_RATE_LIMIT = 10; // requests
 const DEFAULT_WINDOW_MS = 60 * 1000; // 1 minute
 
-export { DEFAULT_RATE_LIMIT, DEFAULT_WINDOW_MS };
+export { DEFAULT_RATE_LIMIT };
 
 export async function rateLimiter(request, options = {}) {
 	const {

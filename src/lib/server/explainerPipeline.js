@@ -31,7 +31,7 @@ import { backoffBeforeRetry, isTransientProviderError } from './transientErrors.
 // talks to the OpenAI-compatible inference gateway and relies on the prompt's
 // JSON shape, the parser, and validation/repair for the same guarantees.
 
-export class ExplainerTimeoutError extends Error {
+class ExplainerTimeoutError extends Error {
 	constructor() {
 		super('Explainer timed out after 90 seconds. Please retry.');
 		this.name = 'ExplainerTimeoutError';
@@ -39,7 +39,7 @@ export class ExplainerTimeoutError extends Error {
 	}
 }
 
-export class ArtifactInvalidError extends Error {
+class ArtifactInvalidError extends Error {
 	constructor(issues) {
 		super('The generated explainer did not pass validation.');
 		this.name = 'ArtifactInvalidError';

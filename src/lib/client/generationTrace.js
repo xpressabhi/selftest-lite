@@ -4,7 +4,7 @@
 // a small state object. Mapping that state to the visible steps is kept pure so
 // the sequence can be unit-tested without a browser.
 
-export const TRACE_STEPS = ['reading', 'drafting', 'refining', 'assembling'];
+const TRACE_STEPS = ['reading', 'drafting', 'refining', 'assembling'];
 
 /**
  * @param {{stage?: string, approved?: number, requested?: number, round?: number,

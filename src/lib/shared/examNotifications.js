@@ -11,22 +11,15 @@ import { createHash } from 'node:crypto';
 import { HUB_CATEGORIES, OBJECTIVE_ONLY_EXAMS } from '../data/indianExams.js';
 import { addDays, parseIsoDate } from './examNotificationStatus.js';
 
-export {
-	CLOSING_SOON_DAYS,
-	NOTIFICATION_STATUS,
-	addDays,
-	deriveNotificationStatus,
-	parseIsoDate,
-	todayInIst,
-} from './examNotificationStatus.js';
+export { deriveNotificationStatus, parseIsoDate, todayInIst } from './examNotificationStatus.js';
 
 export const KNOWN_EXAM_IDS = new Set(OBJECTIVE_ONLY_EXAMS.map((exam) => exam.id));
 export const KNOWN_CATEGORY_IDS = new Set(HUB_CATEGORIES.map((category) => category.id));
 
 export const NEAR_DUPLICATE_THRESHOLD = 0.85;
 export const MIN_EXTRACTION_CONFIDENCE = 0.5;
-export const TITLE_MAX_CHARS = 240;
-export const STATE_MAX_CHARS = 60;
+const TITLE_MAX_CHARS = 240;
+const STATE_MAX_CHARS = 60;
 
 // Not recruitment notifications: tracked separately by the source sites, out
 // of scope for this feature, and prone to confusing the "apply by" story.

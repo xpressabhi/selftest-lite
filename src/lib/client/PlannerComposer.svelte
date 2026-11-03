@@ -216,6 +216,17 @@
 		onsubmit(trimmedValue);
 	}
 
+	/**
+	 * Moves the mobile keyboard out of the way after the planner turn lands so
+	 * the plan card's Generate Test button is visible. Desktop focus is driven
+	 * by the page-level handoff instead.
+	 */
+	export function dismissKeyboard() {
+		if (!isMobileViewport()) return;
+		inputRef?.blur();
+		disableKeyboardMode();
+	}
+
 	onMount(() => {
 		const SpeechRecognition =
 			window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -452,17 +463,10 @@
 					class="composer-send"
 					type="submit"
 					disabled={!trimmedValue || disabled}
-					aria-label={$t('buildPlan')}
+					aria-label={$t('sendToPlanner')}
+					title={$t('sendToPlanner')}
 				>
-					<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-						<path
-							d="M4 10L16 10M16 10L11 5M16 10L11 15"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
+					<Icon name="send" size={18} />
 				</button>
 			{/if}
 		</div>
@@ -783,22 +787,24 @@
 		flex-shrink: 0;
 		width: 44px;
 		height: 44px;
-		border: 0;
+		border: 1px solid var(--line);
 		border-radius: var(--radius-control);
-		background: rgb(var(--brand-rgb));
-		color: var(--on-brand);
+		background: var(--surface);
+		color: rgb(var(--brand-text-rgb));
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
 		transition:
 			background 0.2s ease,
+			border-color 0.2s ease,
 			transform 0.15s ease,
 			opacity 0.15s ease;
 	}
 
 	.composer-send:hover:not(:disabled) {
-		background: rgba(var(--brand-rgb), 0.85);
+		background: rgba(var(--brand-rgb), 0.08);
+		border-color: rgb(var(--brand-rgb));
 		transform: scale(1.03);
 	}
 

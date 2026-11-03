@@ -10,10 +10,10 @@ export const SYNCED_STATE_KEYS = [
 	'selftest_streak',
 ];
 
-export const MAX_STATE_VALUE_BYTES = 96 * 1024;
+const MAX_STATE_VALUE_BYTES = 96 * 1024;
 export const MAX_STATE_KEYS_PER_REQUEST = 16;
 
-export const STATE_CAPS = {
+const STATE_CAPS = {
 	selftest_bookmarked_exams: 20,
 	selftest_bookmarked_quiz_presets: 20,
 	selftest_bookmarks: 300,
@@ -25,11 +25,11 @@ export function isSyncedStateKey(key) {
 	return typeof key === 'string' && SYNCED_STATE_KEYS.includes(key);
 }
 
-export function isPlainObject(value) {
+function isPlainObject(value) {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function isPlainArray(value) {
+function isPlainArray(value) {
 	return Array.isArray(value);
 }
 

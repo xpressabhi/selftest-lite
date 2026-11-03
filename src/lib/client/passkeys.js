@@ -20,22 +20,6 @@ export function isPasskeySupported() {
 	);
 }
 
-/**
- * Used only to pick wording ("use your fingerprint or screen lock"). It is not
- * a gate: it reports on *platform* authenticators, so gating on it would hide
- * roaming security keys and cross-device QR sign-in.
- */
-export async function isPlatformAuthenticatorAvailable() {
-	if (!isPasskeySupported()) {
-		return false;
-	}
-	try {
-		return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-	} catch {
-		return false;
-	}
-}
-
 function base64UrlToBytes(value) {
 	const normalized = String(value).replace(/-/g, '+').replace(/_/g, '/');
 	const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);

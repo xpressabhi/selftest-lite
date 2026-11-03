@@ -4,8 +4,8 @@
 // `user_id` onto all rows carrying this `client_id`, which is what makes the
 // pre-login → post-login transition seamless.
 
-export const CLIENT_ID_STORAGE_KEY = 'selftest_client_id';
-export const CLIENT_ID_HEADER = 'x-client-id';
+const CLIENT_ID_STORAGE_KEY = 'selftest_client_id';
+const CLIENT_ID_HEADER = 'x-client-id';
 
 let cachedClientId = null;
 

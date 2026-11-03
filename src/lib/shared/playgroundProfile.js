@@ -4,8 +4,8 @@
 // part of the explainer cache key (so phone-lite and wide-full users share
 // stable artifacts per class).
 
-export const VIEWPORT_CLASSES = ['phone', 'wide'];
-export const BUDGET_CLASSES = ['lite', 'full'];
+const VIEWPORT_CLASSES = ['phone', 'wide'];
+const BUDGET_CLASSES = ['lite', 'full'];
 
 export const PHONE_MAX_WIDTH = 600;
 

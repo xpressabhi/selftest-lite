@@ -1,6 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { activeLanguage, localizedApiError, t } from '#lib/client/i18n.js';
 	import { HAPTIC_ERROR, HAPTIC_SUCCESS, triggerVibration } from '#lib/client/haptics.js';
@@ -30,7 +30,6 @@
 		getHiddenHistoryIds,
 		getHistory,
 		getUnsubmittedTest,
-		saveBookmarkedExamIds,
 		saveCurrentPaper,
 		readJson,
 		writeJson,
@@ -133,9 +132,6 @@
 	let masteryItems = $state([]);
 	let liteMode = $state(false);
 	let examCountdown = $state(null);
-	// Loaded on demand when the manual config opens (see loadManualConfig).
-	let TopicBrowser = $state(null);
-	let ExamBrowser = $state(null);
 	let previewStatus = $state('idle');
 	let previewSeq = 0;
 	let previewAbort = null;
@@ -150,6 +146,8 @@
 	let committedPulseFields = $state([]);
 	let committedPulseTimer = null;
 	let planDensity = $state('full');
+	let previewCardRef = $state(null);
+	let composerRef = $state(null);
 
 	const plannerExampleGroups = [
 		{
@@ -185,13 +183,8 @@
 	let examSectionsStatus = $state('idle');
 	let selectedExamSection = $state('');
 	let examSectionsRequest = 0;
-	let selectedCategory = $state('');
-	let selectedTopics = $state([]);
 	let selectedSyllabusFocus = $state([]);
 
-	let examSearchQuery = $state('');
-	let examGroupFilter = $state('all');
-	let showBookmarkedExamsOnly = $state(false);
 	let bookmarkedExamIds = $state([]);
 	let bookmarkedQuizPresets = $state([]);
 
@@ -238,7 +231,6 @@
 	let showProfileWizard = $state(false);
 	let profileLoaded = $state(false);
 
-	let showManualConfig = $state(false);
 	let generationAbort = null;
 	let generationTimer = null;
 	let generationElapsed = $state(0);
@@ -268,25 +260,7 @@
 	let bookmarkedExams = $derived(
 		OBJECTIVE_ONLY_EXAMS.filter((exam) => bookmarkedExamIds.includes(exam.id))
 	);
-	let visibleExams = $derived.by(() => {
-		const query = examSearchQuery.trim().toLowerCase();
-		const baseExams = showBookmarkedExamsOnly ? bookmarkedExams : OBJECTIVE_ONLY_EXAMS;
-		return baseExams.filter((exam) => {
-			const groups = String(exam.group || '')
-				.split('/')
-				.map((item) => item.trim());
-			const matchesGroup = examGroupFilter === 'all' || groups.includes(examGroupFilter);
-			if (!matchesGroup) return false;
-			if (!query) return true;
-			return [exam.name, exam.stream, exam.group, ...(exam.syllabus || [])]
-				.join(' ')
-				.toLowerCase()
-				.includes(query);
-		});
-	});
-	let canGenerate = $derived(
-		topic.trim().length > 0 || selectedTopics.length > 0 || examId !== ''
-	);
+	let canGenerate = $derived(topic.trim().length > 0 || examId !== '');
 	const showPlanCard = $derived(
 		Boolean(topic.trim() || examId || parsedFromIntent || intentParseFailed)
 	);
@@ -608,15 +582,6 @@
 					streak: streak?.currentStreak || 0,
 					...(nudgeEligible ? { nudge: nudgeState } : {}),
 				}).then((decision) => {
-					if (decision?.applied) {
-						if (decision.hide?.includes('manual-browsers')) {
-							showManualConfig = false;
-						}
-						if (decision.promote?.includes('exam-browser')) {
-							showManualConfig = true;
-							void loadManualConfig();
-						}
-					}
 					if (nudgeEligible) {
 						queueHomeNudge(decision?.nudge, nudgeState);
 					}
@@ -1143,6 +1108,14 @@
 			plannerDraft = applyTurnResult(plannerDraft, data);
 			persistPlannerDraft();
 			intentStatus = 'done';
+			// Hand off to the expensive action once a submitted turn has produced
+			// a ready plan. Clarification turns leave focus in the composer.
+			if (meaningful && !data.clarify) {
+				void tick().then(() => {
+					composerRef?.dismissKeyboard();
+					previewCardRef?.focusGenerate();
+				});
+			}
 			lastTopicSource =
 				typeof data.topicSource === 'string' ? data.topicSource : lastTopicSource;
 			lastFieldConfidence =
@@ -1309,56 +1282,6 @@
 				difficulty = exam.defaultDifficulty || 'intermediate';
 			}
 		}
-		if (field === 'selectedCategory') selectedCategory = value;
-		if (field === 'selectedTopics') {
-			selectedTopics = value;
-			if (value.length > 0) {
-				topic = value.join(', ');
-			}
-		}
-		if (field === 'examSearchQuery') examSearchQuery = value;
-		if (field === 'examGroupFilter') examGroupFilter = value;
-		if (field === 'showBookmarkedExamsOnly') showBookmarkedExamsOnly = value;
-	}
-
-	function handleTopicBrowserChange(field, value) {
-		handleChipEdit(field, value);
-	}
-
-	function handleExamBrowserChange(field, value) {
-		handleChipEdit(field, value);
-	}
-
-	function toggleExamBookmark(examIdToToggle) {
-		const isAdding = !bookmarkedExamIds.includes(examIdToToggle);
-		bookmarkedExamIds = isAdding
-			? [examIdToToggle, ...bookmarkedExamIds].slice(0, 20)
-			: bookmarkedExamIds.filter((id) => id !== examIdToToggle);
-		saveBookmarkedExamIds(bookmarkedExamIds);
-		track(isAdding ? 'bookmark:add-exam' : 'bookmark:remove-exam', { examId: examIdToToggle });
-	}
-
-	function toggleManualConfig() {
-		if (!showManualConfig) {
-			track('home:manual-expand');
-			// The manual config is below the fold and behind a toggle; shipping
-			// its two browsers in the first-load chunk cost every visitor on a
-			// slow connection. Fetch them only when the panel is opened.
-			void loadManualConfig();
-		}
-		showManualConfig = !showManualConfig;
-	}
-
-	async function loadManualConfig() {
-		if (TopicBrowser && ExamBrowser) {
-			return;
-		}
-		const [topicModule, examModule] = await Promise.all([
-			import('#lib/client/TopicBrowser.svelte'),
-			import('#lib/client/ExamBrowser.svelte'),
-		]);
-		TopicBrowser = topicModule.default;
-		ExamBrowser = examModule.default;
 	}
 
 	async function loadExamSections(id, { discover = false } = {}) {
@@ -1445,8 +1368,8 @@
 		return {
 			testMode: 'quiz-practice',
 			topic: topic.trim(),
-			category: selectedCategory,
-			selectedTopics: selectedTopics,
+			category: '',
+			selectedTopics: [],
 			examId: null,
 			examName: null,
 			examStream: null,
@@ -1853,9 +1776,7 @@
 			.filter((item) => item?.examId && item?.examDate && getIndianExamById(item.examId))
 			.map((item) => ({
 				...item,
-				days: Math.round(
-					(Date.parse(`${item.examDate}T00:00:00Z`) - todayMs) / 86_400_000
-				),
+				days: Math.round((Date.parse(`${item.examDate}T00:00:00Z`) - todayMs) / 86_400_000),
 			}))
 			.filter((item) => Number.isFinite(item.days) && item.days >= 0 && item.days <= 180)
 			.sort((left, right) => left.days - right.days);
@@ -1863,8 +1784,7 @@
 			return null;
 		}
 		const preferred = [examId, ...bookmarkedExamIds].filter(Boolean);
-		const chosen =
-			candidates.find((item) => preferred.includes(item.examId)) || candidates[0];
+		const chosen = candidates.find((item) => preferred.includes(item.examId)) || candidates[0];
 		const exam = getIndianExamById(chosen.examId);
 		return {
 			examId: chosen.examId,
@@ -2012,6 +1932,7 @@
 
 		{#snippet planCard()}
 			<PreviewCard
+				bind:this={previewCardRef}
 				{topic}
 				{numQuestions}
 				{testType}
@@ -2063,6 +1984,7 @@
 					/>
 				{/if}
 				<PlannerComposer
+					bind:this={composerRef}
 					bind:value={intentValue}
 					onsubmit={sendPlannerIntent}
 					onnavigate={handleTestNavigate}
@@ -2247,47 +2169,6 @@
 				<a class="tailored-edit" href="/profile">{$t('profileChipEdit')}</a>
 			</div>
 		{/if}
-
-		<div class="manual-section">
-			<button
-				class="manual-toggle"
-				type="button"
-				aria-expanded={showManualConfig}
-				aria-controls="manual-config-panel"
-				onclick={toggleManualConfig}
-			>
-				<Icon name="sliders" size={16} />
-				<span>{$t('browseTopicsExams')}</span>
-			</button>
-			{#if !showManualConfig}
-				<p class="manual-hint small text-muted">{$t('manualSetupHint')}</p>
-			{/if}
-			{#if showManualConfig}
-				<div class="manual-grid" id="manual-config-panel">
-					{#if TopicBrowser && ExamBrowser}
-						<TopicBrowser
-							{selectedCategory}
-							{selectedTopics}
-							ontopicchange={handleTopicBrowserChange}
-						/>
-						<ExamBrowser
-							{examSearchQuery}
-							{examGroupFilter}
-							{showBookmarkedExamsOnly}
-							{bookmarkedExamIds}
-							selectedExamId={examId}
-							onexamchange={handleExamBrowserChange}
-							onbookmarktoggle={toggleExamBookmark}
-							{visibleExams}
-						/>
-					{:else}
-						<div class="manual-loading panel" role="status">
-							{$t('loading')}
-						</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
 
 		{#if status === 'loading'}
 			<GenerationTrace
@@ -2554,40 +2435,6 @@
 
 	/* Section chips use the shared `.chip` primitive (44px target, token
 	   active state that also works in dark mode). */
-
-	.manual-section {
-		margin-top: 16px;
-	}
-
-	.manual-toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		margin: 0 auto;
-		border: 1px solid var(--line);
-		background: var(--surface);
-		color: var(--text);
-		font-size: 0.875rem;
-		font-weight: 600;
-		border-radius: var(--radius-control);
-		min-height: 44px;
-		padding: 8px 16px;
-		cursor: pointer;
-		transition: border-color var(--motion-fast) var(--ease-out);
-	}
-	.manual-toggle:hover {
-		border-color: var(--color-brand-600);
-	}
-	.manual-hint {
-		margin: 8px 0 0;
-		text-align: center;
-	}
-
-	.manual-grid {
-		display: flex;
-		flex-direction: column;
-		gap: 0;
-	}
 
 	.tailored-chip {
 		display: flex;

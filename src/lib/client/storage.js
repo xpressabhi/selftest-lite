@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_CHANGE_EVENT, LOCAL_STORAGE_SYNC_EVENT, STORAGE_KEYS } from './constants';
+import { LOCAL_STORAGE_CHANGE_EVENT, STORAGE_KEYS } from './constants';
 import { getClientHeaders } from './identity';
 import { questionTextFor } from '#lib/shared/questionText.js';
 
@@ -206,13 +206,6 @@ export function saveQuestionBookmarks(bookmarks) {
 	);
 }
 
-export function isQuestionBookmarked(question) {
-	const text = questionTextFor(question);
-	return getQuestionBookmarks().some(
-		(item) => item.question === text && item.answer === question?.answer
-	);
-}
-
 export function toggleQuestionBookmark(question, metadata = {}) {
 	// Structured formats (matching, assertion-reasoning) carry their content in
 	// dedicated fields; store the composed text so bookmark cards are never
@@ -240,7 +233,7 @@ export function toggleQuestionBookmark(question, metadata = {}) {
 	return nextBookmarks;
 }
 
-export function getDraftAnswerKey(testId) {
+function getDraftAnswerKey(testId) {
 	return `${STORAGE_KEYS.UNSUBMITTED_TEST}_answers_${testId || 'current'}`;
 }
 
@@ -274,7 +267,7 @@ export function clearDraftFlags(testId) {
 	removeKey(getDraftFlagsKey(testId));
 }
 
-export function getDraftHintsKey(testId) {
+function getDraftHintsKey(testId) {
 	return `${STORAGE_KEYS.UNSUBMITTED_TEST}_hints_${testId || 'current'}`;
 }
 
@@ -414,7 +407,7 @@ export async function resolveTestRecord(testId, { fillAttempt = false } = {}) {
 	return next;
 }
 
-export function getAttemptResultKey(testId) {
+function getAttemptResultKey(testId) {
 	return `${STORAGE_KEYS.ATTEMPT_RESULTS}_${testId || 'current'}`;
 }
 
@@ -485,38 +478,4 @@ export function reportTestActivity(testId, event, { name = '' } = {}) {
 	}).catch(() => {
 		// Stats bookkeeping is best-effort only.
 	});
-}
-
-export function writeTrackedStorageSnapshot(snapshot) {
-	if (typeof window === 'undefined' || !snapshot || typeof snapshot !== 'object') {
-		return [];
-	}
-
-	const changedKeys = [];
-	for (const [key, value] of Object.entries(snapshot)) {
-		if (typeof value !== 'string') {
-			continue;
-		}
-		if (window.localStorage.getItem(key) === value) {
-			continue;
-		}
-		window.localStorage.setItem(key, value);
-		changedKeys.push(key);
-	}
-
-	if (changedKeys.includes(STORAGE_KEYS.TEST_HISTORY)) {
-		historyCache = null;
-	}
-
-	if (changedKeys.length > 0) {
-		window.dispatchEvent(
-			new CustomEvent(LOCAL_STORAGE_SYNC_EVENT, {
-				detail: {
-					keys: changedKeys,
-				},
-			})
-		);
-	}
-
-	return changedKeys;
 }

@@ -6,7 +6,7 @@ import { buildVisitIdentityKey, normalizeClientId } from './visitIdentity.js';
  * Records (or refreshes) one identity's visit to a cached explainer. Returns
  * false when there is no identity to record; the count still answers.
  */
-export async function recordExplainerVisit({ cacheKey, userId = null, clientId = null }) {
+async function recordExplainerVisit({ cacheKey, userId = null, clientId = null }) {
 	const identityKey = buildVisitIdentityKey({ userId, clientId });
 	if (!cacheKey || !identityKey) {
 		return false;

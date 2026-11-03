@@ -10,12 +10,12 @@ import { listAttemptsForIdentity } from './storage';
 import { VALID_DIFFICULTIES } from './quizConfig';
 import { isPersonalized } from '#lib/shared/userProfile.js';
 
-export const MIN_TOPIC_ATTEMPTS = 2;
-export const HIGH_ACCURACY = 0.85;
-export const LOW_ACCURACY = 0.6;
-export const MAX_FOCUS_TOPICS = 5;
-export const MAX_WEAK_TOPICS_IN_CONTEXT = 3;
-export const RECENCY_HALF_LIFE_DAYS = 30;
+const MIN_TOPIC_ATTEMPTS = 2;
+const HIGH_ACCURACY = 0.85;
+const LOW_ACCURACY = 0.6;
+const MAX_FOCUS_TOPICS = 5;
+const MAX_WEAK_TOPICS_IN_CONTEXT = 3;
+const RECENCY_HALF_LIFE_DAYS = 30;
 
 const CLASS_LABELS = {
 	'class-8': 'Class 8',
@@ -177,7 +177,7 @@ export async function computeLearnerSignals({ userId, clientId } = {}) {
  * Finds the learner signal for the topic being tested, by normalized
  * substring matching against the request's topic keywords.
  */
-export function matchTopicSignal(signals, keywords = []) {
+function matchTopicSignal(signals, keywords = []) {
 	const candidates = Array.isArray(keywords)
 		? keywords.map((value) => String(value || '').trim()).filter(Boolean)
 		: [];
@@ -459,5 +459,3 @@ export function buildTailoredSummary({
 	}
 	return parts.length > 0 ? parts.join(' • ') : null;
 }
-
-export { CLASS_LABELS };

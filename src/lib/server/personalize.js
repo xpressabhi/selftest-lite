@@ -6,8 +6,8 @@
 // unit-testable and fail-open: low confidence returns applied:false so the
 // caller keeps the current static UI.
 
-export const PERSONALIZE_CONFIDENCE_HIGH = 0.8;
-export const PERSONALIZE_CONFIDENCE_MEDIUM = 0.5;
+const PERSONALIZE_CONFIDENCE_HIGH = 0.8;
+const PERSONALIZE_CONFIDENCE_MEDIUM = 0.5;
 
 export const PERSONALIZE_PAGES = [
 	'home',
@@ -47,7 +47,6 @@ export function buildPersonalizeQuestions(page, context = {}) {
 						daily_five: 'A light daily habit fits best; a 5-question warm-up',
 						new_quiz: 'The learner wants something new; the composer is the priority',
 						exam_mock: 'Exam pressure is high; a full mock is the priority',
-						browse: 'The learner is exploring; topic/exam browsers first',
 					}),
 				},
 				exam_pressure: {
@@ -216,7 +215,7 @@ function readScore(judgments, id) {
 	return Number.isFinite(Number(answer.score)) ? Number(answer.score) : null;
 }
 
-export function classifyPersonalizeConfidence(value) {
+function classifyPersonalizeConfidence(value) {
 	const score = Number(value);
 	if (!Number.isFinite(score)) {
 		return 'low';
@@ -239,17 +238,15 @@ const HOME_PROMOTE = {
 	review_due: ['review-queue'],
 	daily_five: ['daily-five'],
 	new_quiz: ['composer'],
-	exam_mock: ['exam-browser'],
-	browse: ['manual-browsers'],
+	exam_mock: [],
 };
 
 const HOME_HIDE = {
-	resume_unfinished: ['manual-browsers'],
-	review_due: ['manual-browsers', 'quickstart-secondary'],
-	daily_five: ['manual-browsers'],
+	resume_unfinished: [],
+	review_due: ['quickstart-secondary'],
+	daily_five: [],
 	new_quiz: [],
 	exam_mock: ['quickstart-secondary'],
-	browse: [],
 };
 
 /**

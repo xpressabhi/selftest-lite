@@ -6,7 +6,7 @@ import webpush from 'web-push';
 
 let configuredKey = null;
 
-export function isPushConfigured({ publicKey, privateKey } = {}) {
+function isPushConfigured({ publicKey, privateKey } = {}) {
 	return Boolean(publicKey && privateKey);
 }
 

@@ -3,7 +3,7 @@ import { ensureStorageSchema, query } from './storage.js';
 
 // Bump when the key's composition or normalization changes: old rows stay in
 // the table but are never served under the new key semantics.
-export const EXPLANATION_CACHE_KEY_VERSION = 'ex-v1';
+const EXPLANATION_CACHE_KEY_VERSION = 'ex-v1';
 
 /**
  * NFC-normalizes, trims and collapses internal whitespace. Case is preserved

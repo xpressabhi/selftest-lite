@@ -7,10 +7,10 @@
 import { readJson, removeKey, writeJson } from './storage';
 import { STORAGE_KEYS } from './constants';
 
-export const PLANNER_DRAFT_VERSION = 1;
-export const MAX_STORED_MESSAGES = 40;
+const PLANNER_DRAFT_VERSION = 1;
+const MAX_STORED_MESSAGES = 40;
 export const MAX_MODEL_MESSAGES = 8;
-export const MAX_MODEL_MESSAGE_CHARS = 300;
+const MAX_MODEL_MESSAGE_CHARS = 300;
 
 let messageCounter = 0;
 
@@ -148,7 +148,7 @@ export function hasDraftContent(draft) {
 // Transitions
 // ---------------------------------------------------------------------------
 
-export function appendMessage(draft, message) {
+function appendMessage(draft, message) {
 	const next = sanitizePlannerDraft(draft);
 	const sanitized = sanitizeMessage(message);
 	if (sanitized) {
@@ -334,7 +334,7 @@ function canonicalPromptText(field) {
 	return 'What subject should the test cover?';
 }
 
-export function buildModelText(messageKey, messageParams = {}, plan = null) {
+function buildModelText(messageKey, messageParams = {}, plan = null) {
 	const topic = messageParams?.topic || plan?.topic || '';
 	const count = messageParams?.numQuestions || plan?.numQuestions || '';
 	if (messageKey === 'plannerPlanReady') {

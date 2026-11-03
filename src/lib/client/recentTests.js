@@ -7,8 +7,8 @@
 // Other people's tests stay reachable only through the debounced server
 // search in TestSearchDropdown.
 
-export const RECENT_MERGE_LIMIT = 5;
-export const OWN_TEST_RESULTS_LIMIT = 10;
+const RECENT_MERGE_LIMIT = 5;
+const OWN_TEST_RESULTS_LIMIT = 10;
 
 function toEntry(id, topic, totalQuestions, isFullExam) {
 	if (id === undefined || id === null || String(id).length === 0) {
@@ -23,7 +23,7 @@ function toEntry(id, topic, totalQuestions, isFullExam) {
 }
 
 /** Normalizes one local history entry to the recent-tests view model. */
-export function normalizeLocalEntry(entry) {
+function normalizeLocalEntry(entry) {
 	if (!entry || typeof entry !== 'object') {
 		return null;
 	}

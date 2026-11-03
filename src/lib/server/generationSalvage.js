@@ -10,12 +10,12 @@ import { questionTextFor } from '#lib/shared/questionText.js';
 
 export const BATCH_SIZE = 25;
 export const MAX_GENERATION_ROUNDS = 5;
-export const TOP_UP_BUFFER_RATIO = 0.4;
+const TOP_UP_BUFFER_RATIO = 0.4;
 export const GENERATION_RESERVE_MS = 20000;
-export const QUIZ_TRIM_FLOOR_RATIO = 0.6;
-export const EXAM_TRIM_FLOOR_RATIO = 0.75;
-export const MIN_QUIZ_QUESTIONS = 5;
-export const MIN_EXAM_QUESTIONS = 15;
+const QUIZ_TRIM_FLOOR_RATIO = 0.6;
+const EXAM_TRIM_FLOOR_RATIO = 0.75;
+const MIN_QUIZ_QUESTIONS = 5;
+const MIN_EXAM_QUESTIONS = 15;
 const MAX_REJECTED_HINTS = 8;
 const MAX_APPROVED_HINTS = 10;
 

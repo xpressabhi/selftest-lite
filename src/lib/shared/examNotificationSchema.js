@@ -15,7 +15,7 @@ const isoDate = z
 
 const CATEGORY_IDS = HUB_CATEGORIES.map((category) => category.id).join(', ');
 
-export const extractedNotificationSchema = z.object({
+const extractedNotificationSchema = z.object({
 	title: z.string().describe('Verbatim headline exactly as printed on the page'),
 	notificationUrl: z
 		.string()
@@ -52,15 +52,4 @@ export const extractedNotificationSchema = z.object({
 
 export const examNotificationExtractionSchema = z.object({
 	items: z.array(extractedNotificationSchema),
-});
-
-export const sourceSuggestionSchema = z.object({
-	org: z.string().nullable(),
-	url: z.string(),
-	category: z.string().nullable(),
-	reason: z.string().nullable(),
-});
-
-export const sourceDiscoverySchema = z.object({
-	suggestions: z.array(sourceSuggestionSchema),
 });

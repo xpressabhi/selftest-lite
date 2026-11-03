@@ -42,7 +42,6 @@ export const TELEMETRY_EVENTS = new Set([
 	'tour:language',
 	'tour:skip',
 	'tour:complete',
-	'home:manual-expand',
 	'home:resume-test',
 	'home:create-tab-focus',
 	'home:streak-start',
@@ -124,7 +123,6 @@ export const TELEMETRY_EVENTS = new Set([
 
 	// Bookmarks / history
 	'bookmarks:view',
-	'bookmark:add-exam',
 	'bookmark:remove-exam',
 	'bookmark:remove-preset',
 	'bookmark:remove-question',

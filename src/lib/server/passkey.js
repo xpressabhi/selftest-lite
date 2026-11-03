@@ -13,8 +13,7 @@ import {
 } from '@simplewebauthn/server';
 import { base64UrlToBytes } from '#lib/shared/passkeyPolicy.js';
 
-export const PASSKEY_RP_NAME = 'Selftest';
-export const PASSKEY_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const PASSKEY_RP_NAME = 'Selftest';
 
 // ES256 (platform passkeys) and RS256 (some security keys and older Android).
 const SUPPORTED_ALGORITHM_IDS = [-7, -257];

@@ -172,8 +172,6 @@ export async function estimatePrintLayout(paper, options = {}) {
 	return { pages, splittable };
 }
 
-export { A4_CONTENT_HEIGHT, A4_CONTENT_WIDTH };
-
 let workerRequest = 0;
 
 /**

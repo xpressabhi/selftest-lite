@@ -18,7 +18,7 @@ import { normalizeMathText } from '#lib/shared/latex.js';
 
 export const STATEMENT_MIN_COUNT = 3;
 export const STATEMENT_MAX_COUNT = 4;
-export const STATEMENT_MAX_CHARS = 240;
+const STATEMENT_MAX_CHARS = 240;
 export const STATEMENT_OPTION_COUNT = 4;
 
 export const STATEMENT_ISSUE_INVALID = 'statement-content-invalid';

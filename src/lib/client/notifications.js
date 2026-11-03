@@ -12,8 +12,8 @@ import { emptyLedger, isNotificationSeen } from './nudge.js';
 
 export { MAX_NOTIFICATION_CANDIDATES };
 
-export const MAX_FEED_ITEMS = 30;
-export const NOTIFICATION_NEW_DAYS = 14;
+const MAX_FEED_ITEMS = 30;
+const NOTIFICATION_NEW_DAYS = 14;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STATUS_ORDER = { closing_soon: 0, open: 1, upcoming: 2, closed: 3 };

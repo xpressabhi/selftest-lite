@@ -9,9 +9,9 @@
 import { normalizePlan } from '#lib/server/intentParse.js';
 import { MAX_INTENT_CHARS, sanitizeInputText } from '#lib/shared/inputLimits.js';
 
-export const MAX_THREAD_MESSAGES = 8;
-export const MAX_THREAD_CHARS = 4000;
-export const MAX_ORIGINAL_REQUEST_CHARS = 1000;
+const MAX_THREAD_MESSAGES = 8;
+const MAX_THREAD_CHARS = 4000;
+const MAX_ORIGINAL_REQUEST_CHARS = 1000;
 const MAX_PROVENANCE_KEYS = 24;
 const MAX_PROVENANCE_VALUE_CHARS = 64;
 const MAX_FIELD_LIST = 8;

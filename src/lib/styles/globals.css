@@ -224,9 +224,7 @@ body {
 	--text-rgb: 26, 26, 26;
 	/* Fixed fills for banners and solid state chips (same in both themes). A
 	   fill and its ink are declared together so they cannot drift apart. */
-	--ok-fill: #15803d;
 	--warn-fill: #b45309;
-	--danger-fill: #b91c1c;
 	--on-warn: #fffbeb;
 	/* Layering scale (documented once, used everywhere; page-local layers stay
 	   below 1000 so the app shell always wins):

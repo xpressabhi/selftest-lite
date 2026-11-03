@@ -13,9 +13,6 @@ import {
 } from './cardKit.js';
 import { fitTextToLines, truncateToWidth } from './cardText.js';
 
-// Re-exported for existing consumers; the kit is the single source.
-export { CARD_HEIGHT, CARD_WIDTH };
-
 /** Strips markdown/links and collapses whitespace for canvas text. */
 export function stripCardText(value) {
 	return String(value || '')

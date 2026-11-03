@@ -7,7 +7,7 @@ import { ensureStorageSchema, query } from './storage.js';
 
 // Bump when the key's composition or normalization changes: old rows stay in
 // the table but are never served under the new key semantics.
-export const ARTIFACT_CACHE_KEY_VERSION = 'pg-v2';
+const ARTIFACT_CACHE_KEY_VERSION = 'pg-v2';
 
 /**
  * NFC-normalizes, trims and collapses internal whitespace. Case is preserved
